@@ -1,0 +1,55 @@
+# Virtual environments
+.venv/
+.venv*/
+venv/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.flwr/
+*.fab
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local datasets & caches (torchvision download; Cora copies)
+data/
+
+# Experiment outputs and generated analysis artifacts
+experiments_current/
+experiments/
+outputs_current/
+outputs/
+runs/
+logs/
+wandb/
+mlruns/
+checkpoints/
+*.log
+*.pt
+*.pth
+*.ckpt
+
+# Local raw research notes
+docs/Spectral Client Update Graph 아이디어.md
+docs/확장 아이디어 모음.md
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# OS / editor / local workspace
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.ipynb_checkpoints/

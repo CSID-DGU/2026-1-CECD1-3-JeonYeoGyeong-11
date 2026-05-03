@@ -1,0 +1,20 @@
+{
+  "description": "Cora/FGL graph ablation smoke. runner, graph construction, summary 저장 경로 확인.",
+  "args": {
+    "num_clients": 2,
+    "rounds": 1,
+    "local_epochs": 1,
+    "seeds": [42],
+    "partition": "iid",
+    "variants": [
+      "fedavg",
+      "ours_knn",
+      "ours_random"
+    ],
+    "knn_k": 1,
+    "warmup_rounds": 0,
+    "diagnostic_only": true,
+    "out_dir": "experiments_current/cora_graph_ablation_smoke",
+    "suite_tag": "cora_graph_ablation_smoke"
+  }
+}
