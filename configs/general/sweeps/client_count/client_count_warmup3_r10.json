@@ -1,0 +1,28 @@
+{
+  "description": "General FL client-count sweep. Keeps the warmup3/r10/k2 setting fixed while varying the number of FL clients.",
+  "args": {
+    "client_counts": [5, 10, 20],
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "rounds": 10,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "seeds": [42, 43, 44],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "variants": [
+      "fedavg",
+      "fedavgm",
+      "ours_spectral_filtered_knn_k2",
+      "ours_spectral_filtered_random_matched_k2"
+    ],
+    "warmup_rounds": 3,
+    "aggregation_target": "spectral_filtered_update",
+    "conflict_mix": 0.0,
+    "min_client_weight": 0.0,
+    "out_dir": "experiments_current/client_count_warmup3_r10_k2",
+    "sweep_tag": "client_count_warmup3_r10_k2"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "description": "Stress grid for regimes where FedAvg is expected to wobble under strong label skew. Expands k values inside each suite to avoid rerunning FedAvg per k. Keep min_client_weight below 1 / max(client_counts) so graph weights are not forced to uniform.",
+  "args": {
+    "client_counts": [5, 10, 20],
+    "train_subset_sizes": [1000, 3000, 6000],
+    "test_subset_sizes": [1000, 2000],
+    "knn_ks": [1, 2, 3],
+    "dirichlet_alphas": [0.03],
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "rounds": 10,
+    "local_epochs": [2],
+    "batch_size": 64,
+    "seeds": [42, 43, 44],
+    "partition": "dirichlet",
+    "warmup_rounds": 3,
+    "conflict_mix": 0.2,
+    "fixed_tau": 1.0,
+    "min_client_weight": 0.01,
+    "fedavg_collapse_acc_threshold": 0.45,
+    "meaningful_delta": 0.01,
+    "random_margin": 0.005,
+    "variant_templates": [
+      "fedavg",
+      "ours_knn_k{k}_fixed_tau",
+      "ours_tail_m2_knn_k{k}_fixed_tau",
+      "ours_layerwise_tail_m2_knn_k{k}_fixed_tau",
+      "ours_random_matched_k{k}_fixed_tau"
+    ],
+    "out_dir": "experiments_current/sg_a003_le2_r10_mcw001",
+    "grid_tag": "sg"
+  }
+}

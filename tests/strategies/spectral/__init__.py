@@ -1,0 +1,1 @@
+"""Spectral strategy tests."""

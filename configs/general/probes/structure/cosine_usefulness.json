@@ -1,0 +1,32 @@
+{
+  "description": "Focused probe for whether cosine-kNN similarity is useful beyond sparsity/tau effects. Fixed tau keeps intervention strength comparable across graph modes.",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 5,
+    "rounds": 6,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "seeds": [42, 43, 44],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "variants": [
+      "fedavg",
+      "ours_knn_k2_fixed_tau",
+      "ours_random_matched_k2_fixed_tau",
+      "ours_uniform_fixed_tau",
+      "ours_magnitude_knn_k2_fixed_tau",
+      "ours_rbf_knn_k2_fixed_tau",
+      "ours_learned_smooth_knn_k2_fixed_tau",
+      "ours_signed_abs_knn_k2_fixed_tau"
+    ],
+    "warmup_rounds": 3,
+    "conflict_mix": 0.2,
+    "fixed_tau": 1.0,
+    "min_client_weight": 0.05,
+    "out_dir": "experiments_current/cosine_usefulness_probe",
+    "suite_tag": "cosine_usefulness_probe"
+  }
+}

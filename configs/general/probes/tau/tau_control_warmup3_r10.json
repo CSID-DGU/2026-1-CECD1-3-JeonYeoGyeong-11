@@ -1,0 +1,36 @@
+{
+  "description": "General FL tau-control suite. Compares legacy h_spec adaptive tau against fixed, normalized-H_spec, and e_std tau under the same warmup3/r10/k2 setup.",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 5,
+    "rounds": 10,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "seeds": [42, 43, 44],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "variants": [
+      "fedavg",
+      "ours_knn_k2",
+      "ours_random_matched_k2",
+      "ours_uniform",
+      "ours_knn_k2_fixed_tau",
+      "ours_random_matched_k2_fixed_tau",
+      "ours_uniform_fixed_tau",
+      "ours_knn_k2_norm_tau",
+      "ours_random_matched_k2_norm_tau",
+      "ours_uniform_norm_tau",
+      "ours_knn_k2_estd_tau",
+      "ours_random_matched_k2_estd_tau",
+      "ours_uniform_estd_tau"
+    ],
+    "warmup_rounds": 3,
+    "conflict_mix": 0.2,
+    "min_client_weight": 0.05,
+    "out_dir": "experiments_current/phaseC_tau_control_warmup3_r10_k2",
+    "suite_tag": "phaseC_tau_control_warmup3_r10_k2"
+  }
+}

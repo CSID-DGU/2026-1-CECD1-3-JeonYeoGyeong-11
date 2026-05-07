@@ -1,0 +1,34 @@
+{
+  "description": "General FL structure-control suite. Tests sparse, magnitude-aware, RBF, learned-smooth, layerwise, signed/negative graph modes, and spectral-filtered aggregation against the same kNN baseline.",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 5,
+    "rounds": 10,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "seeds": [42, 43, 44],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "variants": [
+      "fedavg",
+      "ours_knn_k2",
+      "ours_random_matched_k2",
+      "ours_magnitude_knn_k2",
+      "ours_rbf_knn_k2",
+      "ours_learned_smooth_knn_k2",
+      "ours_layerwise_knn_k2",
+      "ours_layerwise_weight_knn_k2",
+      "ours_signed_abs_knn_k2",
+      "ours_negative_knn_k2",
+      "ours_spectral_filtered_knn_k2"
+    ],
+    "warmup_rounds": 3,
+    "conflict_mix": 0.2,
+    "min_client_weight": 0.05,
+    "out_dir": "experiments_current/phaseC_structure_controls_warmup3_r10_k2",
+    "suite_tag": "phaseC_structure_controls_warmup3_r10_k2"
+  }
+}

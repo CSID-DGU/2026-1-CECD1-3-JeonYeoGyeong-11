@@ -21,18 +21,18 @@ build/
 htmlcov/
 
 # Local datasets & caches (torchvision download; Cora copies)
-data/
+/data/
 
 # Experiment outputs and generated analysis artifacts
-experiments_current/
-experiments/
-outputs_current/
-outputs/
-runs/
-logs/
-wandb/
-mlruns/
-checkpoints/
+/experiments_current/
+/experiments/
+/outputs_current/
+/outputs/
+/runs/
+/logs/
+/wandb/
+/mlruns/
+/checkpoints/
 *.log
 *.pt
 *.pth
