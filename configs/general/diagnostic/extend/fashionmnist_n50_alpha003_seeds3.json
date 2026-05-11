@@ -1,0 +1,26 @@
+{
+  "description": "Extended diagnostic stress suite (client-scale check)",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 50,
+    "rounds": 10,
+    "local_epochs": 2,
+    "batch_size": 64,
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.03,
+    "train_subset_size": 0,
+    "test_subset_size": 0,
+    "seeds": [42, 43, 44],
+    "variants": [
+      "fedavg",
+      "ours_knn_k2",
+      "ours_random_matched_k2",
+      "ours_uniform",
+      "ours_spectral_filtered_knn_k2"
+    ],
+    "diagnostics_enable": true,
+    "loo_enabled": false,
+    "out_dir": "experiments_current/diagnostic_extend_suite"
+  }
+}

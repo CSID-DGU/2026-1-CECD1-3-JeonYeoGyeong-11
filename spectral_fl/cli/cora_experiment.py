@@ -7,7 +7,19 @@ import argparse
 from spectral_fl.cli.argparse_types import str2bool
 from spectral_fl.config_io import add_config_argument, parse_args_with_config
 from spectral_fl.experiments.cora import single_run as _experiment
-from spectral_fl.graph.presets import graph_preset_names
+
+
+GRAPH_PRESET_CHOICES = [
+    "none",
+    "fedaga_like",
+    "fedamp_like",
+    "gfedfilt_like",
+    "pfedgraph_like",
+    "pfedsim_like",
+    "raw_update_positive_dense",
+    "raw_update_positive_knn",
+    "signed_conflict_knn",
+]
 
 # Compatibility re-exports for older imports from spectral_fl.cli.cora_experiment.
 globals().update(
@@ -96,7 +108,7 @@ def parse_args():
         "--graph-preset",
         type=str,
         default="none",
-        choices=graph_preset_names(),
+        choices=GRAPH_PRESET_CHOICES,
         help=(
             "Prior-work-inspired graph design preset. When set, it overrides "
             "graph source/mode and related graph knobs."

@@ -24,6 +24,31 @@ def make_initial_parameters(model: torch.nn.Module, seed: int):
     return ndarrays_to_parameters(weights)
 
 
+def prepare_artifact_layout(args: argparse.Namespace, out_path: Path) -> Dict[str, str]:
+    """Return stable artifact layout paths without forcing directory creation."""
+    base_dir = out_path.parent
+    diagnostics_dir = base_dir / "diagnostics"
+    plots_dir = base_dir / "plots"
+    reports_dir = base_dir / "reports"
+    snapshots_dir = diagnostics_dir / "snapshots"
+    logs_dir = base_dir / "logs"
+    return {
+        "base_dir": str(base_dir),
+        "diagnostics_dir": str(diagnostics_dir),
+        "plots_dir": str(plots_dir),
+        "reports_dir": str(reports_dir),
+        "snapshots_dir": str(snapshots_dir),
+        "logs_dir": str(logs_dir),
+        "round_metrics_csv": str(diagnostics_dir / "round_metrics.csv"),
+        "client_metrics_csv": str(diagnostics_dir / "client_metrics.csv"),
+        "graph_stats_csv": str(diagnostics_dir / "graph_stats.csv"),
+        "round_trace_jsonl": str(logs_dir / "round_trace.jsonl"),
+        "dashboard_mockup_md": str(reports_dir / "dashboard_mockup.md"),
+        "dashboard_mockup_html": str(reports_dir / "dashboard_mockup.html"),
+        "enabled": bool(getattr(args, "diagnostics_enable", False)),
+    }
+
+
 def build_general_meta(
     args: argparse.Namespace,
     class_distribution: List[List[int]],
@@ -33,6 +58,7 @@ def build_general_meta(
     tst = int(args.test_subset_size) if getattr(args, "test_subset_size", 0) else None
     cdim = int(args.projection_dim) if args.projection_dim is not None else int(args.compression_dim)
     cne = [sum(d) for d in class_distribution]
+    artifact_layout = prepare_artifact_layout(args, out_path)
     return {
         "timestamp": datetime.now().isoformat(),
         "code_version": CODE_VERSION,
@@ -95,6 +121,25 @@ def build_general_meta(
             "min_client_weight": float(args.min_client_weight),
             "diagnostic_only": bool(args.diagnostic_only),
         },
+        "correction": {
+            "family": str(getattr(args, "correction_family", "real_graph")),
+            "control_graph_mode": str(getattr(args, "control_graph_mode", "random")),
+            "cluster_method": str(getattr(args, "cluster_method", "none")),
+            "cluster_k": int(getattr(args, "cluster_k", 0)),
+            "cluster_auto_k": bool(getattr(args, "cluster_auto_k", False)),
+            "graph_free_mode": str(getattr(args, "graph_free_mode", "none")),
+            "graph_free_gamma": float(getattr(args, "graph_free_gamma", 1.0)),
+            "clip_quantile": float(getattr(args, "clip_quantile", 0.9)),
+            "contribution_cap": float(getattr(args, "contribution_cap", 0.0)),
+        },
+        "diagnostics": {
+            "enabled": bool(getattr(args, "diagnostics_enable", False)),
+            "save_round_graphs": bool(getattr(args, "save_round_graphs", False)),
+            "graph_snapshot_rounds": str(getattr(args, "graph_snapshot_rounds", "")),
+            "save_update_arrays": bool(getattr(args, "save_update_arrays", False)),
+            "loo_enabled": bool(getattr(args, "loo_enabled", False)),
+        },
+        "artifacts": artifact_layout,
         "dominance": {
             "mode": str(getattr(args, "dominance_mode", "fedavgm")),
             "tau": float(getattr(args, "dominance_tau", 1.0)),
@@ -168,6 +213,21 @@ def build_general_meta(
         "client_class_distribution": class_distribution,
         "client_num_examples": cne,
         "client_label_hist": class_distribution,
+        "correction_family": str(getattr(args, "correction_family", "real_graph")),
+        "control_graph_mode": str(getattr(args, "control_graph_mode", "random")),
+        "cluster_method": str(getattr(args, "cluster_method", "none")),
+        "cluster_k": int(getattr(args, "cluster_k", 0)),
+        "cluster_auto_k": bool(getattr(args, "cluster_auto_k", False)),
+        "graph_free_mode": str(getattr(args, "graph_free_mode", "none")),
+        "graph_free_gamma": float(getattr(args, "graph_free_gamma", 1.0)),
+        "clip_quantile": float(getattr(args, "clip_quantile", 0.9)),
+        "contribution_cap": float(getattr(args, "contribution_cap", 0.0)),
+        "diagnostics_enable": bool(getattr(args, "diagnostics_enable", False)),
+        "save_round_graphs": bool(getattr(args, "save_round_graphs", False)),
+        "graph_snapshot_rounds": str(getattr(args, "graph_snapshot_rounds", "")),
+        "save_update_arrays": bool(getattr(args, "save_update_arrays", False)),
+        "loo_enabled": bool(getattr(args, "loo_enabled", False)),
+        "artifact_layout": artifact_layout,
     }
 
 

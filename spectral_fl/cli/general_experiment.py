@@ -7,7 +7,19 @@ import argparse
 from spectral_fl.cli.argparse_types import str2bool
 from spectral_fl.config_io import add_config_argument, parse_args_with_config
 from spectral_fl.experiments.general import single_run as _experiment
-from spectral_fl.graph.presets import graph_preset_names
+
+
+GRAPH_PRESET_CHOICES = [
+    "none",
+    "fedaga_like",
+    "fedamp_like",
+    "gfedfilt_like",
+    "pfedgraph_like",
+    "pfedsim_like",
+    "raw_update_positive_dense",
+    "raw_update_positive_knn",
+    "signed_conflict_knn",
+]
 
 # Compatibility re-exports for older imports from spectral_fl.cli.general_experiment.
 globals().update(
@@ -104,7 +116,7 @@ def parse_args():
         "--graph-preset",
         type=str,
         default="none",
-        choices=graph_preset_names(),
+        choices=GRAPH_PRESET_CHOICES,
         help=(
             "Prior-work-inspired graph design preset. When set, it overrides "
             "graph source/mode and related graph knobs."
@@ -183,6 +195,64 @@ def parse_args():
         default="update",
         choices=["update", "random", "shuffled", "uniform", "identity"],
         help="Phase-2 graph informativeness variant used by method=graph_smooth.",
+    )
+    p.add_argument(
+        "--correction-family",
+        type=str,
+        default="real_graph",
+        choices=["real_graph", "control_graph", "clustering_only", "graph_free"],
+        help="Diagnostic correction family selector for refactored experiments.",
+    )
+    p.add_argument(
+        "--control-graph-mode",
+        type=str,
+        default="random",
+        choices=["random", "shuffled", "uniform", "identity"],
+        help="Control graph mode when --correction-family=control_graph.",
+    )
+    p.add_argument(
+        "--cluster-method",
+        type=str,
+        default="none",
+        choices=["none", "kmeans", "hierarchical", "spectral"],
+        help="Client clustering backend for clustering-only controls.",
+    )
+    p.add_argument(
+        "--cluster-k",
+        type=int,
+        default=0,
+        help="Fixed number of clusters. <=0 lets cluster-auto-k decide.",
+    )
+    p.add_argument(
+        "--cluster-auto-k",
+        type=str2bool,
+        default=False,
+        help="Enable automatic cluster count selection for clustering controls.",
+    )
+    p.add_argument(
+        "--graph-free-mode",
+        type=str,
+        default="none",
+        choices=["none", "norm_clip", "contribution_cap", "dominance_reweight"],
+        help="Graph-free correction mode for diagnostic comparisons.",
+    )
+    p.add_argument(
+        "--graph-free-gamma",
+        type=float,
+        default=1.0,
+        help="Strength parameter used by graph-free dominance reweighting.",
+    )
+    p.add_argument(
+        "--clip-quantile",
+        type=float,
+        default=0.9,
+        help="Quantile for adaptive norm clipping in graph-free correction.",
+    )
+    p.add_argument(
+        "--contribution-cap",
+        type=float,
+        default=0.0,
+        help="Per-client contribution cap for graph-free correction.",
     )
     p.add_argument(
         "--graph-smoothing-lambda",
@@ -337,6 +407,36 @@ def parse_args():
         type=str2bool,
         default=False,
         help="If true, log spectral diagnostics but aggregate with FedAvg weights.",
+    )
+    p.add_argument(
+        "--diagnostics-enable",
+        type=str2bool,
+        default=False,
+        help="Enable artifact-oriented diagnostics (round/client CSV bundles).",
+    )
+    p.add_argument(
+        "--save-round-graphs",
+        type=str2bool,
+        default=False,
+        help="Persist graph snapshots on selected rounds.",
+    )
+    p.add_argument(
+        "--graph-snapshot-rounds",
+        type=str,
+        default="",
+        help="Comma-separated round indices for graph snapshot persistence.",
+    )
+    p.add_argument(
+        "--save-update-arrays",
+        type=str2bool,
+        default=False,
+        help="Persist update arrays for selected rounds (debug/analysis).",
+    )
+    p.add_argument(
+        "--loo-enabled",
+        type=str2bool,
+        default=False,
+        help="Enable leave-one-out distortion diagnostics.",
     )
 
     p.add_argument(

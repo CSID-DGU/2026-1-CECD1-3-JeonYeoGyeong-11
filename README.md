@@ -371,14 +371,29 @@ python run_general_experiment.py `
 |---|---|
 | `configs/general/baselines/fedopt_smoke.json` | FedOpt/FedNova baseline availability |
 | `configs/general/smoke/semantic_ema_weight.json` | head graph, EMA graph, EMA signal, weight filtering smoke |
+| `configs/general/diagnostic/smoke/fashionmnist_n5_r3_seed42.json` | diagnostic artifact smoke (`diagnostic_summary.csv`, dashboard mockup, plot inputs) |
 | `configs/general/stress/client_count/lowpass_spectral_only_n20_n50_postfix.json` | post cid-order fix spectral-only stress rerun |
+
+Diagnostic protocol bundles:
+
+- `configs/general/diagnostic/smoke/`: quick path validation
+- `configs/general/diagnostic/core/`: multi-seed core comparison runs
+- `configs/general/diagnostic/extend/`: larger client-scale extension runs
+
+Reporting helpers:
+
+```powershell
+python scripts/reports/generate_diagnostic_plots.py --input-dir experiments_current/<suite_dir>
+python scripts/reports/generate_dashboard_mockup.py --suite-dir experiments_current/<suite_dir>
+```
 
 ## Verification
 
 Preferred checks before pushing:
 
 ```powershell
-python -m compileall spectral_fl tests
+python -m compileall spectral_fl tests scripts
+python -m pytest -q tests/experiments/general tests/scripts/reports -k "report or plot"
 python -m unittest discover -s tests
 ```
 

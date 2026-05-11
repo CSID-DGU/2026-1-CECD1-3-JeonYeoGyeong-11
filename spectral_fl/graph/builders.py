@@ -21,6 +21,8 @@ from spectral_fl.graph.sparsification import (
     random_edges_matched_to_knn,
     uniform_graph,
 )
+from spectral_fl.graph.controls import build_control_graph
+from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
 
 
 def rbf_graph(z_mat: np.ndarray, sigma: float) -> np.ndarray:
@@ -103,7 +105,7 @@ def learned_smooth_graph(z_mat: np.ndarray, learned_lambda: float) -> np.ndarray
     return w
 
 
-def build_client_graph(
+def _build_base_client_graph(
     z_mat: np.ndarray,
     mode: str = "dense",
     knn_k: int = 2,
@@ -167,3 +169,98 @@ def build_client_graph(
     if mode_key in {"global", "global_alignment"}:
         return global_alignment_graph(z_mat=z_mat, base=base)
     raise ValueError(f"Unknown graph mode: {mode}")
+
+
+def build_relation_graph(
+    z_mat: np.ndarray,
+    mode: str = "dense",
+    knn_k: int = 2,
+    edge_threshold: float = 0.0,
+    rng: Optional[np.random.Generator] = None,
+    graph_scale_sigma: float = 1.0,
+    learned_graph_lambda: float = 1.0,
+    correction_family: str = "real_graph",
+    control_graph_mode: str = "random",
+    cluster_method: str = "none",
+    cluster_k: int = 0,
+    cluster_auto_k: bool = False,
+    cluster_seed: int = 0,
+) -> tuple[np.ndarray, dict]:
+    """Build relation graph and return (adjacency, metadata)."""
+    base_graph = _build_base_client_graph(
+        z_mat=z_mat,
+        mode=mode,
+        knn_k=knn_k,
+        edge_threshold=edge_threshold,
+        rng=rng,
+        graph_scale_sigma=graph_scale_sigma,
+        learned_graph_lambda=learned_graph_lambda,
+    )
+    fam = str(correction_family).strip().lower().replace("-", "_")
+    meta = {
+        "correction_family": fam,
+        "graph_mode": str(mode),
+        "control_graph_mode": str(control_graph_mode),
+    }
+    if fam == "control_graph":
+        adj = build_control_graph(
+            reference_adj=base_graph,
+            control_mode=control_graph_mode,
+            rng=rng,
+        )
+        meta["graph_kind"] = f"control:{str(control_graph_mode).strip().lower()}"
+        return adj.astype(np.float64, copy=False), meta
+
+    if fam == "clustering_only":
+        cluster_ids = cluster_clients(
+            z_mat=z_mat,
+            method=cluster_method,
+            k=int(cluster_k),
+            seed=int(cluster_seed),
+            auto_k=bool(cluster_auto_k),
+        )
+        same_mask = (cluster_ids[:, None] == cluster_ids[None, :]) & (~np.eye(cluster_ids.size, dtype=bool))
+        intra_vals = base_graph[same_mask]
+        intra = float(np.mean(intra_vals[intra_vals > 0.0])) if np.any(intra_vals > 0.0) else 1.0
+        adj = build_block_uniform_graph(cluster_ids, intra=intra, inter=0.0)
+        meta["graph_kind"] = "clustering_only:block_uniform"
+        meta["cluster_method"] = str(cluster_method)
+        meta["cluster_k"] = int(len(np.unique(cluster_ids)))
+        return adj.astype(np.float64, copy=False), meta
+
+    meta["graph_kind"] = "real_graph"
+    return base_graph.astype(np.float64, copy=False), meta
+
+
+def build_client_graph(
+    z_mat: np.ndarray,
+    mode: str = "dense",
+    knn_k: int = 2,
+    edge_threshold: float = 0.0,
+    rng: Optional[np.random.Generator] = None,
+    graph_scale_sigma: float = 1.0,
+    learned_graph_lambda: float = 1.0,
+    correction_family: str = "real_graph",
+    control_graph_mode: str = "random",
+    cluster_method: str = "none",
+    cluster_k: int = 0,
+    cluster_auto_k: bool = False,
+    cluster_seed: int = 0,
+) -> np.ndarray:
+    """Backward-compatible graph builder returning only adjacency."""
+    adj, _ = build_relation_graph(
+        z_mat=z_mat,
+        mode=mode,
+        knn_k=knn_k,
+        edge_threshold=edge_threshold,
+        rng=rng,
+        graph_scale_sigma=graph_scale_sigma,
+        learned_graph_lambda=learned_graph_lambda,
+        correction_family=correction_family,
+        control_graph_mode=control_graph_mode,
+        cluster_method=cluster_method,
+        cluster_k=cluster_k,
+        cluster_auto_k=cluster_auto_k,
+        cluster_seed=cluster_seed,
+    )
+    return adj

@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 from flwr.common import NDArrays
+from spectral_fl.corrections.graph_free import resolve_graph_free_correction
 
 
 @dataclass(frozen=True)
@@ -172,6 +173,52 @@ def select_aggregation_weights(
     )
 
 
+def apply_correction_family(
+    *,
+    correction_family: str,
+    selection: AggregationWeightSelection,
+    n_examples: np.ndarray,
+    graph_free_mode: str = "none",
+    graph_free_gamma: float = 1.0,
+    contribution_cap: float = 0.0,
+    clip_quantile: float = 0.9,
+    update_norms: Optional[np.ndarray] = None,
+) -> AggregationWeightSelection:
+    """Apply family-level post processing on aggregation weights.
+
+    This function intentionally keeps graph-free behavior lightweight for now so
+    strategy integration remains stable while the richer graph-free module is
+    developed in follow-up PRs.
+    """
+    fam = _norm_key(correction_family)
+    if fam in {"real_graph", "control_graph", "clustering_only"}:
+        return selection
+    if fam != "graph_free":
+        return selection
+
+    mode = _norm_key(graph_free_mode)
+    alpha = np.asarray(selection.alpha_norm, dtype=np.float64).copy()
+    active = np.asarray(selection.active_client_mask, dtype=bool)
+    alpha, mode_used = resolve_graph_free_correction(
+        alpha=alpha,
+        mode=mode,
+        n_examples=np.asarray(n_examples, dtype=np.float64),
+        update_norms=update_norms,
+        clip_quantile=float(clip_quantile),
+        contribution_cap=float(contribution_cap),
+        gamma=float(graph_free_gamma),
+    )
+    alpha_mode = f"{selection.alpha_mode}|graph_free:{mode_used}"
+    alpha = apply_min_client_weight(alpha, 0.0, active_mask=active)
+    return AggregationWeightSelection(
+        alpha_raw=selection.alpha_raw,
+        alpha_norm=alpha,
+        conflict_weight=selection.conflict_weight,
+        alpha_mode=alpha_mode,
+        active_client_mask=active,
+    )
+
+
 def weighted_average_by_alpha(
     local_updates: List[NDArrays],
     alphas: np.ndarray,
@@ -257,6 +304,7 @@ __all__ = [
     "compute_entropy",
     "compute_tau",
     "resolve_tau_source",
+    "apply_correction_family",
     "select_aggregation_weights",
     "TauSourceResolution",
     "weighted_average_by_alpha",

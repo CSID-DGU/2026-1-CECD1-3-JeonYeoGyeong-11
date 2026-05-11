@@ -145,6 +145,23 @@ def build_round_log(
     graph_diag_current = graph["graph_diag_current"]
     graph_diag = graph["graph_diag"]
 
+    pre_post_round = alpha.get("pre_post_round", {})
+    di_pre = float(pre_post_round.get("di_pre", np.nan))
+    di_post = float(pre_post_round.get("di_post", np.nan))
+    neff_pre = float(pre_post_round.get("neff_pre", np.nan))
+    neff_post = float(pre_post_round.get("neff_post", np.nan))
+    align_mean_pre = float(pre_post_round.get("align_mean_pre", np.nan))
+    align_mean_post = float(pre_post_round.get("align_mean_post", np.nan))
+    loo_mean_pre = float(pre_post_round.get("loo_mean_pre", np.nan))
+    loo_mean_post = float(pre_post_round.get("loo_mean_post", np.nan))
+
+    q_pre = np.asarray(alpha.get("q_pre", []), dtype=np.float64)
+    q_post = np.asarray(alpha.get("q_post", []), dtype=np.float64)
+    align_pre = np.asarray(alpha.get("align_pre", []), dtype=np.float64)
+    align_post = np.asarray(alpha.get("align_post", []), dtype=np.float64)
+    loo_pre = np.asarray(alpha.get("loo_pre", []), dtype=np.float64)
+    loo_post = np.asarray(alpha.get("loo_post", []), dtype=np.float64)
+
     return {
         "round": int(server_round),
         "cids": list(cids),
@@ -252,6 +269,20 @@ def build_round_log(
         "max_alpha": float(np.max(alpha_norm)),
         "entropy_alpha": float(compute_entropy(alpha_norm)),
         "effective_clients": float(compute_effective_clients(alpha_norm)),
+        "di_pre": di_pre,
+        "di_post": di_post,
+        "neff_pre": neff_pre,
+        "neff_post": neff_post,
+        "alignment_mean_pre": align_mean_pre,
+        "alignment_mean_post": align_mean_post,
+        "loo_mean_pre": loo_mean_pre,
+        "loo_mean_post": loo_mean_post,
+        "q_pre_list": [float(x) for x in q_pre.tolist()],
+        "q_post_list": [float(x) for x in q_post.tolist()],
+        "alignment_pre_list": [float(x) for x in align_pre.tolist()],
+        "alignment_post_list": [float(x) for x in align_post.tolist()],
+        "loo_pre_list": [float(x) for x in loo_pre.tolist()],
+        "loo_post_list": [float(x) for x in loo_post.tolist()],
 
         # client info
         "client_num_examples": [int(x) for x in n_examples_arr.tolist()],
@@ -293,8 +324,10 @@ def build_fit_metrics(
     graph_diag: Dict[str, Any],
     filter_diag: Dict[str, Any],
     config: Dict[str, Any],
+    pre_post_round: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, float]:
     """Build scalar Flower fit metrics for the current spectral round."""
+    pp = pre_post_round or {}
     return {
         "h_spec": float(spectral["h_spec"]),
         "h_spec_metric": float(spectral["h_spec"]),
@@ -351,6 +384,14 @@ def build_fit_metrics(
         "alpha_max": float(np.max(alpha_norm)),
         "alpha_entropy": float(compute_entropy(alpha_norm)),
         "alpha_effective_clients": float(compute_effective_clients(alpha_norm)),
+        "di_pre": float(pp.get("di_pre", np.nan)),
+        "di_post": float(pp.get("di_post", np.nan)),
+        "neff_pre": float(pp.get("neff_pre", np.nan)),
+        "neff_post": float(pp.get("neff_post", np.nan)),
+        "alignment_mean_pre": float(pp.get("align_mean_pre", np.nan)),
+        "alignment_mean_post": float(pp.get("align_mean_post", np.nan)),
+        "loo_mean_pre": float(pp.get("loo_mean_pre", np.nan)),
+        "loo_mean_post": float(pp.get("loo_mean_post", np.nan)),
         "raw_current_graph_density": float(graph_diag_current["graph_density"]),
         "raw_current_graph_empty": float(graph_diag_current["graph_empty"]),
         "raw_current_number_of_edges": float(graph_diag_current["number_of_edges"]),

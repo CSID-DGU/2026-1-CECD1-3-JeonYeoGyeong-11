@@ -124,6 +124,8 @@ from spectral_fl.experiments.suites.general.reporting import (
     append_validation_verdict,
     compute_best_knn_meta,
     duplicate_suite_summaries,
+    write_dashboard_mockup,
+    write_diagnostic_csv,
     write_interpretation_md,
     write_knn_vs_random_matched_csv,
     write_summary_markdown,
@@ -306,6 +308,14 @@ def collect_run_features(result_obj: Dict[str, Any], method: str) -> Dict[str, A
         "mean_effective_clients": safe_mean(round_trace_field(trace, "effective_clients")),
         "mean_min_alpha": safe_mean(round_trace_field(trace, "min_alpha")),
         "mean_max_alpha": safe_mean(round_trace_field(trace, "max_alpha")),
+        "mean_di_pre": safe_mean(round_trace_field(trace, "di_pre")),
+        "mean_di_post": safe_mean(round_trace_field(trace, "di_post")),
+        "mean_neff_pre": safe_mean(round_trace_field(trace, "neff_pre")),
+        "mean_neff_post": safe_mean(round_trace_field(trace, "neff_post")),
+        "mean_alignment_pre": safe_mean(round_trace_field(trace, "alignment_mean_pre")),
+        "mean_alignment_post": safe_mean(round_trace_field(trace, "alignment_mean_post")),
+        "mean_loo_pre": safe_mean(round_trace_field(trace, "loo_mean_pre")),
+        "mean_loo_post": safe_mean(round_trace_field(trace, "loo_mean_post")),
     }
 
 
@@ -798,8 +808,14 @@ def run(args):
             writer.writerows(summary_rows)
 
     duplicate_suite_summaries(out_dir, suite_summary, summary_rows, rows)
+    diagnostic_csv = write_diagnostic_csv(out_dir, summary_rows)
     knn_csv = write_knn_vs_random_matched_csv(out_dir, summary_rows)
     interp_md = write_interpretation_md(out_dir, summary_rows, suite_meta, args)
+    dashboard_md = write_dashboard_mockup(
+        out_dir,
+        summary_rows,
+        diagnostic_csv_path=diagnostic_csv,
+    )
     append_validation_verdict(out_dir, summary_rows)
 
     print("\n=== General-FL suite summary (rank: mean_delta, min_delta, -std_delta, win_rate) ===")
@@ -820,6 +836,8 @@ def run(args):
     print(f"Saved: {summary_json}")
     print(f"Saved: {rows_path}")
     print(f"Saved: {csv_path}")
+    print(f"Saved: {diagnostic_csv}")
+    print(f"Saved: {dashboard_md}")
     print(f"Saved: {out_dir / 'suite_summary.json'} (alias)")
     if knn_csv:
         print(f"Saved: {knn_csv}")

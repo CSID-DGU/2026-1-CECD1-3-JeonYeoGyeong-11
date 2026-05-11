@@ -150,6 +150,40 @@ def parse_args():
         default="false",
         help="Forward to run_general_experiment: log diagnostics but keep FedAvg aggregation weights.",
     )
+    p.add_argument(
+        "--correction-family",
+        type=str,
+        default="real_graph",
+        choices=["real_graph", "control_graph", "clustering_only", "graph_free"],
+    )
+    p.add_argument(
+        "--control-graph-mode",
+        type=str,
+        default="random",
+        choices=["random", "shuffled", "uniform", "identity"],
+    )
+    p.add_argument(
+        "--cluster-method",
+        type=str,
+        default="none",
+        choices=["none", "kmeans", "hierarchical", "spectral"],
+    )
+    p.add_argument("--cluster-k", type=int, default=0)
+    p.add_argument("--cluster-auto-k", type=str, default="false")
+    p.add_argument(
+        "--graph-free-mode",
+        type=str,
+        default="none",
+        choices=["none", "norm_clip", "contribution_cap", "dominance_reweight"],
+    )
+    p.add_argument("--graph-free-gamma", type=float, default=1.0)
+    p.add_argument("--clip-quantile", type=float, default=0.9)
+    p.add_argument("--contribution-cap", type=float, default=0.0)
+    p.add_argument("--diagnostics-enable", type=str, default="false")
+    p.add_argument("--save-round-graphs", type=str, default="false")
+    p.add_argument("--graph-snapshot-rounds", type=str, default="")
+    p.add_argument("--save-update-arrays", type=str, default="false")
+    p.add_argument("--loo-enabled", type=str, default="false")
     p.add_argument("--e-std-threshold", type=float, default=0.0)
     p.add_argument("--min-client-weight", type=float, default=0.0)
     p.add_argument("--server-learning-rate", type=float, default=1.0)

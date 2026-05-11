@@ -3,6 +3,8 @@ import unittest
 import numpy as np
 
 from spectral_fl.strategies.spectral.aggregation import (
+    AggregationWeightSelection,
+    apply_correction_family,
     apply_min_client_weight,
     compute_conflict_weights,
     compute_effective_clients,
@@ -58,6 +60,25 @@ class AggregationTest(unittest.TestCase):
         self.assertAlmostEqual(float(np.sum(floored)), 1.0, places=6)
         self.assertEqual(float(floored[2]), 0.0)
         self.assertGreaterEqual(float(np.min(floored[:2])), 0.2)
+
+    def test_graph_free_contribution_cap_rebalances_weights(self):
+        selection = AggregationWeightSelection(
+            alpha_raw=np.array([9.0, 1.0], dtype=np.float64),
+            alpha_norm=np.array([0.9, 0.1], dtype=np.float64),
+            conflict_weight=np.ones(2, dtype=np.float64),
+            alpha_mode="conflict_aware",
+            active_client_mask=np.array([True, True]),
+        )
+        corrected = apply_correction_family(
+            correction_family="graph_free",
+            selection=selection,
+            n_examples=np.array([90.0, 10.0], dtype=np.float64),
+            graph_free_mode="contribution_cap",
+            contribution_cap=0.6,
+        )
+        self.assertAlmostEqual(float(np.sum(corrected.alpha_norm)), 1.0, places=6)
+        self.assertLessEqual(float(np.max(corrected.alpha_norm)), 0.6 + 1e-6)
+        self.assertIn("graph_free:contribution_cap", corrected.alpha_mode)
 
 
 if __name__ == "__main__":

@@ -478,10 +478,129 @@ def write_summary_markdown(
     return path
 
 
+def write_diagnostic_csv(
+    out_dir: Path,
+    summary_rows: List[Dict[str, Any]],
+) -> Path:
+    """Write compact diagnostic summary used by dashboard/plot scripts."""
+    path = out_dir / "diagnostic_summary.csv"
+    fieldnames = [
+        "variant",
+        "seeds",
+        "mean_final_acc",
+        "mean_delta_vs_fedavg",
+        "mean_di_drop",
+        "mean_neff_gain",
+        "mean_alignment_gain",
+        "mean_loo_drop",
+        "win_rate",
+    ]
+    rows: List[Dict[str, Any]] = []
+    for row in summary_rows:
+        if row.get("variant") == "fedavg":
+            continue
+        di_pre = float(row.get("mean_di_pre", float("nan")))
+        di_post = float(row.get("mean_di_post", float("nan")))
+        neff_pre = float(row.get("mean_neff_pre", float("nan")))
+        neff_post = float(row.get("mean_neff_post", float("nan")))
+        align_pre = float(row.get("mean_alignment_pre", float("nan")))
+        align_post = float(row.get("mean_alignment_post", float("nan")))
+        loo_pre = float(row.get("mean_loo_pre", float("nan")))
+        loo_post = float(row.get("mean_loo_post", float("nan")))
+        rows.append(
+            {
+                "variant": row.get("variant", ""),
+                "seeds": int(row.get("n_runs", 0)),
+                "mean_final_acc": float(row.get("mean_acc", float("nan"))),
+                "mean_delta_vs_fedavg": float(row.get("mean_delta", float("nan"))),
+                "mean_di_drop": (
+                    di_pre - di_post if not (math.isnan(di_pre) or math.isnan(di_post)) else float("nan")
+                ),
+                "mean_neff_gain": (
+                    neff_post - neff_pre if not (math.isnan(neff_pre) or math.isnan(neff_post)) else float("nan")
+                ),
+                "mean_alignment_gain": (
+                    align_post - align_pre
+                    if not (math.isnan(align_pre) or math.isnan(align_post))
+                    else float("nan")
+                ),
+                "mean_loo_drop": (
+                    loo_pre - loo_post if not (math.isnan(loo_pre) or math.isnan(loo_post)) else float("nan")
+                ),
+                "win_rate": float(row.get("win_rate", float("nan"))),
+            }
+        )
+    with path.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return path
+
+
+def write_dashboard_mockup(
+    out_dir: Path,
+    summary_rows: List[Dict[str, Any]],
+    diagnostic_csv_path: Path | None = None,
+) -> Path:
+    """Write a static dashboard mockup markdown file."""
+    lines = [
+        "# Diagnostic Dashboard Mockup",
+        "",
+        "## Overview",
+        "",
+        f"- Variants: {max(len(summary_rows) - 1, 0)} (excluding fedavg)",
+        f"- Generated files: `general_suite_summary.csv`, `knn_vs_random_matched.csv`",
+    ]
+    if diagnostic_csv_path is not None:
+        lines.append(f"- Diagnostic summary: `{diagnostic_csv_path.name}`")
+    lines.extend(
+        [
+            "",
+            "## Top Variants",
+            "",
+            "| variant | mean_delta | win_rate | mean_graph_density |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+    ranked = [r for r in summary_rows if r.get("variant") != "fedavg"]
+    ranked = sorted(
+        ranked,
+        key=lambda r: (
+            float(r.get("mean_delta", float("-inf"))),
+            float(r.get("win_rate", float("-inf"))),
+        ),
+        reverse=True,
+    )
+    for row in ranked[:5]:
+        lines.append(
+            f"| {row.get('variant')} | {float(row.get('mean_delta', float('nan'))):+.4f} | "
+            f"{float(row.get('win_rate', float('nan'))):.2f} | "
+            f"{float(row.get('mean_graph_density', float('nan'))):.4f} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Linked Artifacts",
+            "",
+            "- `general_suite_summary.md`",
+            "- `interpretation.md`",
+            "- `knn_vs_random_matched.csv`",
+            "- `diagnostic_summary.csv`",
+            "",
+            "This mockup is intentionally static and lightweight for CI-safe generation.",
+        ]
+    )
+    path = out_dir / "dashboard_mockup.md"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 __all__ = [
     "append_validation_verdict",
     "compute_best_knn_meta",
     "duplicate_suite_summaries",
+    "write_dashboard_mockup",
+    "write_diagnostic_csv",
     "write_interpretation_md",
     "write_knn_vs_random_matched_csv",
     "write_summary_markdown",

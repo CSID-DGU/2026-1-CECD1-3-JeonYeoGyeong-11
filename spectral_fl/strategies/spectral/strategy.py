@@ -19,6 +19,7 @@ are configurable via the strategy constructor.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import flwr as fl
@@ -35,8 +36,19 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
 from spectral_fl.graph.builders import build_client_graph
+from spectral_fl.diagnostics.logging import (
+    append_client_metrics_csv,
+    append_round_metrics_csv,
+    init_artifact_dir,
+)
+from spectral_fl.diagnostics.metrics import summarize_pre_post
+from spectral_fl.diagnostics.schema import (
+    ClientRoundDiagnostics,
+    RoundDiagnostics,
+)
 from spectral_fl.graph.diagnostics import compute_graph_diagnostics
 from spectral_fl.strategies.spectral.aggregation import (
+    apply_correction_family,
     compute_conflict_weights,
     compute_tau,
     resolve_tau_source,
@@ -80,7 +92,10 @@ from spectral_fl.strategies.spectral.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
-from spectral_fl.strategies.spectral.tracing import matrix_log_if_small
+from spectral_fl.strategies.spectral.tracing import (
+    make_round_trace_payload,
+    matrix_log_if_small,
+)
 
 
 # =============================================================================
@@ -109,12 +124,25 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         graph_layer_end: int = 0,
         e_std_threshold: float = 0.0,
         graph_seed: int = 0,
+        correction_family: str = "real_graph",
+        control_graph_mode: str = "random",
+        cluster_method: str = "none",
+        cluster_k: int = 0,
+        cluster_auto_k: bool = False,
         use_ema_graph: bool = True,
         adaptive_tau: bool = True,
         fixed_tau: float = 1.0,
         tau_source: str = "h_spec",
         spectral_filter_strength: float = 1.0,
         client_update_ema_alpha: float = 0.8,
+        diagnostics_enable: bool = False,
+        loo_enabled: bool = False,
+        diagnostics_artifact_dir: str = "",
+        diagnostics_run_id: str = "",
+        graph_free_mode: str = "none",
+        graph_free_gamma: float = 1.0,
+        clip_quantile: float = 0.9,
+        contribution_cap: float = 0.0,
         server_learning_rate: float = 1.0,
         server_momentum: float = 0.0,
         diagnostic_only: bool = False,
@@ -142,12 +170,30 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         self.graph_layer_end = int(graph_layer_end)
         self.e_std_threshold = float(e_std_threshold)
         self.graph_seed = int(graph_seed)
+        self.correction_family = str(correction_family)
+        self.control_graph_mode = str(control_graph_mode)
+        self.cluster_method = str(cluster_method)
+        self.cluster_k = int(cluster_k)
+        self.cluster_auto_k = bool(cluster_auto_k)
         self.use_ema_graph = bool(use_ema_graph)
         self.adaptive_tau = bool(adaptive_tau)
         self.fixed_tau = float(fixed_tau)
         self.tau_source = str(tau_source)
         self.spectral_filter_strength = max(float(spectral_filter_strength), 0.0)
         self.client_update_ema_alpha = float(client_update_ema_alpha)
+        self.diagnostics_enable = bool(diagnostics_enable)
+        self.loo_enabled = bool(loo_enabled)
+        self.diagnostics_run_id = str(diagnostics_run_id).strip() or "run"
+        self.graph_free_mode = str(graph_free_mode)
+        self.graph_free_gamma = float(graph_free_gamma)
+        self.clip_quantile = float(clip_quantile)
+        self.contribution_cap = float(contribution_cap)
+        diag_root = str(diagnostics_artifact_dir).strip()
+        self.diagnostics_artifact_dir = (
+            init_artifact_dir(Path(diag_root))
+            if diag_root
+            else None
+        )
         self.server_learning_rate = float(server_learning_rate)
         self.server_momentum = float(server_momentum)
         self.server_opt = (self.server_momentum != 0.0) or (
@@ -347,6 +393,12 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             rng=graph_rng,
             graph_scale_sigma=self.graph_scale_sigma,
             learned_graph_lambda=self.learned_graph_lambda,
+            correction_family=self.correction_family,
+            control_graph_mode=self.control_graph_mode,
+            cluster_method=self.cluster_method,
+            cluster_k=self.cluster_k,
+            cluster_auto_k=self.cluster_auto_k,
+            cluster_seed=int(self.graph_seed) + int(server_round),
         )
         graph_diag_current = compute_graph_diagnostics(w_curr)
         if self.use_ema_graph:
@@ -443,11 +495,74 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             conflict_mix=self.conflict_mix,
             min_client_weight=self.min_client_weight,
         )
+        weight_selection = apply_correction_family(
+            correction_family=self.correction_family,
+            selection=weight_selection,
+            n_examples=n_examples_arr,
+            graph_free_mode=self.graph_free_mode,
+            graph_free_gamma=self.graph_free_gamma,
+            contribution_cap=self.contribution_cap,
+            clip_quantile=self.clip_quantile,
+            update_norms=delta_norms,
+        )
         alpha_raw = weight_selection.alpha_raw
         alpha_norm = weight_selection.alpha_norm
         conflict_weight = weight_selection.conflict_weight
         alpha_mode = weight_selection.alpha_mode
         active_client_mask = weight_selection.active_client_mask
+
+        pre_weights = n_examples_arr / (float(np.sum(n_examples_arr)) + 1e-12)
+        pre_post = summarize_pre_post(
+            flat_updates=np.stack(flat_deltas, axis=0),
+            weights_pre=pre_weights,
+            weights_post=alpha_norm,
+            loo_enabled=self.loo_enabled,
+        )
+
+        # ----------------- diagnostic artifact rows
+        if self.diagnostics_enable and self.diagnostics_artifact_dir is not None:
+            round_diag = RoundDiagnostics(
+                run_id=self.diagnostics_run_id,
+                round=int(server_round),
+                di_pre=float(pre_post["round"]["di_pre"]),
+                di_post=float(pre_post["round"]["di_post"]),
+                neff_pre=float(pre_post["round"]["neff_pre"]),
+                neff_post=float(pre_post["round"]["neff_post"]),
+                align_mean_pre=float(pre_post["round"]["align_mean_pre"]),
+                align_mean_post=float(pre_post["round"]["align_mean_post"]),
+                loo_mean_pre=float(pre_post["round"]["loo_mean_pre"]),
+                loo_mean_post=float(pre_post["round"]["loo_mean_post"]),
+                alpha_entropy=float(pre_post["round"]["alpha_entropy"]),
+                correction_family=str(self.correction_family),
+                graph_variant=str(self.graph_mode),
+            )
+            append_round_metrics_csv(
+                self.diagnostics_artifact_dir / "round_metrics.csv",
+                round_diag.to_dict(),
+            )
+            client_rows: List[Dict[str, object]] = []
+            norms = pre_post["norms"]
+            for i, cid in enumerate(cids):
+                row = ClientRoundDiagnostics(
+                    run_id=self.diagnostics_run_id,
+                    round=int(server_round),
+                    cid=str(cid),
+                    num_examples=int(n_examples_arr[i]),
+                    update_norm_raw=float(norms[i]),
+                    update_norm_corrected=float(norms[i]),
+                    q_raw=float(pre_post["q_pre"][i]),
+                    q_corrected=float(pre_post["q_post"][i]),
+                    alignment_raw=float(pre_post["align_pre"][i]),
+                    alignment_corrected=float(pre_post["align_post"][i]),
+                    loo_raw=float(pre_post["loo_pre"][i]),
+                    loo_corrected=float(pre_post["loo_post"][i]),
+                    cluster_id=-1,
+                )
+                client_rows.append(row.to_dict())
+            append_client_metrics_csv(
+                self.diagnostics_artifact_dir / "client_metrics.csv",
+                client_rows,
+            )
 
         # ----------------- aggregate configured target and apply
         candidate_global, aggregation_target_used, target_filter_diag = self._aggregate_target(
@@ -526,6 +641,13 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             "active_client_mask": active_client_mask,
             "aggregation_target_used": aggregation_target_used,
             "server_opt_diag": server_opt_diag,
+            "pre_post_round": pre_post["round"],
+            "q_pre": pre_post["q_pre"],
+            "q_post": pre_post["q_post"],
+            "align_pre": pre_post["align_pre"],
+            "align_post": pre_post["align_post"],
+            "loo_pre": pre_post["loo_pre"],
+            "loo_post": pre_post["loo_post"],
         }
         client_context = {
             "n_examples_arr": n_examples_arr,
@@ -538,6 +660,8 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             "client_update_ema_alpha": self.client_update_ema_alpha,
             "conflict_mix": self.conflict_mix,
             "diagnostic_only": self.diagnostic_only,
+            "diagnostics_enable": self.diagnostics_enable,
+            "loo_enabled": self.loo_enabled,
             "edge_threshold": self.edge_threshold,
             "e_std_threshold": self.e_std_threshold,
             "fixed_tau": self.fixed_tau,
@@ -546,6 +670,15 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             "graph_mode": self.graph_mode,
             "graph_scale_sigma": self.graph_scale_sigma,
             "graph_source": self.graph_source,
+            "correction_family": self.correction_family,
+            "control_graph_mode": self.control_graph_mode,
+            "cluster_method": self.cluster_method,
+            "cluster_k": self.cluster_k,
+            "cluster_auto_k": self.cluster_auto_k,
+            "graph_free_mode": self.graph_free_mode,
+            "graph_free_gamma": self.graph_free_gamma,
+            "clip_quantile": self.clip_quantile,
+            "contribution_cap": self.contribution_cap,
             "knn_k": self.knn_k,
             "learned_graph_lambda": self.learned_graph_lambda,
             "min_client_weight": self.min_client_weight,
@@ -567,6 +700,15 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             client=client_context,
             config=config_context,
         )
+        round_log.update(
+            make_round_trace_payload(
+                correction_family=self.correction_family,
+                control_graph_mode=self.control_graph_mode,
+                graph_mode=self.graph_mode,
+                alpha_mode=alpha_mode,
+                pre_post_round=pre_post["round"],
+            )
+        )
         self.round_logs.append(round_log)
 
         metrics = build_fit_metrics(
@@ -577,6 +719,7 @@ class SpectralConflictAwareStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             graph_diag=graph_diag,
             filter_diag=filter_diag,
             config=config_context,
+            pre_post_round=pre_post["round"],
         )
         return ndarrays_to_parameters(new_global), metrics
 

@@ -1,0 +1,28 @@
+{
+  "description": "Core diagnostic suite for relation-vs-control analysis",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 20,
+    "rounds": 10,
+    "local_epochs": 2,
+    "batch_size": 64,
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.03,
+    "train_subset_size": 0,
+    "test_subset_size": 0,
+    "seeds": [42, 43, 44, 45, 46],
+    "variants": [
+      "fedavg",
+      "fedavgm",
+      "ours_knn_k2",
+      "ours_random_matched_k2",
+      "ours_uniform",
+      "ours_spectral_filtered_knn_k2",
+      "ours_spectral_filtered_random_matched_k2"
+    ],
+    "diagnostics_enable": true,
+    "loo_enabled": true,
+    "out_dir": "experiments_current/diagnostic_core_suite"
+  }
+}
