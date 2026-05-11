@@ -22,11 +22,14 @@ import torch
 from flwr.common import ndarrays_to_parameters
 
 from spectral_fl.models.cora import GCN
+from spectral_fl.graph.presets import apply_graph_preset_to_namespace
 from spectral_fl.strategies.baselines import (
+    TracingDominanceAwareFedAvgM,
     TracingFedAdagrad,
     TracingFedAvg,
     TracingFedAvgM,
     TracingFedAdam,
+    TracingGraphSmoothFedAvgM,
     TracingFedMedian,
     TracingFedNova,
     TracingFedProx,
@@ -144,6 +147,8 @@ def compute_client_class_distribution(client_graphs, out_dim: int) -> List[List[
 
 
 def build_strategy(args, method: str, initial_parameters):
+    apply_graph_preset_to_namespace(args)
+
     def weighted_metric_avg(metrics):
         total = float(sum(num_examples for num_examples, _ in metrics))
         out = {}
@@ -272,6 +277,56 @@ def build_strategy(args, method: str, initial_parameters):
             min_client_weight=args.min_client_weight,
             **common,
         )
+    if method == "graph_smooth":
+        return TracingGraphSmoothFedAvgM(
+            graph_preset=str(getattr(args, "graph_preset", "none")),
+            graph_variant=str(getattr(args, "graph_variant", "update")),
+            graph_mode=str(getattr(args, "graph_mode", "dense")),
+            graph_source=str(args.graph_source),
+            knn_k=int(getattr(args, "knn_k", 2)),
+            edge_threshold=float(getattr(args, "edge_threshold", 0.0)),
+            graph_scale_sigma=float(getattr(args, "graph_scale_sigma", 1.0)),
+            learned_graph_lambda=float(getattr(args, "learned_graph_lambda", 1.0)),
+            graph_layer_start=int(getattr(args, "graph_layer_start", 0)),
+            graph_layer_end=int(getattr(args, "graph_layer_end", 0)),
+            graph_smoothing_operator=str(
+                getattr(args, "graph_smoothing_operator", "laplacian")
+            ),
+            graph_dominance_gamma=float(getattr(args, "graph_dominance_gamma", 1.0)),
+            dominance_mode=str(getattr(args, "graph_dominance_mode", "sample")),
+            dominance_cap_kappa=float(getattr(args, "graph_dominance_cap_kappa", 2.0)),
+            dominance_soft_tau=float(getattr(args, "graph_dominance_soft_tau", 5.0)),
+            client_update_ema_alpha=float(
+                getattr(args, "client_update_ema_alpha", 0.8)
+            ),
+            compression_dim=int(args.compression_dim),
+            compression_seed=int(args.compression_seed),
+            graph_seed=int(args.graph_seed),
+            graph_smoothing_lambda=float(getattr(args, "graph_smoothing_lambda", 0.05)),
+            graph_laplacian_type=str(getattr(args, "graph_laplacian_type", "unnormalized")),
+            graph_zero_diagonal=bool(getattr(args, "graph_zero_diagonal", True)),
+            server_learning_rate=float(args.server_learning_rate),
+            server_momentum=float(args.server_momentum),
+            **common,
+        )
+    if method == "dominance_aware":
+        return TracingDominanceAwareFedAvgM(
+            dominance_mode=str(getattr(args, "dominance_mode", "fedavgm")),
+            dominance_tau=float(getattr(args, "dominance_tau", 1.0)),
+            dominance_threshold=float(getattr(args, "dominance_threshold", 0.35)),
+            clip_norm=float(getattr(args, "dominance_clip_norm", 0.0)),
+            clip_percentile=float(getattr(args, "dominance_clip_percentile", 0.75)),
+            contribution_cap=float(getattr(args, "dominance_contribution_cap", 0.0)),
+            contribution_cap_percentile=float(
+                getattr(args, "dominance_contribution_cap_percentile", 0.75)
+            ),
+            contribution_cap_kappa=float(
+                getattr(args, "dominance_contribution_cap_kappa", 0.0)
+            ),
+            server_learning_rate=float(args.server_learning_rate),
+            server_momentum=float(args.server_momentum),
+            **common,
+        )
     raise ValueError(f"Unknown method: {method}")
 
 
@@ -318,6 +373,7 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
 
         "graph": {
             "graph_mode": args.graph_mode,
+            "graph_preset": str(getattr(args, "graph_preset", "none")),
             "graph_source": args.graph_source,
             "knn_k": int(args.knn_k),
             "edge_threshold": float(args.edge_threshold),
@@ -387,6 +443,7 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
         "compression_dim": int(args.compression_dim),
         "compression_seed": int(args.compression_seed),
         "graph_mode": args.graph_mode,
+        "graph_preset": str(getattr(args, "graph_preset", "none")),
         "graph_source": args.graph_source,
         "aggregation_target": args.aggregation_target,
         "knn_k": int(args.knn_k),

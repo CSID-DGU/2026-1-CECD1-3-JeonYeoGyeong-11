@@ -7,6 +7,7 @@ import argparse
 from spectral_fl.cli.argparse_types import str2bool
 from spectral_fl.config_io import add_config_argument, parse_args_with_config
 from spectral_fl.experiments.cora import single_run as _experiment
+from spectral_fl.graph.presets import graph_preset_names
 
 # Compatibility re-exports for older imports from spectral_fl.cli.cora_experiment.
 globals().update(
@@ -90,6 +91,16 @@ def parse_args():
             "learned_smooth",
             "learned_smooth_knn",
         ],
+    )
+    p.add_argument(
+        "--graph-preset",
+        type=str,
+        default="none",
+        choices=graph_preset_names(),
+        help=(
+            "Prior-work-inspired graph design preset. When set, it overrides "
+            "graph source/mode and related graph knobs."
+        ),
     )
     p.add_argument(
         "--graph-source",

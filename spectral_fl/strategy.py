@@ -7,6 +7,7 @@ edits the smaller strategy/baseline modules directly.
 """
 
 from spectral_fl.strategies.baselines import (
+    TracingDominanceAwareFedAvgM,
     TracingFedAdagrad,
     TracingFedAdam,
     TracingFedAvg,
@@ -36,6 +37,7 @@ __all__ = [
     "TracingFedAdam",
     "TracingFedAvg",
     "TracingFedAvgM",
+    "TracingDominanceAwareFedAvgM",
     "TracingFedMedian",
     "TracingFedNova",
     "TracingFedProx",

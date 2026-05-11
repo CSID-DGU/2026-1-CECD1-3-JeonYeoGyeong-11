@@ -58,7 +58,9 @@ def build_general_meta(
         },
         "graph": {
             "graph_mode": args.graph_mode,
+            "graph_preset": str(getattr(args, "graph_preset", "none")),
             "graph_source": args.graph_source,
+            "graph_variant": getattr(args, "graph_variant", "update"),
             "knn_k": int(args.knn_k),
             "edge_threshold": float(args.edge_threshold),
             "graph_scale_sigma": float(args.graph_scale_sigma),
@@ -68,6 +70,13 @@ def build_general_meta(
             "use_ema_graph": bool(args.use_ema_graph),
             "graph_ema_alpha": float(args.ema_alpha) if bool(args.use_ema_graph) else None,
             "graph_seed": int(args.graph_seed),
+        },
+        "graph_smoothing": {
+            "lambda": float(getattr(args, "graph_smoothing_lambda", 0.05)),
+            "operator": str(getattr(args, "graph_smoothing_operator", "laplacian")),
+            "dominance_gamma": float(getattr(args, "graph_dominance_gamma", 1.0)),
+            "laplacian_type": str(getattr(args, "graph_laplacian_type", "unnormalized")),
+            "zero_diagonal": bool(getattr(args, "graph_zero_diagonal", True)),
         },
         "tau": {
             "tau_max": float(args.tau_max),
@@ -85,6 +94,20 @@ def build_general_meta(
             "e_std_threshold": float(args.e_std_threshold),
             "min_client_weight": float(args.min_client_weight),
             "diagnostic_only": bool(args.diagnostic_only),
+        },
+        "dominance": {
+            "mode": str(getattr(args, "dominance_mode", "fedavgm")),
+            "tau": float(getattr(args, "dominance_tau", 1.0)),
+            "threshold": float(getattr(args, "dominance_threshold", 0.35)),
+            "clip_norm": float(getattr(args, "dominance_clip_norm", 0.0)),
+            "clip_percentile": float(getattr(args, "dominance_clip_percentile", 0.75)),
+            "contribution_cap": float(getattr(args, "dominance_contribution_cap", 0.0)),
+            "contribution_cap_percentile": float(
+                getattr(args, "dominance_contribution_cap_percentile", 0.75)
+            ),
+            "contribution_cap_kappa": float(
+                getattr(args, "dominance_contribution_cap_kappa", 0.0)
+            ),
         },
         "baselines": {
             "server_learning_rate": float(args.server_learning_rate),
@@ -107,7 +130,9 @@ def build_general_meta(
         "compression_dim": cdim,
         "compression_seed": int(args.compression_seed),
         "graph_mode": args.graph_mode,
+        "graph_preset": str(getattr(args, "graph_preset", "none")),
         "graph_source": args.graph_source,
+        "graph_variant": getattr(args, "graph_variant", "update"),
         "aggregation_target": args.aggregation_target,
         "knn_k": int(args.knn_k),
         "edge_threshold": float(args.edge_threshold),
@@ -119,6 +144,27 @@ def build_general_meta(
         "tau_source": args.tau_source,
         "spectral_filter_strength": float(args.spectral_filter_strength),
         "client_update_ema_alpha": float(args.client_update_ema_alpha),
+        "graph_smoothing_lambda": float(getattr(args, "graph_smoothing_lambda", 0.05)),
+        "graph_smoothing_operator": str(
+            getattr(args, "graph_smoothing_operator", "laplacian")
+        ),
+        "graph_dominance_gamma": float(getattr(args, "graph_dominance_gamma", 1.0)),
+        "graph_laplacian_type": str(getattr(args, "graph_laplacian_type", "unnormalized")),
+        "graph_zero_diagonal": bool(getattr(args, "graph_zero_diagonal", True)),
+        "dominance_mode": str(getattr(args, "dominance_mode", "fedavgm")),
+        "dominance_tau": float(getattr(args, "dominance_tau", 1.0)),
+        "dominance_threshold": float(getattr(args, "dominance_threshold", 0.35)),
+        "dominance_clip_norm": float(getattr(args, "dominance_clip_norm", 0.0)),
+        "dominance_clip_percentile": float(getattr(args, "dominance_clip_percentile", 0.75)),
+        "dominance_contribution_cap": float(
+            getattr(args, "dominance_contribution_cap", 0.0)
+        ),
+        "dominance_contribution_cap_percentile": float(
+            getattr(args, "dominance_contribution_cap_percentile", 0.75)
+        ),
+        "dominance_contribution_cap_kappa": float(
+            getattr(args, "dominance_contribution_cap_kappa", 0.0)
+        ),
         "client_class_distribution": class_distribution,
         "client_num_examples": cne,
         "client_label_hist": class_distribution,

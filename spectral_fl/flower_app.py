@@ -44,6 +44,7 @@ from spectral_fl.data.vision import (
     vision_input_shape,
     vision_num_classes,
 )
+from spectral_fl.graph.presets import apply_graph_preset_to_namespace
 from spectral_fl.models.vision import build_model
 
 
@@ -91,6 +92,7 @@ def _run_with_strategy(
 
 
 def _run_general_server(grid: Grid, args: Namespace) -> None:
+    apply_graph_preset_to_namespace(args)
     server_started_at = datetime.now()
     server_start = time.perf_counter()
     np.random.seed(args.seed)
@@ -138,6 +140,7 @@ def _run_general_server(grid: Grid, args: Namespace) -> None:
 
 
 def _run_cora_server(grid: Grid, args: Namespace) -> None:
+    apply_graph_preset_to_namespace(args)
     server_started_at = datetime.now()
     server_start = time.perf_counter()
     np.random.seed(args.seed)

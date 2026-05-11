@@ -7,6 +7,7 @@ import argparse
 from spectral_fl.cli.argparse_types import str2bool
 from spectral_fl.config_io import add_config_argument, parse_args_with_config
 from spectral_fl.experiments.general import single_run as _experiment
+from spectral_fl.graph.presets import graph_preset_names
 
 # Compatibility re-exports for older imports from spectral_fl.cli.general_experiment.
 globals().update(
@@ -47,6 +48,8 @@ def parse_args():
             "fedtrimmedavg",
             "fedsim",
             "ours",
+            "graph_smooth",
+            "dominance_aware",
         ],
     )
     p.add_argument(
@@ -96,6 +99,16 @@ def parse_args():
             "learned_smooth",
             "learned_smooth_knn",
         ],
+    )
+    p.add_argument(
+        "--graph-preset",
+        type=str,
+        default="none",
+        choices=graph_preset_names(),
+        help=(
+            "Prior-work-inspired graph design preset. When set, it overrides "
+            "graph source/mode and related graph knobs."
+        ),
     )
     p.add_argument(
         "--graph-source",
@@ -164,6 +177,131 @@ def parse_args():
     )
     p.add_argument("--graph-seed", type=int, default=0)
     p.add_argument("--use-ema-graph", type=str2bool, default=True)
+    p.add_argument(
+        "--graph-variant",
+        type=str,
+        default="update",
+        choices=["update", "random", "shuffled", "uniform", "identity"],
+        help="Phase-2 graph informativeness variant used by method=graph_smooth.",
+    )
+    p.add_argument(
+        "--graph-smoothing-lambda",
+        type=float,
+        default=0.05,
+        help="Smoothing coefficient lambda for method=graph_smooth.",
+    )
+    p.add_argument(
+        "--graph-smoothing-operator",
+        type=str,
+        default="laplacian",
+        choices=[
+            "laplacian",
+            "unnormalized_laplacian",
+            "normalized_laplacian",
+            "random_walk_laplacian",
+            "residual",
+            "residual_neighbor_mixing",
+            "dominance_residual",
+            "signed_conflict_attenuation",
+            "dominance_aware_attenuation",
+        ],
+        help="Graph smoothing operator for method=graph_smooth.",
+    )
+    p.add_argument(
+        "--graph-dominance-gamma",
+        type=float,
+        default=1.0,
+        help="Gamma for dominance-aware residual graph mixing.",
+    )
+    p.add_argument(
+        "--graph-dominance-mode",
+        type=str,
+        default="sample",
+        choices=["sample", "uniform", "cap", "soft_reweight"],
+        help="Aggregation weighting mode for method=graph_smooth.",
+    )
+    p.add_argument(
+        "--graph-dominance-cap-kappa",
+        type=float,
+        default=2.0,
+        help="kappa for graph_smooth cap mode (cap=kappa*median(q)).",
+    )
+    p.add_argument(
+        "--graph-dominance-soft-tau",
+        type=float,
+        default=5.0,
+        help="tau for graph_smooth soft_reweight mode.",
+    )
+    p.add_argument(
+        "--graph-laplacian-type",
+        type=str,
+        default="unnormalized",
+        choices=["unnormalized", "normalized", "random_walk"],
+        help="Laplacian type for method=graph_smooth.",
+    )
+    p.add_argument(
+        "--graph-zero-diagonal",
+        type=str2bool,
+        default=True,
+        help="Whether to force A_ii=0 before building the Laplacian.",
+    )
+    p.add_argument(
+        "--dominance-mode",
+        type=str,
+        default="fedavgm",
+        choices=[
+            "fedavgm",
+            "uniform",
+            "norm_clip",
+            "contribution_cap",
+            "soft_reweight",
+            "n_eff_aware",
+            "triggered_soft_reweight",
+        ],
+        help="Dominance-aware correction mode for method=dominance_aware.",
+    )
+    p.add_argument(
+        "--dominance-tau",
+        type=float,
+        default=1.0,
+        help="Tau value for dominance-aware soft reweighting.",
+    )
+    p.add_argument(
+        "--dominance-threshold",
+        type=float,
+        default=0.35,
+        help="Trigger threshold on DI_t for triggered_soft_reweight.",
+    )
+    p.add_argument(
+        "--dominance-clip-norm",
+        type=float,
+        default=0.0,
+        help="Clip norm c for norm_clip mode. <=0 uses percentile of round update norms.",
+    )
+    p.add_argument(
+        "--dominance-clip-percentile",
+        type=float,
+        default=0.75,
+        help="Percentile used for adaptive clip norm when dominance-clip-norm<=0.",
+    )
+    p.add_argument(
+        "--dominance-contribution-cap",
+        type=float,
+        default=0.0,
+        help="Contribution cap for contribution_cap mode. <=0 uses percentile of q_i.",
+    )
+    p.add_argument(
+        "--dominance-contribution-cap-percentile",
+        type=float,
+        default=0.75,
+        help="Percentile used for adaptive contribution cap when cap<=0.",
+    )
+    p.add_argument(
+        "--dominance-contribution-cap-kappa",
+        type=float,
+        default=0.0,
+        help="If >0, use cap=kappa*median(q_i) for contribution_cap mode.",
+    )
 
     p.add_argument("--disable-adaptive-tau", type=str2bool, default=False)
     p.add_argument("--fixed-tau", type=float, default=1.0)

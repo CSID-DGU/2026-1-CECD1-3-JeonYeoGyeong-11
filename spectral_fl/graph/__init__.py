@@ -16,6 +16,11 @@ from spectral_fl.graph.builders import (
     rbf_graph,
 )
 from spectral_fl.graph.diagnostics import compute_graph_diagnostics
+from spectral_fl.graph.presets import (
+    apply_graph_preset_to_namespace,
+    graph_preset_names,
+    resolve_graph_preset_spec,
+)
 from spectral_fl.graph.similarity import (
     cosine_nonnegative,
     dense_absolute_cosine,
@@ -54,8 +59,11 @@ __all__ = [
     "magnitude_aware_graph",
     "graph_vectors_for_fedsim",
     "graph_vectors_for_spectral",
+    "apply_graph_preset_to_namespace",
+    "graph_preset_names",
     "normalize_key",
     "random_edges_matched_to_knn",
+    "resolve_graph_preset_spec",
     "rbf_graph",
     "uniform_graph",
 ]

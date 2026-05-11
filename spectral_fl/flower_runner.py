@@ -73,8 +73,10 @@ def run_app_locally(args: Namespace, track: str) -> None:
         state=RecordDict(),
         run_config=run_config,
     )
+    # Keep local simulation concurrency conservative on Windows to avoid
+    # runaway worker spawning and unstable Ray startup under heavy settings.
     backend_config = {
-        "client_resources": {"num_cpus": 1, "num_gpus": 0.0},
+        "client_resources": {"num_cpus": 1.0, "num_gpus": 0.0},
         "init_args": {"include_dashboard": False, "log_to_driver": True},
     }
     _run_simulation(
