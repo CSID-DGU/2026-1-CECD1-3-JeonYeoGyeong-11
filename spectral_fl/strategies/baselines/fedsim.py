@@ -17,7 +17,7 @@ from flwr.common import (
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from spectral_fl.strategies.spectral.aggregation import weighted_average_by_alpha
+from spectral_fl.strategies.graphfl.aggregation import weighted_average_by_alpha
 from spectral_fl.graph.sources import graph_vectors_for_fedsim, normalize_key
 from spectral_fl.graph.builders import build_client_graph
 from spectral_fl.graph.diagnostics import compute_graph_diagnostics

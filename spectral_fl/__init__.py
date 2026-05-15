@@ -1,1 +1,1 @@
-# Spectral conflict-aware federated graph learning package.
+# Composable graph-FL diagnostic package.

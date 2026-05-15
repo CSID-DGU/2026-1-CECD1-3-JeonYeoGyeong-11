@@ -1,4 +1,4 @@
-"""Single-experiment implementation for spectral conflict-aware FL on Cora.
+"""Single-experiment implementation for graph-FL diagnostics on Cora.
 
 Runs FedAvg, Ours, or both with identical initial parameters and saves a
 result JSON containing:
@@ -22,11 +22,15 @@ import torch
 from flwr.common import ndarrays_to_parameters
 
 from spectral_fl.models.cora import GCN
+from spectral_fl.graph.presets import apply_graph_preset_to_namespace
+from spectral_fl.graph.registry import load_graph_plugins
 from spectral_fl.strategies.baselines import (
+    TracingDominanceAwareFedAvgM,
     TracingFedAdagrad,
     TracingFedAvg,
     TracingFedAvgM,
     TracingFedAdam,
+    TracingGraphSmoothFedAvgM,
     TracingFedMedian,
     TracingFedNova,
     TracingFedProx,
@@ -34,7 +38,7 @@ from spectral_fl.strategies.baselines import (
     TracingFedYogi,
     TracingFedSim,
 )
-from spectral_fl.strategies.spectral.strategy import SpectralConflictAwareStrategy
+from spectral_fl.strategies.graphfl.strategy import GraphFLDiagnosticStrategy
 
 
 CODE_VERSION = "cora-fgl-2026-05"
@@ -144,6 +148,9 @@ def compute_client_class_distribution(client_graphs, out_dim: int) -> List[List[
 
 
 def build_strategy(args, method: str, initial_parameters):
+    apply_graph_preset_to_namespace(args)
+    load_graph_plugins(getattr(args, "graph_plugin", ""))
+
     def weighted_metric_avg(metrics):
         total = float(sum(num_examples for num_examples, _ in metrics))
         out = {}
@@ -241,7 +248,9 @@ def build_strategy(args, method: str, initial_parameters):
             **common,
         )
     if method == "ours":
-        return SpectralConflictAwareStrategy(
+        run_tag = str(getattr(args, "run_tag", "") or "")
+        diagnostics_variant = run_tag.rsplit("_seed", 1)[0] if "_seed" in run_tag else method
+        return GraphFLDiagnosticStrategy(
             compression_dim=args.compression_dim,
             compression_seed=args.compression_seed,
             ema_alpha=args.ema_alpha,
@@ -260,16 +269,83 @@ def build_strategy(args, method: str, initial_parameters):
             graph_layer_end=args.graph_layer_end,
             e_std_threshold=args.e_std_threshold,
             graph_seed=args.graph_seed,
+            graph_plugin_modules=str(getattr(args, "graph_plugin", "")),
+            graph_method=str(getattr(args, "graph_method", "none")),
+            correction_family=getattr(args, "correction_family", "real_graph"),
+            control_graph_mode=getattr(args, "control_graph_mode", "random"),
+            cluster_method=getattr(args, "cluster_method", "none"),
+            cluster_k=int(getattr(args, "cluster_k", 0)),
+            cluster_auto_k=bool(getattr(args, "cluster_auto_k", False)),
             use_ema_graph=bool(args.use_ema_graph),
             adaptive_tau=not bool(args.disable_adaptive_tau),
             fixed_tau=args.fixed_tau,
             tau_source=args.tau_source,
-            spectral_filter_strength=args.spectral_filter_strength,
+            graph_filter_strength=args.graph_filter_strength,
             client_update_ema_alpha=args.client_update_ema_alpha,
+            diagnostics_enable=bool(getattr(args, "diagnostics_enable", False)),
+            loo_enabled=bool(getattr(args, "loo_enabled", False)),
+            diagnostics_artifact_dir=str(Path(args.out_dir) / "diagnostics"),
+            diagnostics_run_id=f"{method}_{getattr(args, 'run_tag', '') or f'seed{int(args.seed)}'}",
+            diagnostics_variant=diagnostics_variant,
+            diagnostics_seed=int(args.seed),
+            graph_free_mode=str(getattr(args, "graph_free_mode", "none")),
+            graph_free_gamma=float(getattr(args, "graph_free_gamma", 1.0)),
+            clip_quantile=float(getattr(args, "clip_quantile", 0.9)),
+            contribution_cap=float(getattr(args, "contribution_cap", 0.0)),
             server_learning_rate=args.ours_server_learning_rate,
             server_momentum=args.ours_server_momentum,
             diagnostic_only=args.diagnostic_only,
             min_client_weight=args.min_client_weight,
+            **common,
+        )
+    if method == "graph_smooth":
+        return TracingGraphSmoothFedAvgM(
+            graph_preset=str(getattr(args, "graph_preset", "none")),
+            graph_variant=str(getattr(args, "graph_variant", "update")),
+            graph_mode=str(getattr(args, "graph_mode", "dense")),
+            graph_source=str(args.graph_source),
+            knn_k=int(getattr(args, "knn_k", 2)),
+            edge_threshold=float(getattr(args, "edge_threshold", 0.0)),
+            graph_scale_sigma=float(getattr(args, "graph_scale_sigma", 1.0)),
+            learned_graph_lambda=float(getattr(args, "learned_graph_lambda", 1.0)),
+            graph_layer_start=int(getattr(args, "graph_layer_start", 0)),
+            graph_layer_end=int(getattr(args, "graph_layer_end", 0)),
+            graph_smoothing_operator=str(
+                getattr(args, "graph_smoothing_operator", "laplacian")
+            ),
+            graph_dominance_gamma=float(getattr(args, "graph_dominance_gamma", 1.0)),
+            dominance_mode=str(getattr(args, "graph_dominance_mode", "sample")),
+            dominance_cap_kappa=float(getattr(args, "graph_dominance_cap_kappa", 2.0)),
+            dominance_soft_tau=float(getattr(args, "graph_dominance_soft_tau", 5.0)),
+            client_update_ema_alpha=float(
+                getattr(args, "client_update_ema_alpha", 0.8)
+            ),
+            compression_dim=int(args.compression_dim),
+            compression_seed=int(args.compression_seed),
+            graph_seed=int(args.graph_seed),
+            graph_smoothing_lambda=float(getattr(args, "graph_smoothing_lambda", 0.05)),
+            graph_laplacian_type=str(getattr(args, "graph_laplacian_type", "unnormalized")),
+            graph_zero_diagonal=bool(getattr(args, "graph_zero_diagonal", True)),
+            server_learning_rate=float(args.server_learning_rate),
+            server_momentum=float(args.server_momentum),
+            **common,
+        )
+    if method == "dominance_aware":
+        return TracingDominanceAwareFedAvgM(
+            dominance_mode=str(getattr(args, "dominance_mode", "fedavgm")),
+            dominance_tau=float(getattr(args, "dominance_tau", 1.0)),
+            dominance_threshold=float(getattr(args, "dominance_threshold", 0.35)),
+            clip_norm=float(getattr(args, "dominance_clip_norm", 0.0)),
+            clip_percentile=float(getattr(args, "dominance_clip_percentile", 0.75)),
+            contribution_cap=float(getattr(args, "dominance_contribution_cap", 0.0)),
+            contribution_cap_percentile=float(
+                getattr(args, "dominance_contribution_cap_percentile", 0.75)
+            ),
+            contribution_cap_kappa=float(
+                getattr(args, "dominance_contribution_cap_kappa", 0.0)
+            ),
+            server_learning_rate=float(args.server_learning_rate),
+            server_momentum=float(args.server_momentum),
             **common,
         )
     raise ValueError(f"Unknown method: {method}")
@@ -318,6 +394,9 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
 
         "graph": {
             "graph_mode": args.graph_mode,
+            "graph_plugin": str(getattr(args, "graph_plugin", "")),
+            "graph_preset": str(getattr(args, "graph_preset", "none")),
+            "graph_method": str(getattr(args, "graph_method", "none")),
             "graph_source": args.graph_source,
             "knn_k": int(args.knn_k),
             "edge_threshold": float(args.edge_threshold),
@@ -336,7 +415,8 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
             "adaptive_tau_enabled": not bool(args.disable_adaptive_tau),
             "fixed_tau": float(args.fixed_tau),
             "tau_source": args.tau_source,
-            "spectral_filter_strength": float(args.spectral_filter_strength),
+            "graph_filter_strength": float(args.graph_filter_strength),
+            "spectral_filter_strength": float(args.graph_filter_strength),
             "client_update_ema_alpha": float(args.client_update_ema_alpha),
         },
 
@@ -387,6 +467,9 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
         "compression_dim": int(args.compression_dim),
         "compression_seed": int(args.compression_seed),
         "graph_mode": args.graph_mode,
+        "graph_plugin": str(getattr(args, "graph_plugin", "")),
+        "graph_preset": str(getattr(args, "graph_preset", "none")),
+        "graph_method": str(getattr(args, "graph_method", "none")),
         "graph_source": args.graph_source,
         "aggregation_target": args.aggregation_target,
         "knn_k": int(args.knn_k),
@@ -401,7 +484,8 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
         "adaptive_tau_enabled": not bool(args.disable_adaptive_tau),
         "fixed_tau": float(args.fixed_tau),
         "tau_source": args.tau_source,
-        "spectral_filter_strength": float(args.spectral_filter_strength),
+        "graph_filter_strength": float(args.graph_filter_strength),
+        "spectral_filter_strength": float(args.graph_filter_strength),
         "min_client_weight": float(args.min_client_weight),
         "diagnostic_only": bool(args.diagnostic_only),
         "partition": args.partition,

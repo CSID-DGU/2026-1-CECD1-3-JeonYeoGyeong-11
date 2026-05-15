@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from spectral_fl.graph.builders import build_relation_graph
 from spectral_fl.update_graph import build_client_graph, compute_graph_diagnostics
 
 
@@ -146,6 +147,33 @@ class UpdateGraphTest(unittest.TestCase):
         self.assertAlmostEqual(float(negative[0, 1]), 1.0, places=6)
         self.assertAlmostEqual(float(negative[0, 2]), 0.0, places=6)
         self.assertTrue(np.allclose(np.diag(negative), 0.0))
+
+    def test_pfedgraph_qp_uses_similarity_and_sample_prior(self):
+        z_mat = np.array(
+            [
+                [1.0, 0.0],
+                [0.95, 0.05],
+                [-1.0, 0.0],
+                [0.0, 1.0],
+            ],
+            dtype=np.float64,
+        )
+
+        graph, meta = build_relation_graph(
+            z_mat,
+            mode="pfedgraph_qp",
+            learned_graph_lambda=1.0,
+            client_sample_weights=[0.7, 0.1, 0.1, 0.1],
+        )
+
+        self.assertTrue(np.all(graph >= 0.0))
+        self.assertTrue(np.allclose(graph, graph.T))
+        self.assertTrue(np.allclose(np.diag(graph), 0.0))
+        self.assertGreater(float(graph[0, 1]), float(graph[0, 2]))
+        self.assertEqual(
+            meta["base_graph_kind"],
+            "pfedgraph_qp:symmetric_diagnostic_projection",
+        )
 
 
 if __name__ == "__main__":

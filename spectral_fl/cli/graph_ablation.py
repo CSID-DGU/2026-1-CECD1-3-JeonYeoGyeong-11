@@ -21,10 +21,10 @@ def parse_args():
     p = argparse.ArgumentParser(
         description=(
             "Graph-construction ablation: subprocesses run_experiment.py (Cora + GCN Flower clients, not torchvision). "
-            "FedAvg plus ours_* variants sharing the spectral strategy. "
+            "FedAvg plus ours_* variants sharing the graph-FL diagnostic strategy. "
             "Defaults: partition=dirichlet, dirichlet-alpha=0.2, seeds 42-46, rounds 30, knn-k=2 "
             "for knn/random/threshold-style graphs. "
-            "For Fashion-MNIST / MNIST / CIFAR use run_general_experiment.py / run_general_suite.py instead."
+            "For Fashion-MNIST / MNIST / CIFAR use run_vision_experiment.py / run_vision_suite.py instead."
         ),
     )
     p.add_argument("--python-bin", type=str, default=sys.executable)
@@ -126,7 +126,16 @@ def parse_args():
         "--aggregation-target",
         type=str,
         default="update",
-        choices=["update", "weight"],
+        choices=[
+            "update",
+            "graph_filtered_update",
+            "graph_filtered_ema_update",
+            "graph_filtered_weight",
+            "spectral_filtered_update",
+            "spectral_filtered_ema_update",
+            "weight",
+            "spectral_filtered_weight",
+        ],
         help="Default aggregation target forwarded to run_experiment.",
     )
     p.add_argument("--edge-threshold", type=float, default=0.0)
@@ -143,7 +152,7 @@ def parse_args():
         default=0.02,
         help=(
             "If std(e) across clients is below this, skip conflict shaping (0 = off). "
-            "Default 0.02 matches run_general_experiment conservative penalty; ours_* only."
+            "Default 0.02 matches run_vision_experiment conservative penalty; ours_* only."
         ),
     )
     p.add_argument(
@@ -152,7 +161,7 @@ def parse_args():
         default=0.05,
         help=(
             "Floor on normalized client weights after conflict shaping (0 = off). "
-            "Default 0.05 matches run_general_experiment; ours_* only."
+            "Default 0.05 matches run_vision_experiment; ours_* only."
         ),
     )
     p.add_argument(

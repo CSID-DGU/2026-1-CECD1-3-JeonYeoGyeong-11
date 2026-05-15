@@ -1,9 +1,3 @@
-"""General FL suite helpers."""
+"""Compatibility package for ``spectral_fl.experiments.suites.vision``."""
 
-from spectral_fl.experiments.suites.general.variants import (
-    build_base_cmd,
-    parse_variant,
-    variant_cmd,
-)
-
-__all__ = ["build_base_cmd", "parse_variant", "variant_cmd"]
+from spectral_fl.experiments.suites.vision import *  # noqa: F401,F403

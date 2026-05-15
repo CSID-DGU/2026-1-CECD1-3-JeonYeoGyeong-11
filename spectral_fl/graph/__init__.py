@@ -10,12 +10,39 @@ The graph package separates three questions that were previously mixed in
 
 from spectral_fl.graph.builders import (
     build_client_graph,
+    build_relation_graph,
     global_alignment_graph,
     learned_smooth_graph,
     magnitude_aware_graph,
+    pfedgraph_qp_graph,
     rbf_graph,
 )
+from spectral_fl.graph.controls import (
+    build_control_graph,
+    build_identity_graph,
+    build_random_matched_graph,
+    build_shuffled_graph,
+    build_uniform_control_graph,
+)
+from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
 from spectral_fl.graph.diagnostics import compute_graph_diagnostics
+from spectral_fl.graph.presets import (
+    apply_graph_preset_to_namespace,
+    graph_method_names,
+    graph_preset_names,
+    resolve_graph_method_spec,
+    resolve_graph_preset_spec,
+)
+from spectral_fl.graph.registry import (
+    GraphBuildContext,
+    GraphBuildResult,
+    build_registered_graph,
+    graph_mode_names,
+    load_graph_plugins,
+    register_graph_builder,
+    require_graph_context,
+    unregister_graph_builder,
+)
 from spectral_fl.graph.similarity import (
     cosine_nonnegative,
     dense_absolute_cosine,
@@ -32,14 +59,32 @@ from spectral_fl.graph.sparsification import (
 )
 from spectral_fl.graph.sources import (
     GraphSourceConfig,
+    GraphSourceContext,
+    GraphSourceResult,
+    graph_source_names,
     graph_vectors_for_fedsim,
     graph_vectors_for_spectral,
     normalize_key,
+    register_graph_source,
+    unregister_graph_source,
 )
 
 __all__ = [
     "GraphSourceConfig",
+    "GraphSourceContext",
+    "GraphSourceResult",
+    "GraphBuildContext",
+    "GraphBuildResult",
     "build_client_graph",
+    "build_relation_graph",
+    "build_registered_graph",
+    "build_control_graph",
+    "build_identity_graph",
+    "build_random_matched_graph",
+    "build_shuffled_graph",
+    "build_uniform_control_graph",
+    "build_block_uniform_graph",
+    "cluster_clients",
     "compute_graph_diagnostics",
     "cosine_nonnegative",
     "dense_absolute_cosine",
@@ -52,10 +97,24 @@ __all__ = [
     "keep_topk",
     "learned_smooth_graph",
     "magnitude_aware_graph",
+    "pfedgraph_qp_graph",
     "graph_vectors_for_fedsim",
     "graph_vectors_for_spectral",
+    "apply_graph_preset_to_namespace",
+    "graph_method_names",
+    "graph_preset_names",
+    "graph_mode_names",
+    "graph_source_names",
+    "load_graph_plugins",
     "normalize_key",
     "random_edges_matched_to_knn",
+    "register_graph_builder",
+    "register_graph_source",
+    "require_graph_context",
+    "resolve_graph_method_spec",
+    "resolve_graph_preset_spec",
     "rbf_graph",
+    "unregister_graph_builder",
+    "unregister_graph_source",
     "uniform_graph",
 ]

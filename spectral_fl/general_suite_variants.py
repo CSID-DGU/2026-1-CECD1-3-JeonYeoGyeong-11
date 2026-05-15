@@ -1,6 +1,6 @@
-"""Backward-compatible facade for General FL suite variants."""
+"""Backward-compatible facade for vision FL suite variants."""
 
-from spectral_fl.experiments.suites.general.variants import (
+from spectral_fl.experiments.suites.vision.variants import (
     build_base_cmd,
     parse_variant,
     variant_cmd,

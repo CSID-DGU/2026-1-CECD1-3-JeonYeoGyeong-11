@@ -1,6 +1,6 @@
-"""Compatibility wrapper for the general FL suite CLI."""
+"""Compatibility wrapper for the vision FL suite CLI."""
 
-from spectral_fl.cli import general_suite as _impl
+from spectral_fl.cli import vision_suite as _impl
 
 globals().update(
     {

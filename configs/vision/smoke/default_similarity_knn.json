@@ -1,0 +1,20 @@
+{
+  "description": "Tiny executable smoke for the representative default graph-FL method: update RBF similarity, kNN topology, and graph-filtered update aggregation.",
+  "args": {
+    "engine": "app",
+    "method": "ours",
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 2,
+    "rounds": 1,
+    "local_epochs": 1,
+    "batch_size": 4,
+    "partition": "iid",
+    "train_subset_size": 20,
+    "test_subset_size": 20,
+    "graph_method": "default_similarity_knn",
+    "graph_filter_strength": 0.5,
+    "out_dir": "experiments_current/default_similarity_knn_smoke",
+    "run_tag": "default_similarity_knn_smoke"
+  }
+}

@@ -1,4 +1,4 @@
-"""Graph source selection for the spectral conflict-aware strategy."""
+"""Graph source selection for the graph-FL diagnostic strategy."""
 
 from __future__ import annotations
 
@@ -8,6 +8,10 @@ import numpy as np
 from flwr.common import NDArrays
 
 from spectral_fl.graph.sources.config import GraphSourceConfig, normalize_key
+from spectral_fl.graph.sources.registry import (
+    GraphSourceContext,
+    build_registered_graph_source,
+)
 from spectral_fl.graph.sources.selection import (
     flatten_layerwise,
     normalize_vector,
@@ -25,6 +29,17 @@ def graph_vectors_for_spectral(
     config: GraphSourceConfig,
 ) -> Tuple[List[np.ndarray], str]:
     source = normalize_key(config.source)
+    registered = build_registered_graph_source(
+        GraphSourceContext(
+            local_weights=local_weights,
+            local_updates=local_updates,
+            ema_updates=ema_updates,
+            config=config,
+        )
+    )
+    if registered is not None:
+        return registered.vectors, registered.source_used
+
     ema_source = ema_updates if ema_updates is not None else local_updates
     if source in {"update", "delta", "update_delta", "pseudo_gradient", "pseudo_grad"}:
         return [flatten_weights(g_i) for g_i in local_updates], "update_delta"

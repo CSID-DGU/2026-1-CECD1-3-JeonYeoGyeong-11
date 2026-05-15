@@ -12,7 +12,7 @@ from spectral_fl.data import load_cora_clients
 from spectral_fl.data.vision import load_vision_clients
 
 
-_GENERAL_CACHE: Dict[Tuple[Any, ...], Tuple[Any, Any, Any]] = {}
+_VISION_CACHE: Dict[Tuple[Any, ...], Tuple[Any, Any, Any]] = {}
 _CORA_CACHE: Dict[Tuple[Any, ...], Any] = {}
 
 
@@ -24,7 +24,7 @@ def client_index(context: Context, num_clients: int) -> int:
     return idx
 
 
-def _general_cache_key(args: Namespace) -> Tuple[Any, ...]:
+def _vision_cache_key(args: Namespace) -> Tuple[Any, ...]:
     return (
         args.dataset,
         str(Path(args.data_root).resolve()),
@@ -37,16 +37,16 @@ def _general_cache_key(args: Namespace) -> Tuple[Any, ...]:
     )
 
 
-def load_general(args: Namespace):
-    key = _general_cache_key(args)
-    if key not in _GENERAL_CACHE:
+def load_vision(args: Namespace):
+    key = _vision_cache_key(args)
+    if key not in _VISION_CACHE:
         train_subset = (
             int(args.train_subset_size) if int(args.train_subset_size) > 0 else None
         )
         test_subset = (
             int(args.test_subset_size) if int(args.test_subset_size) > 0 else None
         )
-        _GENERAL_CACHE[key] = load_vision_clients(
+        _VISION_CACHE[key] = load_vision_clients(
             dataset_name=args.dataset,
             root=args.data_root,
             num_clients=args.num_clients,
@@ -56,7 +56,12 @@ def load_general(args: Namespace):
             train_subset_size=train_subset,
             test_subset_size=test_subset,
         )
-    return _GENERAL_CACHE[key]
+    return _VISION_CACHE[key]
+
+
+def load_general(args: Namespace):
+    """Compatibility alias for old app glue imports."""
+    return load_vision(args)
 
 
 def _cora_cache_key(args: Namespace) -> Tuple[Any, ...]:

@@ -1,6 +1,6 @@
-"""Compatibility wrapper for the general FL experiment CLI."""
+"""Compatibility wrapper for the vision FL experiment CLI."""
 
-from spectral_fl.cli import general_experiment as _impl
+from spectral_fl.cli import vision_experiment as _impl
 
 globals().update(
     {

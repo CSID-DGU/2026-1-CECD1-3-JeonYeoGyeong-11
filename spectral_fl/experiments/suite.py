@@ -1,6 +1,6 @@
-"""Backward-compatible facade for General FL suite orchestration."""
+"""Backward-compatible facade for vision FL suite orchestration."""
 
-from spectral_fl.experiments.general import suite as _impl
+from spectral_fl.experiments.vision import suite as _impl
 
 globals().update(
     {

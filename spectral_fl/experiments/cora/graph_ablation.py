@@ -46,6 +46,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
+from spectral_fl.config_io import public_args_dict
 from spectral_fl.experiments.suites.stats import (
     final_acc,
     load_json,
@@ -226,7 +227,7 @@ def run(args):
     suite_meta = {
         "timestamp": datetime.now().isoformat(),
         "suite_tag": args.suite_tag,
-        "config": vars(args),
+        "config": public_args_dict(args),
         "delta_baseline": "fedavg",
         "cross_track_variant_names": (
             "This suite labels kNN as variant ours_knn with --knn-k from CLI (no K in the name). "
@@ -273,7 +274,7 @@ def run(args):
         ),
         "trace_contract": (
             "Per-round diagnostics live under results.ours.round_trace (list of dicts). "
-            "Authoritative keys are emitted by the spectral strategy diagnostics round_log row (spectral signals, tau, "
+            "Authoritative keys are emitted by the graph-FL strategy diagnostics round_log row (spectral signals, tau, "
             "conflict vectors, graph stats). Typical numeric fields used by suite aggregates include h_spec, tau, "
             "graph_density, e_std or legacy std_e, entropy_alpha, min_alpha, max_alpha, effective_clients, graph_empty. "
             "See strategy round_log construction when adding new consumers."
