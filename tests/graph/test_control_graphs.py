@@ -45,6 +45,13 @@ class ControlGraphTest(unittest.TestCase):
             compute_graph_diagnostics(rnd)["number_of_edges"],
         )
 
+    def test_graph_diagnostics_include_normalized_entropy(self):
+        diag = compute_graph_diagnostics(self.base)
+        self.assertIn("graph_entropy", diag)
+        self.assertGreaterEqual(float(diag["graph_entropy"]), 0.0)
+        self.assertLessEqual(float(diag["graph_entropy"]), 1.0)
+        self.assertEqual(int(diag["graph_num_nodes"]), self.base.shape[0])
+
     def test_builder_dispatch_uses_control_graph_mode(self):
         g = build_client_graph(
             self.z_mat,

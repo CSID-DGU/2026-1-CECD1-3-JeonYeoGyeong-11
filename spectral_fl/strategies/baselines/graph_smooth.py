@@ -22,7 +22,7 @@ from spectral_fl.graph.sources import GraphSourceConfig, graph_vectors_for_spect
 from spectral_fl.projection import flatten_weights, make_gaussian_projection
 from spectral_fl.strategies.baselines.ordering import sort_fit_results_by_cid
 from spectral_fl.strategies.baselines.tracing import _EvalTracer, _InteractionDiagnostics
-from spectral_fl.strategies.spectral.momentum import apply_server_optimizer
+from spectral_fl.strategies.graphfl.momentum import apply_server_optimizer
 
 
 def _safe_cosine(x: np.ndarray, y: np.ndarray, eps: float = 1e-12) -> float:

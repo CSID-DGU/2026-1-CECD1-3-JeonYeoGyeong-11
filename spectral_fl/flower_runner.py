@@ -20,6 +20,7 @@ from flwr.server.superlink.linkstate.utils import generate_rand_int_from_bytes
 from flwr.simulation.run_simulation import _run_simulation
 from flwr.supercore.constant import NOOP_FEDERATION
 
+from spectral_fl.config_io import public_args_dict
 from spectral_fl.flower_app import DEFAULT_RUN_CONFIG, client_app, server_app
 
 
@@ -42,10 +43,12 @@ def _absolute_path(value: str) -> str:
 def args_to_run_config(args: Namespace, track: str) -> Dict[str, Any]:
     cfg = dict(DEFAULT_RUN_CONFIG)
     cfg["track"] = track
-    for key, value in vars(args).items():
+    for key, value in public_args_dict(args).items():
         if key in {"engine", "config"}:
             continue
         cfg[key.replace("_", "-")] = value
+    if "spectral-filter-strength" in cfg:
+        cfg["graph-filter-strength"] = cfg["spectral-filter-strength"]
 
     cfg["data-root"] = _absolute_path(str(cfg["data-root"]))
     cfg["out-dir"] = _absolute_path(str(cfg["out-dir"]))

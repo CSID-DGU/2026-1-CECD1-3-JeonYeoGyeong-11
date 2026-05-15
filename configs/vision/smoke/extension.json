@@ -1,0 +1,36 @@
+{
+  "description": "General FL extension smoke. Checks graph-source, graph-mode, tau-source, and aggregation-target extension paths.",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 2,
+    "rounds": 1,
+    "local_epochs": 1,
+    "batch_size": 32,
+    "seeds": [42],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 120,
+    "test_subset_size": 60,
+    "variants": [
+      "fedavg",
+      "ours_weight_graph",
+      "ours_layerwise_knn_k1",
+      "ours_magnitude",
+      "ours_rbf",
+      "ours_learned_graph",
+      "ours_mutual_knn_k1",
+      "ours_signed_abs",
+      "ours_negative",
+      "ours_graph_filtered_knn_k1",
+      "ours_knn_k1_norm_tau",
+      "ours_knn_k1_estd_tau",
+      "ours_weight_agg"
+    ],
+    "warmup_rounds": 0,
+    "diagnostic_only": false,
+    "out_dir": "experiments_current/extension_option_smoke",
+    "suite_tag": "extension_option_smoke"
+  }
+}
+

@@ -1,0 +1,27 @@
+{
+  "description": "General FL frequency smoke. graph-filter residual aggregation을 켜고 low/mid/high frequency diagnostic 기록.",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 5,
+    "rounds": 3,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "seeds": [42],
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "variants": [
+      "fedavg",
+      "ours_dense",
+      "ours_knn_k2",
+      "ours_random_matched_k2",
+      "ours_uniform"
+    ],
+    "warmup_rounds": 0,
+    "conflict_mix": 0.2,
+    "min_client_weight": 0.05,
+    "out_dir": "experiments_current/phaseB_frequency_decomp_smoke"
+  }
+}

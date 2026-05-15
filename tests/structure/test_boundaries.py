@@ -1,4 +1,4 @@
-import ast
+﻿import ast
 import unittest
 from pathlib import Path
 
@@ -80,18 +80,22 @@ class RepositoryBoundaryTest(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_banned_imports(path, banned)
 
-    def test_spectral_strategy_does_not_depend_on_cli_or_experiments(self):
+    def test_graphfl_strategy_does_not_depend_on_cli_or_experiments(self):
         banned = (
             "spectral_fl.cli",
             "spectral_fl.experiments",
         )
-        for path in python_files(ROOT / "spectral_fl" / "strategies" / "spectral"):
+        for path in python_files(ROOT / "spectral_fl" / "strategies" / "graphfl"):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_banned_imports(path, banned)
 
     def test_compatibility_facades_stay_thin(self):
         facades = [
             "run_experiment.py",
+            "run_vision_client_count_sweep.py",
+            "run_vision_experiment.py",
+            "run_vision_stress_grid.py",
+            "run_vision_suite.py",
             "run_general_client_count_sweep.py",
             "run_general_experiment.py",
             "run_general_stress_grid.py",
@@ -103,15 +107,39 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "spectral_fl/general_data.py",
             "spectral_fl/general_models.py",
             "spectral_fl/general_suite_variants.py",
+            "spectral_fl/cli/general_client_count_sweep.py",
+            "spectral_fl/cli/general_experiment.py",
+            "spectral_fl/cli/general_stress_grid.py",
+            "spectral_fl/cli/general_suite.py",
             "spectral_fl/model.py",
             "spectral_fl/spectral_diagnostics.py",
             "spectral_fl/strategy.py",
             "spectral_fl/suite_stats.py",
             "spectral_fl/update_graph.py",
+            "spectral_fl/strategies/spectral/__init__.py",
+            "spectral_fl/strategies/spectral/aggregation.py",
+            "spectral_fl/strategies/spectral/config.py",
+            "spectral_fl/strategies/spectral/diagnostics.py",
+            "spectral_fl/strategies/spectral/filtering.py",
+            "spectral_fl/strategies/spectral/momentum.py",
+            "spectral_fl/strategies/spectral/strategy.py",
+            "spectral_fl/strategies/spectral/targets.py",
+            "spectral_fl/strategies/spectral/tracing.py",
             "spectral_fl/experiments/client_count_sweep.py",
             "spectral_fl/experiments/graph_ablation.py",
             "spectral_fl/experiments/stress_grid.py",
             "spectral_fl/experiments/suite.py",
+            "spectral_fl/experiments/general/__init__.py",
+            "spectral_fl/experiments/general/client_count_sweep.py",
+            "spectral_fl/experiments/general/single_run.py",
+            "spectral_fl/experiments/general/stress_grid.py",
+            "spectral_fl/experiments/general/suite.py",
+            "spectral_fl/experiments/suites/general/__init__.py",
+            "spectral_fl/experiments/suites/general/reporting.py",
+            "spectral_fl/experiments/suites/general/variants.py",
+            "scripts/analysis/deep_dive_general.py",
+            "scripts/analysis/merge_general_fedavg_ours.py",
+            "scripts/reports/plot_general_convergence.py",
         ]
         for rel in facades:
             path = ROOT / rel
@@ -127,9 +155,9 @@ class RepositoryBoundaryTest(unittest.TestCase):
     def test_question_oriented_config_folders_stay_deep(self):
         broad_dirs = [
             ROOT / "configs" / "cora" / "ablations",
-            ROOT / "configs" / "general" / "probes",
-            ROOT / "configs" / "general" / "stress",
-            ROOT / "configs" / "general" / "sweeps",
+            ROOT / "configs" / "vision" / "probes",
+            ROOT / "configs" / "vision" / "stress",
+            ROOT / "configs" / "vision" / "sweeps",
         ]
         for directory in broad_dirs:
             with self.subTest(path=directory.relative_to(ROOT)):

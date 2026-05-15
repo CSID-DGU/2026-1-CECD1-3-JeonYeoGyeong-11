@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "spectral-client-update-graph"
+name = "graph-fl-design-lab"
 version = "0.1.0"
-description = "Spectral client update graph experiments for federated learning"
+description = "Composable graph-FL diagnostic framework"
 requires-python = ">=3.11"
 license = { text = "UNLICENSED" }
 dependencies = [
@@ -28,7 +28,7 @@ serverapp = "spectral_fl.flower_app:server_app"
 clientapp = "spectral_fl.flower_app:client_app"
 
 [tool.flwr.app.config]
-track = "general-fl"
+track = "vision-fl"
 method = "ours"
 dataset = "fashionmnist"
 model = "mlp"
@@ -48,9 +48,11 @@ tau-max = 2.0
 conflict-mix = 0.0
 warmup-rounds = 2
 graph-mode = "dense"
+graph-plugin = ""
 graph-preset = "none"
+graph-method = "none"
 graph-source = "update"
-aggregation-target = "spectral_filtered_update"
+aggregation-target = "graph_filtered_update"
 knn-k = 2
 edge-threshold = 0.0
 graph-scale-sigma = 1.0
@@ -79,6 +81,7 @@ use-ema-graph = true
 disable-adaptive-tau = false
 fixed-tau = 1.0
 tau-source = "h_spec"
+graph-filter-strength = 1.0
 spectral-filter-strength = 1.0
 client-update-ema-alpha = 0.8
 diagnostic-only = false

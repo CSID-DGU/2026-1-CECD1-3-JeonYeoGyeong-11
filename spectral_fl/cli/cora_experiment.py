@@ -7,19 +7,13 @@ import argparse
 from spectral_fl.cli.argparse_types import str2bool
 from spectral_fl.config_io import add_config_argument, parse_args_with_config
 from spectral_fl.experiments.cora import single_run as _experiment
-
-
-GRAPH_PRESET_CHOICES = [
-    "none",
-    "fedaga_like",
-    "fedamp_like",
-    "gfedfilt_like",
-    "pfedgraph_like",
-    "pfedsim_like",
-    "raw_update_positive_dense",
-    "raw_update_positive_knn",
-    "signed_conflict_knn",
-]
+GRAPH_MODE_HELP = (
+    "Topology/lower-level graph construction knob under the lifecycle design. "
+    "Built-ins include dense, knn, mutual_knn, "
+    "threshold, uniform, random, magnitude, global_alignment, signed_abs, "
+    "negative, rbf, learned_smooth, pfedgraph_qp and *_knn variants. Custom modes can be "
+    "provided by --graph-plugin."
+)
 
 # Compatibility re-exports for older imports from spectral_fl.cli.cora_experiment.
 globals().update(
@@ -69,7 +63,7 @@ def parse_args():
     p.add_argument("--lr", type=float, default=0.01)
     p.add_argument("--weight-decay", type=float, default=5e-4)
 
-    # spectral / aggregation
+    # graph-FL runtime / aggregation
     p.add_argument("--compression-dim", type=int, default=256)
     p.add_argument("--compression-seed", type=int, default=0)
     p.add_argument("--ema-alpha", type=float, default=0.8)
@@ -83,62 +77,48 @@ def parse_args():
         "--graph-mode",
         type=str,
         default="dense",
-        choices=[
-            "dense",
-            "knn",
-            "mutual_knn",
-            "threshold",
-            "uniform",
-            "random",
-            "magnitude",
-            "magnitude_aware",
-            "magnitude_knn",
-            "global_alignment",
-            "signed_abs",
-            "signed_abs_knn",
-            "negative",
-            "negative_knn",
-            "rbf",
-            "rbf_knn",
-            "learned_smooth",
-            "learned_smooth_knn",
-        ],
+        help=GRAPH_MODE_HELP,
+    )
+    p.add_argument(
+        "--graph-plugin",
+        type=str,
+        default="",
+        help=(
+            "Comma-separated Python module names imported before graph building. "
+            "Each module may call spectral_fl.graph.register_graph_builder(...) "
+            "or register_graph_source(...) to add custom graph modes/sources."
+        ),
     )
     p.add_argument(
         "--graph-preset",
         type=str,
         default="none",
-        choices=GRAPH_PRESET_CHOICES,
         help=(
-            "Prior-work-inspired graph design preset. When set, it overrides "
-            "graph source/mode and related graph knobs."
+            "GraphFLDesign preset or compatibility alias. When set, it resolves "
+            "client-state/relation/topology/aggregation metadata to legacy "
+            "graph source/mode/target knobs."
+        ),
+    )
+    p.add_argument(
+        "--graph-method",
+        type=str,
+        default="none",
+        help=(
+            "High-level runnable graph-FL method/profile. This resolves to "
+            "the current graph source/mode/aggregation knobs, while explicit "
+            "lower-level CLI/config values can override individual knobs."
         ),
     )
     p.add_argument(
         "--graph-source",
         type=str,
         default="update",
-        choices=[
-            "update",
-            "ema_update",
-            "normalized_ema_update",
-            "layerwise_ema_update",
-            "normalized_update",
-            "layer_slice_update",
-            "layerwise_slice_update",
-            "layerwise_update",
-            "classifier_head_update",
-            "classifier_head_ema_update",
-            "layerwise_classifier_head_update",
-            "layerwise_classifier_head_ema_update",
-            "weight",
-            "classifier_head_weight",
-            "layerwise_classifier_head_weight",
-            "layer_slice_weight",
-            "layerwise_slice_weight",
-            "layerwise_weight",
-        ],
-        help="Representation used to build the client relation graph.",
+        help=(
+            "ClientStateExtractor knob used to build the client relation graph. Built-ins "
+            "include update, ema_update, normalized_update, layerwise_update, "
+            "classifier_head_update, weight and layerwise/classifier variants; "
+            "custom sources can be provided by --graph-plugin."
+        ),
     )
     p.add_argument(
         "--aggregation-target",
@@ -146,12 +126,15 @@ def parse_args():
         default="update",
         choices=[
             "update",
+            "graph_filtered_update",
+            "graph_filtered_ema_update",
+            "graph_filtered_weight",
             "spectral_filtered_update",
             "spectral_filtered_ema_update",
             "weight",
             "spectral_filtered_weight",
         ],
-        help="Object averaged with alpha_i to form the next global model.",
+        help="AggregationOperator knob: object averaged with alpha_i to form the next global model.",
     )
     p.add_argument("--knn-k", type=int, default=2)
     p.add_argument("--edge-threshold", type=float, default=0.0)
@@ -200,7 +183,9 @@ def parse_args():
         help="Signal used by adaptive tau. h_spec is the legacy behavior.",
     )
     p.add_argument(
+        "--graph-filter-strength",
         "--spectral-filter-strength",
+        dest="graph_filter_strength",
         type=float,
         default=1.0,
         help=(
@@ -212,10 +197,10 @@ def parse_args():
         "--client-update-ema-alpha",
         type=float,
         default=0.8,
-        help="EMA coefficient for client update signals used by ema_update graph sources or spectral_filtered_ema_update.",
+        help="EMA coefficient for client update signals used by ema_update graph sources or graph_filtered_ema_update.",
     )
     p.add_argument("--diagnostic-only", type=str2bool, default=False,
-                   help="If true, log spectral diagnostics but aggregate with FedAvg weights.")
+                   help="If true, log graph-FL diagnostics but aggregate with FedAvg weights.")
 
     # conservative penalty
     p.add_argument("--e-std-threshold", type=float, default=0.0,

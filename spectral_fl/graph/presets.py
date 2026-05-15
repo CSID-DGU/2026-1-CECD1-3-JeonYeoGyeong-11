@@ -1,95 +1,123 @@
-"""Reusable graph-design presets inspired by prior FL literature.
-
-These presets are lightweight, configurable approximations so experiments can
-quickly compose representation + similarity + topology choices.
-"""
+"""Compatibility wrappers for graph-FL design presets."""
 
 from __future__ import annotations
 
 from argparse import Namespace
 from typing import Any, Dict, List, Mapping
 
+from spectral_fl.designs import design_names, resolve_design
+from spectral_fl.graph.method_specs import (
+    get_graph_fl_method_spec,
+    graph_fl_method_names,
+)
 from spectral_fl.graph.sources.config import normalize_key
 
 
-_PRESET_SPECS: Dict[str, Dict[str, Any]] = {
-    # Baselines
-    "raw_update_positive_dense": {
-        "graph_source": "update",
-        "graph_mode": "dense",
-        "knn_k": 2,
-    },
-    "raw_update_positive_knn": {
-        "graph_source": "update",
-        "graph_mode": "knn",
-        "knn_k": 2,
-    },
-    "signed_conflict_knn": {
-        "graph_source": "update",
-        "graph_mode": "signed_abs_knn",
-        "knn_k": 2,
-    },
-    # Prior-work-inspired configurations (approximate, not exact reproductions)
-    "pfedgraph_like": {
-        "graph_source": "weight",
-        "graph_mode": "magnitude_knn",
-        "knn_k": 2,
-    },
-    "fedamp_like": {
-        "graph_source": "weight",
-        "graph_mode": "global_alignment",
-        "knn_k": 2,
-    },
-    "pfedsim_like": {
-        "graph_source": "classifier_head_weight",
-        "graph_mode": "signed_abs_knn",
-        "knn_k": 2,
-    },
-    "fedaga_like": {
-        "graph_source": "ema_update",
-        "graph_mode": "magnitude_knn",
-        "knn_k": 2,
-        "use_ema_graph": True,
-        "client_update_ema_alpha": 0.9,
-    },
-    "gfedfilt_like": {
-        "graph_source": "weight",
-        "graph_mode": "rbf_knn",
-        "knn_k": 2,
-        "graph_laplacian_type": "normalized",
-        "graph_smoothing_operator": "laplacian",
-    },
-}
+_DISABLED_NAMES = {"", "none", "off", "disabled"}
 
 
 def graph_preset_names() -> List[str]:
-    return ["none"] + sorted(_PRESET_SPECS.keys())
+    return ["none"] + design_names(include_aliases=True)
+
+
+def graph_method_names() -> List[str]:
+    names = set(design_names(include_aliases=True))
+    names.update(graph_fl_method_names())
+    return ["none"] + sorted(names)
 
 
 def resolve_graph_preset_spec(name: str) -> Dict[str, Any]:
     key = normalize_key(name)
-    if key in {"", "none", "off", "disabled"}:
+    if key in _DISABLED_NAMES:
         return {}
-    if key not in _PRESET_SPECS:
-        known = ", ".join(sorted(_PRESET_SPECS.keys()))
-        raise ValueError(f"Unknown graph_preset={name!r}. Known presets: {known}")
-    return dict(_PRESET_SPECS[key])
+    try:
+        return resolve_design(key).to_legacy_args()
+    except ValueError as exc:
+        known = ", ".join(graph_preset_names())
+        raise ValueError(f"Unknown graph_preset={name!r}. Known presets: {known}") from exc
+
+
+def resolve_graph_method_spec(name: str) -> Dict[str, Any]:
+    key = normalize_key(name)
+    if key in _DISABLED_NAMES:
+        return {}
+
+    try:
+        spec = resolve_design(key).to_legacy_args()
+        spec.setdefault("graph_method", key)
+        return spec
+    except ValueError:
+        pass
+
+    try:
+        method = get_graph_fl_method_spec(key)
+    except ValueError as exc:
+        known = ", ".join(graph_method_names())
+        raise ValueError(f"Unknown graph_method={name!r}. Known methods: {known}") from exc
+
+    if method.support_level == "interface-target":
+        raise ValueError(
+            f"graph_method={name!r} is an interface target, not a runnable method. "
+            "Use a supported method or provide the missing source/aggregation plugin."
+        )
+
+    if method.design_name:
+        try:
+            spec = resolve_design(method.design_name).to_legacy_args()
+        except ValueError:
+            spec = dict(method.config_overrides)
+            spec["graph_design"] = method.design_name
+    else:
+        spec = dict(method.config_overrides)
+    spec["graph_method"] = method.name
+    return spec
 
 
 def apply_graph_preset_to_namespace(args: Namespace) -> Mapping[str, Any]:
-    """Apply graph preset into an argparse namespace once (idempotent)."""
+    """Apply graph preset or graph method into an argparse namespace once."""
     if bool(getattr(args, "_graph_preset_applied", False)):
-        return getattr(args, "_graph_preset_info", {"graph_preset": "none", "applied": {}})
+        return getattr(
+            args,
+            "_graph_preset_info",
+            {"graph_preset": "none", "graph_method": "none", "applied": {}},
+        )
 
     preset_raw = str(getattr(args, "graph_preset", "none"))
     preset_key = normalize_key(preset_raw)
-    spec = resolve_graph_preset_spec(preset_key)
+    method_raw = str(getattr(args, "graph_method", "none"))
+    method_key = normalize_key(method_raw)
+
+    source = "none"
+    skip_keys: set[str] = set()
+    if preset_key not in _DISABLED_NAMES:
+        source = "graph_preset"
+        spec = resolve_graph_preset_spec(preset_key)
+    elif method_key not in _DISABLED_NAMES:
+        source = "graph_method"
+        spec = resolve_graph_method_spec(method_key)
+        skip_keys = set(getattr(args, "_user_arg_dests", ())) - {
+            "graph_method",
+            "graph_preset",
+        }
+    else:
+        spec = {}
+
     applied: Dict[str, Any] = {}
     for key, value in spec.items():
+        if key in skip_keys:
+            continue
         setattr(args, key, value)
         applied[key] = value
 
-    info = {"graph_preset": preset_key if preset_key else "none", "applied": applied}
+    if not hasattr(args, "graph_method"):
+        setattr(args, "graph_method", "none")
+
+    info = {
+        "source": source,
+        "graph_preset": preset_key if preset_key else "none",
+        "graph_method": str(getattr(args, "graph_method", "none")),
+        "applied": applied,
+    }
     setattr(args, "_graph_preset_applied", True)
     setattr(args, "_graph_preset_info", info)
     setattr(args, "graph_preset", info["graph_preset"])

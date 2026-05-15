@@ -1,0 +1,27 @@
+{
+  "description": "Extended diagnostic attribution suite (client-scale check)",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 50,
+    "rounds": 10,
+    "local_epochs": 2,
+    "batch_size": 64,
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.03,
+    "train_subset_size": 0,
+    "test_subset_size": 0,
+    "seeds": [42, 43, 44],
+    "variants": [
+      "fedavg",
+      "fedavgm",
+      "ours_real_graph_k2",
+      "ours_shuffled_control_k2",
+      "ours_cluster_only_k2",
+      "ours_graphfree_reweight"
+    ],
+    "diagnostics_enable": true,
+    "loo_enabled": false,
+    "out_dir": "experiments_current/diagnostic_extend_suite"
+  }
+}

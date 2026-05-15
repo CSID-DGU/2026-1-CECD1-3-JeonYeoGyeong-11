@@ -1,0 +1,28 @@
+{
+  "description": "Diagnostic smoke for aggregation pathology/control-family paths",
+  "args": {
+    "dataset": "fashionmnist",
+    "model": "mlp",
+    "num_clients": 5,
+    "rounds": 3,
+    "local_epochs": 1,
+    "batch_size": 64,
+    "partition": "dirichlet",
+    "dirichlet_alpha": 0.1,
+    "train_subset_size": 1000,
+    "test_subset_size": 300,
+    "seeds": [42],
+    "variants": [
+      "fedavg",
+      "fedavgm",
+      "ours_real_graph_k2",
+      "ours_shuffled_control_k2",
+      "ours_identity_control_k2",
+      "ours_cluster_only_k2",
+      "ours_graphfree_reweight"
+    ],
+    "diagnostics_enable": true,
+    "loo_enabled": true,
+    "out_dir": "experiments_current/diagnostic_smoke_suite"
+  }
+}

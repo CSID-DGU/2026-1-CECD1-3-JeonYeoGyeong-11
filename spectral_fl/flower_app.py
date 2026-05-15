@@ -1,4 +1,4 @@
-"""Flower App entrypoints for spectral client update graph experiments.
+"""Flower App entrypoints for graph-FL diagnostic experiments.
 
 The app keeps the existing result JSON format while moving execution toward
 Flower's ClientApp/ServerApp structure.  The command-line scripts pass a flat
@@ -32,12 +32,12 @@ from spectral_fl.experiments.cora.single_run import (
     make_initial_parameters as make_cora_initial_parameters,
     print_final_summary,
 )
-from spectral_fl.experiments.general.single_run import (
-    build_general_meta,
+from spectral_fl.experiments.vision.single_run import (
+    build_vision_meta,
     make_initial_parameters as make_general_initial_parameters,
 )
 from spectral_fl.app.config import DEFAULT_RUN_CONFIG, args_from_context
-from spectral_fl.app.data_cache import client_index, load_cora, load_general
+from spectral_fl.app.data_cache import client_index, load_cora, load_vision
 from spectral_fl.clients.cora import FlowerClient
 from spectral_fl.clients.vision import VisionFlowerClient
 from spectral_fl.data.vision import (
@@ -50,7 +50,7 @@ from spectral_fl.models.vision import build_model
 
 _args_from_context = args_from_context
 _client_index = client_index
-_load_general = load_general
+_load_vision = load_vision
 _load_cora = load_cora
 
 
@@ -91,13 +91,13 @@ def _run_with_strategy(
     return hist_dict, strategy
 
 
-def _run_general_server(grid: Grid, args: Namespace) -> None:
+def _run_vision_server(grid: Grid, args: Namespace) -> None:
     apply_graph_preset_to_namespace(args)
     server_started_at = datetime.now()
     server_start = time.perf_counter()
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
-    shards, _, _ = _load_general(args)
+    shards, _, _ = _load_vision(args)
     num_classes = vision_num_classes(args.dataset)
     in_channels, _, _ = vision_input_shape(args.dataset)
 
@@ -108,15 +108,18 @@ def _run_general_server(grid: Grid, args: Namespace) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     tag = f"_{args.run_tag}" if args.run_tag else ""
     out_path = out_dir / f"result_general_{args.method}_seed{args.seed}{tag}.json"
+    vision_alias_path = out_dir / f"result_vision_{args.method}_seed{args.seed}{tag}.json"
     class_dist = [s.label_hist for s in shards]
     all_results: Dict[str, Any] = {
-        "meta": build_general_meta(args, class_dist, out_path),
+        "meta": build_vision_meta(args, class_dist, out_path),
         "results": {},
     }
+    all_results["meta"]["canonical_output_path"] = str(vision_alias_path)
+    all_results["meta"]["compatibility_output_path"] = str(out_path)
 
     methods = ["fedavg", "ours"] if args.method == "both" else [args.method]
     for method in methods:
-        print(f"\n=== Running general FL method: {method} ({args.dataset}) ===")
+        print(f"\n=== Running vision FL method: {method} ({args.dataset}) ===")
         hist_dict, _ = _run_with_strategy(
             grid=grid,
             args=args,
@@ -136,7 +139,10 @@ def _run_general_server(grid: Grid, args: Namespace) -> None:
 
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=2)
+    with vision_alias_path.open("w", encoding="utf-8") as f:
+        json.dump(all_results, f, indent=2)
     print(f"\nSaved: {out_path}")
+    print(f"Saved: {vision_alias_path} (canonical alias)")
 
 
 def _run_cora_server(grid: Grid, args: Namespace) -> None:
@@ -189,10 +195,10 @@ def _run_cora_server(grid: Grid, args: Namespace) -> None:
     print(f"\nSaved results to: {out_path}")
 
 
-def _make_general_client(context: Context):
+def _make_vision_client(context: Context):
     args = _args_from_context(context)
     i = _client_index(context, args.num_clients)
-    shards, train_ds, test_ds = _load_general(args)
+    shards, train_ds, test_ds = _load_vision(args)
     num_classes = vision_num_classes(args.dataset)
     in_channels, _, _ = vision_input_shape(args.dataset)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -236,8 +242,8 @@ def _make_cora_client(context: Context):
 
 def client_fn(context: Context):
     args = _args_from_context(context)
-    if args.track == "general-fl":
-        return _make_general_client(context)
+    if args.track in {"general-fl", "vision-fl"}:
+        return _make_vision_client(context)
     if args.track == "cora-fgl":
         return _make_cora_client(context)
     raise ValueError(f"Unknown track: {args.track}")
@@ -250,8 +256,8 @@ server_app = ServerApp()
 @server_app.main()
 def server_main(grid: Grid, context: Context) -> None:
     args = _args_from_context(context)
-    if args.track == "general-fl":
-        _run_general_server(grid, args)
+    if args.track in {"general-fl", "vision-fl"}:
+        _run_vision_server(grid, args)
         return
     if args.track == "cora-fgl":
         _run_cora_server(grid, args)

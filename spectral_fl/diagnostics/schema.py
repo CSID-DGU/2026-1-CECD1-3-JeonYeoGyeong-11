@@ -9,7 +9,11 @@ from typing import Dict
 @dataclass(frozen=True)
 class RoundDiagnostics:
     run_id: str
+    variant: str
+    seed: int
     round: int
+    accuracy: float
+    loss: float
     di_pre: float
     di_post: float
     neff_pre: float
@@ -18,9 +22,16 @@ class RoundDiagnostics:
     align_mean_post: float
     loo_mean_pre: float
     loo_mean_post: float
+    graph_density: float
+    graph_entropy: float
     alpha_entropy: float
+    wall_time_sec: float
+    graph_method: str
     correction_family: str
+    graph_source: str
     graph_variant: str
+    aggregation_target: str
+    graph_kind: str
 
     def to_dict(self) -> Dict[str, object]:
         return asdict(self)
@@ -29,6 +40,8 @@ class RoundDiagnostics:
 @dataclass(frozen=True)
 class ClientRoundDiagnostics:
     run_id: str
+    variant: str
+    seed: int
     round: int
     cid: str
     num_examples: int

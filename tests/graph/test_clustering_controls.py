@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.builders import build_client_graph
+from spectral_fl.graph.builders import build_client_graph, build_relation_graph
 from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
 
 
@@ -49,6 +49,30 @@ class ClusteringControlTest(unittest.TestCase):
         )
         self.assertTrue(np.allclose(g, g.T))
         self.assertTrue(np.allclose(np.diag(g), 0.0))
+
+    def test_relation_graph_returns_cluster_metadata(self):
+        z = np.array(
+            [
+                [1.0, 0.0],
+                [0.9, 0.1],
+                [0.0, 1.0],
+                [0.1, 0.9],
+            ],
+            dtype=np.float64,
+        )
+        _, meta = build_relation_graph(
+            z,
+            mode="knn",
+            knn_k=1,
+            correction_family="clustering_only",
+            cluster_method="kmeans",
+            cluster_k=2,
+            cluster_seed=3,
+        )
+
+        self.assertEqual(meta["graph_kind"], "clustering_only:block_uniform")
+        self.assertEqual(len(meta["cluster_ids"]), z.shape[0])
+        self.assertTrue(all(isinstance(x, int) for x in meta["cluster_ids"]))
 
 
 if __name__ == "__main__":

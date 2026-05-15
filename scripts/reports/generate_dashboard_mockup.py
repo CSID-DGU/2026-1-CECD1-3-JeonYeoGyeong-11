@@ -12,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from spectral_fl.experiments.suites.general.reporting import write_dashboard_mockup
+from spectral_fl.experiments.suites.vision.reporting import write_dashboard_mockup
 
 
 def _load_summary_rows(path: Path) -> List[Dict[str, Any]]:
@@ -27,7 +27,9 @@ def main() -> None:
     p.add_argument("--suite-dir", type=str, required=True)
     args = p.parse_args()
     suite_dir = Path(args.suite_dir)
-    rows = _load_summary_rows(suite_dir / "general_suite_summary.csv")
+    rows = _load_summary_rows(suite_dir / "vision_suite_summary.csv")
+    if not rows:
+        rows = _load_summary_rows(suite_dir / "general_suite_summary.csv")
     out = write_dashboard_mockup(
         suite_dir,
         rows,

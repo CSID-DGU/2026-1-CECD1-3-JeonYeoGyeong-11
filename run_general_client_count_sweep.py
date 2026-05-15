@@ -1,6 +1,6 @@
-"""Compatibility wrapper for the general FL client-count sweep CLI."""
+"""Compatibility wrapper for the vision FL client-count sweep CLI."""
 
-from spectral_fl.cli import general_client_count_sweep as _impl
+from spectral_fl.cli import vision_client_count_sweep as _impl
 
 globals().update(
     {

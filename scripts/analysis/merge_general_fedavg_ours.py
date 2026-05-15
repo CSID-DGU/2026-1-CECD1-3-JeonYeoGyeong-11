@@ -1,31 +1,22 @@
-"""Merge separate FedAvg and Ours general-FL JSONs for deep-dive reports."""
+"""Compatibility wrapper for ``merge_vision_fedavg_ours.py``."""
 
-from __future__ import annotations
-
-import argparse
-import json
+from importlib import util
 from pathlib import Path
 
+_IMPL_PATH = Path(__file__).with_name("merge_vision_fedavg_ours.py")
+_SPEC = util.spec_from_file_location("merge_vision_fedavg_ours", _IMPL_PATH)
+if _SPEC is None or _SPEC.loader is None:
+    raise ImportError(f"Could not load {_IMPL_PATH}")
+_IMPL = util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_IMPL)
 
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--fedavg", type=str, required=True)
-    p.add_argument("--ours", type=str, required=True)
-    p.add_argument("--out", type=str, required=True)
-    args = p.parse_args()
-    fa = json.loads(Path(args.fedavg).read_text(encoding="utf-8"))
-    ou = json.loads(Path(args.ours).read_text(encoding="utf-8"))
-    merged = {
-        "meta": ou.get("meta", {}),
-        "results": {
-            "fedavg": fa["results"]["fedavg"],
-            "ours": ou["results"]["ours"],
-        },
+globals().update(
+    {
+        name: getattr(_IMPL, name)
+        for name in dir(_IMPL)
+        if not (name.startswith("__") and name.endswith("__"))
     }
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(merged, indent=2), encoding="utf-8")
-    print(f"Wrote {args.out}")
-
+)
 
 if __name__ == "__main__":
-    main()
+    _IMPL.main()

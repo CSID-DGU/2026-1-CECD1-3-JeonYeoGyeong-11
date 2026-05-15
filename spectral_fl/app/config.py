@@ -9,7 +9,7 @@ from flwr.common import Context
 
 
 DEFAULT_RUN_CONFIG: Dict[str, Any] = {
-    "track": "general-fl",
+    "track": "vision-fl",
     "method": "ours",
     "dataset": "fashionmnist",
     "model": "mlp",
@@ -29,9 +29,11 @@ DEFAULT_RUN_CONFIG: Dict[str, Any] = {
     "conflict-mix": 0.0,
     "warmup-rounds": 2,
     "graph-mode": "dense",
+    "graph-plugin": "",
     "graph-preset": "none",
+    "graph-method": "none",
     "graph-source": "update",
-    "aggregation-target": "spectral_filtered_update",
+    "aggregation-target": "graph_filtered_update",
     "knn-k": 2,
     "edge-threshold": 0.0,
     "graph-scale-sigma": 1.0,
@@ -60,6 +62,7 @@ DEFAULT_RUN_CONFIG: Dict[str, Any] = {
     "disable-adaptive-tau": False,
     "fixed-tau": 1.0,
     "tau-source": "h_spec",
+    "graph-filter-strength": 1.0,
     "spectral-filter-strength": 1.0,
     "client-update-ema-alpha": 0.8,
     "diagnostic-only": False,
@@ -117,7 +120,12 @@ def bool_value(value: Any) -> bool:
 
 def merged_run_config(context: Context) -> Dict[str, Any]:
     merged = dict(DEFAULT_RUN_CONFIG)
-    merged.update(dict(context.run_config or {}))
+    user_cfg = dict(context.run_config or {})
+    merged.update(user_cfg)
+    if "graph-filter-strength" not in user_cfg and "spectral-filter-strength" in user_cfg:
+        merged["graph-filter-strength"] = user_cfg["spectral-filter-strength"]
+    if "graph-filter-strength" in user_cfg and "spectral-filter-strength" not in user_cfg:
+        merged["spectral-filter-strength"] = user_cfg["graph-filter-strength"]
     return merged
 
 
@@ -150,7 +158,9 @@ def args_from_context(context: Context) -> Namespace:
         conflict_mix=float(cfg["conflict-mix"]),
         warmup_rounds=int(cfg["warmup-rounds"]),
         graph_mode=str(cfg["graph-mode"]),
+        graph_plugin=str(cfg.get("graph-plugin", "")),
         graph_preset=str(cfg.get("graph-preset", "none")),
+        graph_method=str(cfg.get("graph-method", "none")),
         graph_source=str(cfg["graph-source"]),
         aggregation_target=str(cfg["aggregation-target"]),
         knn_k=int(cfg["knn-k"]),
@@ -183,7 +193,8 @@ def args_from_context(context: Context) -> Namespace:
         disable_adaptive_tau=bool_value(cfg["disable-adaptive-tau"]),
         fixed_tau=float(cfg["fixed-tau"]),
         tau_source=str(cfg["tau-source"]),
-        spectral_filter_strength=float(cfg["spectral-filter-strength"]),
+        graph_filter_strength=float(cfg["graph-filter-strength"]),
+        spectral_filter_strength=float(cfg["graph-filter-strength"]),
         client_update_ema_alpha=float(cfg["client-update-ema-alpha"]),
         diagnostic_only=bool_value(cfg["diagnostic-only"]),
         e_std_threshold=float(cfg["e-std-threshold"]),
