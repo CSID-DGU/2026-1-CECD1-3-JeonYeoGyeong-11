@@ -23,6 +23,9 @@ migration with aliases, tests, and a removal gate.
 | Item | Status |
 |---|---|
 | README rewritten around project philosophy, interfaces, run path, and verification | done |
+| `claim.md` rewritten around the final diagnostic-framework claim | done |
+| `experimental-design.md` added as the canonical core experiment guide | done |
+| early spectral/low-pass result log moved behind an archive pointer | done |
 | Active configs moved from `configs/general/` to `configs/vision/` | done |
 | `configs/general/...` path alias added in config resolver | done |
 | `result_vision_*` and `vision_suite_*` aliases added beside old output names | done |

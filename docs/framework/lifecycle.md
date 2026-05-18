@@ -156,4 +156,6 @@ shadow diagnostic paths:
 
 이 큰그림을 기준으로 다음 코드 작업은 lifecycle module contract와 trace schema를 먼저 고정한 뒤, `GraphFLDiagnosticStrategy` runtime을 그 contract 위로 점진적으로 옮기는 순서가 맞다.
 
-구현은 한 번에 진행하지 않는다. 단계별 작업 범위와 완료 기준은 `implementation_phases/README.md`와 각 phase 문서에 둔다.
+현재 작업 우선순위는 [experimental-design.md](experimental-design.md)의 core experiment와
+[cleanup-plan.md](cleanup-plan.md)의 staged cleanup 기준을 따른다. 과거 phase 문서는
+archive에 남아 있지만 새 작업의 출발점으로 쓰지 않는다.

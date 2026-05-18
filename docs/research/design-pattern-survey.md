@@ -6,10 +6,10 @@ Use this document as normative design reference, not as an implementation backlo
 
 - Use it to classify a method's lifecycle role and support level.
 - Use it to choose trace keys and design-space vocabulary.
-- Use it to ensure the phase implementation can represent the method family at the declared support level.
+- Use it to ensure the current framework can represent the method family at the declared support level.
 - Do not treat the method table as an implementation checklist.
-- Do not implement exact prior-work algorithms from this document unless the active phase explicitly asks for that scope.
-- When this survey conflicts with a phase document, follow the phase document.
+- Do not implement exact prior-work algorithms from this document unless the active experimental design explicitly asks for that scope.
+- When this survey conflicts with `docs/framework/experimental-design.md`, follow the experimental design.
 
 ## Purpose
 

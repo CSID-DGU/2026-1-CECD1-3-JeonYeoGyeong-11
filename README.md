@@ -1,12 +1,38 @@
 # Graph-FL Design Lab
 
-조립식 graph-based federated learning 실험 프레임워크.
+Graph-based federated learning에서 관측되는 성능 변화가 실제 graph
+structure에서 오는지, 아니면 dominance, norm, smoothing, optimizer 같은 더
+단순한 요인으로 설명되는지를 분해해 검증하는 실험 프레임워크.
 
 이 저장소는 좋은 그래프 알고리즘 하나를 주장하기보다, FL round 안에서
 client state, relation, topology, aggregation, diagnostics를 부품처럼 바꾸며
-graph correction의 효과가 어디서 나오는지 검증하기 위한 코드다.
+graph correction의 효과가 어디서 나오는지 판정하기 위한 코드다.
 
-기본 실행 대상은 vision FL. 옛 `general`/`spectral` 이름은 호환 경로다.
+처음 보는 사람은 `vision`, `graphfl`, `graph_filtered_*`를 현재 기준 이름으로
+읽으면 된다. `general`/`spectral` 이름은 이전 결과와 외부 명령을 깨지 않기
+위한 호환 경로이며, 새 실험 설계의 출발점이 아니다.
+
+## Current Project In 30 Seconds
+
+```text
+Claim:
+  새 Graph-FL 알고리즘 제안이 아니라 graph gain의 원인 분해/진단 framework.
+
+Core question:
+  Does graph structure explain the observed gain beyond simpler confounders?
+
+Primary evidence:
+  real-control gap, graph-free control gap, alignment, LOO, DI / N_eff.
+
+Minimum experiments:
+  Non-IID stress preflight,
+  real graph vs counterfactual + graph-free controls,
+  minimal source/mode/target attribution,
+  diagnostic mechanism chain.
+```
+
+새 연구 방향은 [docs/framework/experimental-design.md](docs/framework/experimental-design.md)에
+정리되어 있다.
 
 ## Quick Start
 
@@ -311,11 +337,13 @@ graph-fl-design-lab/
 |---|---|
 | [docs/README.md](docs/README.md) | 문서 전체 index |
 | [docs/structure.md](docs/structure.md) | 폴더 구조, 변경 위치, compatibility facade 규칙 |
+| [docs/framework/claim.md](docs/framework/claim.md) | 현재 연구 claim과 boundary |
+| [docs/framework/experimental-design.md](docs/framework/experimental-design.md) | core experiment, metric, interpretation rule |
 | [docs/framework/interfaces.md](docs/framework/interfaces.md) | 조립식 graph algorithm 구현 인터페이스 |
 | [docs/framework/extension-guide.md](docs/framework/extension-guide.md) | 새 graph source/builder 추가 방법 |
 | [docs/framework/prior-work-mapping.md](docs/framework/prior-work-mapping.md) | 선행연구 exact/proxy/interface 경계 |
 | [docs/framework/diagnostics.md](docs/framework/diagnostics.md) | 진단 지표 해석 규칙 |
-| [docs/framework/naming-and-compatibility.md](docs/framework/naming-and-compatibility.md) | 남겨둔 옛 이름과 정리 계획 |
+| [docs/framework/naming-and-compatibility.md](docs/framework/naming-and-compatibility.md) | 필요한 경우에만 보는 호환 이름/정리 계획 |
 | [docs/framework/project-prompt.md](docs/framework/project-prompt.md) | 이후 작업자/agent에게 넘길 전체 프롬프트 |
 
 ## Execution Flow
@@ -379,7 +407,9 @@ python scripts/checks/prior_work_proxy_parity.py --summary experiments_current/p
 
 ## Compatibility
 
-새 코드의 기준 이름은 `vision`, `graphfl`, `graph_filtered_*`다.
+새 코드와 새 문서의 기준 이름은 `vision`, `graphfl`, `graph_filtered_*`다.
+아래 이름들은 현재 방향을 설명하기 위한 이름이 아니라, 이전 명령/결과/import를
+깨지 않기 위한 compatibility surface다. 처음 실행하는 사람은 무시해도 된다.
 
 | 옛 이름 | 현재 역할 |
 |---|---|

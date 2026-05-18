@@ -9,7 +9,9 @@ You are working in the Graph-FL Design Lab repository.
 
 Project goal:
 - This is not a repo for claiming one new graph algorithm is universally better than FedAvg.
-- The goal is a composable diagnostic framework for graph-based federated learning.
+- The goal is to test whether observed graph-FL gains come from graph structure
+  or from simpler confounders such as dominance, norm, smoothing, and optimizer effects.
+- The implementation vehicle is a composable diagnostic framework for graph-based federated learning.
 - A graph-FL method should be represented as replaceable lifecycle components:
   client_state, relation, topology, aggregation, delivery, local_objective,
   state_store, and diagnostics.
@@ -50,7 +52,8 @@ Primary interfaces:
 - Parser-only CLI modules: `spectral_fl/cli/`
 
 Workflow for a new graph algorithm:
-1. Read `README.md`, `docs/structure.md`,
+1. Read `README.md`, `docs/framework/experimental-design.md`,
+   `docs/structure.md`,
    `docs/framework/interfaces.md`, and
    `docs/framework/extension-guide.md`.
 2. Write the method profile:
@@ -98,6 +101,8 @@ Expected output style:
 For a fresh implementation session, read these first:
 
 - `README.md`
+- `docs/framework/experimental-design.md`
+- `docs/framework/claim.md`
 - `docs/structure.md`
 - `docs/framework/interfaces.md`
 - `docs/framework/naming-and-compatibility.md`
