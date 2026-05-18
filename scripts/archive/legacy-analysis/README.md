@@ -1,12 +1,24 @@
 # Legacy Analysis Scripts
 
-These scripts belong to the project direction before the lifecycle design framework.
+Status:
 
-They are preserved for reproducing older phase reports and transition history, but new framework code should not depend on them. Prefer the current diagnostic suite, lifecycle modules, and future `GraphFLDesign`-based tooling for new experiments.
+```text
+archived
+not used by current lifecycle design framework
+```
 
-Default report paths point to `docs/archive/legacy-phase-reports/` so running
-one of these scripts does not recreate old `PHASE*.md` files in the repository
-root.
+Use:
+
+```text
+older phase report reproduction
+transition history
+```
+
+Default report path:
+
+```text
+docs/archive/legacy-phase-reports/
+```
 
 Moved scripts:
 

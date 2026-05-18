@@ -1,47 +1,32 @@
 # Graph-FL Experimental Design
 
-이 문서는 현재 프로젝트의 canonical 실험 설계 요약이다. 새 작업자는 이 문서를
-먼저 읽고, 세부 구현은 `interfaces.md`, metric 해석은 `diagnostics.md`로
-넘어간다.
+Canonical design: [graph_fl_experimental_design.md](graph_fl_experimental_design.md). Metric reference: [graph_fl_experimental_design_appendix.md](graph_fl_experimental_design_appendix.md).
 
-## One-Page Roadmap
+## Roadmap
 
-```text
-1. 최종 claim을 먼저 확인한다.
-2. primary metric으로 claim이 판정 가능한지 본다.
-3. minimal core experiment만 먼저 수행한다.
-4. 결과가 애매할 때 secondary / exploratory analysis를 추가한다.
-5. 마지막에 result interpretation rule로 claim boundary를 정한다.
-```
-
-최종 claim:
+Use this order when planning or reviewing a run.
 
 ```text
-본 프로젝트는 새로운 Graph-FL 알고리즘을 제안하는 것이 아니라,
-Graph-FL에서 관측되는 성능 변화가 실제 graph structure에서 오는지,
-아니면 dominance, norm, smoothing, optimizer 같은 더 단순한 요인으로
-설명되는지를 분해해 검증하는 실험 프레임워크를 제안한다.
-```
-
-핵심 판정 질문:
-
-```text
-Does graph structure explain the observed gain beyond simpler confounders?
+1. Check claim.
+2. Run minimal core experiments.
+3. Compare real graph against counterfactual and graph-free controls.
+4. Attribute source/mode/target effects.
+5. Assign interpretation level.
 ```
 
 ## Primary Metrics
 
-claim 판정은 먼저 아래 지표로 한다.
+These metrics decide whether a result can support a graph-specific claim.
 
-| Metric | 질문 |
+| Metric | Question |
 |---|---|
-| `real-control gap` | real graph가 matched random, shuffled, uniform, identity, clustering-only보다 다른가 |
-| `graph-free control gap` | graph-free norm/dominance correction만으로 같은 gain이 재현되는가 |
-| `alignment change` | correction 후 client update와 aggregate direction이 더 일관되는가 |
+| `real-control gap` | real graph가 matched random, shuffled, uniform, identity, clustering-only와 다른가 |
+| `graph-free control gap` | graph-free norm/dominance correction이 같은 gain을 재현하는가 |
+| `alignment change` | aggregate direction이 client update와 더 일관되는가 |
 | `LOO change` | single-client sensitivity가 줄었는가 |
 | `DI / N_eff change` | dominance가 줄고 실질 참여 client 수가 늘었는가 |
 
-secondary metric은 구조 설명을 위해 붙인다.
+Secondary:
 
 ```text
 density
@@ -51,7 +36,7 @@ homophily
 smoothness
 ```
 
-exploratory metric은 mechanism candidate로만 쓴다.
+Exploratory:
 
 ```text
 spectral energy
@@ -59,27 +44,22 @@ eigengap
 temporal stability
 ```
 
-## Minimal Core Experiment Set
+## Core Experiments
 
-### Preflight. Non-IID Stress Calibration
+Core experiments are ordered by dependency: stress check, graph/control separation, component attribution, then mechanism chain.
 
-실험 환경이 충분히 어렵고 diagnostic metric이 stress에 반응하는지 확인한다.
-이 단계만으로 graph claim을 만들지는 않는다.
+### Preflight
 
-필수 비교:
+| Item | Values |
+|---|---|
+| goal | non-IID stress calibration |
+| baseline | `FedAvg`, `FedAvgM/FedOpt` |
+| stress | alpha/client-count sweep |
+| claim | none |
 
-```text
-FedAvg
-FedAvgM / FedOpt family
-different alpha or client-count stress
-```
+### Core 1. Real Graph Vs Controls
 
-### Core 1. Real Graph Vs Counterfactual + Graph-Free Controls
-
-graph topology가 단순 smoothing, edge 수, identity-free relation, dominance
-correction 효과가 아닌지 확인한다.
-
-필수 비교:
+First claim-bearing experiment.
 
 ```text
 real
@@ -91,14 +71,9 @@ clustering_only
 graphfree_dominance_reweight
 ```
 
-이 실험이 없으면 "graph를 썼다" 이상의 주장을 하기 어렵다.
+### Core 2. Component Attribution
 
-### Core 2. Component Attribution With Minimal Knobs
-
-모든 source/mode/target을 다 돌리는 full search가 아니라, 최소 knob로 어디서
-차이가 나는지 본다.
-
-시작점:
+Run after Core 1 shows a real-control gap worth explaining.
 
 ```text
 source 2개
@@ -108,17 +83,11 @@ same seed/client split
 same optimizer/control setting
 ```
 
-목표:
+### Core 3. Diagnostic Chain
 
-```text
-source / topology / target 중 어느 component가 diagnostic behavior를 바꾸는가?
-```
+Use this to connect outcome changes to metric changes.
 
-### Core 3. Diagnostic Mechanism Chain
-
-accuracy 변화가 primary metric 변화와 연결되는지 확인한다.
-
-예:
+Example:
 
 ```text
 classifier_head_update graph
@@ -129,50 +98,31 @@ classifier_head_update graph
 -> accuracy 안정화
 ```
 
-이런 chain이 있어야 결과가 leaderboard가 아니라 explanation이 된다.
-
 ## Experiment Bank
 
-core 결과가 나온 뒤 필요할 때만 아래 실험을 추가한다.
+Optional experiments refine an already observed pattern.
 
-| Experiment | 사용 시점 |
+| Experiment | Use |
 |---|---|
-| Filter strength sweep | graph filtering mechanism을 더 설명해야 할 때 |
-| Frequency band importance | real-control gap이 graph-frequency band 중 어디서 오는지 봐야 할 때 |
-| Harmful client detection | LOO 결과를 client-level pattern으로 해석해야 할 때 |
-| Temporal stability | graph construction noise나 round-level instability가 의심될 때 |
-| Full source/mode/target sweep | 최소 attribution 결과가 유망할 때 |
+| Filter strength sweep | graph filtering strength |
+| Frequency band importance | low/mid/high band attribution |
+| Harmful client detection | LOO client-level pattern |
+| Temporal stability | graph construction noise |
+| Full source/mode/target sweep | promising minimal attribution result |
 
-## Result Interpretation Rules
+## Interpretation Rules
 
-먼저 결론을 세 단계 중 하나로 정한다.
+Assign one level before writing report text.
 
-| Level | 판정 규칙 |
+| Level | Rule |
 |---|---|
-| Strong graph-specific effect | real graph가 counterfactual graph와 graph-free controls를 모두 이기고, alignment / LOO / DI / N_eff 중 최소 두 개가 함께 개선된다 |
-| Partially graph-related effect | real graph가 일부 control보다 좋지만, graph-free control이나 source/topology confounder로 상당 부분 설명된다 |
-| No necessary graph effect | real graph가 random/shuffled/uniform/graph-free control과 비슷하다 |
+| Strong graph-specific effect | real graph > counterfactual graph and graph-free controls; at least 2 of `alignment`, `LOO`, `DI`, `N_eff` improve |
+| Partially graph-related effect | real graph > some controls but graph-free/source/topology confounder explains much |
+| No necessary graph effect | real graph ≈ random/shuffled/uniform/graph-free |
 
-case별 report wording:
+## Report Tables
 
-```text
-Case A. Graph-specific claim이 강한 경우
-  Graph topology provides additional diagnostic information beyond low-order update statistics.
-
-Case B. Pairwise relation까지만 의미 있는 경우
-  Client relation matters, but explicit topology assignment is not yet proven necessary.
-
-Case C. Graph-free statistic으로 설명되는 경우
-  In this setting, graph gain is largely explained by dominance or magnitude correction.
-
-Case D. Graph-specific effect가 약한 경우
-  In this setting, explicit graph structure is not necessary.
-  Simpler controls or non-graph statistics explain most of the observed behavior.
-```
-
-## Recommended Report Tables
-
-Primary table:
+Primary:
 
 ```text
 variant
@@ -192,7 +142,7 @@ graphfree_control_gap
 conclusion_level
 ```
 
-Secondary structure table:
+Structure:
 
 ```text
 variant
@@ -204,7 +154,7 @@ assortativity
 smoothness
 ```
 
-Exploratory mechanism table:
+Mechanism:
 
 ```text
 variant
@@ -217,8 +167,9 @@ temporal_stability
 
 ## Guardrails
 
-- accuracy만으로 graph-specific effect를 주장하지 않는다.
-- spectral metric은 mechanism candidate이지 단독 증거가 아니다.
-- control graph와 graph-free correction이 없으면 graph claim을 세우지 않는다.
-- graph-specific effect가 약해도 실패로 쓰지 않는다. 더 단순한 설계로 충분하다는
-  결론도 이 framework의 결과다.
+```text
+No graph-specific claim from accuracy alone.
+No graph claim without control graph and graph-free correction.
+Spectral metrics are mechanism candidates, not standalone evidence.
+Weak graph-specific effect is still a valid boundary result.
+```

@@ -1,39 +1,47 @@
-﻿# Framework Design Notes
+# Framework Design Notes
 
-This document records the current implementation shape of the Graph-FL Design Lab. It is an active design note, not a phase backlog.
+Active design note for the Graph-FL Design Lab implementation shape.
 
 ## Core Direction
 
-The repository should make graph-FL methods composable and diagnosable. A method is not one large strategy branch. It is a composition of:
+Graph-FL methods are component compositions:
 
-1. client state extraction
-2. relation estimation
-3. topology construction
-4. aggregation target
-5. delivery/personalization semantics
-6. local objective hooks
-7. state carried across rounds
-8. diagnostics and controls
+```text
+client state extraction
+relation estimation
+topology construction
+aggregation target
+delivery/personalization semantics
+local objective hooks
+state carried across rounds
+diagnostics and controls
+```
 
-The implementation should keep those responsibilities in separate modules so a new graph idea can be inserted without rewriting the whole Flower strategy.
-
-## Current Canonical Paths
+## Canonical Paths
 
 | Responsibility | Canonical path |
 |---|---|
-| Method composition metadata | `spectral_fl/designs/` |
-| Graph source and signal extraction | `spectral_fl/graph/sources/`, `spectral_fl/graph/signals/` |
-| Graph builders and plugin registry | `spectral_fl/graph/builders.py`, `spectral_fl/graph/registry.py` |
-| Control graphs and clustering controls | `spectral_fl/graph/controls.py`, `spectral_fl/graph/clustering.py` |
-| Graph-FL strategy runtime | `spectral_fl/strategies/graphfl/` |
-| Baseline strategies | `spectral_fl/strategies/baselines/` |
-| Lifecycle contracts and counterfactual runner | `spectral_fl/lifecycle/` |
-| Artifact metrics and writers | `spectral_fl/diagnostics/` |
-| Vision run orchestration | `spectral_fl/experiments/vision/` |
-| Vision suite grammar/reporting | `spectral_fl/experiments/suites/vision/` |
+| Method metadata | `spectral_fl/designs/` |
+| Graph source/signal extraction | `spectral_fl/graph/sources/`, `spectral_fl/graph/signals/` |
+| Builders and registry | `spectral_fl/graph/builders.py`, `spectral_fl/graph/registry.py` |
+| Controls/clustering | `spectral_fl/graph/controls.py`, `spectral_fl/graph/clustering.py` |
+| Graph-FL runtime | `spectral_fl/strategies/graphfl/` |
+| Baselines | `spectral_fl/strategies/baselines/` |
+| Lifecycle/counterfactuals | `spectral_fl/lifecycle/` |
+| Metrics/writers | `spectral_fl/diagnostics/` |
+| Vision orchestration | `spectral_fl/experiments/vision/` |
+| Vision suite/reporting | `spectral_fl/experiments/suites/vision/` |
 | Configs | `configs/vision/` |
 
-Compatibility paths such as `run_general_*.py`, `configs/general/...`, `result_general_*`, `general_suite_summary.*`, and `spectral_fl/strategies/spectral/` remain only as wrappers or aliases.
+Compatibility paths:
+
+```text
+run_general_*.py
+configs/general/...
+result_general_*
+general_suite_summary.*
+spectral_fl/strategies/spectral/
+```
 
 ## Runtime Flow
 
@@ -49,52 +57,79 @@ flowchart TD
     DIAG --> REPORT[suite rows, summary, plots]
 ```
 
-The strategy should orchestrate this flow, not own every algorithmic detail. New relation or topology logic belongs in `graph/`; new aggregation object selection belongs in `strategies/graphfl/targets.py`; new artifact fields belong in `diagnostics/` and suite reporting.
+Ownership:
+
+| Logic | Location |
+|---|---|
+| relation/topology | `graph/` |
+| aggregation object selection | `strategies/graphfl/targets.py` |
+| artifact fields | `diagnostics/` and suite reporting |
+| orchestration | `experiments/vision/` |
 
 ## Naming Policy
 
-`graphfl` is the canonical strategy package name. `spectral` is no longer a project-level identity.
+| Use | Name |
+|---|---|
+| strategy package | `spectral_fl.strategies.graphfl` |
+| runtime class | `GraphFLDiagnosticStrategy` |
+| aggregation targets | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
+| filter key | `graph_filter_strength` |
+| suite family | `ours_graph_filtered_*` |
+| filter-only suffix | `_graph_filter_only` |
 
-- Use `GraphFLDiagnosticStrategy` in new runtime code.
-- Use `spectral_fl.strategies.graphfl` for new imports.
-- Use `graph_filtered_update`, `graph_filtered_ema_update`, and `graph_filtered_weight` in new commands.
-- Use `graph_filter_strength`, `ours_graph_filtered_*`, and `_graph_filter_only`
-  for new configs and suite variants.
-- Keep `SpectralConflictAwareStrategy`, `spectral_fl.strategies.spectral`, and `spectral_filtered_*` as compatibility surfaces until a dedicated breaking migration removes them.
+Compatibility debt:
 
-The top-level package name `spectral_fl` is still compatibility debt. Renaming it touches every import and Flower app entrypoint, so it is documented rather than changed in this cleanup pass.
+```text
+SpectralConflictAwareStrategy
+spectral_fl.strategies.spectral
+spectral_filtered_*
+spectral_fl package root
+```
 
 ## Experiment Philosophy
 
-Performance is not the primary signal. The framework should answer mechanism questions:
+Mechanism questions:
 
-- Did the real graph behave differently from matched random, shuffled, identity, or uniform controls?
-- Did clustering-only explain most of the effect?
-- Did graph-free norm/cap/reweight controls explain the effect?
-- Did graph filtering change the update or weight signal in a measurable way?
-- Did the method preserve enough effective clients, entropy, and non-dominance to be interpretable?
+```text
+real graph vs matched random/shuffled/identity/uniform
+clustering-only sufficiency
+graph-free norm/cap/reweight sufficiency
+measurable update/weight perturbation
+effective clients, entropy, non-dominance
+```
 
-A run can be useful even if accuracy is not better, as long as it exposes these mechanism traces.
+## Engineering Rules
 
-## Minimum Engineering Rules
+```text
+CLI modules parser-only
+experiment modules orchestration-only
+graph construction independent of Flower strategies
+spectral strategy package remains thin
+new component tests cover shape, determinism, metadata, compatibility aliases
+```
 
-- Keep CLI modules parser-only.
-- Keep experiment modules as orchestration, not algorithm math.
-- Keep graph construction independent of Flower strategies.
-- Keep `spectral_fl/strategies/spectral/` thin; do not add logic there.
-- Add tests around shape, determinism, metadata, and compatibility aliases when adding a new component.
-- Run `python -m unittest discover -s tests` and `python scripts/checks/diagnostic_suite_preflight.py` before claiming the repo is ready for experiments.
+Checks:
 
-## Current Known Debt
+```text
+python -m unittest discover -s tests
+python scripts/checks/diagnostic_suite_preflight.py
+```
 
-| Debt | Why not fixed now |
+## Known Debt
+
+| Debt | Reason |
 |---|---|
-| `spectral_fl` package root | high-risk import and app-entrypoint migration |
-| `spectral_filtered_*` lower-level operator outputs | embedded in lifecycle/design tests and historical result metadata |
-| `ours_spectral_filtered_*` suite variant aliases | kept for historical result reuse |
-| `spectral_filter_strength` compatibility key | still written for historical readers |
-| `_spectral_only` / `_speconly` suffix aliases | kept for historical variant parsing |
-| `result_general_*` / `general_suite_summary.*` | old reports and readers still need them |
-| `configs/general/...` path alias | user commands may still pass old paths |
+| `spectral_fl` package root | high-risk import/app-entrypoint migration |
+| `spectral_filtered_*` lower-level outputs | historical metadata and tests |
+| `ours_spectral_filtered_*` suite aliases | historical result reuse |
+| `spectral_filter_strength` key | historical readers |
+| `_spectral_only` / `_speconly` suffixes | historical variant parsing |
+| `result_general_*` / `general_suite_summary.*` | old reports/readers |
+| `configs/general/...` alias | old user commands |
 
-Those items are tracked in `docs/framework/cleanup-plan.md` and `docs/framework/naming-and-compatibility.md`.
+Tracking:
+
+```text
+docs/framework/cleanup-plan.md
+docs/framework/naming-and-compatibility.md
+```
