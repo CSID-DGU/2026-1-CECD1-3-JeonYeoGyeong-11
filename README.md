@@ -63,11 +63,6 @@ python3.11 -m venv .venv
 ./.venv/bin/python -m pip install -e .
 ```
 
-Existing local environment:
-
-```powershell
-D:\jongseol\.venv311\Scripts\python.exe --version
-```
 
 ### Verify
 
