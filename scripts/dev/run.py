@@ -64,6 +64,29 @@ GATE0_REQUIRED_TEXT = {
     ),
 }
 
+GATE1_REQUIRED_TEXT = {
+    "docs/maintenance/rename-inventory.md": (
+        "Gate 1 Pattern Summary",
+        "Serialized Asset Inventory",
+        "data/Cora/processed/data.pt",
+        "tests/structure/test_boundaries.py",
+        "spectral_fl",
+        "result_general_",
+        "spectral_filter_strength",
+    ),
+    "docs/maintenance/line-budget-allowlist.txt": (
+        "Protected Paths",
+        "spectral_fl/experiments/suites/vision/variants.py",
+        "spectral_fl/strategies/graphfl/strategy.py",
+        "spectral_fl/experiments/vision/suite.py",
+        "added - removed <= 0",
+    ),
+    "docs/removed-materials.md": (
+        "pre-graphfl-rename",
+        "e647da931bb3a78cc228ac2ad31103537b5ed640",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -110,6 +133,35 @@ def _missing_text(root: Path, expectations: dict[str, Iterable[str]]) -> list[st
     return failures
 
 
+def _tag_exists(root: Path, tag_name: str) -> bool:
+    proc = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", tag_name],
+        cwd=str(root),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    return proc.returncode == 0
+
+
+def _tracked_files(root: Path) -> list[str]:
+    proc = subprocess.run(
+        ["git", "ls-files"],
+        cwd=str(root),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if proc.returncode != 0:
+        return []
+    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+
+
+def _tracked_serialized_assets(root: Path) -> list[str]:
+    suffixes = (".pkl", ".pickle", ".pt", ".pth")
+    return [path for path in _tracked_files(root) if path.lower().endswith(suffixes)]
+
+
 def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     root = repo_root(root)
     failed_checks: list[str] = []
@@ -118,6 +170,16 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         for rel in _missing_files(root, GATE0_REQUIRED_FILES):
             failed_checks.append(f"missing required Gate 0 file: {rel}")
         failed_checks.extend(_missing_text(root, GATE0_REQUIRED_TEXT))
+    elif gate == "1":
+        failed_checks.extend(_missing_text(root, GATE1_REQUIRED_TEXT))
+        if not _tag_exists(root, "pre-graphfl-rename"):
+            failed_checks.append("missing tag: pre-graphfl-rename")
+        serialized = _tracked_serialized_assets(root)
+        if serialized:
+            failed_checks.append(
+                "tracked serialized assets must be classified explicitly: "
+                + ", ".join(serialized)
+            )
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

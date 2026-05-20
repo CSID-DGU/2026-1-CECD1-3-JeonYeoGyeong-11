@@ -8,7 +8,7 @@ documents after Gate 6.
 
 | Anchor | Status | Notes |
 |---|---|---|
-| `pre-graphfl-rename` | pending | Create after the Gate 0 commit, before Gate 1 begins. Record the tag SHA here. |
+| `pre-graphfl-rename` | created | SHA `e647da931bb3a78cc228ac2ad31103537b5ed640`; Gate 0 workspace baseline before Gate 1 inventory. |
 
 ## Tombstones
 

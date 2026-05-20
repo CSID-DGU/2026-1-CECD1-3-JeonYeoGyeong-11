@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 0 - workspace documentation |
-| status | Gate 0 workspace created |
+| current_gate | Gate 2 - result/config schema |
+| status | Gate 1 inventory complete |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | create Gate 0 commit, create `pre-graphfl-rename` tag, then start Gate 1 inventory |
+| next_step | start additive-only result/config schema work and implement `python scripts/dev/run.py gate-check 2` |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is

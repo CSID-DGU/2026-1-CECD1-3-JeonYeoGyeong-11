@@ -42,10 +42,30 @@ class GateCheckEntrypointTest(unittest.TestCase):
     def test_future_gate_checks_fail_closed_until_implemented(self):
         module = load_run_module()
 
-        report = module.run_gate_check("1", ROOT)
+        report = module.run_gate_check("2", ROOT)
 
         self.assertFalse(report["pass"])
         self.assertIn("not implemented yet", report["failed_checks"][0])
+
+    def test_gate1_fails_without_inventory_and_tag(self):
+        module = load_run_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+
+            report = module.run_gate_check("1", root)
+
+        self.assertFalse(report["pass"])
+        self.assertTrue(any("rename-inventory" in item for item in report["failed_checks"]))
+        self.assertTrue(any("pre-graphfl-rename" in item for item in report["failed_checks"]))
+
+    def test_current_gate1_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("1", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "1")
 
 
 if __name__ == "__main__":

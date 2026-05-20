@@ -21,6 +21,27 @@ legacy surface is discovered.
 | `ours_spectral_filtered_*` | old suite token | keep through deprecation |
 | `_spectral_only`, `_speconly` | old suite suffixes | keep through deprecation |
 
+## Gate 1 Pattern Summary
+
+Counts below are from tracked files after Gate 0. They are inventory numbers,
+not removal targets for this gate.
+
+| Pattern | Files | Hits | Classification |
+|---|---:|---:|---|
+| `spectral_fl` | 163 | 625 | current package root; migrate in Gate 3, shim until Gate 6 |
+| `graphfl_lab` | 6 | 18 | planned target name in docs/status only |
+| `run_general` | 19 | 94 | compatibility runner/script surface |
+| `run_vision` | 27 | 61 | current vision runner surface; rewire in Gate 4b |
+| `run_graph_ablation.py` | 6 | 7 | Cora graph ablation runner; keep thin wrapper |
+| `configs/general` | 11 | 22 | compatibility config path alias |
+| `result_general_` | 23 | 304 | compatibility result filename and readers |
+| `general_suite_` | 15 | 25 | compatibility suite artifact filename |
+| `spectral_filter_strength` | 16 | 43 | compatibility config/result key |
+| `spectral_filtered_` | 39 | 189 | compatibility aggregation target/result spelling |
+| `ours_spectral_filtered` | 11 | 42 | compatibility suite token family |
+| `_spectral_only` | 8 | 30 | compatibility suite suffix |
+| `_speconly` | 5 | 6 | compatibility suite suffix |
+
 ## Serialized Asset Inventory
 
 Gate 1 must search for:
@@ -37,6 +58,15 @@ This is the pickle/checkpoint compatibility inventory. If old serialized assets
 reference `spectral_fl.*`, Gate 6 must either migrate
 them with `scripts/dev/migrate_serialized_objects.py` or document that they are
 outside compatibility guarantees after hard cleanup.
+
+Tracked source inventory has no `*.pkl`, `*.pickle`, `*.pt`, or `*.pth` files.
+Local ignored data-cache assets currently observed:
+
+| Path | Status | Gate impact |
+|---|---|---|
+| `data/Cora/processed/data.pt` | ignored local dataset cache | not a package pickle/checkpoint contract |
+| `data/Cora/processed/pre_filter.pt` | ignored local dataset cache | not a package pickle/checkpoint contract |
+| `data/Cora/processed/pre_transform.pt` | ignored local dataset cache | not a package pickle/checkpoint contract |
 
 ## Thin Facade Protection
 
@@ -68,3 +98,5 @@ Record any dependency-driven reorder here before applying it.
 | Date | Finding | Decision |
 |---|---|---|
 | 2026-05-21 | Initial inventory file created. | Gate 1 will populate counts and allowlists. |
+| 2026-05-21 | Gate 1 tracked-file scan found widespread current `spectral_fl` imports and compatibility names. | Treat as inventory; no removal before schema/package gates. |
+| 2026-05-21 | Serialized asset scan found only ignored local Cora dataset `.pt` cache files. | Exclude data cache from pickle compatibility migration unless later inventory finds project checkpoints. |
