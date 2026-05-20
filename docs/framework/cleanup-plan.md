@@ -12,6 +12,18 @@ Add new graph algorithms through GraphFLDesign/source/builder/target/lifecycle/d
 Stage risky renames: canonical name -> alias -> internal migration -> docs/configs -> tests -> removal gate.
 ```
 
+## Resumable Execution
+
+Long-running cleanup/rename work is tracked in
+`docs/maintenance/cleanup-status.md`. Use that file for current gate state,
+unexpected findings, existing-plan mapping, and the next safe action.
+
+Gate checks run through:
+
+```text
+python scripts/dev/run.py gate-check <gate>
+```
+
 ## Completed
 
 | Item | Status |

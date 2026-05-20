@@ -1,0 +1,14 @@
+# Line Budget Allowlist
+#
+# Gate 1 starts a line-growth guard for large files. The default measurement is:
+#
+#   git diff --numstat <gate-start-sha> -- <protected-paths>
+#
+# For each protected file, added - removed must be <= 0.
+# Comments, whitespace, and blank lines count because the measurement is
+# numstat-based. Exceptions must include an expiry date and a reason.
+#
+# Format:
+# path | expires_on | reason
+#
+# No active exceptions.
