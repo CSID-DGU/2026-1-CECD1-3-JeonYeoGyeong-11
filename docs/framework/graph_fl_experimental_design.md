@@ -115,6 +115,20 @@ graph_source
 | `clustering_only` | coarse group 효과 |
 | `graphfree_dominance_reweight` | dominance correction 효과 |
 
+Semantic/smoothing reading:
+
+```text
+Semantic Gain is reported as an estimated real-control gap.
+Smoothing Gain is inferred from relation-free or relation-destroyed controls.
+Random control is a matched counterfactual, not pure smoothing by assumption.
+```
+
+Use `matched_random` for edge-count or weight-distribution effects, `shuffled`
+for client identity assignment, `uniform` for relation-free averaging,
+`identity` for no graph intervention, and `graphfree_dominance_reweight` for
+non-graph contribution correction. A graph-specific claim needs the real graph
+to survive this set, not only to beat FedAvg.
+
 ### Core 2. Component Attribution
 
 원칙:

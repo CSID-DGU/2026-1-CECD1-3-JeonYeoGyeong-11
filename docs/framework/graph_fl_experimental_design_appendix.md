@@ -65,6 +65,13 @@ $$
 | `Real > uniform` | generic smoothing 이상으로 topology가 중요 |
 | `Real ≈ control` | graph-specific claim 약함 |
 
+Project shorthand:
+
+| Name | Definition | Caveat |
+|---|---|---|
+| `Estimated Semantic Gain` | $\Delta_{\text{real-control}}$ for a chosen matched control | control-specific, not a pure causal quantity |
+| `Generic Smoothing Gain` | relation-free or relation-destroyed control improvement over no-graph/FedAvg-style behavior | must be checked with density, degree, entropy, smoothness, `DI`, and `N_eff` |
+
 #### 2.2 Cosine Similarity / Alignment
 
 $$
@@ -312,6 +319,11 @@ $$
 | `identity` | graph 개입 없음 | graph path가 의미 없음 |
 | `clustering_only` | coarse grouping | fine-grained edge 불필요 |
 | `graphfree_dominance_reweight` | dominance correction | graph가 아니라 contribution correction |
+
+Do not collapse these controls into one "random graph" baseline. Each one
+removes a different explanation: mixing strength, client identity, generic
+averaging, graph-path intervention, coarse grouping, or non-graph contribution
+correction.
 
 ## 4. Optional Experiment Bank
 
