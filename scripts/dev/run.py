@@ -87,6 +87,41 @@ GATE1_REQUIRED_TEXT = {
     ),
 }
 
+GATE2_REQUIRED_TEXT = {
+    "spectral_fl/diagnostics/result_schema.py": (
+        "RESULT_SCHEMA_VERSION",
+        "LEGACY_RESULT_SCHEMA_VERSION",
+        "with_result_schema",
+        "config_aliases_used",
+        "unsupported_components",
+    ),
+    "spectral_fl/config_io.py": (
+        "_config_aliases_used",
+        "ARG_DEST_ALIASES",
+        "configs/general->configs/vision",
+    ),
+    "spectral_fl/flower_app.py": (
+        "with_result_schema",
+        "config_aliases_from_args",
+        "unsupported_components_from_args",
+    ),
+    "spectral_fl/experiments/vision/suite.py": (
+        "with_result_schema",
+        "config_aliases_from_args",
+        "unsupported_components_from_args",
+    ),
+    "spectral_fl/experiments/cora/graph_ablation.py": (
+        "with_result_schema",
+        "config_aliases_from_args",
+        "unsupported_components_from_args",
+    ),
+    "tests/diagnostics/test_result_schema.py": (
+        "test_with_result_schema_adds_required_fields",
+        "test_missing_version_reads_as_v0",
+        "test_config_aliases_are_recorded",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -180,6 +215,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
                 "tracked serialized assets must be classified explicitly: "
                 + ", ".join(serialized)
             )
+    elif gate == "2":
+        failed_checks.extend(_missing_text(root, GATE2_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

@@ -14,8 +14,19 @@ from spectral_fl.diagnostics.metrics import (
     summarize_pre_post,
 )
 from spectral_fl.diagnostics.schema import ClientRoundDiagnostics, RoundDiagnostics
+from spectral_fl.diagnostics.result_schema import (
+    LEGACY_RESULT_SCHEMA_VERSION,
+    RESULT_SCHEMA_VERSION,
+    config_aliases_from_args,
+    result_schema_version,
+    unsupported_components_from_args,
+    validate_result_schema,
+    with_result_schema,
+)
 
 __all__ = [
+    "LEGACY_RESULT_SCHEMA_VERSION",
+    "RESULT_SCHEMA_VERSION",
     "append_client_metrics_csv",
     "append_round_metrics_csv",
     "ClientRoundDiagnostics",
@@ -25,6 +36,11 @@ __all__ = [
     "compute_loo_distortion",
     "compute_q",
     "init_artifact_dir",
+    "config_aliases_from_args",
+    "result_schema_version",
     "RoundDiagnostics",
     "summarize_pre_post",
+    "unsupported_components_from_args",
+    "validate_result_schema",
+    "with_result_schema",
 ]

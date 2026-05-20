@@ -42,7 +42,7 @@ class GateCheckEntrypointTest(unittest.TestCase):
     def test_future_gate_checks_fail_closed_until_implemented(self):
         module = load_run_module()
 
-        report = module.run_gate_check("2", ROOT)
+        report = module.run_gate_check("3", ROOT)
 
         self.assertFalse(report["pass"])
         self.assertIn("not implemented yet", report["failed_checks"][0])
@@ -66,6 +66,25 @@ class GateCheckEntrypointTest(unittest.TestCase):
 
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "1")
+
+    def test_gate2_fails_without_schema_files(self):
+        module = load_run_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+
+            report = module.run_gate_check("2", root)
+
+        self.assertFalse(report["pass"])
+        self.assertTrue(any("result_schema.py" in item for item in report["failed_checks"]))
+
+    def test_current_gate2_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("2", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "2")
 
 
 if __name__ == "__main__":

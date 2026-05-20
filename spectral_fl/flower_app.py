@@ -44,6 +44,11 @@ from spectral_fl.data.vision import (
     vision_input_shape,
     vision_num_classes,
 )
+from spectral_fl.diagnostics.result_schema import (
+    config_aliases_from_args,
+    unsupported_components_from_args,
+    with_result_schema,
+)
 from spectral_fl.graph.presets import apply_graph_preset_to_namespace
 from spectral_fl.models.vision import build_model
 
@@ -110,10 +115,14 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
     out_path = out_dir / f"result_general_{args.method}_seed{args.seed}{tag}.json"
     vision_alias_path = out_dir / f"result_vision_{args.method}_seed{args.seed}{tag}.json"
     class_dist = [s.label_hist for s in shards]
-    all_results: Dict[str, Any] = {
-        "meta": build_vision_meta(args, class_dist, out_path),
-        "results": {},
-    }
+    all_results: Dict[str, Any] = with_result_schema(
+        {
+            "meta": build_vision_meta(args, class_dist, out_path),
+            "results": {},
+        },
+        config_aliases_used=config_aliases_from_args(args),
+        unsupported_components=unsupported_components_from_args(args),
+    )
     all_results["meta"]["canonical_output_path"] = str(vision_alias_path)
     all_results["meta"]["compatibility_output_path"] = str(out_path)
 
@@ -165,10 +174,14 @@ def _run_cora_server(grid: Grid, args: Namespace) -> None:
     class_dist = compute_client_class_distribution(
         client_graphs=client_graphs, out_dim=out_dim
     )
-    all_results: Dict[str, Any] = {
-        "meta": build_meta(args, class_dist, out_path),
-        "results": {},
-    }
+    all_results: Dict[str, Any] = with_result_schema(
+        {
+            "meta": build_meta(args, class_dist, out_path),
+            "results": {},
+        },
+        config_aliases_used=config_aliases_from_args(args),
+        unsupported_components=unsupported_components_from_args(args),
+    )
 
     methods = ["fedavg", "ours"] if args.method == "both" else [args.method]
     for method in methods:

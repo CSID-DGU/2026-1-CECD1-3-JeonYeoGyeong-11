@@ -45,6 +45,17 @@ def resolve_config_path(path: str | Path) -> Path:
     return config_path
 
 
+def _config_path_alias_used(original: str | Path, resolved: Path) -> str:
+    original_path = Path(original)
+    if original_path == resolved:
+        return ""
+    original_parts = [part.lower() for part in original_path.parts]
+    resolved_parts = [part.lower() for part in resolved.parts]
+    if "general" in original_parts and "vision" in resolved_parts:
+        return "configs/general->configs/vision"
+    return f"{original_path}->{resolved}"
+
+
 def load_config(path: str | Path) -> Dict[str, Any]:
     config_path = resolve_config_path(path)
     with config_path.open("r", encoding="utf-8") as f:
@@ -70,12 +81,20 @@ def parse_args_with_config(parser: argparse.ArgumentParser) -> argparse.Namespac
         )
 
     valid_dests = {action.dest for action in parser._actions}
-    overrides = load_config(pre_args.config)
+    resolved_config_path = resolve_config_path(pre_args.config)
+    path_alias = _config_path_alias_used(pre_args.config, resolved_config_path)
+    overrides = load_config(resolved_config_path)
     normalized: Dict[str, Any] = {}
+    aliases_used: list[str] = []
+    if path_alias:
+        aliases_used.append(path_alias)
     unknown = []
     for raw_key, value in overrides.items():
         key = str(raw_key).replace("-", "_")
-        key = ARG_DEST_ALIASES.get(key, key)
+        aliased_key = ARG_DEST_ALIASES.get(key, key)
+        if aliased_key != key:
+            aliases_used.append(f"{key}->{aliased_key}")
+        key = aliased_key
         if key not in valid_dests:
             unknown.append(str(raw_key))
             continue
@@ -90,6 +109,7 @@ def parse_args_with_config(parser: argparse.ArgumentParser) -> argparse.Namespac
         normalize_arg_aliases(parser.parse_args()),
         explicit_dests=explicit_dests,
         config_dests=set(normalized),
+        config_aliases_used=aliases_used,
     )
 
 
@@ -136,9 +156,11 @@ def _attach_arg_origin_metadata(
     *,
     explicit_dests: set[str],
     config_dests: set[str],
+    config_aliases_used: list[str] | None = None,
 ) -> argparse.Namespace:
     user_dests = set(explicit_dests) | set(config_dests)
     setattr(args, "_explicit_arg_dests", frozenset(explicit_dests))
     setattr(args, "_config_arg_dests", frozenset(config_dests))
     setattr(args, "_user_arg_dests", frozenset(user_dests))
+    setattr(args, "_config_aliases_used", tuple(config_aliases_used or []))
     return args

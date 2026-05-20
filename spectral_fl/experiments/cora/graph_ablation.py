@@ -47,6 +47,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from spectral_fl.config_io import public_args_dict
+from spectral_fl.diagnostics.result_schema import (
+    config_aliases_from_args,
+    unsupported_components_from_args,
+    with_result_schema,
+)
 from spectral_fl.experiments.suites.stats import (
     final_acc,
     load_json,
@@ -444,11 +449,15 @@ def run(args):
     summary_rows.sort(key=rank_key)
 
     # ---- save ----
-    suite_summary = {
-        "meta": suite_meta,
-        "summary": summary_rows,
-        "failed_runs": failed_runs,
-    }
+    suite_summary = with_result_schema(
+        {
+            "meta": suite_meta,
+            "summary": summary_rows,
+            "failed_runs": failed_runs,
+        },
+        config_aliases_used=config_aliases_from_args(args),
+        unsupported_components=unsupported_components_from_args(args),
+    )
     summary_json = out_dir / f"suite_{args.suite_tag}_summary.json"
     with summary_json.open("w", encoding="utf-8") as f:
         json.dump(suite_summary, f, indent=2)

@@ -139,6 +139,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from spectral_fl.config_io import public_args_dict
+from spectral_fl.diagnostics.result_schema import (
+    config_aliases_from_args,
+    unsupported_components_from_args,
+    with_result_schema,
+)
 from spectral_fl.experiments.suites.vision.reporting import (
     _variant_k_number,
     append_validation_verdict,
@@ -823,11 +828,15 @@ def run(args):
         ),
     }
 
-    suite_summary = {
-        "meta": suite_meta,
-        "summary": summary_rows,
-        "failed_runs": failed_runs,
-    }
+    suite_summary = with_result_schema(
+        {
+            "meta": suite_meta,
+            "summary": summary_rows,
+            "failed_runs": failed_runs,
+        },
+        config_aliases_used=config_aliases_from_args(args),
+        unsupported_components=unsupported_components_from_args(args),
+    )
     summary_json = out_dir / "general_suite_summary.json"
     with summary_json.open("w", encoding="utf-8") as f:
         json.dump(suite_summary, f, indent=2, allow_nan=True)
