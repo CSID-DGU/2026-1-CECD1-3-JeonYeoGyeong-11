@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 3 - graphfl_lab package migration |
-| status | Gate 2 schema/config contract complete |
+| current_gate | Gate 3a - graphfl_lab alias bridge |
+| status | Gate 3a alias bridge implemented; full Gate 3 import migration still pending |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | start Gate 3 alias bridge for `graphfl_lab` while keeping `spectral_fl` shim |
+| next_step | complete Gate 3 import batches and real move verification, or continue with Gate 4 only after documenting the partial Gate 3 boundary |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -161,6 +161,7 @@ and impact scope.
 | 2026-05-21 | Recursive filesystem scan can hit ignored/cache directories such as `.pytest_cache` with access errors. | Gate 1 inventory uses `git ls-files` for tracked sources plus explicit serialized asset globs that exclude virtualenv/cache directories. |
 | 2026-05-21 | Creating branch `codex/graphfl-cleanup-gate-0` failed because the local Git refs cannot create the `codex/` directory. | Use `codex-graphfl-cleanup-gate-0` for this local branch while keeping the same Gate 0 scope. |
 | 2026-05-21 | Gate 2 added additive-only result schema fields and config alias tracing. | New result/suite payloads get `result_schema_version`, `config_aliases_used`, and `unsupported_components`; missing version is read as `v0`. |
+| 2026-05-21 | Gate 3 alias bridge can be verified before full import-batch migration, but calling it full Gate 3 would overstate completion. | Split local checks as `3a` for alias bridge; keep `3` fail-closed until full package migration and real move verification are done. |
 
 ## Closure Policy
 

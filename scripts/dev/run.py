@@ -122,6 +122,31 @@ GATE2_REQUIRED_TEXT = {
     ),
 }
 
+GATE3_REQUIRED_TEXT = {
+    "graphfl_lab/__init__.py": (
+        "Canonical package alias",
+        "__path__",
+        "sys.modules.setdefault",
+    ),
+    "spectral_fl/__init__.py": (
+        "DeprecationWarning",
+        "GRAPHFL_LAB_SILENCE_DEPRECATION",
+        "graphfl_lab",
+    ),
+    "pyproject.toml": (
+        "graphfl_lab*",
+        "graphfl_lab.flower_app:server_app",
+        "graphfl_lab.flower_app:client_app",
+    ),
+    "tests/core/test_package_alias.py": (
+        "test_graphfl_lab_imports_flower_app",
+        "test_spectral_fl_warns_by_default",
+        "test_spectral_fl_warning_can_be_silenced",
+        "test_sys_modules_alias_roots_exist",
+        "test_pickle_round_trip_for_canonical_import",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -217,6 +242,13 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
             )
     elif gate == "2":
         failed_checks.extend(_missing_text(root, GATE2_REQUIRED_TEXT))
+    elif gate == "3a":
+        failed_checks.extend(_missing_text(root, GATE3_REQUIRED_TEXT))
+    elif gate == "3":
+        failed_checks.append(
+            "Gate 3 full package migration is not complete; run gate-check 3a "
+            "for the alias bridge, then finish import batches and real move verification."
+        )
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

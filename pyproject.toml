@@ -18,14 +18,14 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["spectral_fl*"]
+include = ["spectral_fl*", "graphfl_lab*"]
 
 [tool.flwr.app]
 publisher = "local"
 
 [tool.flwr.app.components]
-serverapp = "spectral_fl.flower_app:server_app"
-clientapp = "spectral_fl.flower_app:client_app"
+serverapp = "graphfl_lab.flower_app:server_app"
+clientapp = "graphfl_lab.flower_app:client_app"
 
 [tool.flwr.app.config]
 track = "vision-fl"
