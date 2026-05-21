@@ -1,133 +1,84 @@
-# Capstone Shared Research Direction
+# Graph-FL Gain Attribution Framework
 
-종합설계 1 문서 작성과 프로젝트 범위 확정을 위한 기준 문서다.
-핵심은 선행연구를 단순 요약하지 않고, 본 프로젝트가 무엇을 평가하려는지
-분명히 잡는 것이다.
+Graph-based federated learning은 client를 독립적인 평균 대상이 아니라 관계를
+가진 집합으로 본다. client마다 데이터 분포, update 방향, 모델 상태가 다르기
+때문에, 이 차이를 relation graph로 표현하려는 흐름은 자연스럽다. graph는
+client similarity, cluster, topology, smoothing, personalized aggregation을
+한 구조 안에 담을 수 있다.
 
-## 프로젝트 정의
+최근 Graph-FL/PFL 연구는 이 방향으로 빠르게 확장됐다. FedAMP, SFL,
+pFedGraph, FedAGA, FED-PUB/GPFL 같은 계열은 client similarity나 relation
+graph를 이용해 non-IID 환경에서 협력 또는 개인화를 개선하려고 한다. 더 최근
+흐름은 graph attention, hypernetwork, hypergraph, functional embedding,
+spectral knowledge, fairness, privacy, robustness까지 넓어졌다.
 
-본 프로젝트는 새로운 Graph-FL SOTA 알고리즘을 제안하는 것이 아니다.
+문제는 graph가 유용해 보이는 결과 안에 여러 효과가 섞여 있다는 점이다. 어떤
+방법은 graph 전체를 쓰지만, 어떤 방법은 graph에서 일부 성질만 떼어 단순화한다.
+예를 들어 similarity만 쓰거나, sparse kNN만 남기거나, cluster 단위로 묶거나,
+graph 없이 contribution/dominance만 보정하거나, graph smoothing과 비슷한
+효과만 aggregation에 넣는다. 이런 흐름은 graph가 불필요하다는 뜻이 아니라,
+graph 기반 성능 향상을 설명할 후보가 여러 개라는 뜻이다.
 
-Graph-FL에서 성능 향상이 발생했을 때, 그 이유가 실제 client relation
-정보 때문인지, 아니면 단순 smoothing, graph density, update norm/dominance
-보정, optimizer 차이 같은 요인 때문인지 분해해서 검증하는 실험 프레임워크를
-만든다.
-
-공통 설명 문장:
-
-```text
-그래프 기반 연합학습에서 성능 향상의 원인을 control graph와 diagnostic metric으로
-분해해 검증하는 실험 프레임워크
-```
-
-핵심 질문은 두 단계로 둔다.
+따라서 핵심 질문은 단순히 “graph를 쓰면 좋아지는가?”가 아니다.
 
 ```text
 Q1. Graph-FL의 성능 향상은 실제 client relation 때문인가?
 Q2. 그렇다면 어떤 graph 특성이 그 효과를 설명하는가?
 ```
 
-Q1은 graph-specific effect의 존재 여부를 묻는다. Q2는 그 효과가 단순히
-graph를 썼기 때문인지, 아니면 homophily, density, sparsity, degree structure,
-community structure, temporal stability, spectral smoothness 같은 구체적
-특성 때문인지를 묻는다.
+Q1은 graph-specific effect의 존재 여부를 묻는다. Q2는 그 효과가 homophily,
+density, sparsity, degree structure, community structure, temporal stability,
+spectral smoothness 같은 구체적 특성 중 어디에서 나오는지 묻는다.
 
-최소 성과 기준에서도 이 프로젝트는 의미가 있다. 모든 Graph-FL 계열 알고리즘을
-완성하거나 SOTA 성능을 달성하지 못하더라도, graph source, graph mode,
-aggregation target, control graph, diagnostic metric을 같은 규칙으로 실행하고
-비교할 수 있는 프레임워크를 제공하면 이후 그래프 기반 연합학습 연구에 계속
-재사용할 수 있다.
+이 프로젝트는 새로운 Graph-FL SOTA 알고리즘을 추가하는 것보다, graph gain을
+분해해 평가하는 프레임워크를 만드는 데 초점을 둔다. 가장 작은 범위에서도
+`graph_source`, `graph_mode`, `aggregation_target`, control graph,
+diagnostic metric을 같은 실행 환경에서 비교할 수 있으면 의미가 있다. 이후
+Graph-FL 연구에서 새로운 graph 방법이 나와도 같은 축으로 비교하고 해석할 수
+있기 때문이다.
 
-잘 작동할 경우에는 더 강한 주장으로 확장된다. real graph가 matched random,
-shuffled, uniform, identity, graph-free control을 넘고, alignment, LOO,
-DI, N_eff 같은 mechanism metric에서도 일관된 개선을 보이면 단순 성능 비교를
-넘어 graph-specific effect에 대한 근거를 제시할 수 있다. 반대로 real graph와
-control의 차이가 작아도 실패가 아니다. 그 경우에도 기존 Graph-FL 성능 향상이
-relation 정보보다 smoothing, dominance correction, optimizer effect로 설명될
-수 있음을 보여주는 진단 결과가 된다.
+결과가 잘 나오면 더 강한 주장으로 확장된다. real graph가 matched random,
+shuffled, uniform, identity, graph-free control을 넘고, alignment, LOO, DI,
+N_eff 같은 mechanism metric에서도 일관된 개선을 보이면 graph-specific
+effect에 대한 근거를 제시할 수 있다. 반대로 real graph와 control의 차이가
+작아도 실패가 아니다. 그 경우에는 Graph-FL 성능 향상이 relation 정보보다
+smoothing, dominance correction, optimizer effect, coarse clustering으로 더
+잘 설명된다는 진단 결과가 된다.
 
-## 선행연구를 보는 관점
+## 선행연구에서 이어지는 질문
 
-기존 연구는 중요하다. FedAMP, SFL, pFedGraph, FedAGA, FED-PUB/GPFL 같은
-연구들은 client similarity, relation graph, personalized aggregation이
-non-IID 환경에서 유효할 수 있음을 보여준다.
+FedAvg/FedOpt 계열은 graph 없이도 non-IID 환경에서 일정한 안정화 효과를 낸다.
+Personalized FL 계열은 모든 client를 같은 방식으로 취급하는 것이 충분하지
+않다는 문제의식을 제공한다. Graph-FL/PFL 계열은 client relation을 직접
+모델링해 협력 구조를 만든다.
 
-그래프가 점점 많이 쓰이는 이유는 자연스럽다. 연합학습의 client들은 독립적인
-평균 대상이 아니라 서로 다른 데이터 분포, update 방향, 모델 상태를 가진 집합이다.
-이 관계를 명시적으로 표현하려면 graph가 좋은 언어가 된다. graph는 client 간
-유사도, 협력 가능성, cluster, topology, smoothing, personalized aggregation을
-한 구조 안에서 표현할 수 있다.
-
-동시에 많은 방법은 graph 전체를 그대로 쓰기보다 일부 성질만 떼어 단순화한다.
-예를 들어 client similarity만 쓰거나, sparse kNN만 남기거나, cluster 단위로
-묶거나, graph 없이 contribution/dominance만 보정하거나, graph smoothing과
-비슷한 효과만 aggregation에 넣는 식이다. 이 흐름은 graph가 쓸모없다는 뜻이
-아니라, graph 안에 여러 효과가 섞여 있다는 뜻이다.
-
-하지만 많은 연구는 주로 최종 성능이나 개인화 성능을 중심으로 효과를 설명한다.
-본 프로젝트의 질문은 조금 다르다.
-
-```text
-graph를 써서 좋아졌는가?
-```
-
-가 아니라,
-
-```text
-좋아진 이유가 정말 graph relation 때문인가?
-```
-
-이다.
-
-이 질문은 선행연구와 자연스럽게 연결된다. FedAvg/FedOpt 계열은 graph 없이도
-non-IID 환경에서 일정한 안정화 효과를 낸다. Personalized FL 계열은 모든
-client를 같은 방식으로 취급하는 것이 충분하지 않다는 문제의식을 제공한다.
-Graph-FL/PFL 계열은 client relation을 직접 모델링해 협력 구조를 만든다.
-여기까지 오면 다음 질문이 자연스럽게 생긴다.
+이 흐름 다음에는 자연스럽게 평가 문제가 나온다.
 
 ```text
 client relation graph가 유효하다면, 그 유효성은 정확히 어떤 요인으로 설명되는가?
 ```
 
-따라서 본 주제는 선행연구와 별개의 뜬금없는 아이디어가 아니라, Graph-FL/PFL
-연구가 성능 개선을 보여준 이후 반드시 따라오는 평가 문제다.
-
-이 때문에 프레임워크 자체가 중요하다. full graph 방법과 graph에서 일부 효과만
-떼어낸 단순화 방법을 같은 실험판에서 비교할 수 있어야, 어떤 수준의 graph가
-필요한지 판단할 수 있다. 경우에 따라 full graph가 필요할 수도 있고, 경우에 따라
-random/shuffled/uniform, clustering-only, graph-free correction 같은 단순한
-대안으로 충분할 수도 있다. 본 프로젝트는 그 경계를 실험적으로 찾기 위한 구조를
-제공한다.
-
-따라서 선행연구를 쓸 때는 “어떤 알고리즘이 성능이 좋다”가 아니라 다음 축으로
-분해해서 본다.
-
-| 축 | 질문 |
-|---|---|
-| `graph_source` | client를 무엇으로 표현했는가? update, weight, embedding, history 등 |
-| `graph_mode` | relation을 어떤 graph로 만들었는가? kNN, RBF, learned graph, QP 등 |
-| `aggregation_target` | graph를 어디에 적용했는가? update, weight, personalized model 등 |
-| `correction_family` | real graph인지, control graph인지, graph-free correction인지 |
-| diagnostics | accuracy 외에 alignment, LOO, DI, N_eff, smoothness 등을 봤는가 |
+기존 연구의 많은 부분은 “더 좋은 graph를 만들면 더 좋은 aggregation 또는
+personalization이 가능하다”는 방향에 가깝다. 이 프로젝트는 그 흐름을 받아들이되,
+성능 향상의 원인을 relation, topology, smoothing, clustering, dominance
+suppression, representation source로 나누어 본다.
 
 ## 연구 가설
 
-아래 가설은 실험 결과를 해석하기 위한 기준이다. 반드시 모두 맞아야 하는 주장은
-아니며, 결과가 어느 쪽으로 나오든 graph 효과를 더 정확히 설명하기 위한
-검증 축이다.
+가설은 real graph가 항상 이긴다는 전제가 아니다. 결과가 어느 쪽으로 나오든
+graph 효과를 설명하기 위한 해석 축이다.
 
-| 가설 | 기대되는 증거 | 해석 |
+| 가설 | 관찰할 증거 | 해석 |
 |---|---|---|
-| H1. Relation effect | `real_graph`가 matched random, shuffled, uniform, identity보다 높고, alignment/LOO/DI/N_eff도 함께 개선 | 실제 client relation이 단순 smoothing 이상 정보를 제공 |
-| H2. Coarse community effect | `clustering_only`가 real graph와 비슷한 성능을 냄 | fine-grained edge보다 coarse cluster/homophily가 핵심일 수 있음 |
-| H3. Generic smoothing effect | uniform 또는 matched random이 real graph와 비슷함 | graph semantics보다 평균화/smoothing 자체가 주요 원인일 수 있음 |
-| H4. Dominance correction effect | `graphfree_dominance_reweight`가 real graph와 비슷함 | graph relation보다 큰 update/client 영향력 보정이 주요 원인일 수 있음 |
-| H5. Topology effect | 같은 relation source에서도 density, degree, entropy, sparsity를 바꾸면 결과가 달라짐 | graph의 의미뿐 아니라 topology shape가 성능을 좌우 |
-| H6. Representation effect | `graph_source`를 update, weight, EMA update, classifier head로 바꿀 때 결과가 달라짐 | 어떤 client representation으로 relation을 만들었는지가 중요 |
-| H7. Spectral/smoothness effect | low/high-frequency energy, smoothness, H_spec 변화가 성능 변화와 연결됨 | graph signal 관점에서 어떤 frequency 성분이 유효한지 설명 가능 |
+| H1. Relation effect | `real_graph`가 matched random, shuffled, uniform, identity보다 높고 alignment/LOO/DI/N_eff도 개선 | 실제 client relation이 단순 smoothing 이상 정보를 제공 |
+| H2. Coarse community effect | `clustering_only`가 real graph와 비슷함 | fine-grained edge보다 cluster/homophily가 핵심 |
+| H3. Generic smoothing effect | uniform 또는 matched random이 real graph와 비슷함 | graph semantics보다 평균화/smoothing 자체가 주요 원인 |
+| H4. Dominance correction effect | `graphfree_dominance_reweight`가 real graph와 비슷함 | graph relation보다 큰 update/client 영향력 보정이 주요 원인 |
+| H5. Topology effect | 같은 relation source에서도 density, degree, entropy, sparsity 변화에 따라 결과가 달라짐 | graph의 의미뿐 아니라 topology shape가 성능을 좌우 |
+| H6. Representation effect | `graph_source`를 update, weight, EMA update, classifier head로 바꿀 때 결과가 달라짐 | 어떤 client representation으로 relation을 만드는지가 중요 |
+| H7. Spectral/smoothness effect | low/high-frequency energy, smoothness, H_spec 변화가 성능 변화와 연결됨 | graph signal 관점에서 유효한 frequency 성분을 설명 가능 |
 
-가설의 최종 목적은 “real graph가 좋다/나쁘다”를 말하는 것이 아니라, 다음 중
-어떤 설명이 더 강한지 구분하는 것이다.
+이 가설들이 구분하려는 설명은 다음과 같다.
 
 ```text
 fine-grained relation
@@ -139,44 +90,29 @@ client representation
 spectral smoothness
 ```
 
-## 차별성
+## 비교 축
 
-본 프로젝트의 차별점은 graph를 사용한다는 사실 자체가 아니다.
+선행연구와 새 방법은 알고리즘 이름보다 구성요소 단위로 비교한다.
 
-차별점은 graph 효과를 여러 대조군과 지표로 분해한다는 점이다.
-
-| 일반적인 비교 | 본 프로젝트의 비교 |
+| 축 | 질문 |
 |---|---|
-| FedAvg보다 높은가 | real graph가 matched random, shuffled, uniform, identity, graph-free control도 넘는가 |
-| 최종 accuracy 중심 | accuracy와 함께 DI, N_eff, alignment, LOO, graph/spectral metrics를 기록 |
-| 알고리즘 단위 비교 | graph source/mode/target/correction family 단위로 분해 |
-| 성능 향상 보고 | 성능 향상의 원인 해석 |
+| `graph_source` | client를 무엇으로 표현했는가? update, weight, embedding, history 등 |
+| `graph_mode` | relation을 어떤 graph로 만들었는가? kNN, RBF, learned graph, QP 등 |
+| `aggregation_target` | graph를 어디에 적용했는가? update, weight, personalized model 등 |
+| `correction_family` | real graph인지, control graph인지, graph-free correction인지 |
+| diagnostics | accuracy 외에 alignment, LOO, DI, N_eff, smoothness 등을 보는가 |
 
-중심 문장:
+이 축을 쓰면 full graph 방법과 graph에서 일부 효과만 떼어낸 단순화 방법을 같은
+실험판에서 비교할 수 있다. 어떤 경우에는 full graph가 필요할 수 있고, 어떤
+경우에는 clustering-only, uniform smoothing, graph-free dominance correction
+같은 단순 대안으로 충분할 수 있다. 프레임워크의 가치는 이 경계를 실험적으로
+찾는 데 있다.
 
-```text
-본 과제의 차별성은 Graph-FL 알고리즘 하나를 추가하는 것이 아니라,
-Graph-FL 성능 향상을 relation effect, smoothing effect, dominance correction,
-graph-free correction으로 분해해 평가하는 데 있다.
-```
+## Control Set And Metrics
 
-따라서 이 프레임워크는 두 종류의 연구에 모두 쓸 수 있다. 하나는 더 정교한 graph
-relation이 실제로 필요한지 확인하는 연구이고, 다른 하나는 graph에서 핵심 효과만
-남긴 단순화 방법이 충분한지 확인하는 연구다. 이 점이 단순 실험 코드가 아니라
-그래프 기반 연합학습 연구를 위한 공용 평가 도구로서의 가치다.
-
-이 차별성은 두 단계로 포장한다.
-
-```text
-최소 주장: Graph-FL 연구를 위한 reusable evaluation framework를 제공한다.
-확장 주장: 충분한 실험 결과가 나오면 graph-specific effect의 존재와 한계를
-control/diagnostic evidence로 주장할 수 있다.
-```
-
-## 실험에서 반드시 남겨야 하는 비교
-
-real graph만 돌리면 안 된다. 최소한 아래 비교가 있어야 graph-specific claim을
-말할 수 있다.
+real graph 하나만으로는 graph-specific effect를 말하기 어렵다. 비교군은
+relation 정보, topology, smoothing, clustering, graph-free correction을
+나누어 보도록 구성한다.
 
 | 비교군 | 의미 |
 |---|---|
@@ -188,7 +124,7 @@ real graph만 돌리면 안 된다. 최소한 아래 비교가 있어야 graph-s
 | `clustering_only` | coarse group 효과 |
 | `graphfree_dominance_reweight` | graph 없이 contribution/dominance만 보정 |
 
-주요 지표:
+주요 지표는 같은 result schema 안에 함께 남기는 것이 좋다.
 
 ```text
 accuracy / loss
@@ -201,12 +137,10 @@ graph density / degree / entropy
 smoothness / spectral energy
 ```
 
-한 실험은 단순히 accuracy만 남기면 안 된다. 가능한 한 위 지표들이 같은 result
-schema 안에 함께 남아야 한다.
-
 ## 선행연구 흡수 방식
 
-선행연구를 모두 exact reproduction한다고 쓰지 않는다.
+선행연구를 모두 exact reproduction으로 처리하지 않는다. 현재 실행 가능한 부분과
+확장 대상으로 남는 부분을 분리한다.
 
 | 분류 | 의미 |
 |---|---|
@@ -215,9 +149,7 @@ schema 안에 함께 남아야 한다.
 | `interface-target` | hook은 있지만 별도 구현이 필요한 확장 대상 |
 | `out-of-scope` | 현재 aggregation-level framework 밖의 별도 시스템 |
 
-예시:
-
-| 연구 계열 | 본 프로젝트에서의 처리 |
+| 연구 계열 | 처리 |
 |---|---|
 | FedAMP-like | weight/RBF/graph-filtered target proxy |
 | SFL-like | learned graph/server graph operator proxy |
@@ -226,25 +158,25 @@ schema 안에 함께 남아야 한다.
 | FED-PUB/GPFL | functional embedding, personalized delivery는 interface-target |
 | hypernetwork/GNN server aggregation | future extension 또는 interface-target |
 
-이렇게 쓰면 선행연구를 존중하면서도, 무엇을 구현했고 무엇을 확장 대상으로
-남겼는지 과장 없이 정리할 수 있다.
+이 구분은 과장을 줄이면서도 선행연구의 아이디어를 프레임워크 안에 배치할 수
+있게 한다. exact reproduction이 아닌 경우에도 proxy-supported path를 통해
+graph effect attribution 관점의 비교는 가능하다.
 
-## 종합설계 1에서 말할 수 있는 결과물
+## 현재 범위
 
-Capstone Design I 기준 산출물은 완성 제품이 아니라 연구형 prototype이다.
-
-말할 수 있는 것:
+현재 산출물의 중심은 완성된 단일 알고리즘이 아니라 연구형 prototype과 실행 가능한
+평가 구조다.
 
 ```text
-1. Graph-FL/PFL 선행연구를 공통 축으로 분해한 비교 기준
+1. Graph-FL/PFL 선행연구를 공통 축으로 분해한 비교 틀
 2. graph_source / graph_mode / aggregation_target / correction_family 구조
 3. real graph와 control graph를 같은 조건에서 실행하는 runner
 4. DI, N_eff, alignment, LOO, graph/spectral metric을 남기는 result schema
 5. 대표 vision/Cora smoke 실험이 가능한 prototype
-6. claim boundary와 해석 규칙이 정리된 실험 프로토콜
+6. claim boundary와 해석 틀이 정리된 실험 프로토콜
 ```
 
-말하면 안 되는 것:
+확장 대상으로 남는 범위:
 
 ```text
 1. 모든 선행연구의 exact reproduction
@@ -253,10 +185,10 @@ Capstone Design I 기준 산출물은 완성 제품이 아니라 연구형 proto
 4. semantic gain의 순수 causal proof
 ```
 
-## 표현 규칙
+## 표현
 
-`Semantic Gain`과 `Smoothing Gain`은 발표용 직관으로는 쓸 수 있지만, 직접
-관측되는 순수량처럼 쓰면 안 된다.
+`Semantic Gain`과 `Smoothing Gain`은 직관적 설명으로는 유용하지만, 직접
+관측되는 순수량처럼 다루기 어렵다.
 
 안전한 표현:
 
@@ -275,7 +207,7 @@ graph-free control 등 relation-free 또는 relation-destroyed control의
 Semantic Graph - Random Graph = Pure Semantic Gain
 ```
 
-대신:
+대신 다음 표현이 더 안전하다.
 
 ```text
 real graph가 matched controls와 graph-free controls를 모두 넘고,
@@ -283,12 +215,10 @@ alignment/LOO/DI/N_eff에서도 일관된 변화가 보이면 graph-specific exp
 강도가 높아진다.
 ```
 
-## 최종 기준 문장
-
-모든 양식과 발표는 아래 방향에서 벗어나지 않게 쓴다.
+## 요약
 
 ```text
-본 프로젝트의 핵심은 graph를 사용했다는 사실이 아니라,
+핵심은 graph를 사용했다는 사실이 아니라,
 graph 사용으로 얻은 성능 향상을 여러 control과 diagnostic metric으로 분해해
-해석 가능하게 만든다는 점이다.
+해석 가능하게 만드는 것이다.
 ```
