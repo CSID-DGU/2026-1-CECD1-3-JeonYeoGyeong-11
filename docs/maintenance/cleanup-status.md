@@ -194,6 +194,7 @@ and impact scope.
 | 2026-05-21 | `aggregate_fit` still owns Flower fit-result ordering and conversion to client arrays. | Extract result collection to `strategies/graphfl/fit_results.py`; preserve stable CID ordering from baselines ordering. |
 | 2026-05-21 | `strategy.py` still owns current-vs-EMA graph selection and source labeling. | Extract graph EMA selection to `strategies/graphfl/graph_state.py`; preserve existing `ema_graph` label when EMA is enabled outside warmup. |
 | 2026-05-21 | `strategy.py` still owns graph-meta cluster-id normalization for client diagnostics. | Extract cluster-id normalization to `strategies/graphfl/graph_metadata.py`; preserve `-1` fallback for missing or mismatched cluster lists. |
+| 2026-05-21 | `aggregate_fit` still owns inline module-trace run-context enrichment. | Extract trace enrichment to `strategies/graphfl/trace_context.py`; preserve default round/run_id/variant/seed insertion. |
 
 ## Closure Policy
 

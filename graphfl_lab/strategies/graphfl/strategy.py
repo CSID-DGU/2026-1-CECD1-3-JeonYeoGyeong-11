@@ -113,6 +113,7 @@ from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
+from graphfl_lab.strategies.graphfl.trace_context import with_run_context
 from graphfl_lab.strategies.graphfl.tracing import (
     make_round_trace_payload,
     matrix_log_if_small,
@@ -681,19 +682,16 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             counterfactual_rows = []
             module_trace_rows = []
 
-            def with_run_context(payload: Dict[str, Any]) -> Dict[str, Any]:
-                enriched = dict(payload)
-                if enriched.get("round") is None:
-                    enriched["round"] = int(server_round)
-                values = dict(enriched.get("values") or {})
-                values.setdefault("run_id", self.diagnostics_run_id)
-                values.setdefault("variant", self.diagnostics_variant)
-                values.setdefault("seed", int(self.diagnostics_seed))
-                enriched["values"] = values
-                return enriched
-
             for trace in graph_meta.get("lifecycle_trace", []) or []:
-                module_trace_rows.append(with_run_context(dict(trace)))
+                module_trace_rows.append(
+                    with_run_context(
+                        dict(trace),
+                        round_number=int(server_round),
+                        run_id=self.diagnostics_run_id,
+                        variant=self.diagnostics_variant,
+                        seed=int(self.diagnostics_seed),
+                    )
+                )
             for result in counterfactual_results:
                 counterfactual_row = {
                     "run_id": self.diagnostics_run_id,
@@ -706,7 +704,15 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
                 }
                 counterfactual_rows.append(counterfactual_row)
                 for trace in result.trace_records:
-                    module_trace_rows.append(with_run_context(trace.to_dict()))
+                    module_trace_rows.append(
+                        with_run_context(
+                            trace.to_dict(),
+                            round_number=int(server_round),
+                            run_id=self.diagnostics_run_id,
+                            variant=self.diagnostics_variant,
+                            seed=int(self.diagnostics_seed),
+                        )
+                    )
             append_counterfactual_metrics_csv(
                 self.diagnostics_artifact_dir / "counterfactual_metrics.csv",
                 counterfactual_rows,

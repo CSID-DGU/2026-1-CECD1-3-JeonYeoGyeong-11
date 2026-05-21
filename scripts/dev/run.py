@@ -462,6 +462,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "make_gaussian_projection",
         "compression_seed",
     ),
+    "graphfl_lab/strategies/graphfl/trace_context.py": (
+        "with_run_context",
+        "values.setdefault(\"run_id\"",
+        "round_number",
+    ),
     "graphfl_lab/strategies/graphfl/strategy.py": (
         "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
@@ -469,6 +474,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta",
         "from graphfl_lab.strategies.graphfl.graph_state import select_round_graph",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
+        "from graphfl_lab.strategies.graphfl.trace_context import with_run_context",
         "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
@@ -506,11 +512,16 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
     ),
+    "tests/strategies/graphfl/test_trace_context.py": (
+        "test_with_run_context_adds_missing_round_and_values",
+        "test_with_run_context_preserves_existing_round_and_values",
+    ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",
+        "preserve default round/run_id/variant/seed insertion",
         "keep aggregate_fit call sites unchanged apart from function names",
         "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
         "keep state assignment in `GraphFLDiagnosticStrategy`",
