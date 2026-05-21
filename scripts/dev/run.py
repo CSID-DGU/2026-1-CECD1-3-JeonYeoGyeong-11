@@ -291,6 +291,11 @@ GATE5B_PREP_REQUIRED_TEXT = {
         "mean_di_pre",
         "seed{seed}_delta",
     ),
+    "graphfl_lab/experiments/suites/vision/metadata.py": (
+        "build_suite_meta",
+        "record_suite_timing",
+        "mean_di_pre/post",
+    ),
     "graphfl_lab/experiments/vision/client_count_sweep.py": (
         "from graphfl_lab.experiments.suites.execution import run_cmd",
         "run_cmd(cmd, cwd=PROJECT_ROOT)",
@@ -310,6 +315,10 @@ GATE5B_PREP_REQUIRED_TEXT = {
     ),
     "tests/experiments/vision/test_suite_summary.py": (
         "test_build_summary_rows_aggregates_all_diagnostic_fields",
+    ),
+    "tests/experiments/vision/test_suite_metadata.py": (
+        "test_build_suite_meta_documents_full_diagnostic_set",
+        "test_record_preloaded_and_timing_metadata",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5b-prep",

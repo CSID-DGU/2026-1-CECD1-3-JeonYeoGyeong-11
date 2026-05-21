@@ -175,6 +175,7 @@ and impact scope.
 | 2026-05-21 | `vision/suite.py` still mixes runner orchestration with per-run feature extraction, timing normalization, and ranking helpers. | Move those pure helpers to `experiments/suites/vision/features.py`; keep `suite.py` as the compatibility import surface during Gate 5b-prep. |
 | 2026-05-21 | `vision/suite.py` still builds summary rows inline after collecting raw run rows. | Move summary-row aggregation to `experiments/suites/vision/summary.py` so runner orchestration and metric aggregation stay separately testable. |
 | 2026-05-21 | Feature extraction already collects DI, N_eff, alignment, and LOO pre/post diagnostics, but suite summary aggregation did not surface them. | Add the missing summary aggregates as a corrective Gate 5b-prep contract so one suite result can compare the full diagnostic set. |
+| 2026-05-21 | Suite metadata still lives inside the runner and does not describe the newly surfaced DI/N_eff/alignment/LOO summary fields. | Move metadata builders to `experiments/suites/vision/metadata.py` and update trace semantics text so result JSON documents the full diagnostic set. |
 
 ## Closure Policy
 
