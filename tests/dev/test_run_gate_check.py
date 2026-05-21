@@ -208,6 +208,14 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "5b-prep")
 
+    def test_current_gate5c_prep_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("5c-prep", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "5c-prep")
+
 
 if __name__ == "__main__":
     unittest.main()

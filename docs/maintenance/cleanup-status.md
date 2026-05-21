@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5b-prep - suite execution helper extraction |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep committed and Gate 5b-prep in progress |
+| current_gate | Gate 5c-prep - variant helper extraction |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep and Gate 5b-prep committed; Gate 5c-prep in progress |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | extract behavior-preserving suite execution helpers without marking Gate 5b complete before golden baseline exists |
+| next_step | extract behavior-preserving variant token and path helpers without marking Gate 5c complete before golden baseline exists |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -176,6 +176,8 @@ and impact scope.
 | 2026-05-21 | `vision/suite.py` still builds summary rows inline after collecting raw run rows. | Move summary-row aggregation to `experiments/suites/vision/summary.py` so runner orchestration and metric aggregation stay separately testable. |
 | 2026-05-21 | Feature extraction already collects DI, N_eff, alignment, and LOO pre/post diagnostics, but suite summary aggregation did not surface them. | Add the missing summary aggregates as a corrective Gate 5b-prep contract so one suite result can compare the full diagnostic set. |
 | 2026-05-21 | Suite metadata still lives inside the runner and does not describe the newly surfaced DI/N_eff/alignment/LOO summary fields. | Move metadata builders to `experiments/suites/vision/metadata.py` and update trace semantics text so result JSON documents the full diagnostic set. |
+| 2026-05-21 | Gate 5b-prep reduced `vision/suite.py` to runner orchestration, while `variants.py` remains the largest Gate 5c target. | Start Gate 5c-prep with token/control/path helpers only; leave `parse_variant` branch order unchanged. |
+| 2026-05-21 | Gate-check self-tests still verify earlier prep gates after moving `current_gate` forward. | Keep completed prep gate names visible in status text so older checks remain reproducible while Gate 5c-prep proceeds. |
 
 ## Closure Policy
 

@@ -7,89 +7,13 @@ import re
 from pathlib import Path
 from typing import List, Tuple
 
-
-def _token_float(value: str) -> str:
-    """Convert compact variant floats such as ``0p01`` to CLI text ``0.01``."""
-    return str(value).replace("p", ".")
-
-
-def _legacy_residual_reweight_args(graph_mode: str, knn_k: str = "") -> List[str]:
-    """Return CLI args for the pre-low-pass residual reweighting path.
-
-    This preserves the earlier behavior where the graph low-pass filter was
-    used to score projected-update residuals, then raw update deltas were
-    aggregated with shaped client weights.
-    """
-    out = [
-        "--graph-source",
-        "update",
-        "--aggregation-target",
-        "update",
-        "--graph-mode",
-        graph_mode,
-        "--conflict-mix",
-        "0.2",
-        "--min-client-weight",
-        "0.0",
-    ]
-    if knn_k:
-        out += ["--knn-k", knn_k]
-    return out
-
-
-def _diagnostic_graph_args(
-    *,
-    correction_family: str,
-    knn_k: str,
-    control_graph_mode: str = "random",
-    cluster_method: str = "kmeans",
-) -> List[str]:
-    """Return the current diagnostic protocol graph-correction args."""
-    out = [
-        "--graph-source",
-        "classifier_head_update",
-        "--aggregation-target",
-        "graph_filtered_update",
-        "--graph-mode",
-        "knn",
-        "--knn-k",
-        str(knn_k),
-        "--correction-family",
-        str(correction_family),
-        "--control-graph-mode",
-        str(control_graph_mode),
-    ]
-    if correction_family == "clustering_only":
-        out += [
-            "--cluster-method",
-            str(cluster_method),
-            "--cluster-auto-k",
-            "true",
-        ]
-    return out
-
-
-def _diagnostic_graph_free_args(mode: str) -> List[str]:
-    """Return graph-free correction args for attribution controls."""
-    out = [
-        "--aggregation-target",
-        "update",
-        "--correction-family",
-        "graph_free",
-        "--graph-free-mode",
-        str(mode),
-        "--conflict-mix",
-        "0.0",
-        "--min-client-weight",
-        "0.0",
-    ]
-    if mode == "contribution_cap":
-        out += ["--contribution-cap", "0.35"]
-    if mode == "norm_clip":
-        out += ["--clip-quantile", "0.9"]
-    if mode == "dominance_reweight":
-        out += ["--graph-free-gamma", "1.0"]
-    return out
+from graphfl_lab.experiments.suites.vision.variant_helpers import (
+    diagnostic_graph_args as _diagnostic_graph_args,
+    diagnostic_graph_free_args as _diagnostic_graph_free_args,
+    legacy_residual_reweight_args as _legacy_residual_reweight_args,
+    result_path_for_variant,
+    token_float as _token_float,
+)
 
 
 def parse_variant(
@@ -1217,6 +1141,5 @@ def variant_cmd(
         + ["--method", method, "--seed", str(seed), "--run-tag", run_tag]
         + extras
     )
-    tag_suffix = f"_{run_tag}"
-    path = out_dir / f"result_general_{method}_seed{seed}{tag_suffix}.json"
+    path = result_path_for_variant(out_dir, method, seed, run_tag)
     return cmd, method, path

@@ -326,6 +326,26 @@ GATE5B_PREP_REQUIRED_TEXT = {
     ),
 }
 
+GATE5C_PREP_REQUIRED_TEXT = {
+    "graphfl_lab/experiments/suites/vision/variant_helpers.py": (
+        "token_float",
+        "diagnostic_graph_args",
+        "result_path_for_variant",
+    ),
+    "graphfl_lab/experiments/suites/vision/variants.py": (
+        "from graphfl_lab.experiments.suites.vision.variant_helpers import",
+        "result_path_for_variant(out_dir, method, seed, run_tag)",
+    ),
+    "tests/experiments/vision/test_variant_helpers.py": (
+        "test_result_path_for_variant_preserves_existing_file_name_contract",
+        "test_diagnostic_graph_args_adds_cluster_auto_k_for_cluster_only",
+    ),
+    "docs/maintenance/cleanup-status.md": (
+        "Gate 5c-prep",
+        "leave `parse_variant` branch order unchanged",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -472,6 +492,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_missing_text(root, GATE5A_PREP_REQUIRED_TEXT))
     elif gate == "5b-prep":
         failed_checks.extend(_missing_text(root, GATE5B_PREP_REQUIRED_TEXT))
+    elif gate == "5c-prep":
+        failed_checks.extend(_missing_text(root, GATE5C_PREP_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."
