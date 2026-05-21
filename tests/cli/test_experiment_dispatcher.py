@@ -51,6 +51,17 @@ class ExperimentDispatcherTest(unittest.TestCase):
 
         self.assertEqual(sys.argv, before)
 
+    def test_named_track_helpers_use_unified_dispatch(self):
+        calls = []
+
+        def fake_main():
+            calls.append(sys.argv[1:])
+
+        with mock.patch.object(experiment_dispatcher.vision_experiment, "main", fake_main):
+            experiment_dispatcher.vision_main(["--dataset", "mnist"])
+
+        self.assertEqual(calls, [["--dataset", "mnist"]])
+
 
 if __name__ == "__main__":
     unittest.main()

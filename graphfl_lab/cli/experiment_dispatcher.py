@@ -41,3 +41,16 @@ def main(argv: Sequence[str] | None = None):
         return module.main()
     finally:
         sys.argv = old_argv
+
+
+def main_for_track(track: str, argv: Sequence[str] | None = None):
+    args = list(sys.argv[1:] if argv is None else argv)
+    return main(["--track", track, *args])
+
+
+def cora_main(argv: Sequence[str] | None = None):
+    return main_for_track("cora", argv)
+
+
+def vision_main(argv: Sequence[str] | None = None):
+    return main_for_track("vision", argv)

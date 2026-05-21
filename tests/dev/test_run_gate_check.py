@@ -42,7 +42,7 @@ class GateCheckEntrypointTest(unittest.TestCase):
     def test_future_gate_checks_fail_closed_until_implemented(self):
         module = load_run_module()
 
-        report = module.run_gate_check("4b", ROOT)
+        report = module.run_gate_check("4c", ROOT)
 
         self.assertFalse(report["pass"])
         self.assertIn("not implemented yet", report["failed_checks"][0])
@@ -175,6 +175,14 @@ class GateCheckEntrypointTest(unittest.TestCase):
 
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "4a")
+
+    def test_current_gate4b_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("4b", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "4b")
 
 
 if __name__ == "__main__":

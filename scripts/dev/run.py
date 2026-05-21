@@ -183,6 +183,25 @@ GATE4A_REQUIRED_TEXT = {
     ),
 }
 
+GATE4B_REQUIRED_TEXT = {
+    "graphfl_lab/cli/experiment_dispatcher.py": (
+        "main_for_track",
+        "vision_main",
+        "cora_main",
+    ),
+    "run_vision_experiment.py": (
+        "experiment_dispatcher",
+        "main = _dispatcher.vision_main",
+    ),
+    "run_general_experiment.py": (
+        "experiment_dispatcher",
+        "main = _dispatcher.vision_main",
+    ),
+    "tests/cli/test_experiment_dispatcher.py": (
+        "test_named_track_helpers_use_unified_dispatch",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -317,6 +336,9 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_unexpected_legacy_package_files(root))
     elif gate == "4a":
         failed_checks.extend(_missing_text(root, GATE4A_REQUIRED_TEXT))
+    elif gate == "4b":
+        failed_checks.extend(_missing_text(root, GATE4A_REQUIRED_TEXT))
+        failed_checks.extend(_missing_text(root, GATE4B_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."
