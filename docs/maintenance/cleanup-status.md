@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 3 - real package move verification |
-| status | Gate 3a alias bridge and Gate 3b import batch committed; real package move in progress |
+| current_gate | Gate 4a - unified runner dispatcher |
+| status | Gate 3 real package move complete; Gate 4a dispatcher in progress |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | verify `graphfl_lab` real package, `spectral_fl` shim, pickle round-trip, and Flower bootstrap |
+| next_step | verify `run_experiment.py --track vision|cora`, missing-track deprecation, and thin wrapper boundary |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -164,6 +164,7 @@ and impact scope.
 | 2026-05-21 | Gate 3 alias bridge can be verified before full import-batch migration, but calling it full Gate 3 would overstate completion. | Split local checks as `3a` for alias bridge; keep `3` fail-closed until full package migration and real move verification are done. |
 | 2026-05-21 | Gate 3 import identity changes touch a broad set of source, script, and test files. | Treat this as `3b` canonical import batch; forbid new `spectral_fl` import tokens outside the shim, alias test, and archived scripts before attempting the real package move. |
 | 2026-05-21 | Gate 3 real move leaves only `spectral_fl/__init__.py` as the legacy package shim. | Update line-budget paths and gate checks to `graphfl_lab/*`; verify legacy submodule imports through shim `__path__` for old pickle paths. |
+| 2026-05-21 | `run_experiment.py` was still a Cora-only wrapper after Gate 3. | Gate 4a adds `graphfl_lab.cli.experiment_dispatcher`; missing `--track` keeps Cora behavior with `DeprecationWarning`, while `--track vision|cora` selects the canonical runner. |
 
 ## Closure Policy
 

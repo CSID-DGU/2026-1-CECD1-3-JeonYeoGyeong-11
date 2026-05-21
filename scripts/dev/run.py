@@ -164,6 +164,25 @@ GATE3B_FORBIDDEN_IMPORTS = (
     "spectral_fl.",
 )
 
+GATE4A_REQUIRED_TEXT = {
+    "graphfl_lab/cli/experiment_dispatcher.py": (
+        "--track",
+        "vision",
+        "cora",
+        "DeprecationWarning",
+        "TRACK_MODULES",
+    ),
+    "run_experiment.py": (
+        "experiment_dispatcher",
+        "main = _impl.main",
+    ),
+    "tests/cli/test_experiment_dispatcher.py": (
+        "test_missing_track_defaults_to_cora_with_deprecation_warning",
+        "test_track_cora_dispatches_without_track_argument",
+        "test_track_vision_dispatches_without_track_argument",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -296,6 +315,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_missing_text(root, GATE3_REQUIRED_TEXT))
         failed_checks.extend(_forbidden_identity_imports(root))
         failed_checks.extend(_unexpected_legacy_package_files(root))
+    elif gate == "4a":
+        failed_checks.extend(_missing_text(root, GATE4A_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."
