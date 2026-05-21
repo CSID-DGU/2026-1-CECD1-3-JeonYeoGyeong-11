@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import math
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
+
+from graphfl_lab.experiments.suites.result_writer import write_json
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -258,9 +259,6 @@ def run(args) -> None:
         )
 
     write_csv(all_rows, root / "client_count_sweep_summary.csv")
-    (root / "client_count_sweep_summary.json").write_text(
-        json.dumps(all_rows, indent=2, allow_nan=True),
-        encoding="utf-8",
-    )
+    write_json(root / "client_count_sweep_summary.json", all_rows)
     write_markdown(all_rows, root / "client_count_sweep_summary.md", args)
     print(f"Saved client-count sweep summary under {root}")

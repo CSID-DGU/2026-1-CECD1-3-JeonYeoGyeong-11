@@ -247,6 +247,14 @@ GATE5A_PREP_REQUIRED_TEXT = {
         "write_json(rows_path, rows)",
         "write_csv_rows(csv_path, summary_rows",
     ),
+    "graphfl_lab/experiments/vision/stress_grid.py": (
+        "write_json(root / \"stress_grid_auto_review.json\"",
+        "write_json(root / \"stress_grid_manifest.json\"",
+        "write_json(root / \"stress_grid_summary.json\"",
+    ),
+    "graphfl_lab/experiments/vision/client_count_sweep.py": (
+        "write_json(root / \"client_count_sweep_summary.json\"",
+    ),
     "graphfl_lab/experiments/suites/vision/reporting.py": (
         "write_json(out_dir / \"vision_suite_summary.json\"",
         "write_csv_rows(",

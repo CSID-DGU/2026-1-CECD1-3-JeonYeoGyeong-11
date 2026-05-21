@@ -11,12 +11,13 @@ from __future__ import annotations
 import argparse
 import csv
 import itertools
-import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
+
+from graphfl_lab.experiments.suites.result_writer import write_json
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -439,10 +440,7 @@ def write_auto_review(
         "suite_dir",
     ]
     write_csv(review_rows, root / "stress_grid_auto_review.csv", preferred)
-    (root / "stress_grid_auto_review.json").write_text(
-        json.dumps(review_rows, indent=2, allow_nan=True),
-        encoding="utf-8",
-    )
+    write_json(root / "stress_grid_auto_review.json", review_rows)
 
     completed = [r for r in review_rows if r.get("variant")]
     promising = sorted(
@@ -673,10 +671,7 @@ def write_manifest(rows: List[Dict[str, Any]], root: Path) -> None:
         "command",
     ]
     write_csv(rows, root / "stress_grid_manifest.csv", preferred)
-    (root / "stress_grid_manifest.json").write_text(
-        json.dumps(rows, indent=2, allow_nan=True),
-        encoding="utf-8",
-    )
+    write_json(root / "stress_grid_manifest.json", rows)
 
 
 def run(args) -> None:
@@ -757,10 +752,7 @@ def run(args) -> None:
         "suite_dir",
     ]
     write_csv(summary_rows, root / "stress_grid_summary.csv", preferred_summary_fields)
-    (root / "stress_grid_summary.json").write_text(
-        json.dumps(summary_rows, indent=2, allow_nan=True),
-        encoding="utf-8",
-    )
+    write_json(root / "stress_grid_summary.json", summary_rows)
     write_markdown(summary_rows, root / "stress_grid_summary.md", args)
     review_rows = build_auto_review_rows(
         summary_rows,
