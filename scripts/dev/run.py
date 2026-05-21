@@ -437,6 +437,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "weighted_optional_mean",
         "return out if any_found else None",
     ),
+    "graphfl_lab/strategies/graphfl/diagnostic_targets.py": (
+        "flatten_diagnostic_post_updates",
+        "spectral_filtered_client_ema_update_delta",
+        "Unknown diagnostic aggregation_target",
+    ),
     "graphfl_lab/strategies/graphfl/projection.py": (
         "project_with_cached_matrix",
         "make_gaussian_projection",
@@ -444,9 +449,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "graphfl_lab/strategies/graphfl/strategy.py": (
         "from graphfl_lab.strategies.graphfl.client_metrics import",
+        "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
         "extract_metric(client_metrics",
+        "flatten_diagnostic_post_updates(",
         "weighted_optional_mean(client_train_acc",
         "update_client_update_ema(",
         "project_with_cached_matrix(",
@@ -459,6 +466,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_extract_metric_uses_first_available_alias_per_client",
         "test_weighted_optional_mean_skips_missing_values",
     ),
+    "tests/strategies/graphfl/test_diagnostic_targets.py": (
+        "test_flatten_diagnostic_post_updates_returns_update_delta_matrix",
+        "test_flatten_diagnostic_post_updates_supports_filtered_ema_aliases",
+    ),
     "tests/strategies/graphfl/test_projection.py": (
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
@@ -466,6 +477,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
         "keep aggregate_fit call sites unchanged apart from function names",
+        "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
         "keep state assignment in `GraphFLDiagnosticStrategy`",
         "keep projection matrix storage on `GraphFLDiagnosticStrategy`",
     ),
