@@ -30,23 +30,6 @@ def parse_variant(
     if baseline is not None:
         return baseline
 
-    if v == "ours_default_graph":
-        return "ours", v, ["--graph-method", "default_similarity_knn"]
-
-    m = re.match(r"^ours_default_graph_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            [
-                "--graph-method",
-                "default_similarity_knn",
-                "--knn-k",
-                k,
-            ],
-        )
-
     tau_suffix_args = {
         "fixed_tau": ["--disable-adaptive-tau", "true"],
         "norm_tau": ["--tau-source", "h_spec_normalized"],
