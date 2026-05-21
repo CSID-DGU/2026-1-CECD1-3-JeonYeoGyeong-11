@@ -21,10 +21,10 @@ from typing import Any, Dict, List
 import torch
 from flwr.common import ndarrays_to_parameters
 
-from spectral_fl.models.cora import GCN
-from spectral_fl.graph.presets import apply_graph_preset_to_namespace
-from spectral_fl.graph.registry import load_graph_plugins
-from spectral_fl.strategies.baselines import (
+from graphfl_lab.models.cora import GCN
+from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
+from graphfl_lab.graph.registry import load_graph_plugins
+from graphfl_lab.strategies.baselines import (
     TracingDominanceAwareFedAvgM,
     TracingFedAdagrad,
     TracingFedAvg,
@@ -38,7 +38,7 @@ from spectral_fl.strategies.baselines import (
     TracingFedYogi,
     TracingFedSim,
 )
-from spectral_fl.strategies.graphfl.strategy import GraphFLDiagnosticStrategy
+from graphfl_lab.strategies.graphfl.strategy import GraphFLDiagnosticStrategy
 
 
 CODE_VERSION = "cora-fgl-2026-05"
@@ -500,6 +500,6 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
 
 
 def run(args):
-    from spectral_fl.flower_runner import main_dispatch
+    from graphfl_lab.flower_runner import main_dispatch
 
     main_dispatch(args, track="cora-fgl")

@@ -1,6 +1,6 @@
-"""Compatibility wrapper for ``spectral_fl.cli.vision_suite``."""
+"""Compatibility wrapper for ``graphfl_lab.cli.vision_suite``."""
 
-from spectral_fl.cli import vision_suite as _impl
+from graphfl_lab.cli import vision_suite as _impl
 
 globals().update(
     {

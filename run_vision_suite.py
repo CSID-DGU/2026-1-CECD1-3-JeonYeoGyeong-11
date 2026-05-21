@@ -1,6 +1,6 @@
 """Canonical launcher for a vision FL variant-by-seed suite."""
 
-from spectral_fl.cli import vision_suite as _impl
+from graphfl_lab.cli import vision_suite as _impl
 
 globals().update(
     {

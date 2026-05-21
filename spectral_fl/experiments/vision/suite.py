@@ -138,13 +138,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from spectral_fl.config_io import public_args_dict
-from spectral_fl.diagnostics.result_schema import (
+from graphfl_lab.config_io import public_args_dict
+from graphfl_lab.diagnostics.result_schema import (
     config_aliases_from_args,
     unsupported_components_from_args,
     with_result_schema,
 )
-from spectral_fl.experiments.suites.vision.reporting import (
+from graphfl_lab.experiments.suites.vision.reporting import (
     _variant_k_number,
     append_validation_verdict,
     compute_best_knn_meta,
@@ -155,8 +155,8 @@ from spectral_fl.experiments.suites.vision.reporting import (
     write_knn_vs_random_matched_csv,
     write_summary_markdown,
 )
-from spectral_fl.experiments.suites.vision.variants import variant_cmd
-from spectral_fl.experiments.suites.stats import (
+from graphfl_lab.experiments.suites.vision.variants import variant_cmd
+from graphfl_lab.experiments.suites.stats import (
     final_acc,
     load_json,
     round_trace_field,

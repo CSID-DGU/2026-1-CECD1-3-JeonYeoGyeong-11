@@ -6,7 +6,7 @@ from typing import Optional, Sequence
 
 import numpy as np
 
-from spectral_fl.graph.similarity import (
+from graphfl_lab.graph.similarity import (
     dense_absolute_cosine,
     dense_negative_cosine,
     dense_positive_cosine,
@@ -14,16 +14,16 @@ from spectral_fl.graph.similarity import (
     positive_upper_values,
     resolve_distance_sigma,
 )
-from spectral_fl.graph.sparsification import (
+from graphfl_lab.graph.sparsification import (
     keep_mutual_topk,
     keep_threshold,
     keep_topk,
     random_edges_matched_to_knn,
     uniform_graph,
 )
-from spectral_fl.graph.controls import build_control_graph
-from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
-from spectral_fl.graph.registry import (
+from graphfl_lab.graph.controls import build_control_graph
+from graphfl_lab.graph.clustering import build_block_uniform_graph, cluster_clients
+from graphfl_lab.graph.registry import (
     GraphBuildContext,
     build_registered_graph,
     normalize_graph_mode,
@@ -278,12 +278,12 @@ def _build_base_client_graph_with_meta(
             registered.metadata
         )
 
-    from spectral_fl.lifecycle.relation import (
+    from graphfl_lab.lifecycle.relation import (
         estimate_relation_from_vectors,
         relation_kind_for_graph_mode,
         relation_trace_record,
     )
-    from spectral_fl.lifecycle.topology import (
+    from graphfl_lab.lifecycle.topology import (
         build_topology_from_relation,
         topology_trace_record,
     )

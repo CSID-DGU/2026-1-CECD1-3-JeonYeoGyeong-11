@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import unittest
 from pathlib import Path
 
@@ -58,13 +58,13 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "flwr",
             "numpy",
             "torch",
-            "spectral_fl.clients",
-            "spectral_fl.data",
-            "spectral_fl.flower_app",
-            "spectral_fl.flower_runner",
-            "spectral_fl.graph",
-            "spectral_fl.models",
-            "spectral_fl.strategies",
+            "graphfl_lab.clients",
+            "graphfl_lab.data",
+            "graphfl_lab.flower_app",
+            "graphfl_lab.flower_runner",
+            "graphfl_lab.graph",
+            "graphfl_lab.models",
+            "graphfl_lab.strategies",
         )
         for path in python_files(ROOT / "spectral_fl" / "cli"):
             with self.subTest(path=path.relative_to(ROOT)):
@@ -72,9 +72,9 @@ class RepositoryBoundaryTest(unittest.TestCase):
 
     def test_graph_package_does_not_depend_on_runners_or_strategies(self):
         banned = (
-            "spectral_fl.cli",
-            "spectral_fl.experiments",
-            "spectral_fl.strategies",
+            "graphfl_lab.cli",
+            "graphfl_lab.experiments",
+            "graphfl_lab.strategies",
         )
         for path in python_files(ROOT / "spectral_fl" / "graph"):
             with self.subTest(path=path.relative_to(ROOT)):
@@ -82,8 +82,8 @@ class RepositoryBoundaryTest(unittest.TestCase):
 
     def test_graphfl_strategy_does_not_depend_on_cli_or_experiments(self):
         banned = (
-            "spectral_fl.cli",
-            "spectral_fl.experiments",
+            "graphfl_lab.cli",
+            "graphfl_lab.experiments",
         )
         for path in python_files(ROOT / "spectral_fl" / "strategies" / "graphfl"):
             with self.subTest(path=path.relative_to(ROOT)):

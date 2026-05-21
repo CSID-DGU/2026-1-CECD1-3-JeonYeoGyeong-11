@@ -1,3 +1,3 @@
-"""Compatibility wrapper for ``spectral_fl.experiments.vision.suite``."""
+"""Compatibility wrapper for ``graphfl_lab.experiments.vision.suite``."""
 
-from spectral_fl.experiments.vision.suite import *  # noqa: F401,F403
+from graphfl_lab.experiments.vision.suite import *  # noqa: F401,F403

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spectral_fl.experiments.vision.suite import (
+from graphfl_lab.experiments.vision.suite import (
     _variant_k_number,
     append_validation_verdict,
     collect_timing_features,

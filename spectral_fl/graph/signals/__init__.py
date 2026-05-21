@@ -1,7 +1,7 @@
 """Client parameter/update signal extraction for graph construction."""
 
-from spectral_fl.graph.signals.classifier_heads import select_classifier_head
-from spectral_fl.graph.signals.updates import (
+from graphfl_lab.graph.signals.classifier_heads import select_classifier_head
+from graphfl_lab.graph.signals.updates import (
     flatten_layerwise,
     normalize_vector,
     select_graph_layers,

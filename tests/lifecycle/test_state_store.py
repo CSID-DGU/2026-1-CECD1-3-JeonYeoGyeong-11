@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.lifecycle.state_store import StateStore, state_store_from_mapping
+from graphfl_lab.lifecycle.state_store import StateStore, state_store_from_mapping
 
 
 class StateStoreTest(unittest.TestCase):

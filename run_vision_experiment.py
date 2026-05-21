@@ -1,6 +1,6 @@
 """Canonical launcher for a vision FL single run."""
 
-from spectral_fl.cli import vision_experiment as _impl
+from graphfl_lab.cli import vision_experiment as _impl
 
 globals().update(
     {

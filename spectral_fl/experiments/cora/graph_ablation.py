@@ -46,13 +46,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
 
-from spectral_fl.config_io import public_args_dict
-from spectral_fl.diagnostics.result_schema import (
+from graphfl_lab.config_io import public_args_dict
+from graphfl_lab.diagnostics.result_schema import (
     config_aliases_from_args,
     unsupported_components_from_args,
     with_result_schema,
 )
-from spectral_fl.experiments.suites.stats import (
+from graphfl_lab.experiments.suites.stats import (
     final_acc,
     load_json,
     round_trace_field,
@@ -241,7 +241,7 @@ def run(args):
         ),
         "matched_random_ablation": (
             "ours_random samples a random binary graph with the same undirected edge count as ours_knn at the same k "
-            "(spectral_fl.graph.sparsification.random_edges_matched_to_knn). Larger gaps vs FedAvg for ours_knn than for ours_random "
+            "(graphfl_lab.graph.sparsification.random_edges_matched_to_knn). Larger gaps vs FedAvg for ours_knn than for ours_random "
             "support client similarity carrying structure beyond generic sparse random graphs. "
             "Formal significance is not computed here; use per-seed seed<S>_delta externally if you need tests."
         ),

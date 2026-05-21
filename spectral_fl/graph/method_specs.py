@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Mapping, Tuple
 
-from spectral_fl.graph.sources.config import normalize_key
+from graphfl_lab.graph.sources.config import normalize_key
 
 
 @dataclass(frozen=True)

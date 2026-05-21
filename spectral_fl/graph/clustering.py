@@ -6,7 +6,7 @@ from typing import Optional
 
 import numpy as np
 
-from spectral_fl.graph.similarity import dense_positive_cosine
+from graphfl_lab.graph.similarity import dense_positive_cosine
 
 
 def _resolve_cluster_k(num_clients: int, cluster_k: int, auto_k: bool) -> int:

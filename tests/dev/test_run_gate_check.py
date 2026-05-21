@@ -105,6 +105,61 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "3a")
 
+    def test_gate3b_fails_on_legacy_import_identity(self):
+        module = load_run_module()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
+            package = root / "graphfl_lab"
+            package.mkdir()
+            (package / "__init__.py").write_text(
+                "Canonical package alias\n__path__\nsys.modules.setdefault\n",
+                encoding="utf-8",
+            )
+            legacy = root / "spectral_fl"
+            legacy.mkdir()
+            (legacy / "__init__.py").write_text(
+                "DeprecationWarning\nGRAPHFL_LAB_SILENCE_DEPRECATION\ngraphfl_lab\n",
+                encoding="utf-8",
+            )
+            (root / "tests" / "core").mkdir(parents=True)
+            (root / "tests" / "core" / "test_package_alias.py").write_text(
+                "\n".join(
+                    [
+                        "test_graphfl_lab_imports_flower_app",
+                        "test_spectral_fl_warns_by_default",
+                        "test_spectral_fl_warning_can_be_silenced",
+                        "test_sys_modules_alias_roots_exist",
+                        "test_pickle_round_trip_for_canonical_import",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (root / "bad.py").write_text("from spectral_fl.foo import bar\n", encoding="utf-8")
+
+            original_tracked_files = module._tracked_files
+            module._tracked_files = lambda _root: [
+                "graphfl_lab/__init__.py",
+                "spectral_fl/__init__.py",
+                "tests/core/test_package_alias.py",
+                "bad.py",
+            ]
+            try:
+                report = module.run_gate_check("3b", root)
+            finally:
+                module._tracked_files = original_tracked_files
+
+        self.assertFalse(report["pass"])
+        self.assertTrue(any("forbidden legacy import token" in item for item in report["failed_checks"]))
+
+    def test_current_gate3b_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("3b", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "3b")
+
     def test_full_gate3_fails_closed_until_import_batches_complete(self):
         module = load_run_module()
 

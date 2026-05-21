@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.diagnostics.metrics import (
+from graphfl_lab.diagnostics.metrics import (
     compute_dominance_index,
     compute_effective_client_number,
     summarize_pre_post,

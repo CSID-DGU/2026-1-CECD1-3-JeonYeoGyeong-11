@@ -20,8 +20,8 @@ from flwr.server.superlink.linkstate.utils import generate_rand_int_from_bytes
 from flwr.simulation.run_simulation import _run_simulation
 from flwr.supercore.constant import NOOP_FEDERATION
 
-from spectral_fl.config_io import public_args_dict
-from spectral_fl.flower_app import DEFAULT_RUN_CONFIG, client_app, server_app
+from graphfl_lab.config_io import public_args_dict
+from graphfl_lab.flower_app import DEFAULT_RUN_CONFIG, client_app, server_app
 
 
 def _toml_value(value: Any) -> str:

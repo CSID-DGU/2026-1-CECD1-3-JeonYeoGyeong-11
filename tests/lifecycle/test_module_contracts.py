@@ -1,6 +1,6 @@
 import unittest
 
-from spectral_fl.lifecycle.context import (
+from graphfl_lab.lifecycle.context import (
     AggregationContext,
     RelationContext,
     RoundContext,
@@ -8,14 +8,14 @@ from spectral_fl.lifecycle.context import (
     TopologyContext,
     make_state_extraction_context,
 )
-from spectral_fl.lifecycle.modules import (
+from graphfl_lab.lifecycle.modules import (
     AggregationOperator,
     ClientStateExtractor,
     ModuleResult,
     RelationEstimator,
     TopologyOperator,
 )
-from spectral_fl.lifecycle.traces import RoundTraceBundle, TraceRecord
+from graphfl_lab.lifecycle.traces import RoundTraceBundle, TraceRecord
 
 
 class LifecycleContextTest(unittest.TestCase):

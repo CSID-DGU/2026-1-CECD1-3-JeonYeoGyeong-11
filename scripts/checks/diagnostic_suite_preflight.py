@@ -1,4 +1,4 @@
-﻿"""Preflight-check the original diagnostic experiment code without training.
+"""Preflight-check the original diagnostic experiment code without training.
 
 The original framework purpose is to compare real graph paths against matched
 controls, clustering-only controls, and graph-free corrections. This script
@@ -20,9 +20,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from spectral_fl.cli import vision_suite as vision_suite_cli
-from spectral_fl.config_io import load_config
-from spectral_fl.experiments.suites.vision.variants import parse_variant, variant_cmd
+from graphfl_lab.cli import vision_suite as vision_suite_cli
+from graphfl_lab.config_io import load_config
+from graphfl_lab.experiments.suites.vision.variants import parse_variant, variant_cmd
 
 
 EXPECTED_VARIANTS: dict[str, dict[str, str]] = {

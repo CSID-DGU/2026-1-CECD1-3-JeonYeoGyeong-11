@@ -1,6 +1,6 @@
 """Backward-compatible facade for suite statistics helpers."""
 
-from spectral_fl.experiments.suites.stats import (
+from graphfl_lab.experiments.suites.stats import (
     final_acc,
     load_json,
     round_trace_field,

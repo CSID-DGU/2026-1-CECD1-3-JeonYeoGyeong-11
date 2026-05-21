@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from spectral_fl.lifecycle.traces import RoundTraceBundle, TraceRecord
+from graphfl_lab.lifecycle.traces import RoundTraceBundle, TraceRecord
 
 
 def matrix_log_if_small(

@@ -1,15 +1,15 @@
 """Backward-compatible facade for spectral diagnostics and filtering.
 
-New code should import from ``spectral_fl.strategies.graphfl.filtering`` or
-``spectral_fl.strategies.graphfl.diagnostics``.  This module keeps the older
+New code should import from ``graphfl_lab.strategies.graphfl.filtering`` or
+``graphfl_lab.strategies.graphfl.diagnostics``.  This module keeps the older
 analysis and test import path stable.
 """
 
-from spectral_fl.strategies.graphfl.diagnostics import (
+from graphfl_lab.strategies.graphfl.diagnostics import (
     heterogeneity,
     spectral_energy_diagnostics,
 )
-from spectral_fl.strategies.graphfl.filtering import (
+from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
     laplacian,
     normalized_conflicts,

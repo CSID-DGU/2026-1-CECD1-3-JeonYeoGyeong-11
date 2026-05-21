@@ -10,8 +10,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from spectral_fl.data import ClientGraph
-from spectral_fl.models.cora import GCN
+from graphfl_lab.data import ClientGraph
+from graphfl_lab.models.cora import GCN
 
 
 def _seed_for(seed: int, server_round: int, cid: int) -> int:

@@ -1,3 +1,3 @@
-"""Compatibility wrapper for ``spectral_fl.experiments.vision.stress_grid``."""
+"""Compatibility wrapper for ``graphfl_lab.experiments.vision.stress_grid``."""
 
-from spectral_fl.experiments.vision.stress_grid import *  # noqa: F401,F403
+from graphfl_lab.experiments.vision.stress_grid import *  # noqa: F401,F403

@@ -1,11 +1,11 @@
 """Diagnostic metrics and artifact helpers."""
 
-from spectral_fl.diagnostics.logging import (
+from graphfl_lab.diagnostics.logging import (
     append_client_metrics_csv,
     append_round_metrics_csv,
     init_artifact_dir,
 )
-from spectral_fl.diagnostics.metrics import (
+from graphfl_lab.diagnostics.metrics import (
     compute_alignment,
     compute_dominance_index,
     compute_effective_client_number,
@@ -13,8 +13,8 @@ from spectral_fl.diagnostics.metrics import (
     compute_q,
     summarize_pre_post,
 )
-from spectral_fl.diagnostics.schema import ClientRoundDiagnostics, RoundDiagnostics
-from spectral_fl.diagnostics.result_schema import (
+from graphfl_lab.diagnostics.schema import ClientRoundDiagnostics, RoundDiagnostics
+from graphfl_lab.diagnostics.result_schema import (
     LEGACY_RESULT_SCHEMA_VERSION,
     RESULT_SCHEMA_VERSION,
     config_aliases_from_args,

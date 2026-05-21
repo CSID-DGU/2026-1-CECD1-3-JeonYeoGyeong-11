@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.lifecycle.traces import (
+from graphfl_lab.lifecycle.traces import (
     TRACE_SCHEMA_VERSION,
     RoundTraceBundle,
     TraceRecord,

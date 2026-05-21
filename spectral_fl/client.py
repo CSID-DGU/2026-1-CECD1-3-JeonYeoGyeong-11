@@ -1,6 +1,6 @@
 """Backward-compatible facade for Cora Flower clients."""
 
-from spectral_fl.clients.cora import (
+from graphfl_lab.clients.cora import (
     FlowerClient,
     evaluate,
     get_parameters,

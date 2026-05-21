@@ -17,13 +17,13 @@ from flwr.common import (
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from spectral_fl.strategies.graphfl.aggregation import weighted_average_by_alpha
-from spectral_fl.graph.sources import graph_vectors_for_fedsim, normalize_key
-from spectral_fl.graph.builders import build_client_graph
-from spectral_fl.graph.diagnostics import compute_graph_diagnostics
-from spectral_fl.projection import make_gaussian_projection
-from spectral_fl.strategies.baselines.ordering import sort_fit_results_by_cid
-from spectral_fl.strategies.baselines.tracing import _EvalTracer
+from graphfl_lab.strategies.graphfl.aggregation import weighted_average_by_alpha
+from graphfl_lab.graph.sources import graph_vectors_for_fedsim, normalize_key
+from graphfl_lab.graph.builders import build_client_graph
+from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
+from graphfl_lab.projection import make_gaussian_projection
+from graphfl_lab.strategies.baselines.ordering import sort_fit_results_by_cid
+from graphfl_lab.strategies.baselines.tracing import _EvalTracer
 
 
 def _connected_components(w_mat: np.ndarray) -> List[List[int]]:

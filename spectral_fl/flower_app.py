@@ -23,7 +23,7 @@ from flwr.server import ServerApp, ServerConfig
 from flwr.server.compat import start_grid
 from flwr.server.grid import Grid
 
-from spectral_fl.experiments.cora.single_run import (
+from graphfl_lab.experiments.cora.single_run import (
     attach_round_trace,
     build_meta,
     build_strategy,
@@ -32,25 +32,25 @@ from spectral_fl.experiments.cora.single_run import (
     make_initial_parameters as make_cora_initial_parameters,
     print_final_summary,
 )
-from spectral_fl.experiments.vision.single_run import (
+from graphfl_lab.experiments.vision.single_run import (
     build_vision_meta,
     make_initial_parameters as make_general_initial_parameters,
 )
-from spectral_fl.app.config import DEFAULT_RUN_CONFIG, args_from_context
-from spectral_fl.app.data_cache import client_index, load_cora, load_vision
-from spectral_fl.clients.cora import FlowerClient
-from spectral_fl.clients.vision import VisionFlowerClient
-from spectral_fl.data.vision import (
+from graphfl_lab.app.config import DEFAULT_RUN_CONFIG, args_from_context
+from graphfl_lab.app.data_cache import client_index, load_cora, load_vision
+from graphfl_lab.clients.cora import FlowerClient
+from graphfl_lab.clients.vision import VisionFlowerClient
+from graphfl_lab.data.vision import (
     vision_input_shape,
     vision_num_classes,
 )
-from spectral_fl.diagnostics.result_schema import (
+from graphfl_lab.diagnostics.result_schema import (
     config_aliases_from_args,
     unsupported_components_from_args,
     with_result_schema,
 )
-from spectral_fl.graph.presets import apply_graph_preset_to_namespace
-from spectral_fl.models.vision import build_model
+from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
+from graphfl_lab.models.vision import build_model
 
 
 _args_from_context = args_from_context

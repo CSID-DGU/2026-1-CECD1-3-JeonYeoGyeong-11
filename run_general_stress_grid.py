@@ -1,6 +1,6 @@
 """Compatibility wrapper for the vision FL stress-grid CLI."""
 
-from spectral_fl.cli import vision_stress_grid as _impl
+from graphfl_lab.cli import vision_stress_grid as _impl
 
 globals().update(
     {

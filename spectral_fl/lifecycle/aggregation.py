@@ -7,7 +7,7 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from spectral_fl.corrections.graph_free import resolve_graph_free_correction
+from graphfl_lab.corrections.graph_free import resolve_graph_free_correction
 
 from .context import AggregationContext
 from .modules import ModuleResult

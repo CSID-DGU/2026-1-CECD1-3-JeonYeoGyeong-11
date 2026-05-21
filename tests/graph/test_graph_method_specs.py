@@ -1,8 +1,8 @@
 import unittest
 from argparse import Namespace
 
-from spectral_fl.graph.method_specs import get_graph_fl_method_spec
-from spectral_fl.graph.presets import (
+from graphfl_lab.graph.method_specs import get_graph_fl_method_spec
+from graphfl_lab.graph.presets import (
     apply_graph_preset_to_namespace,
     graph_method_names,
     graph_preset_names,

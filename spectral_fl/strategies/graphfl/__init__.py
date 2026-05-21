@@ -1,6 +1,6 @@
 """Composable graph-FL strategy internals."""
 
-from spectral_fl.strategies.graphfl.aggregation import (
+from graphfl_lab.strategies.graphfl.aggregation import (
     apply_min_client_weight,
     compute_conflict_weights,
     compute_effective_clients,
@@ -8,22 +8,22 @@ from spectral_fl.strategies.graphfl.aggregation import (
     compute_tau,
     weighted_average_by_alpha,
 )
-from spectral_fl.strategies.graphfl.config import (
+from graphfl_lab.strategies.graphfl.config import (
     GraphFLStrategyState,
     SpectralState,
 )
-from spectral_fl.strategies.graphfl.diagnostics import (
+from graphfl_lab.strategies.graphfl.diagnostics import (
     heterogeneity,
     spectral_energy_diagnostics,
 )
-from spectral_fl.strategies.graphfl.filtering import (
+from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
     laplacian,
     normalized_conflicts,
     spectral_filter,
 )
-from spectral_fl.strategies.graphfl.momentum import apply_server_optimizer
-from spectral_fl.strategies.graphfl.targets import (
+from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
+from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
@@ -31,13 +31,13 @@ from spectral_fl.strategies.graphfl.targets import (
 
 def __getattr__(name: str):
     if name == "GraphFLDiagnosticStrategy":
-        from spectral_fl.strategies.graphfl.strategy import (
+        from graphfl_lab.strategies.graphfl.strategy import (
             GraphFLDiagnosticStrategy,
         )
 
         return GraphFLDiagnosticStrategy
     if name == "SpectralConflictAwareStrategy":
-        from spectral_fl.strategies.graphfl.strategy import (
+        from graphfl_lab.strategies.graphfl.strategy import (
             SpectralConflictAwareStrategy,
         )
 

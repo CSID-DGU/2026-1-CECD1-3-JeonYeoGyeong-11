@@ -1,6 +1,6 @@
 """Backward-compatible facade for vision Flower clients."""
 
-from spectral_fl.clients.vision import (
+from graphfl_lab.clients.vision import (
     VisionFlowerClient,
     get_parameters,
     seed_everything,

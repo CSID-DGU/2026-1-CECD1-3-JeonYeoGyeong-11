@@ -5,8 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spectral_fl.config_io import add_config_argument, parse_args_with_config
-from spectral_fl.diagnostics.result_schema import (
+from graphfl_lab.config_io import add_config_argument, parse_args_with_config
+from graphfl_lab.diagnostics.result_schema import (
     LEGACY_RESULT_SCHEMA_VERSION,
     RESULT_SCHEMA_VERSION,
     result_schema_version,

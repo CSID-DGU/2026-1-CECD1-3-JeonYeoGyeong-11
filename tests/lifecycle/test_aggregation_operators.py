@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.lifecycle.aggregation import AggregationResult, GraphAggregationOperator
-from spectral_fl.lifecycle.context import AggregationContext, RoundContext
-from spectral_fl.lifecycle.topology import TopologyOutput
+from graphfl_lab.lifecycle.aggregation import AggregationResult, GraphAggregationOperator
+from graphfl_lab.lifecycle.context import AggregationContext, RoundContext
+from graphfl_lab.lifecycle.topology import TopologyOutput
 
 
 class AggregationOperatorTest(unittest.TestCase):

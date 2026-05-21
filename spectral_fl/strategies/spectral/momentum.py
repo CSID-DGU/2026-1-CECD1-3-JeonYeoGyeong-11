@@ -1,3 +1,3 @@
-"""Compatibility wrapper for ``spectral_fl.strategies.graphfl.momentum``."""
+"""Compatibility wrapper for ``graphfl_lab.strategies.graphfl.momentum``."""
 
-from spectral_fl.strategies.graphfl.momentum import *  # noqa: F401,F403
+from graphfl_lab.strategies.graphfl.momentum import *  # noqa: F401,F403

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.strategies.graphfl.targets import (
+from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )

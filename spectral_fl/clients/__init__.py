@@ -1,6 +1,6 @@
 """Flower client implementations."""
 
-from spectral_fl.clients.cora import FlowerClient
-from spectral_fl.clients.vision import VisionFlowerClient
+from graphfl_lab.clients.cora import FlowerClient
+from graphfl_lab.clients.vision import VisionFlowerClient
 
 __all__ = ["FlowerClient", "VisionFlowerClient"]

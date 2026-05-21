@@ -1,6 +1,6 @@
 """Backward-compatible facade for general vision data helpers."""
 
-from spectral_fl.data.vision import (
+from graphfl_lab.data.vision import (
     VisionClientShard,
     _dirichlet_partition,
     _ensure_min_samples_per_client,

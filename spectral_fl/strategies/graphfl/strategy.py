@@ -37,9 +37,9 @@ from flwr.common import (
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from spectral_fl.graph.builders import build_relation_graph
-from spectral_fl.graph.registry import load_graph_plugins
-from spectral_fl.diagnostics.logging import (
+from graphfl_lab.graph.builders import build_relation_graph
+from graphfl_lab.graph.registry import load_graph_plugins
+from graphfl_lab.diagnostics.logging import (
     append_client_metrics_csv,
     append_counterfactual_metrics_csv,
     append_graph_stats_csv,
@@ -47,44 +47,44 @@ from spectral_fl.diagnostics.logging import (
     append_round_metrics_csv,
     init_artifact_dir,
 )
-from spectral_fl.diagnostics.metrics import summarize_pre_post
-from spectral_fl.diagnostics.schema import (
+from graphfl_lab.diagnostics.metrics import summarize_pre_post
+from graphfl_lab.diagnostics.schema import (
     ClientRoundDiagnostics,
     RoundDiagnostics,
 )
-from spectral_fl.graph.diagnostics import compute_graph_diagnostics
-from spectral_fl.lifecycle.counterfactuals import default_counterfactual_specs
-from spectral_fl.lifecycle.diagnostic_runner import (
+from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
+from graphfl_lab.lifecycle.counterfactuals import default_counterfactual_specs
+from graphfl_lab.lifecycle.diagnostic_runner import (
     CounterfactualDiagnosticRunner,
     MinimalAggregationAdapter,
 )
-from spectral_fl.strategies.graphfl.aggregation import (
+from graphfl_lab.strategies.graphfl.aggregation import (
     apply_correction_family,
     compute_conflict_weights,
     compute_tau,
     resolve_tau_source,
     select_aggregation_weights,
 )
-from spectral_fl.graph.sources import (
+from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
     normalize_key,
 )
-from spectral_fl.projection import flatten_weights, make_gaussian_projection
-from spectral_fl.strategies.graphfl.config import GraphFLStrategyState
-from spectral_fl.strategies.graphfl.diagnostics import (
+from graphfl_lab.projection import flatten_weights, make_gaussian_projection
+from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
+from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
     build_round_log,
     heterogeneity,
     spectral_energy_diagnostics,
 )
-from spectral_fl.strategies.graphfl.filtering import (
+from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
     laplacian,
     normalized_conflicts,
 )
-from spectral_fl.strategies.graphfl.momentum import apply_server_optimizer
-from spectral_fl.strategies.baselines import (
+from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
+from graphfl_lab.strategies.baselines import (
     TracingFedAdagrad,
     TracingFedAdam,
     TracingFedAvg,
@@ -99,11 +99,11 @@ from spectral_fl.strategies.baselines import (
     _fit_result_cid_key,
     sort_fit_results_by_cid as _sort_fit_results_by_cid,
 )
-from spectral_fl.strategies.graphfl.targets import (
+from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
-from spectral_fl.strategies.graphfl.tracing import (
+from graphfl_lab.strategies.graphfl.tracing import (
     make_round_trace_payload,
     matrix_log_if_small,
 )

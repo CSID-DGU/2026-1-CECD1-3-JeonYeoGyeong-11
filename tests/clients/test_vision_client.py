@@ -3,7 +3,7 @@ import unittest
 import torch
 from torch.utils.data import TensorDataset
 
-from spectral_fl.clients.vision import VisionFlowerClient
+from graphfl_lab.clients.vision import VisionFlowerClient
 
 
 class VisionClientOptimizerStateTest(unittest.TestCase):

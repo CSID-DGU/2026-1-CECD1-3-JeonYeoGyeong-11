@@ -8,7 +8,7 @@ from typing import Callable, List, Mapping, Optional
 import numpy as np
 from flwr.common import NDArrays
 
-from spectral_fl.graph.sources.config import GraphSourceConfig, normalize_key
+from graphfl_lab.graph.sources.config import GraphSourceConfig, normalize_key
 
 
 @dataclass(frozen=True)

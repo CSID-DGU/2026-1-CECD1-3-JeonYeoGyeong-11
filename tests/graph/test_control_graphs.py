@@ -2,13 +2,13 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.builders import build_client_graph
-from spectral_fl.graph.controls import (
+from graphfl_lab.graph.builders import build_client_graph
+from graphfl_lab.graph.controls import (
     build_identity_graph,
     build_random_matched_graph,
     build_shuffled_graph,
 )
-from spectral_fl.graph.diagnostics import compute_graph_diagnostics
+from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 
 
 class ControlGraphTest(unittest.TestCase):

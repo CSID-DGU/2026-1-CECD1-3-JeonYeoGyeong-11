@@ -11,7 +11,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
-from spectral_fl.models.vision import build_model
+from graphfl_lab.models.vision import build_model
 
 
 def _seed_for(seed: int, server_round: int, cid: int) -> int:

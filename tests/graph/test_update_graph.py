@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.builders import build_relation_graph
-from spectral_fl.update_graph import build_client_graph, compute_graph_diagnostics
+from graphfl_lab.graph.builders import build_relation_graph
+from graphfl_lab.update_graph import build_client_graph, compute_graph_diagnostics
 
 
 class UpdateGraphTest(unittest.TestCase):

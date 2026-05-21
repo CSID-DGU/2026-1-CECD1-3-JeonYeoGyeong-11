@@ -1,6 +1,6 @@
 """Compatibility wrapper for the vision FL experiment CLI."""
 
-from spectral_fl.cli import vision_experiment as _impl
+from graphfl_lab.cli import vision_experiment as _impl
 
 globals().update(
     {

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.strategies.graphfl.filtering import (
+from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
     laplacian,
     normalized_conflicts,

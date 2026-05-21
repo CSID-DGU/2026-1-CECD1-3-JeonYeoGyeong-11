@@ -7,7 +7,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 from flwr.common import NDArrays
-from spectral_fl.corrections.graph_free import resolve_graph_free_correction
+from graphfl_lab.corrections.graph_free import resolve_graph_free_correction
 
 
 @dataclass(frozen=True)

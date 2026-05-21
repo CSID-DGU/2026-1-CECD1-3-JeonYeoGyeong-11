@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
-from spectral_fl.strategies.graphfl.aggregation import (
+from graphfl_lab.strategies.graphfl.aggregation import (
     compute_effective_clients,
     compute_entropy,
 )

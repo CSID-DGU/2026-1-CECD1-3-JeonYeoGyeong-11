@@ -1,7 +1,7 @@
 import unittest
 
-from spectral_fl.designs import ComponentSpec, interface_target_designs, resolve_design
-from spectral_fl.graph.presets import graph_preset_names, resolve_graph_preset_spec
+from graphfl_lab.designs import ComponentSpec, interface_target_designs, resolve_design
+from graphfl_lab.graph.presets import graph_preset_names, resolve_graph_preset_spec
 
 
 class DesignPresetTest(unittest.TestCase):

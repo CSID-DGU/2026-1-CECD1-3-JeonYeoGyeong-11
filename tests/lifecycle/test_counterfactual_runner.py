@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.diagnostics.metrics import summarize_pre_post
-from spectral_fl.lifecycle.counterfactuals import CounterfactualSpec, default_counterfactual_specs
-from spectral_fl.lifecycle.diagnostic_runner import (
+from graphfl_lab.diagnostics.metrics import summarize_pre_post
+from graphfl_lab.lifecycle.counterfactuals import CounterfactualSpec, default_counterfactual_specs
+from graphfl_lab.lifecycle.diagnostic_runner import (
     CounterfactualDiagnosticRunner,
     MinimalAggregationAdapter,
 )

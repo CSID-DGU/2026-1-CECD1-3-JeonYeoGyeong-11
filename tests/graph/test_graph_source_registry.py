@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.sources import (
+from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     GraphSourceContext,
     GraphSourceResult,

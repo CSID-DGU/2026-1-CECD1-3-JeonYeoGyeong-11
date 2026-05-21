@@ -1,7 +1,7 @@
 """General vision experiment implementations.
 
 The single-run entrypoint is re-exported here so existing imports of
-``spectral_fl.experiments.vision`` keep working after the package split.
+``graphfl_lab.experiments.vision`` keep working after the package split.
 """
 
-from spectral_fl.experiments.vision.single_run import *  # noqa: F401,F403
+from graphfl_lab.experiments.vision.single_run import *  # noqa: F401,F403

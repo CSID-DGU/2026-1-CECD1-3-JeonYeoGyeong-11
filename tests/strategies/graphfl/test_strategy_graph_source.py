@@ -3,8 +3,8 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from spectral_fl.strategies.baselines import sort_fit_results_by_cid
-from spectral_fl.strategies.graphfl.strategy import GraphFLDiagnosticStrategy
+from graphfl_lab.strategies.baselines import sort_fit_results_by_cid
+from graphfl_lab.strategies.graphfl.strategy import GraphFLDiagnosticStrategy
 
 
 class StrategyGraphSourceTest(unittest.TestCase):

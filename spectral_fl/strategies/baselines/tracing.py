@@ -10,8 +10,8 @@ from flwr.common import EvaluateRes, FitIns, FitRes, NDArrays, Parameters, param
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from spectral_fl.projection import flatten_weights
-from spectral_fl.strategies.baselines.ordering import sort_fit_results_by_cid
+from graphfl_lab.projection import flatten_weights
+from graphfl_lab.strategies.baselines.ordering import sort_fit_results_by_cid
 
 
 class _EvalTracer:

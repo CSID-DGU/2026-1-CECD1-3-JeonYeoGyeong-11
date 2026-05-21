@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.spectral_diagnostics import (
+from graphfl_lab.spectral_diagnostics import (
     apply_spectral_filter_with_diagnostics,
     heterogeneity,
     laplacian,
@@ -10,7 +10,7 @@ from spectral_fl.spectral_diagnostics import (
     spectral_energy_diagnostics,
     spectral_filter,
 )
-from spectral_fl.update_graph import build_client_graph
+from graphfl_lab.update_graph import build_client_graph
 
 
 class SpectralDiagnosticsTest(unittest.TestCase):

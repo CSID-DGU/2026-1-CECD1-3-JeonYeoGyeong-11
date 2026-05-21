@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 3a - graphfl_lab alias bridge |
-| status | Gate 3a alias bridge implemented; full Gate 3 import migration still pending |
+| current_gate | Gate 3b - internal import canonicalization |
+| status | Gate 3a alias bridge committed; Gate 3b import batch in progress; full real move still pending |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | complete Gate 3 import batches and real move verification, or continue with Gate 4 only after documenting the partial Gate 3 boundary |
+| next_step | verify Gate 3b canonical import batch, then perform real move verification before marking Gate 3 complete |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -162,6 +162,7 @@ and impact scope.
 | 2026-05-21 | Creating branch `codex/graphfl-cleanup-gate-0` failed because the local Git refs cannot create the `codex/` directory. | Use `codex-graphfl-cleanup-gate-0` for this local branch while keeping the same Gate 0 scope. |
 | 2026-05-21 | Gate 2 added additive-only result schema fields and config alias tracing. | New result/suite payloads get `result_schema_version`, `config_aliases_used`, and `unsupported_components`; missing version is read as `v0`. |
 | 2026-05-21 | Gate 3 alias bridge can be verified before full import-batch migration, but calling it full Gate 3 would overstate completion. | Split local checks as `3a` for alias bridge; keep `3` fail-closed until full package migration and real move verification are done. |
+| 2026-05-21 | Gate 3 import identity changes touch a broad set of source, script, and test files. | Treat this as `3b` canonical import batch; forbid new `spectral_fl` import tokens outside the shim, alias test, and archived scripts before attempting the real package move. |
 
 ## Closure Policy
 

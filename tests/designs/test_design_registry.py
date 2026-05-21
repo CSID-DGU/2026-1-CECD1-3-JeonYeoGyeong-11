@@ -1,6 +1,6 @@
 import unittest
 
-from spectral_fl.designs import (
+from graphfl_lab.designs import (
     ComponentSpec,
     DesignRegistry,
     GraphFLDesign,

@@ -5,8 +5,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from spectral_fl.config_io import add_config_argument, parse_args_with_config
-import spectral_fl.experiments.vision.stress_grid as _experiment
+from graphfl_lab.config_io import add_config_argument, parse_args_with_config
+import graphfl_lab.experiments.vision.stress_grid as _experiment
 
 # Compatibility re-exports for older imports from this CLI module.
 globals().update(

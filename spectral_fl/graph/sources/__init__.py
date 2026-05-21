@@ -1,8 +1,8 @@
 """Graph input-signal source selection."""
 
-from spectral_fl.graph.sources.config import GraphSourceConfig, normalize_key
-from spectral_fl.graph.sources.fedsim import graph_vectors_for_fedsim
-from spectral_fl.graph.sources.registry import (
+from graphfl_lab.graph.sources.config import GraphSourceConfig, normalize_key
+from graphfl_lab.graph.sources.fedsim import graph_vectors_for_fedsim
+from graphfl_lab.graph.sources.registry import (
     GraphSourceContext,
     GraphSourceResult,
     build_registered_graph_source,
@@ -10,13 +10,13 @@ from spectral_fl.graph.sources.registry import (
     register_graph_source,
     unregister_graph_source,
 )
-from spectral_fl.graph.sources.selection import (
+from graphfl_lab.graph.sources.selection import (
     flatten_layerwise,
     normalize_vector,
     select_classifier_head,
     select_graph_layers,
 )
-from spectral_fl.graph.sources.spectral import graph_vectors_for_spectral
+from graphfl_lab.graph.sources.spectral import graph_vectors_for_spectral
 
 __all__ = [
     "GraphSourceConfig",

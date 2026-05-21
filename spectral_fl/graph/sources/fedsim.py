@@ -7,8 +7,8 @@ from typing import List, Optional, Tuple
 import numpy as np
 from flwr.common import NDArrays
 
-from spectral_fl.graph.sources.config import GraphSourceConfig, normalize_key
-from spectral_fl.graph.sources.spectral import graph_vectors_for_spectral
+from graphfl_lab.graph.sources.config import GraphSourceConfig, normalize_key
+from graphfl_lab.graph.sources.spectral import graph_vectors_for_spectral
 
 
 def graph_vectors_for_fedsim(

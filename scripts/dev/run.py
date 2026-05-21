@@ -122,7 +122,7 @@ GATE2_REQUIRED_TEXT = {
     ),
 }
 
-GATE3_REQUIRED_TEXT = {
+GATE3A_REQUIRED_TEXT = {
     "graphfl_lab/__init__.py": (
         "Canonical package alias",
         "__path__",
@@ -146,6 +146,20 @@ GATE3_REQUIRED_TEXT = {
         "test_pickle_round_trip_for_canonical_import",
     ),
 }
+
+GATE3B_FORBIDDEN_IMPORT_ALLOWLIST = {
+    "graphfl_lab/__init__.py",
+    "scripts/dev/run.py",
+    "spectral_fl/__init__.py",
+    "tests/core/test_package_alias.py",
+    "tests/dev/test_run_gate_check.py",
+}
+
+GATE3B_FORBIDDEN_IMPORTS = (
+    "from spectral_fl",
+    "import spectral_fl",
+    "spectral_fl.",
+)
 
 
 def repo_root(start: Path | None = None) -> Path:
@@ -222,6 +236,26 @@ def _tracked_serialized_assets(root: Path) -> list[str]:
     return [path for path in _tracked_files(root) if path.lower().endswith(suffixes)]
 
 
+def _forbidden_identity_imports(root: Path) -> list[str]:
+    failures: list[str] = []
+    for rel in _tracked_files(root):
+        if not rel.endswith(".py"):
+            continue
+        if rel in GATE3B_FORBIDDEN_IMPORT_ALLOWLIST:
+            continue
+        if rel.startswith("scripts/archive/"):
+            continue
+        path = root / rel
+        if not path.is_file():
+            continue
+        text = _read_text(path)
+        for needle in GATE3B_FORBIDDEN_IMPORTS:
+            if needle in text:
+                failures.append(f"{rel}: forbidden legacy import token {needle!r}")
+                break
+    return failures
+
+
 def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     root = repo_root(root)
     failed_checks: list[str] = []
@@ -243,11 +277,15 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     elif gate == "2":
         failed_checks.extend(_missing_text(root, GATE2_REQUIRED_TEXT))
     elif gate == "3a":
-        failed_checks.extend(_missing_text(root, GATE3_REQUIRED_TEXT))
+        failed_checks.extend(_missing_text(root, GATE3A_REQUIRED_TEXT))
+    elif gate == "3b":
+        failed_checks.extend(_missing_text(root, GATE3A_REQUIRED_TEXT))
+        failed_checks.extend(_forbidden_identity_imports(root))
     elif gate == "3":
         failed_checks.append(
             "Gate 3 full package migration is not complete; run gate-check 3a "
-            "for the alias bridge, then finish import batches and real move verification."
+            "for the alias bridge, gate-check 3b for import batches, then "
+            "finish real move verification."
         )
     else:
         failed_checks.append(

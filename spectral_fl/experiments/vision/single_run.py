@@ -251,6 +251,6 @@ def build_general_meta(
 
 
 def run(args):
-    from spectral_fl.flower_runner import main_dispatch
+    from graphfl_lab.flower_runner import main_dispatch
 
     main_dispatch(args, track="vision-fl")

@@ -7,9 +7,9 @@ from typing import Any, Mapping, Sequence
 
 import numpy as np
 
-from spectral_fl.corrections.graph_free import resolve_graph_free_correction
-from spectral_fl.diagnostics.metrics import summarize_pre_post
-from spectral_fl.graph.diagnostics import compute_graph_diagnostics
+from graphfl_lab.corrections.graph_free import resolve_graph_free_correction
+from graphfl_lab.diagnostics.metrics import summarize_pre_post
+from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 
 from .counterfactuals import (
     CounterfactualResult,

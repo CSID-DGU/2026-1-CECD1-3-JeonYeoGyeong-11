@@ -1,14 +1,14 @@
 """Baseline strategy helpers."""
 
-from spectral_fl.strategies.baselines.fednova import TracingFedNova
-from spectral_fl.strategies.baselines.fedsim import TracingFedSim
-from spectral_fl.strategies.baselines.graph_smooth import TracingGraphSmoothFedAvgM
-from spectral_fl.strategies.baselines.dominance_aware import TracingDominanceAwareFedAvgM
-from spectral_fl.strategies.baselines.ordering import (
+from graphfl_lab.strategies.baselines.fednova import TracingFedNova
+from graphfl_lab.strategies.baselines.fedsim import TracingFedSim
+from graphfl_lab.strategies.baselines.graph_smooth import TracingGraphSmoothFedAvgM
+from graphfl_lab.strategies.baselines.dominance_aware import TracingDominanceAwareFedAvgM
+from graphfl_lab.strategies.baselines.ordering import (
     _fit_result_cid_key,
     sort_fit_results_by_cid,
 )
-from spectral_fl.strategies.baselines.tracing import (
+from graphfl_lab.strategies.baselines.tracing import (
     TracingFedAdagrad,
     TracingFedAdam,
     TracingFedAvg,

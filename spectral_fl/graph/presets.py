@@ -5,12 +5,12 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import Any, Dict, List, Mapping
 
-from spectral_fl.designs import design_names, resolve_design
-from spectral_fl.graph.method_specs import (
+from graphfl_lab.designs import design_names, resolve_design
+from graphfl_lab.graph.method_specs import (
     get_graph_fl_method_spec,
     graph_fl_method_names,
 )
-from spectral_fl.graph.sources.config import normalize_key
+from graphfl_lab.graph.sources.config import normalize_key
 
 
 _DISABLED_NAMES = {"", "none", "off", "disabled"}

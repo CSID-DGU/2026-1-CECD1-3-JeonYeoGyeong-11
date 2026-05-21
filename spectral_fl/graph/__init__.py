@@ -1,14 +1,14 @@
 """Client graph construction utilities.
 
 The graph package separates three questions that were previously mixed in
-``spectral_fl.update_graph``:
+``graphfl_lab.update_graph``:
 
 * similarity: how two client signals are scored,
 * sparsification: how dense scores become edges,
 * builders: named graph construction modes used by experiments.
 """
 
-from spectral_fl.graph.builders import (
+from graphfl_lab.graph.builders import (
     build_client_graph,
     build_relation_graph,
     global_alignment_graph,
@@ -17,23 +17,23 @@ from spectral_fl.graph.builders import (
     pfedgraph_qp_graph,
     rbf_graph,
 )
-from spectral_fl.graph.controls import (
+from graphfl_lab.graph.controls import (
     build_control_graph,
     build_identity_graph,
     build_random_matched_graph,
     build_shuffled_graph,
     build_uniform_control_graph,
 )
-from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
-from spectral_fl.graph.diagnostics import compute_graph_diagnostics
-from spectral_fl.graph.presets import (
+from graphfl_lab.graph.clustering import build_block_uniform_graph, cluster_clients
+from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
+from graphfl_lab.graph.presets import (
     apply_graph_preset_to_namespace,
     graph_method_names,
     graph_preset_names,
     resolve_graph_method_spec,
     resolve_graph_preset_spec,
 )
-from spectral_fl.graph.registry import (
+from graphfl_lab.graph.registry import (
     GraphBuildContext,
     GraphBuildResult,
     build_registered_graph,
@@ -43,21 +43,21 @@ from spectral_fl.graph.registry import (
     require_graph_context,
     unregister_graph_builder,
 )
-from spectral_fl.graph.similarity import (
+from graphfl_lab.graph.similarity import (
     cosine_nonnegative,
     dense_absolute_cosine,
     dense_negative_cosine,
     dense_positive_cosine,
     dense_signed_cosine,
 )
-from spectral_fl.graph.sparsification import (
+from graphfl_lab.graph.sparsification import (
     keep_mutual_topk,
     keep_threshold,
     keep_topk,
     random_edges_matched_to_knn,
     uniform_graph,
 )
-from spectral_fl.graph.sources import (
+from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     GraphSourceContext,
     GraphSourceResult,

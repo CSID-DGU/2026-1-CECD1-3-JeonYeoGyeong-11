@@ -8,8 +8,8 @@ import flwr as fl
 import numpy as np
 from flwr.common import NDArrays, ndarrays_to_parameters, parameters_to_ndarrays
 
-from spectral_fl.strategies.baselines.ordering import sort_fit_results_by_cid
-from spectral_fl.strategies.baselines.tracing import _EvalTracer
+from graphfl_lab.strategies.baselines.ordering import sort_fit_results_by_cid
+from graphfl_lab.strategies.baselines.tracing import _EvalTracer
 
 
 class TracingFedNova(_EvalTracer, fl.server.strategy.FedAvg):

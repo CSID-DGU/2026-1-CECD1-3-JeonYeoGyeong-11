@@ -1,7 +1,7 @@
 import argparse
 import unittest
 
-from spectral_fl.experiments.suites.vision.variants import parse_variant
+from graphfl_lab.experiments.suites.vision.variants import parse_variant
 
 
 def _last_flag_value(args, flag):

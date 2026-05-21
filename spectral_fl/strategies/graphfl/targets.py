@@ -8,10 +8,10 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from flwr.common import NDArrays
 
-from spectral_fl.graph.sources import normalize_key
-from spectral_fl.projection import flatten_weights, unflatten_like
-from spectral_fl.strategies.graphfl.aggregation import weighted_average_by_alpha
-from spectral_fl.strategies.graphfl.filtering import (
+from graphfl_lab.graph.sources import normalize_key
+from graphfl_lab.projection import flatten_weights, unflatten_like
+from graphfl_lab.strategies.graphfl.aggregation import weighted_average_by_alpha
+from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
 )
 

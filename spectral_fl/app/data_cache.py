@@ -8,8 +8,8 @@ from typing import Any, Dict, Tuple
 
 from flwr.common import Context
 
-from spectral_fl.data import load_cora_clients
-from spectral_fl.data.vision import load_vision_clients
+from graphfl_lab.data import load_cora_clients
+from graphfl_lab.data.vision import load_vision_clients
 
 
 _VISION_CACHE: Dict[Tuple[Any, ...], Tuple[Any, Any, Any]] = {}

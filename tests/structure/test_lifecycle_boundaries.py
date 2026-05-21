@@ -53,12 +53,12 @@ class LifecycleBoundaryTest(unittest.TestCase):
         banned = (
             "flwr",
             "torch",
-            "spectral_fl.cli",
-            "spectral_fl.experiments",
-            "spectral_fl.flower_app",
-            "spectral_fl.flower_runner",
-            "spectral_fl.graph",
-            "spectral_fl.strategies",
+            "graphfl_lab.cli",
+            "graphfl_lab.experiments",
+            "graphfl_lab.flower_app",
+            "graphfl_lab.flower_runner",
+            "graphfl_lab.graph",
+            "graphfl_lab.strategies",
         )
         contract_files = [
             ROOT / "spectral_fl" / "lifecycle" / "context.py",
@@ -70,8 +70,8 @@ class LifecycleBoundaryTest(unittest.TestCase):
 
     def test_lifecycle_stage_modules_do_not_import_later_stage_modules(self):
         guarded = {
-            "client_state.py": ("spectral_fl.lifecycle.relation", "spectral_fl.lifecycle.topology"),
-            "relation.py": ("spectral_fl.lifecycle.topology",),
+            "client_state.py": ("graphfl_lab.lifecycle.relation", "graphfl_lab.lifecycle.topology"),
+            "relation.py": ("graphfl_lab.lifecycle.topology",),
             "topology.py": (),
         }
         for filename, banned in guarded.items():

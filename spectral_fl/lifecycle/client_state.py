@@ -102,7 +102,7 @@ class GraphSourceClientStateExtractor:
         self.layer_end = int(layer_end)
 
     def run(self, context: StateExtractionContext) -> ModuleResult:
-        from spectral_fl.graph.sources import GraphSourceConfig, graph_vectors_for_spectral
+        from graphfl_lab.graph.sources import GraphSourceConfig, graph_vectors_for_spectral
 
         try:
             ema_updates = context.round_context.config.get("ema_updates")

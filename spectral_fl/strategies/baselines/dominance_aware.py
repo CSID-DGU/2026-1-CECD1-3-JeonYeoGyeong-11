@@ -17,10 +17,10 @@ from flwr.common import (
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from spectral_fl.projection import flatten_weights
-from spectral_fl.strategies.baselines.ordering import sort_fit_results_by_cid
-from spectral_fl.strategies.baselines.tracing import _EvalTracer, _InteractionDiagnostics
-from spectral_fl.strategies.graphfl.momentum import apply_server_optimizer
+from graphfl_lab.projection import flatten_weights
+from graphfl_lab.strategies.baselines.ordering import sort_fit_results_by_cid
+from graphfl_lab.strategies.baselines.tracing import _EvalTracer, _InteractionDiagnostics
+from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 
 
 def _safe_cosine(x: np.ndarray, y: np.ndarray, eps: float = 1e-12) -> float:

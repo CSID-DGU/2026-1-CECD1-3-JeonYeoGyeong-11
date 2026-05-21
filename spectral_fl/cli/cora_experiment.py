@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 
-from spectral_fl.cli.argparse_types import str2bool
-from spectral_fl.config_io import add_config_argument, parse_args_with_config
-from spectral_fl.experiments.cora import single_run as _experiment
+from graphfl_lab.cli.argparse_types import str2bool
+from graphfl_lab.config_io import add_config_argument, parse_args_with_config
+from graphfl_lab.experiments.cora import single_run as _experiment
 GRAPH_MODE_HELP = (
     "Topology/lower-level graph construction knob under the lifecycle design. "
     "Built-ins include dense, knn, mutual_knn, "
@@ -15,7 +15,7 @@ GRAPH_MODE_HELP = (
     "provided by --graph-plugin."
 )
 
-# Compatibility re-exports for older imports from spectral_fl.cli.cora_experiment.
+# Compatibility re-exports for older imports from graphfl_lab.cli.cora_experiment.
 globals().update(
     {
         name: getattr(_experiment, name)
@@ -85,7 +85,7 @@ def parse_args():
         default="",
         help=(
             "Comma-separated Python module names imported before graph building. "
-            "Each module may call spectral_fl.graph.register_graph_builder(...) "
+            "Each module may call graphfl_lab.graph.register_graph_builder(...) "
             "or register_graph_source(...) to add custom graph modes/sources."
         ),
     )

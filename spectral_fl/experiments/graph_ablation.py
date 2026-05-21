@@ -1,6 +1,6 @@
 """Backward-compatible facade for Cora graph-ablation orchestration."""
 
-from spectral_fl.experiments.cora import graph_ablation as _impl
+from graphfl_lab.experiments.cora import graph_ablation as _impl
 
 globals().update(
     {

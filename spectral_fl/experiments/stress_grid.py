@@ -1,6 +1,6 @@
 """Backward-compatible facade for vision FL stress-grid orchestration."""
 
-from spectral_fl.experiments.vision import stress_grid as _impl
+from graphfl_lab.experiments.vision import stress_grid as _impl
 
 globals().update(
     {

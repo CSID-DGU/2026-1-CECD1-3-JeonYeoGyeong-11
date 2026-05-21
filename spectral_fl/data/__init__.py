@@ -1,7 +1,7 @@
 """Dataset loading and partition helpers."""
 
-from spectral_fl.data.cora import ClientGraph, load_cora_clients
-from spectral_fl.data.vision import (
+from graphfl_lab.data.cora import ClientGraph, load_cora_clients
+from graphfl_lab.data.vision import (
     VisionClientShard,
     _dirichlet_partition,
     _ensure_min_samples_per_client,

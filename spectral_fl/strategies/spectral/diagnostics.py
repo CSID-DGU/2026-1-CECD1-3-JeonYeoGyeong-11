@@ -1,3 +1,3 @@
-"""Compatibility wrapper for ``spectral_fl.strategies.graphfl.diagnostics``."""
+"""Compatibility wrapper for ``graphfl_lab.strategies.graphfl.diagnostics``."""
 
-from spectral_fl.strategies.graphfl.diagnostics import *  # noqa: F401,F403
+from graphfl_lab.strategies.graphfl.diagnostics import *  # noqa: F401,F403

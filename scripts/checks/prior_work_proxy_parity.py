@@ -21,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from spectral_fl.designs import interface_target_designs, resolve_design
+from graphfl_lab.designs import interface_target_designs, resolve_design
 
 REQUIRED_ARTIFACTS = {
     "round_metrics.csv",

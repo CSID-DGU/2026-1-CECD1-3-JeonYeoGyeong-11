@@ -1,3 +1,3 @@
-"""Compatibility package for ``spectral_fl.experiments.vision``."""
+"""Compatibility package for ``graphfl_lab.experiments.vision``."""
 
-from spectral_fl.experiments.vision import *  # noqa: F401,F403
+from graphfl_lab.experiments.vision import *  # noqa: F401,F403

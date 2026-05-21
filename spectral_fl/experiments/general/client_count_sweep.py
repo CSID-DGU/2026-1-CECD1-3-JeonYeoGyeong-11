@@ -1,3 +1,3 @@
-"""Compatibility wrapper for ``spectral_fl.experiments.vision.client_count_sweep``."""
+"""Compatibility wrapper for ``graphfl_lab.experiments.vision.client_count_sweep``."""
 
-from spectral_fl.experiments.vision.client_count_sweep import *  # noqa: F401,F403
+from graphfl_lab.experiments.vision.client_count_sweep import *  # noqa: F401,F403

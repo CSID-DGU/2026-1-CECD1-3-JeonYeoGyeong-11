@@ -1,6 +1,6 @@
 """Backward-compatible facade for vision FL client-count sweeps."""
 
-from spectral_fl.experiments.vision import client_count_sweep as _impl
+from graphfl_lab.experiments.vision import client_count_sweep as _impl
 
 globals().update(
     {
