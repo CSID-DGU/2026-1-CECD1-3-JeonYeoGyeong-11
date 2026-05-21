@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5a-prep - reporting/result writer extraction |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a prep in progress |
+| current_gate | Gate 5b-prep - suite execution helper extraction |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep committed and Gate 5b-prep in progress |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | extract behavior-preserving result writer helpers without marking Gate 5a complete before golden baseline exists |
+| next_step | extract behavior-preserving suite execution helpers without marking Gate 5b complete before golden baseline exists |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -169,6 +169,8 @@ and impact scope.
 | 2026-05-21 | Existing CI compile step still referenced the pre-move package layout. | Update CI compile paths to `graphfl_lab` plus the `spectral_fl` shim and add a separate scheduled/manual nightly workflow. |
 | 2026-05-21 | Pushing the Gate branch is required for GitHub nightly/manual-nightly verification, but external publication needs explicit user approval. | Do not push or trigger remote workflows yet; continue only local Gate 4c prep such as golden comparison tooling and keep Gate 4c fail-closed. |
 | 2026-05-21 | User prefers continuing with local commits and no immediate push. | Leave Gate 4c completion pending; allow local Gate 5a prep commits that do not require remote workflow state and do not claim full Gate 5a completion. |
+| 2026-05-21 | Vision suite orchestration contains reusable run-or-reuse subprocess logic. | Extract only the execution helper as Gate 5b-prep; keep result aggregation and public runner behavior unchanged. |
+| 2026-05-21 | Gate 5b-prep is not a complete Gate 5b modularization. | Keep the golden/nightly prerequisite visible and do not claim full Gate 5b completion. |
 
 ## Closure Policy
 

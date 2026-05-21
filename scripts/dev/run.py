@@ -269,6 +269,27 @@ GATE5A_PREP_REQUIRED_TEXT = {
     ),
 }
 
+GATE5B_PREP_REQUIRED_TEXT = {
+    "graphfl_lab/experiments/suites/execution.py": (
+        "run_cmd",
+        "execute_or_reuse_result",
+        "reuse_existing",
+    ),
+    "graphfl_lab/experiments/vision/suite.py": (
+        "from graphfl_lab.experiments.suites.execution import execute_or_reuse_result",
+        "cwd=PROJECT_ROOT",
+    ),
+    "tests/experiments/test_suite_execution.py": (
+        "test_execute_reuses_existing_result_without_running_command",
+        "test_execute_runs_when_reuse_disabled",
+        "test_run_cmd_uses_cwd_and_check",
+    ),
+    "docs/maintenance/cleanup-status.md": (
+        "Gate 5b-prep",
+        "do not claim full Gate 5b completion",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -413,6 +434,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         )
     elif gate == "5a-prep":
         failed_checks.extend(_missing_text(root, GATE5A_PREP_REQUIRED_TEXT))
+    elif gate == "5b-prep":
+        failed_checks.extend(_missing_text(root, GATE5B_PREP_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

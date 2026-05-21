@@ -129,13 +129,12 @@ import argparse
 import json
 import math
 import statistics
-import subprocess
 import sys
 import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from graphfl_lab.config_io import public_args_dict
 from graphfl_lab.diagnostics.result_schema import (
@@ -154,6 +153,7 @@ from graphfl_lab.experiments.suites.vision.reporting import (
     write_knn_vs_random_matched_csv,
     write_summary_markdown,
 )
+from graphfl_lab.experiments.suites.execution import execute_or_reuse_result
 from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 from graphfl_lab.experiments.suites.vision.variants import variant_cmd
 from graphfl_lab.experiments.suites.stats import (
@@ -359,22 +359,6 @@ def collect_run_features(result_obj: Dict[str, Any], method: str) -> Dict[str, A
     }
 
 
-def run_cmd(cmd: List[str]) -> None:
-    subprocess.run(cmd, cwd=str(PROJECT_ROOT), check=True)
-
-
-def execute_or_reuse_result(
-    cmd: List[str], result_path: Path, reuse_existing: bool
-) -> Tuple[bool, Optional[float]]:
-    """Return (reused_existing_result, observed_subprocess_wall_time_sec)."""
-    if reuse_existing and result_path.is_file():
-        print(f"Reusing existing result: {result_path}")
-        return True, None
-    start = time.perf_counter()
-    run_cmd(cmd)
-    return False, float(time.perf_counter() - start)
-
-
 def collect_timing_features(
     result_obj: Dict[str, Any],
     method: str,
@@ -542,6 +526,7 @@ def run(args):
                     cmd=cmd,
                     result_path=result_path,
                     reuse_existing=reuse_existing,
+                    cwd=PROJECT_ROOT,
                 )
                 result = load_json(result_path)
                 acc = final_acc(result, method)
@@ -601,6 +586,7 @@ def run(args):
                     cmd=cmd,
                     result_path=result_path,
                     reuse_existing=reuse_existing,
+                    cwd=PROJECT_ROOT,
                 )
                 result = load_json(result_path)
                 acc = final_acc(result, method)
