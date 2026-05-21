@@ -92,6 +92,7 @@ from graphfl_lab.strategies.graphfl.filtering import (
     normalized_conflicts,
 )
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
+from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta
 from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
@@ -435,11 +436,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             cluster_seed=int(self.graph_seed) + int(server_round),
             client_sample_weights=pre_weights,
         )
-        cluster_ids = graph_meta.get("cluster_ids")
-        if isinstance(cluster_ids, list) and len(cluster_ids) == len(cids):
-            client_cluster_ids = [int(x) for x in cluster_ids]
-        else:
-            client_cluster_ids = [-1 for _ in cids]
+        client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)
         graph_diag_current = compute_graph_diagnostics(w_curr)
         w_ema, graph_used_source = select_round_graph(
             current_graph=w_curr,

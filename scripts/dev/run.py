@@ -447,6 +447,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "collect_client_fit_batch",
         "sort_fit_results_by_cid",
     ),
+    "graphfl_lab/strategies/graphfl/graph_metadata.py": (
+        "client_cluster_ids_from_meta",
+        "cluster_ids",
+        "return [-1 for _ in cids]",
+    ),
     "graphfl_lab/strategies/graphfl/graph_state.py": (
         "select_round_graph",
         "warmup_current_graph",
@@ -461,8 +466,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
+        "from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta",
         "from graphfl_lab.strategies.graphfl.graph_state import select_round_graph",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
+        "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
         "fit_batch = collect_client_fit_batch(results)",
@@ -487,6 +494,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_collect_client_fit_batch_sorts_by_numeric_cid_and_converts_arrays",
         "test_collect_client_fit_batch_uses_proxy_cid_when_metric_missing",
     ),
+    "tests/strategies/graphfl/test_graph_metadata.py": (
+        "test_client_cluster_ids_from_meta_converts_matching_list",
+        "test_client_cluster_ids_from_meta_uses_fallback_when_length_mismatch",
+    ),
     "tests/strategies/graphfl/test_graph_state.py": (
         "test_select_round_graph_preserves_ema_label_when_previous_missing",
         "test_select_round_graph_blends_previous_and_current_graph",
@@ -498,6 +509,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
         "preserve stable CID ordering from baselines ordering",
+        "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",
         "keep aggregate_fit call sites unchanged apart from function names",
         "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
