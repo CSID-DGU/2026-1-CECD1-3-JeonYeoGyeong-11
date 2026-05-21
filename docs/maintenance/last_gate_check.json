@@ -4,6 +4,6 @@
   "failed_checks": [
     "Gate 4c requires one GitHub nightly or manual-nightly green run before completion."
   ],
-  "verified_at": "2026-05-21T02:45:32.289422+00:00",
-  "commit_sha": "4af88f1f41a44080dad67c61d360c3bafae36d15"
+  "verified_at": "2026-05-21T02:46:43.596330+00:00",
+  "commit_sha": "8d61d4d7ed6fa0f779558b8a671591f9ca9696ec"
 }
