@@ -332,13 +332,23 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "diagnostic_graph_args",
         "result_path_for_variant",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_commands.py": (
+        "build_base_cmd",
+        "_user_arg_dests",
+        "--train-subset-size",
+    ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
+        "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
     "tests/experiments/vision/test_variant_helpers.py": (
         "test_result_path_for_variant_preserves_existing_file_name_contract",
         "test_diagnostic_graph_args_adds_cluster_auto_k_for_cluster_only",
+    ),
+    "tests/experiments/vision/test_variant_commands.py": (
+        "test_build_base_cmd_preserves_core_command_contract",
+        "test_build_base_cmd_forwards_only_explicit_user_graph_args",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5c-prep",
