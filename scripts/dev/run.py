@@ -277,7 +277,14 @@ GATE5B_PREP_REQUIRED_TEXT = {
     ),
     "graphfl_lab/experiments/vision/suite.py": (
         "from graphfl_lab.experiments.suites.execution import execute_or_reuse_result",
+        "from graphfl_lab.experiments.suites.vision.features import",
         "cwd=PROJECT_ROOT",
+    ),
+    "graphfl_lab/experiments/suites/vision/features.py": (
+        "collect_run_features",
+        "collect_timing_features",
+        "load_preloaded_fedavg_accs",
+        "rank_key",
     ),
     "graphfl_lab/experiments/vision/client_count_sweep.py": (
         "from graphfl_lab.experiments.suites.execution import run_cmd",
@@ -291,6 +298,10 @@ GATE5B_PREP_REQUIRED_TEXT = {
         "test_execute_reuses_existing_result_without_running_command",
         "test_execute_runs_when_reuse_disabled",
         "test_run_cmd_uses_cwd_and_check",
+    ),
+    "tests/experiments/vision/test_suite_features.py": (
+        "test_collect_run_features_exports_diagnostic_means_and_aliases",
+        "test_load_preloaded_fedavg_accs_reads_latest_supported_names",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5b-prep",
