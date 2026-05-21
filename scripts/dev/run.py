@@ -337,8 +337,14 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "_user_arg_dests",
         "--train-subset-size",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_families.py": (
+        "parse_baseline_variant",
+        "--fedopt-eta",
+        "fedsim_rbf_knn_k",
+    ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
+        "from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant",
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
@@ -349,6 +355,10 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_variant_commands.py": (
         "test_build_base_cmd_preserves_core_command_contract",
         "test_build_base_cmd_forwards_only_explicit_user_graph_args",
+    ),
+    "tests/experiments/vision/test_variant_families.py": (
+        "test_parse_baseline_variant_handles_fedopt_suffixes",
+        "test_parse_baseline_variant_returns_none_for_ours",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5c-prep",

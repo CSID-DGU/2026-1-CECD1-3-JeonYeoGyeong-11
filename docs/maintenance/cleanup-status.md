@@ -179,6 +179,7 @@ and impact scope.
 | 2026-05-21 | Gate 5b-prep reduced `vision/suite.py` to runner orchestration, while `variants.py` remains the largest Gate 5c target. | Start Gate 5c-prep with token/control/path helpers only; leave `parse_variant` branch order unchanged. |
 | 2026-05-21 | Gate-check self-tests still verify earlier prep gates after moving `current_gate` forward. | Keep completed prep gate names visible in status text so older checks remain reproducible while Gate 5c-prep proceeds. |
 | 2026-05-21 | `variants.py` still mixes token parsing with base command assembly. | Move only `build_base_cmd` to `experiments/suites/vision/variant_commands.py`; keep `variant_cmd` and `parse_variant` public imports stable. |
+| 2026-05-21 | `parse_variant` still contains baseline/Fed* parsing before the Ours graph families. | Move only baseline/Fed* family parsing to `experiments/suites/vision/variant_families.py`; leave recursive Ours suffix handling and graph families in place. |
 
 ## Closure Policy
 

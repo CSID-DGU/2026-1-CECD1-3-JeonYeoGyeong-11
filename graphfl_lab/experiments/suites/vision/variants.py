@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd
+from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
     diagnostic_graph_args as _diagnostic_graph_args,
     diagnostic_graph_free_args as _diagnostic_graph_free_args,
@@ -23,72 +24,9 @@ def parse_variant(
     """Return (flower_method, row_label, extra_cli_args)."""
     default_knn_k = int(args.knn_k)
     v = variant.strip().lower()
-    if v == "fedavg":
-        return "fedavg", "fedavg", []
-    if v == "fedavgm":
-        return "fedavgm", "fedavgm", []
-    if v == "fedadagrad":
-        return "fedadagrad", "fedadagrad", []
-    if v == "fedadam":
-        return "fedadam", "fedadam", []
-    if v == "fedyogi":
-        return "fedyogi", "fedyogi", []
-    if v == "fednova":
-        return "fednova", "fednova", []
-    m = re.match(r"^(fedadagrad|fedadam|fedyogi)_eta([0-9][0-9p.]*)$", v)
-    if m:
-        return m.group(1), v, ["--fedopt-eta", _token_float(m.group(2))]
-    m = re.match(r"^(fedadagrad|fedadam|fedyogi)_etal([0-9][0-9p.]*)$", v)
-    if m:
-        return m.group(1), v, ["--fedopt-eta-l", _token_float(m.group(2))]
-    m = re.match(
-        r"^(fedadam|fedyogi)_eta([0-9][0-9p.]*)_etal([0-9][0-9p.]*)$",
-        v,
-    )
-    if m:
-        return (
-            m.group(1),
-            v,
-            [
-                "--fedopt-eta",
-                _token_float(m.group(2)),
-                "--fedopt-eta-l",
-                _token_float(m.group(3)),
-            ],
-        )
-    m = re.match(r"^fednova_slr([0-9][0-9p.]*)$", v)
-    if m:
-        return "fednova", v, ["--server-learning-rate", _token_float(m.group(1))]
-    if v == "fedprox":
-        return "fedprox", "fedprox", []
-    m = re.match(r"^fedprox_mu([0-9][0-9p.]*)$", v)
-    if m:
-        return "fedprox", v, ["--fedprox-mu", _token_float(m.group(1))]
-    if v == "fedmedian":
-        return "fedmedian", "fedmedian", []
-    if v == "fedtrimmedavg":
-        return "fedtrimmedavg", "fedtrimmedavg", []
-    m = re.match(r"^fedtrimmedavg_beta([0-9][0-9p.]*)$", v)
-    if m:
-        return "fedtrimmedavg", v, ["--trimmed-beta", _token_float(m.group(1))]
-    if v == "fedsim":
-        return (
-            "fedsim",
-            "fedsim",
-            ["--graph-mode", "knn", "--knn-k", str(default_knn_k)],
-        )
-    m = re.match(r"^fedsim_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return "fedsim", v, ["--graph-mode", "knn", "--knn-k", k]
-    m = re.match(r"^fedsim_magnitude_knn_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return "fedsim", v, ["--graph-mode", "magnitude_knn", "--knn-k", k]
-    m = re.match(r"^fedsim_rbf_knn_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return "fedsim", v, ["--graph-mode", "rbf_knn", "--knn-k", k]
+    baseline = parse_baseline_variant(v, default_knn_k)
+    if baseline is not None:
+        return baseline
 
     if v == "ours_default_graph":
         return "ours", v, ["--graph-method", "default_similarity_knn"]
