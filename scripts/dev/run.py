@@ -447,6 +447,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "collect_client_fit_batch",
         "sort_fit_results_by_cid",
     ),
+    "graphfl_lab/strategies/graphfl/graph_state.py": (
+        "select_round_graph",
+        "warmup_current_graph",
+        "raw_current_graph",
+    ),
     "graphfl_lab/strategies/graphfl/projection.py": (
         "project_with_cached_matrix",
         "make_gaussian_projection",
@@ -456,10 +461,12 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
+        "from graphfl_lab.strategies.graphfl.graph_state import select_round_graph",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
         "fit_batch = collect_client_fit_batch(results)",
+        "w_ema, graph_used_source = select_round_graph(",
         "weighted_optional_mean(client_train_acc",
         "update_client_update_ema(",
         "project_with_cached_matrix(",
@@ -480,6 +487,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_collect_client_fit_batch_sorts_by_numeric_cid_and_converts_arrays",
         "test_collect_client_fit_batch_uses_proxy_cid_when_metric_missing",
     ),
+    "tests/strategies/graphfl/test_graph_state.py": (
+        "test_select_round_graph_preserves_ema_label_when_previous_missing",
+        "test_select_round_graph_blends_previous_and_current_graph",
+    ),
     "tests/strategies/graphfl/test_projection.py": (
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
@@ -487,6 +498,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
         "preserve stable CID ordering from baselines ordering",
+        "preserve existing `ema_graph` label when EMA is enabled outside warmup",
         "keep aggregate_fit call sites unchanged apart from function names",
         "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
         "keep state assignment in `GraphFLDiagnosticStrategy`",

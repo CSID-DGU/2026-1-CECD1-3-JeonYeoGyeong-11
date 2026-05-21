@@ -192,6 +192,7 @@ and impact scope.
 | 2026-05-21 | `strategy.py` still owns client metric alias extraction and optional weighted means. | Extract metric readers to `strategies/graphfl/client_metrics.py`; keep aggregate_fit call sites unchanged apart from function names. |
 | 2026-05-21 | `strategy.py` still owns diagnostic post-target flattening for update, EMA update, and weight targets. | Extract target flattening to `strategies/graphfl/diagnostic_targets.py`; keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state. |
 | 2026-05-21 | `aggregate_fit` still owns Flower fit-result ordering and conversion to client arrays. | Extract result collection to `strategies/graphfl/fit_results.py`; preserve stable CID ordering from baselines ordering. |
+| 2026-05-21 | `strategy.py` still owns current-vs-EMA graph selection and source labeling. | Extract graph EMA selection to `strategies/graphfl/graph_state.py`; preserve existing `ema_graph` label when EMA is enabled outside warmup. |
 
 ## Closure Policy
 

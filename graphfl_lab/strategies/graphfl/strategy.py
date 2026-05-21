@@ -92,6 +92,7 @@ from graphfl_lab.strategies.graphfl.filtering import (
     normalized_conflicts,
 )
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
+from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
 from graphfl_lab.strategies.baselines import (
@@ -440,23 +441,13 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         else:
             client_cluster_ids = [-1 for _ in cids]
         graph_diag_current = compute_graph_diagnostics(w_curr)
-        if self.use_ema_graph:
-            if self.state.w_ema is None or in_warmup:
-                w_ema = w_curr
-            else:
-                w_ema = (
-                    self.ema_alpha * self.state.w_ema
-                    + (1.0 - self.ema_alpha) * w_curr
-                )
-        else:
-            w_ema = w_curr
-
-        if self.use_ema_graph and in_warmup:
-            graph_used_source = "warmup_current_graph"
-        elif self.use_ema_graph:
-            graph_used_source = "ema_graph"
-        else:
-            graph_used_source = "raw_current_graph"
+        w_ema, graph_used_source = select_round_graph(
+            current_graph=w_curr,
+            previous_graph_ema=self.state.w_ema,
+            use_ema_graph=self.use_ema_graph,
+            in_warmup=in_warmup,
+            ema_alpha=self.ema_alpha,
+        )
         graph_diag = compute_graph_diagnostics(w_ema)
 
         # Safety: if the graph is empty, fall back to FedAvg weights but still
