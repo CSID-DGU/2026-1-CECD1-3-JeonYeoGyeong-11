@@ -107,6 +107,37 @@ embedding 기반 방법은 client representation을 바꾸는 것이고, attenti
 topology construction을 바꾸는 것이다. 이렇게 선을 그으면 현재 구현 범위와
 미래 확장 가능성이 분리된다.
 
+조립 가능한 항목은 다음처럼 정리할 수 있다. 이 목록은 “모든 선행연구를 완전
+재현한다”는 뜻이 아니라, Graph-FL 아이디어를 같은 실험 언어로 표현하기 위한
+현재의 구성 단위다.
+
+| 조립 위치 | 만들 수 있는 것 | 의미 |
+|---|---|---|
+| client representation | full update delta, model weight, EMA update, classifier-head update, classifier-head weight | client를 어떤 신호로 표현해 relation을 만들지 선택 |
+| relation score | cosine similarity, magnitude-aware similarity, RBF-style similarity, learned/proxy score | client 사이의 가까움을 어떤 방식으로 계산할지 선택 |
+| topology construction | kNN graph, dense/uniform graph, threshold graph, matched random graph, shuffled graph, clustering-only graph, QP/proxy relation graph | score를 실제 edge 구조로 바꾸는 방식 선택 |
+| edge weight / normalization | binary edge, similarity weight, row-normalized adjacency, low-pass/smoothing strength, sample-size prior | 연결 강도와 mixing 정도를 조절 |
+| aggregation target | graph-filtered update, graph-filtered EMA update, graph-filtered weight, personalized/model-mixture target | graph를 어떤 학습 신호에 적용할지 선택 |
+| correction/control family | real graph, matched random, shuffled, uniform, identity, clustering-only, graph-free dominance reweight | 성능 향상의 설명 후보를 분리 |
+| diagnostics | accuracy/loss, real-control gap, graph-free gap, alignment, DI, N_eff, LOO, topology/spectral metrics | 만든 graph가 어떤 방식으로 의미 있는지 판단 |
+
+이 조합으로 만들 수 있는 graph는 단순 kNN similarity graph에만 머물지 않는다.
+예를 들어 update-cosine-kNN graph, classifier-head-kNN graph,
+EMA-history-aware graph, RBF-weighted graph, cluster-only graph, relation을
+깨뜨린 shuffled control graph, edge 수를 맞춘 random graph, graph 없이
+dominance만 보정하는 비교군을 같은 구조에서 만들 수 있다. 더 복잡한 attention,
+functional embedding, hypernetwork, GNN server aggregation은 현재 완전 구현
+대상이라기보다 이 표의 어느 조각을 확장해야 하는지 알려주는 interface-target으로
+놓는다.
+
+이 설계 공간 자체도 의미가 있다. 모든 조합을 한 번에 끝까지 검증하지 않더라도,
+각 graph가 어느 구성요소를 바꾸는지 명확히 놓이면 결과 해석의 단위가 생긴다.
+어떤 조합은 성능 claim까지 갈 수 있고, 어떤 조합은 “이 표현 신호에서는 relation
+정보가 약하다”, “이 topology에서는 smoothing 효과가 대부분이다”, “이 control과
+구분되지 않는다”처럼 더 좁지만 확정 가능한 결론을 남긴다. 프레임워크의 가치는
+큰 주장을 한 번에 만드는 것뿐 아니라, graph 설계 공간을 작은 검증 단위로 나누고
+확인 가능한 사실을 누적할 수 있게 하는 데도 있다.
+
 구조는 다섯 층으로 볼 수 있다.
 
 | 층 | 역할 |
