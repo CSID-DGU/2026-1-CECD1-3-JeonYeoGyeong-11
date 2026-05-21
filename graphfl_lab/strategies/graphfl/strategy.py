@@ -41,10 +41,6 @@ from graphfl_lab.diagnostics.logging import (
     init_artifact_dir,
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
-from graphfl_lab.graph.sources import (
-    GraphSourceConfig,
-    graph_vectors_for_spectral,
-)
 from graphfl_lab.strategies.graphfl.client_metrics import (
     extract_metric,
     weighted_optional_mean,
@@ -66,6 +62,10 @@ from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
 from graphfl_lab.strategies.graphfl.round_graph import build_round_graph_state
 from graphfl_lab.strategies.graphfl.round_outputs import build_strategy_round_outputs
+from graphfl_lab.strategies.graphfl.round_projection import (
+    build_projected_graph_space,
+    select_graph_source_vectors,
+)
 from graphfl_lab.strategies.graphfl.round_weights import select_round_weights
 from graphfl_lab.strategies.graphfl.spectral_metrics import (
     compute_round_spectral_metrics,
@@ -253,15 +253,13 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         local_updates: List[NDArrays],
         ema_updates: Optional[List[NDArrays]] = None,
     ) -> Tuple[List[np.ndarray], str]:
-        return graph_vectors_for_spectral(
+        return select_graph_source_vectors(
             local_weights=local_weights,
             local_updates=local_updates,
             ema_updates=ema_updates,
-            config=GraphSourceConfig(
-                source=self.graph_source,
-                layer_start=self.graph_layer_start,
-                layer_end=self.graph_layer_end,
-            ),
+            graph_source=self.graph_source,
+            graph_layer_start=self.graph_layer_start,
+            graph_layer_end=self.graph_layer_end,
         )
 
     def _aggregate_target(
@@ -373,15 +371,19 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             local_updates=local_updates,
             ema_updates=ema_updates,
         )
-        graph_vectors, graph_source_used = self._graph_vectors(
+        graph_space = build_projected_graph_space(
             local_weights=local_weights,
             local_updates=local_updates,
             ema_updates=ema_updates,
+            graph_source=self.graph_source,
+            graph_layer_start=self.graph_layer_start,
+            graph_layer_end=self.graph_layer_end,
+            project_fn=self._project,
         )
-        graph_source_norms = np.array([float(np.linalg.norm(g)) for g in graph_vectors])
-        z_list = [self._project(g) for g in graph_vectors]
-        z_mat = np.stack(z_list, axis=0)
-        z_norms = np.array([float(np.linalg.norm(z)) for z in z_list])
+        graph_source_used = graph_space.graph_source_used
+        graph_source_norms = graph_space.graph_source_norms
+        z_mat = graph_space.z_mat
+        z_norms = graph_space.z_norms
 
         # ----------------- client similarity graph
         round_graph = build_round_graph_state(

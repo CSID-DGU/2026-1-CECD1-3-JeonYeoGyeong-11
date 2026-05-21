@@ -206,6 +206,8 @@ and impact scope.
 | 2026-05-21 | `aggregate_fit` still owns round log/metric context dictionary assembly. | Extract context builders to `strategies/graphfl/round_context.py`; keep `build_round_log` and `build_fit_metrics` as the output contract. |
 | 2026-05-22 | `aggregate_fit` still owned diagnostic artifact file writing after row/counterfactual helpers were extracted. | Move artifact append orchestration to `strategies/graphfl/diagnostic_artifacts.py`; keep CSV/JSONL filenames and row contracts unchanged. |
 | 2026-05-22 | `aggregate_fit` still assembled round log contexts and scalar fit metrics inline after context helpers existed. | Move round output composition to `strategies/graphfl/round_outputs.py`; preserve `round_logs` and Flower metrics payloads. |
+| 2026-05-22 | `aggregate_fit` still mixed graph-source vector selection with projection-space construction. | Move projected graph-space preparation to `strategies/graphfl/round_projection.py`; keep projection matrix state on the strategy. |
+| 2026-05-22 | Existing graph-source tests exercise the private `_graph_vectors` wrapper. | Keep `_graph_vectors` as a compatibility wrapper around the extracted graph-source helper during Gate 5d-prep. |
 
 ## Closure Policy
 
