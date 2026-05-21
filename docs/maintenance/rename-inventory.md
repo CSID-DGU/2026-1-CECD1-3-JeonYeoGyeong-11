@@ -100,3 +100,5 @@ Record any dependency-driven reorder here before applying it.
 | 2026-05-21 | Initial inventory file created. | Gate 1 will populate counts and allowlists. |
 | 2026-05-21 | Gate 1 tracked-file scan found widespread current `spectral_fl` imports and compatibility names. | Treat as inventory; no removal before schema/package gates. |
 | 2026-05-21 | Serialized asset scan found only ignored local Cora dataset `.pt` cache files. | Exclude data cache from pickle compatibility migration unless later inventory finds project checkpoints. |
+| 2026-05-21 | Gate 3b import batch removed active `spectral_fl` import tokens outside shim tests, the gate checker, and archived scripts. | Use `graphfl_lab` for active code imports; keep `spectral_fl` only as deprecation compatibility surface. |
+| 2026-05-21 | Gate 3 real move changes tracked package ownership from `spectral_fl/*` to `graphfl_lab/*`. | `spectral_fl/__init__.py` is the only legacy package file allowed until Gate 6 hard cleanup. |

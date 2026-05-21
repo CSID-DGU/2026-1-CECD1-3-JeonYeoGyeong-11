@@ -18,9 +18,9 @@
 Gate 1 line-growth guard starts with these large files:
 
 ```text
-spectral_fl/experiments/suites/vision/variants.py
-spectral_fl/strategies/graphfl/strategy.py
-spectral_fl/experiments/vision/suite.py
+graphfl_lab/experiments/suites/vision/variants.py
+graphfl_lab/strategies/graphfl/strategy.py
+graphfl_lab/experiments/vision/suite.py
 ```
 
 Default rule: for each protected path, `added - removed <= 0` relative to the

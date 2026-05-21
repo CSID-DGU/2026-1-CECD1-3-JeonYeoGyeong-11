@@ -61,9 +61,9 @@ class LifecycleBoundaryTest(unittest.TestCase):
             "graphfl_lab.strategies",
         )
         contract_files = [
-            ROOT / "spectral_fl" / "lifecycle" / "context.py",
-            ROOT / "spectral_fl" / "lifecycle" / "modules.py",
-            ROOT / "spectral_fl" / "lifecycle" / "traces.py",
+            ROOT / "graphfl_lab" / "lifecycle" / "context.py",
+            ROOT / "graphfl_lab" / "lifecycle" / "modules.py",
+            ROOT / "graphfl_lab" / "lifecycle" / "traces.py",
         ]
         for path in contract_files:
             self.assert_file_has_no_banned_imports(path, banned)
@@ -75,7 +75,7 @@ class LifecycleBoundaryTest(unittest.TestCase):
             "topology.py": (),
         }
         for filename, banned in guarded.items():
-            path = ROOT / "spectral_fl" / "lifecycle" / filename
+            path = ROOT / "graphfl_lab" / "lifecycle" / filename
             tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
             offenders = [
                 name for name in imported_modules(tree)

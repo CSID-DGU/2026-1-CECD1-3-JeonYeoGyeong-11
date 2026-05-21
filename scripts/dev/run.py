@@ -76,9 +76,9 @@ GATE1_REQUIRED_TEXT = {
     ),
     "docs/maintenance/line-budget-allowlist.txt": (
         "Protected Paths",
-        "spectral_fl/experiments/suites/vision/variants.py",
-        "spectral_fl/strategies/graphfl/strategy.py",
-        "spectral_fl/experiments/vision/suite.py",
+        "graphfl_lab/experiments/suites/vision/variants.py",
+        "graphfl_lab/strategies/graphfl/strategy.py",
+        "graphfl_lab/experiments/vision/suite.py",
         "added - removed <= 0",
     ),
     "docs/removed-materials.md": (
@@ -88,29 +88,29 @@ GATE1_REQUIRED_TEXT = {
 }
 
 GATE2_REQUIRED_TEXT = {
-    "spectral_fl/diagnostics/result_schema.py": (
+    "graphfl_lab/diagnostics/result_schema.py": (
         "RESULT_SCHEMA_VERSION",
         "LEGACY_RESULT_SCHEMA_VERSION",
         "with_result_schema",
         "config_aliases_used",
         "unsupported_components",
     ),
-    "spectral_fl/config_io.py": (
+    "graphfl_lab/config_io.py": (
         "_config_aliases_used",
         "ARG_DEST_ALIASES",
         "configs/general->configs/vision",
     ),
-    "spectral_fl/flower_app.py": (
+    "graphfl_lab/flower_app.py": (
         "with_result_schema",
         "config_aliases_from_args",
         "unsupported_components_from_args",
     ),
-    "spectral_fl/experiments/vision/suite.py": (
+    "graphfl_lab/experiments/vision/suite.py": (
         "with_result_schema",
         "config_aliases_from_args",
         "unsupported_components_from_args",
     ),
-    "spectral_fl/experiments/cora/graph_ablation.py": (
+    "graphfl_lab/experiments/cora/graph_ablation.py": (
         "with_result_schema",
         "config_aliases_from_args",
         "unsupported_components_from_args",
@@ -122,16 +122,17 @@ GATE2_REQUIRED_TEXT = {
     ),
 }
 
-GATE3A_REQUIRED_TEXT = {
+GATE3_REQUIRED_TEXT = {
     "graphfl_lab/__init__.py": (
-        "Canonical package alias",
-        "__path__",
-        "sys.modules.setdefault",
+        "Canonical package root",
     ),
     "spectral_fl/__init__.py": (
+        "Deprecated compatibility shim",
         "DeprecationWarning",
         "GRAPHFL_LAB_SILENCE_DEPRECATION",
         "graphfl_lab",
+        "__path__",
+        "__getattr__",
     ),
     "pyproject.toml": (
         "graphfl_lab*",
@@ -144,6 +145,8 @@ GATE3A_REQUIRED_TEXT = {
         "test_spectral_fl_warning_can_be_silenced",
         "test_sys_modules_alias_roots_exist",
         "test_pickle_round_trip_for_canonical_import",
+        "test_legacy_submodule_import_still_resolves",
+        "test_pickle_round_trip_for_legacy_import",
     ),
 }
 
@@ -256,6 +259,15 @@ def _forbidden_identity_imports(root: Path) -> list[str]:
     return failures
 
 
+def _unexpected_legacy_package_files(root: Path) -> list[str]:
+    allowed = {"spectral_fl/__init__.py"}
+    failures: list[str] = []
+    for rel in _tracked_files(root):
+        if rel.startswith("spectral_fl/") and rel not in allowed:
+            failures.append(f"{rel}: legacy package should only contain the shim")
+    return failures
+
+
 def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     root = repo_root(root)
     failed_checks: list[str] = []
@@ -277,16 +289,13 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     elif gate == "2":
         failed_checks.extend(_missing_text(root, GATE2_REQUIRED_TEXT))
     elif gate == "3a":
-        failed_checks.extend(_missing_text(root, GATE3A_REQUIRED_TEXT))
+        failed_checks.append("Gate 3a alias bridge is superseded by full Gate 3.")
     elif gate == "3b":
-        failed_checks.extend(_missing_text(root, GATE3A_REQUIRED_TEXT))
         failed_checks.extend(_forbidden_identity_imports(root))
     elif gate == "3":
-        failed_checks.append(
-            "Gate 3 full package migration is not complete; run gate-check 3a "
-            "for the alias bridge, gate-check 3b for import batches, then "
-            "finish real move verification."
-        )
+        failed_checks.extend(_missing_text(root, GATE3_REQUIRED_TEXT))
+        failed_checks.extend(_forbidden_identity_imports(root))
+        failed_checks.extend(_unexpected_legacy_package_files(root))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

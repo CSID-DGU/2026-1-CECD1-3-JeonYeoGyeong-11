@@ -48,9 +48,49 @@ class PackageAliasTest(unittest.TestCase):
 
         self.assertIs(sys.modules["graphfl_lab"], graphfl_lab)
         self.assertIs(sys.modules["spectral_fl"], spectral_fl)
+        self.assertEqual(list(spectral_fl.__path__), list(graphfl_lab.__path__))
+
+    def test_legacy_submodule_import_still_resolves(self):
+        module = importlib.import_module("spectral_fl.diagnostics.schema")
+
+        self.assertTrue(hasattr(module, "RoundDiagnostics"))
 
     def test_pickle_round_trip_for_canonical_import(self):
         from graphfl_lab.diagnostics.schema import RoundDiagnostics
+
+        row = RoundDiagnostics(
+            run_id="run",
+            variant="v",
+            seed=1,
+            round=1,
+            accuracy=0.5,
+            loss=1.0,
+            di_pre=0.4,
+            di_post=0.3,
+            neff_pre=2.0,
+            neff_post=3.0,
+            align_mean_pre=0.1,
+            align_mean_post=0.2,
+            loo_mean_pre=0.5,
+            loo_mean_post=0.4,
+            graph_density=0.5,
+            graph_entropy=0.7,
+            alpha_entropy=0.6,
+            wall_time_sec=1.2,
+            graph_method="m",
+            correction_family="real_graph",
+            graph_source="update",
+            graph_variant="update",
+            aggregation_target="graph_filtered_update",
+            graph_kind="knn",
+        )
+
+        restored = pickle.loads(pickle.dumps(row))
+
+        self.assertEqual(restored.to_dict(), row.to_dict())
+
+    def test_pickle_round_trip_for_legacy_import(self):
+        from spectral_fl.diagnostics.schema import RoundDiagnostics
 
         row = RoundDiagnostics(
             run_id="run",

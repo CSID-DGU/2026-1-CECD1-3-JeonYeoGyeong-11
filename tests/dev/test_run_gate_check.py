@@ -86,24 +86,24 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "2")
 
-    def test_gate3a_fails_without_alias_files(self):
+    def test_gate3_fails_without_real_move_files(self):
         module = load_run_module()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
 
-            report = module.run_gate_check("3a", root)
+            report = module.run_gate_check("3", root)
 
         self.assertFalse(report["pass"])
         self.assertTrue(any("graphfl_lab" in item for item in report["failed_checks"]))
 
-    def test_current_gate3a_contract_passes(self):
+    def test_gate3a_reports_superseded(self):
         module = load_run_module()
 
         report = module.run_gate_check("3a", ROOT)
 
-        self.assertTrue(report["pass"], report["failed_checks"])
-        self.assertEqual(report["gate"], "3a")
+        self.assertFalse(report["pass"])
+        self.assertIn("superseded", report["failed_checks"][0])
 
     def test_gate3b_fails_on_legacy_import_identity(self):
         module = load_run_module()
@@ -113,7 +113,7 @@ class GateCheckEntrypointTest(unittest.TestCase):
             package = root / "graphfl_lab"
             package.mkdir()
             (package / "__init__.py").write_text(
-                "Canonical package alias\n__path__\nsys.modules.setdefault\n",
+                "Canonical package root\n",
                 encoding="utf-8",
             )
             legacy = root / "spectral_fl"
@@ -160,13 +160,13 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "3b")
 
-    def test_full_gate3_fails_closed_until_import_batches_complete(self):
+    def test_current_gate3_contract_passes(self):
         module = load_run_module()
 
         report = module.run_gate_check("3", ROOT)
 
-        self.assertFalse(report["pass"])
-        self.assertIn("not complete", report["failed_checks"][0])
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "3")
 
 
 if __name__ == "__main__":
