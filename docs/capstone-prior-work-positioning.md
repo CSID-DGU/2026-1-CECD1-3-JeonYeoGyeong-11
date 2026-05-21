@@ -49,6 +49,57 @@ graph와 control의 차이가 작아도 실패가 아니다. 그 경우에는 Gr
 relation 정보보다 smoothing, dominance correction, optimizer effect, coarse
 clustering으로 더 잘 설명된다는 진단 결과가 된다.
 
+## 프레임워크 구조
+
+이 프레임워크의 강점은 실험을 많이 나열하는 데 있지 않다. graph를 만드는 방식,
+graph를 적용하는 위치, 비교군, 진단 지표를 같은 실행 구조 안에 묶어 둔다는 데
+있다. 그래서 한 방법이 좋아졌을 때 단순히 “성능이 올랐다”로 끝나지 않고, 어떤
+종류의 설명이 더 그럴듯한지 바로 비교할 수 있다.
+
+특히 graph design을 조립식으로 다룬다는 점이 핵심이다. 하나의 고정된 graph
+알고리즘을 넣고 끝내는 것이 아니라, client 표현, similarity 계산, edge 선택,
+weight 처리, normalization, aggregation target, control 변형을 서로 바꿔 끼울
+수 있는 구조로 본다. 이 때문에 새로운 선행연구가 들어와도 전체 실험을 다시
+짜기보다, 해당 연구가 바꾼 조각이 어느 위치인지 먼저 놓고 비교할 수 있다.
+
+```text
+client representation
+-> similarity / relation score
+-> topology construction
+-> edge weight / normalization
+-> aggregation target
+-> correction or control variant
+-> shared diagnostics
+```
+
+구조는 네 층으로 볼 수 있다.
+
+| 층 | 역할 |
+|---|---|
+| execution layer | 같은 seed, config, runner, output schema에서 방법과 control을 실행 |
+| graph design layer | `graph_source`, `graph_mode`, `aggregation_target`, `correction_family`로 graph intervention을 분해 |
+| control layer | `real_graph`, `matched_random`, `shuffled`, `uniform`, `identity`, `clustering_only`, `graphfree_dominance_reweight`를 같은 조건에서 비교 |
+| diagnosis layer | accuracy/loss와 함께 real-control gap, graph-free gap, alignment, LOO, DI, N_eff, graph/spectral metric을 저장 |
+
+이 구조가 중요한 이유는 Graph-FL 연구에서 흔히 섞이는 요인을 분리해 주기
+때문이다. 새 graph 방법과 기존 방법을 서로 다른 스크립트, 다른 출력 포맷, 다른
+후처리 방식으로 비교하면 성능 차이가 graph 때문인지 실험 환경 때문인지 흐려진다.
+반대로 같은 runner와 result schema 안에서 방법과 control을 실행하면, 결과가
+어느 설명에 가까운지 더 안정적으로 해석할 수 있다.
+
+프레임워크는 선행연구를 알고리즘 이름 그대로 복제하는 방식보다 mechanism 단위로
+흡수한다. 어떤 연구가 client similarity를 썼다면 `graph_source`와
+`graph_mode`로, personalized aggregation을 썼다면 `aggregation_target`으로,
+dominance나 contribution 보정에 가까운 효과라면 `correction_family`로 놓는다.
+이렇게 나누면 exact reproduction이 아니어도 해당 연구가 던진 아이디어를 같은
+실험판 위에서 점검할 수 있다.
+
+결과 파일 하나에 여러 지표를 함께 남기는 것도 이 프레임워크의 중요한 부분이다.
+accuracy만 있으면 graph가 좋은지 나쁜지만 보이지만, alignment, LOO, DI, N_eff,
+smoothness가 함께 있으면 relation, influence, dominance, smoothing 중 어떤
+설명이 결과와 맞는지 볼 수 있다. 즉 이 구조의 산출물은 단순한 score table이
+아니라, graph 효과를 해석하기 위한 evidence bundle에 가깝다.
+
 ## 선행연구에서 이어지는 질문
 
 FedAvg/FedOpt 계열은 graph 없이도 non-IID 환경에서 일정한 안정화 효과를 낸다.
