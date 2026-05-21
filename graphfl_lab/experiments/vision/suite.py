@@ -126,7 +126,6 @@ Not wrapped here (run ``run_vision_experiment.py`` directly): grid_search-only k
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import math
 import statistics
@@ -155,6 +154,7 @@ from graphfl_lab.experiments.suites.vision.reporting import (
     write_knn_vs_random_matched_csv,
     write_summary_markdown,
 )
+from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 from graphfl_lab.experiments.suites.vision.variants import variant_cmd
 from graphfl_lab.experiments.suites.stats import (
     final_acc,
@@ -838,19 +838,14 @@ def run(args):
         unsupported_components=unsupported_components_from_args(args),
     )
     summary_json = out_dir / "general_suite_summary.json"
-    with summary_json.open("w", encoding="utf-8") as f:
-        json.dump(suite_summary, f, indent=2, allow_nan=True)
+    write_json(summary_json, suite_summary)
 
     rows_path = out_dir / "general_suite_rows.json"
-    with rows_path.open("w", encoding="utf-8") as f:
-        json.dump(rows, f, indent=2, allow_nan=True)
+    write_json(rows_path, rows)
 
     csv_path = out_dir / "general_suite_summary.csv"
     if summary_rows:
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(summary_rows)
+        write_csv_rows(csv_path, summary_rows, fieldnames=list(summary_rows[0].keys()))
 
     duplicate_suite_summaries(out_dir, suite_summary, summary_rows, rows)
     diagnostic_csv = write_diagnostic_csv(out_dir, summary_rows)

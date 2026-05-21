@@ -35,8 +35,6 @@ Outputs in ``--out-dir``:
 from __future__ import annotations
 
 import argparse
-import csv
-import json
 import math
 import shlex
 import subprocess
@@ -61,6 +59,7 @@ from graphfl_lab.experiments.suites.stats import (
     safe_min,
     safe_pstdev,
 )
+from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -459,19 +458,14 @@ def run(args):
         unsupported_components=unsupported_components_from_args(args),
     )
     summary_json = out_dir / f"suite_{args.suite_tag}_summary.json"
-    with summary_json.open("w", encoding="utf-8") as f:
-        json.dump(suite_summary, f, indent=2)
+    write_json(summary_json, suite_summary)
 
     rows_path = out_dir / f"suite_{args.suite_tag}_rows.json"
-    with rows_path.open("w", encoding="utf-8") as f:
-        json.dump(rows, f, indent=2)
+    write_json(rows_path, rows)
 
     csv_path = out_dir / f"suite_{args.suite_tag}_summary.csv"
     if summary_rows:
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(summary_rows)
+        write_csv_rows(csv_path, summary_rows, fieldnames=list(summary_rows[0].keys()))
 
     print("\n=== Graph-ablation summary (best worst-seed first) ===")
     for row in summary_rows:

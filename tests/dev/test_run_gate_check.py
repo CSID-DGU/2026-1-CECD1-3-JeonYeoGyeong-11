@@ -192,6 +192,14 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertFalse(report["pass"])
         self.assertTrue(any("manual-nightly green" in item for item in report["failed_checks"]))
 
+    def test_current_gate5a_prep_contract_passes(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("5a-prep", ROOT)
+
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "5a-prep")
+
 
 if __name__ == "__main__":
     unittest.main()

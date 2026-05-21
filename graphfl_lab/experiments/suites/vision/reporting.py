@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import json
 import math
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 
 
 KNN_PAIR_PREFIXES = (
@@ -403,25 +404,21 @@ def duplicate_suite_summaries(
     rows: List[Dict[str, Any]],
 ) -> None:
     """Write shorter suite aliases alongside compatibility-named outputs."""
-    with (out_dir / "vision_suite_summary.json").open("w", encoding="utf-8") as f:
-        json.dump(suite_summary, f, indent=2, allow_nan=True)
-    with (out_dir / "vision_suite_rows.json").open("w", encoding="utf-8") as f:
-        json.dump(rows, f, indent=2, allow_nan=True)
-    with (out_dir / "suite_summary.json").open("w", encoding="utf-8") as f:
-        json.dump(suite_summary, f, indent=2, allow_nan=True)
-    with (out_dir / "suite_rows.json").open("w", encoding="utf-8") as f:
-        json.dump(rows, f, indent=2, allow_nan=True)
+    write_json(out_dir / "vision_suite_summary.json", suite_summary)
+    write_json(out_dir / "vision_suite_rows.json", rows)
+    write_json(out_dir / "suite_summary.json", suite_summary)
+    write_json(out_dir / "suite_rows.json", rows)
     if summary_rows:
-        csv_path = out_dir / "vision_suite_summary.csv"
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(summary_rows)
-        csv_path = out_dir / "suite_summary.csv"
-        with csv_path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=list(summary_rows[0].keys()))
-            writer.writeheader()
-            writer.writerows(summary_rows)
+        write_csv_rows(
+            out_dir / "vision_suite_summary.csv",
+            summary_rows,
+            fieldnames=list(summary_rows[0].keys()),
+        )
+        write_csv_rows(
+            out_dir / "suite_summary.csv",
+            summary_rows,
+            fieldnames=list(summary_rows[0].keys()),
+        )
 
 
 def write_summary_markdown(

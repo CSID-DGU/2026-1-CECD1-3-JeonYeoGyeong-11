@@ -232,6 +232,35 @@ GATE4C_REQUIRED_TEXT = {
     ),
 }
 
+GATE5A_PREP_REQUIRED_TEXT = {
+    "graphfl_lab/experiments/suites/result_writer.py": (
+        "write_json",
+        "write_csv_rows",
+    ),
+    "graphfl_lab/experiments/vision/suite.py": (
+        "write_json(summary_json, suite_summary)",
+        "write_json(rows_path, rows)",
+        "write_csv_rows(csv_path, summary_rows",
+    ),
+    "graphfl_lab/experiments/cora/graph_ablation.py": (
+        "write_json(summary_json, suite_summary)",
+        "write_json(rows_path, rows)",
+        "write_csv_rows(csv_path, summary_rows",
+    ),
+    "graphfl_lab/experiments/suites/vision/reporting.py": (
+        "write_json(out_dir / \"vision_suite_summary.json\"",
+        "write_csv_rows(",
+    ),
+    "tests/experiments/test_result_writer.py": (
+        "test_write_json_uses_indented_payload",
+        "test_write_csv_rows_preserves_field_order",
+    ),
+    "docs/maintenance/cleanup-status.md": (
+        "Gate 5a-prep",
+        "do not claim full Gate 5a completion",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -374,6 +403,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.append(
             "Gate 4c requires one GitHub nightly or manual-nightly green run before completion."
         )
+    elif gate == "5a-prep":
+        failed_checks.extend(_missing_text(root, GATE5A_PREP_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."
