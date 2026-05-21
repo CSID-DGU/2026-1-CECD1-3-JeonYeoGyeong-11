@@ -20,6 +20,18 @@ Graph-FL에서 성능 향상이 발생했을 때, 그 이유가 실제 client re
 분해해 검증하는 실험 프레임워크
 ```
 
+핵심 질문은 두 단계로 둔다.
+
+```text
+Q1. Graph-FL의 성능 향상은 실제 client relation 때문인가?
+Q2. 그렇다면 어떤 graph 특성이 그 효과를 설명하는가?
+```
+
+Q1은 graph-specific effect의 존재 여부를 묻는다. Q2는 그 효과가 단순히
+graph를 썼기 때문인지, 아니면 homophily, density, sparsity, degree structure,
+community structure, temporal stability, spectral smoothness 같은 구체적
+특성 때문인지를 묻는다.
+
 최소 성과 기준에서도 이 프로젝트는 의미가 있다. 모든 Graph-FL 계열 알고리즘을
 완성하거나 SOTA 성능을 달성하지 못하더라도, graph source, graph mode,
 aggregation target, control graph, diagnostic metric을 같은 규칙으로 실행하고
@@ -97,6 +109,35 @@ random/shuffled/uniform, clustering-only, graph-free correction 같은 단순한
 | `aggregation_target` | graph를 어디에 적용했는가? update, weight, personalized model 등 |
 | `correction_family` | real graph인지, control graph인지, graph-free correction인지 |
 | diagnostics | accuracy 외에 alignment, LOO, DI, N_eff, smoothness 등을 봤는가 |
+
+## 연구 가설
+
+아래 가설은 실험 결과를 해석하기 위한 기준이다. 반드시 모두 맞아야 하는 주장은
+아니며, 결과가 어느 쪽으로 나오든 graph 효과를 더 정확히 설명하기 위한
+검증 축이다.
+
+| 가설 | 기대되는 증거 | 해석 |
+|---|---|---|
+| H1. Relation effect | `real_graph`가 matched random, shuffled, uniform, identity보다 높고, alignment/LOO/DI/N_eff도 함께 개선 | 실제 client relation이 단순 smoothing 이상 정보를 제공 |
+| H2. Coarse community effect | `clustering_only`가 real graph와 비슷한 성능을 냄 | fine-grained edge보다 coarse cluster/homophily가 핵심일 수 있음 |
+| H3. Generic smoothing effect | uniform 또는 matched random이 real graph와 비슷함 | graph semantics보다 평균화/smoothing 자체가 주요 원인일 수 있음 |
+| H4. Dominance correction effect | `graphfree_dominance_reweight`가 real graph와 비슷함 | graph relation보다 큰 update/client 영향력 보정이 주요 원인일 수 있음 |
+| H5. Topology effect | 같은 relation source에서도 density, degree, entropy, sparsity를 바꾸면 결과가 달라짐 | graph의 의미뿐 아니라 topology shape가 성능을 좌우 |
+| H6. Representation effect | `graph_source`를 update, weight, EMA update, classifier head로 바꿀 때 결과가 달라짐 | 어떤 client representation으로 relation을 만들었는지가 중요 |
+| H7. Spectral/smoothness effect | low/high-frequency energy, smoothness, H_spec 변화가 성능 변화와 연결됨 | graph signal 관점에서 어떤 frequency 성분이 유효한지 설명 가능 |
+
+가설의 최종 목적은 “real graph가 좋다/나쁘다”를 말하는 것이 아니라, 다음 중
+어떤 설명이 더 강한지 구분하는 것이다.
+
+```text
+fine-grained relation
+coarse clustering
+generic smoothing
+dominance suppression
+topology shape
+client representation
+spectral smoothness
+```
 
 ## 차별성
 
