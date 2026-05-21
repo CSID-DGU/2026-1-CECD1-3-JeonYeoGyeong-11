@@ -286,6 +286,11 @@ GATE5B_PREP_REQUIRED_TEXT = {
         "load_preloaded_fedavg_accs",
         "rank_key",
     ),
+    "graphfl_lab/experiments/suites/vision/summary.py": (
+        "build_summary_rows",
+        "mean_di_pre",
+        "seed{seed}_delta",
+    ),
     "graphfl_lab/experiments/vision/client_count_sweep.py": (
         "from graphfl_lab.experiments.suites.execution import run_cmd",
         "run_cmd(cmd, cwd=PROJECT_ROOT)",
@@ -302,6 +307,9 @@ GATE5B_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_suite_features.py": (
         "test_collect_run_features_exports_diagnostic_means_and_aliases",
         "test_load_preloaded_fedavg_accs_reads_latest_supported_names",
+    ),
+    "tests/experiments/vision/test_suite_summary.py": (
+        "test_build_summary_rows_aggregates_all_diagnostic_fields",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5b-prep",
