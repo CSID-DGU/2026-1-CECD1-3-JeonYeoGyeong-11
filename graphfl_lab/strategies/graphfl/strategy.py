@@ -584,7 +584,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             n_examples_arr=n_examples_arr,
             client_train_acc=client_train_acc,
             client_train_loss=client_train_loss,
-            config=config_context,
+            config_context=config_context,
             correction_family=self.correction_family,
             control_graph_mode=self.control_graph_mode,
             graph_mode=self.graph_mode,
