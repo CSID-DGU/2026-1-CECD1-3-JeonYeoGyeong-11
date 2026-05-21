@@ -337,6 +337,11 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "_user_arg_dests",
         "--train-subset-size",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_core.py": (
+        "parse_core_graph_variant",
+        "ours_default_graph",
+        "ours_graph_mode_",
+    ),
     "graphfl_lab/experiments/suites/vision/variant_families.py": (
         "parse_baseline_variant",
         "--fedopt-eta",
@@ -354,6 +359,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
     ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
+        "from graphfl_lab.experiments.suites.vision.variant_core import parse_core_graph_variant",
         "from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diagnostic_variant",
         "from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant",
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
@@ -367,6 +373,10 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_variant_commands.py": (
         "test_build_base_cmd_preserves_core_command_contract",
         "test_build_base_cmd_forwards_only_explicit_user_graph_args",
+    ),
+    "tests/experiments/vision/test_variant_core.py": (
+        "test_parse_core_graph_variant_handles_default_and_basic_graphs",
+        "test_parse_core_graph_variant_returns_none_for_source_specific_family",
     ),
     "tests/experiments/vision/test_variant_families.py": (
         "test_parse_baseline_variant_handles_fedopt_suffixes",

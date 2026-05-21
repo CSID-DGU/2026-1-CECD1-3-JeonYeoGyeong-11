@@ -182,6 +182,7 @@ and impact scope.
 | 2026-05-21 | `parse_variant` still contains baseline/Fed* parsing before the Ours graph families. | Move only baseline/Fed* family parsing to `experiments/suites/vision/variant_families.py`; leave recursive Ours suffix handling and graph families in place. |
 | 2026-05-21 | Current diagnostic protocol tokens (`real_graph`, matched controls, cluster-only, graph-free controls) are mixed into the general Ours parser. | Move only those diagnostic protocol tokens to `experiments/suites/vision/variant_diagnostics.py`; keep all older Ours graph families in `parse_variant`. |
 | 2026-05-21 | Legacy residual reweight tokens are compatibility surface and still occupy a separate block inside `parse_variant`. | Move only those legacy residual tokens to `experiments/suites/vision/variant_legacy.py`; keep their exact CLI args unchanged until Gate 6. |
+| 2026-05-21 | Basic Ours graph-mode tokens are stable and independent of source/aggregation-target families. | Move those basic graph-mode tokens to `experiments/suites/vision/variant_core.py`; keep source-specific graph families in `parse_variant`. |
 
 ## Closure Policy
 
