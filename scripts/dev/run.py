@@ -442,6 +442,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "weighted_optional_mean",
         "return out if any_found else None",
     ),
+    "graphfl_lab/strategies/graphfl/config_context.py": (
+        "build_config_context",
+        "spectral_filter_strength",
+        "warmup_rounds",
+    ),
     "graphfl_lab/strategies/graphfl/counterfactual_artifacts.py": (
         "run_counterfactual_artifacts",
         "counterfactual_specs_for_target",
@@ -481,6 +486,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "graphfl_lab/strategies/graphfl/strategy.py": (
         "from graphfl_lab.strategies.graphfl.artifact_rows import",
         "from graphfl_lab.strategies.graphfl.client_metrics import",
+        "from graphfl_lab.strategies.graphfl.config_context import build_config_context",
         "from graphfl_lab.strategies.graphfl.counterfactual_artifacts import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
@@ -491,6 +497,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "build_round_diagnostics_row(",
         "build_graph_stats_row(",
         "build_client_diagnostic_rows(",
+        "config_context = build_config_context(self)",
         "counterfactual_artifacts = run_counterfactual_artifacts(",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
@@ -511,6 +518,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "tests/strategies/graphfl/test_client_metrics.py": (
         "test_extract_metric_uses_first_available_alias_per_client",
         "test_weighted_optional_mean_skips_missing_values",
+    ),
+    "tests/strategies/graphfl/test_config_context.py": (
+        "test_build_config_context_projects_explicit_round_config_fields",
+        "spectral_filter_strength",
     ),
     "tests/strategies/graphfl/test_counterfactual_artifacts.py": (
         "test_counterfactual_specs_for_target_retargets_graph_variants_only",
@@ -544,6 +555,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "Gate 5d-prep",
         "keep CSV/JSONL append calls in `GraphFLDiagnosticStrategy`",
         "keep CSV append calls in `GraphFLDiagnosticStrategy`",
+        "keep the explicit field list tested",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",

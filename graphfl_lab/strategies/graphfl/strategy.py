@@ -69,6 +69,7 @@ from graphfl_lab.strategies.graphfl.client_metrics import (
     extract_metric,
     weighted_optional_mean,
 )
+from graphfl_lab.strategies.graphfl.config_context import build_config_context
 from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
 from graphfl_lab.strategies.graphfl.counterfactual_artifacts import (
     run_counterfactual_artifacts,
@@ -730,43 +731,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             "client_train_acc": client_train_acc,
             "client_train_loss": client_train_loss,
         }
-        config_context = {
-            "adaptive_tau": self.adaptive_tau,
-            "aggregation_target": self.aggregation_target,
-            "client_update_ema_alpha": self.client_update_ema_alpha,
-            "conflict_mix": self.conflict_mix,
-            "diagnostic_only": self.diagnostic_only,
-            "diagnostics_enable": self.diagnostics_enable,
-            "loo_enabled": self.loo_enabled,
-            "edge_threshold": self.edge_threshold,
-            "e_std_threshold": self.e_std_threshold,
-            "fixed_tau": self.fixed_tau,
-            "graph_layer_end": self.graph_layer_end,
-            "graph_layer_start": self.graph_layer_start,
-            "graph_mode": self.graph_mode,
-            "graph_method": self.graph_method,
-            "graph_scale_sigma": self.graph_scale_sigma,
-            "graph_source": self.graph_source,
-            "correction_family": self.correction_family,
-            "control_graph_mode": self.control_graph_mode,
-            "cluster_method": self.cluster_method,
-            "cluster_k": self.cluster_k,
-            "cluster_auto_k": self.cluster_auto_k,
-            "graph_free_mode": self.graph_free_mode,
-            "graph_free_gamma": self.graph_free_gamma,
-            "clip_quantile": self.clip_quantile,
-            "contribution_cap": self.contribution_cap,
-            "knn_k": self.knn_k,
-            "learned_graph_lambda": self.learned_graph_lambda,
-            "min_client_weight": self.min_client_weight,
-            "server_learning_rate": self.server_learning_rate,
-            "server_momentum": self.server_momentum,
-            "graph_filter_strength": self.graph_filter_strength,
-            "spectral_filter_strength": self.graph_filter_strength,
-            "tau_source": self.tau_source,
-            "use_ema_graph": self.use_ema_graph,
-            "warmup_rounds": self.warmup_rounds,
-        }
+        config_context = build_config_context(self)
         round_log = build_round_log(
             server_round=server_round,
             cids=cids,
