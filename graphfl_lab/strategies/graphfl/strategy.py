@@ -77,8 +77,6 @@ from graphfl_lab.strategies.graphfl.counterfactual_artifacts import (
 from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
     build_round_log,
-    heterogeneity,
-    spectral_energy_diagnostics,
 )
 from graphfl_lab.strategies.graphfl.diagnostic_targets import (
     flatten_diagnostic_post_updates,
@@ -86,7 +84,6 @@ from graphfl_lab.strategies.graphfl.diagnostic_targets import (
 from graphfl_lab.strategies.graphfl.ema import update_client_update_ema
 from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
-    laplacian,
     normalized_conflicts,
 )
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
@@ -94,6 +91,9 @@ from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_fro
 from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
+from graphfl_lab.strategies.graphfl.spectral_metrics import (
+    compute_round_spectral_metrics,
+)
 from graphfl_lab.strategies.baselines import (
     TracingFedAdagrad,
     TracingFedAdam,
@@ -446,29 +446,16 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         # graph_empty=true").
         graph_fallback_used = bool(graph_diag["graph_empty"])
 
-        l_raw_current = laplacian(w_curr)
-        l_curr = laplacian(w_ema)
-        l_for_metric = self.state.l_prev if self.state.l_prev is not None else l_curr
-        metric_graph_source = (
-            "previous_round_graph" if self.state.l_prev is not None else "current_round_graph"
+        spectral_metrics = compute_round_spectral_metrics(
+            z_mat=z_mat,
+            current_graph=w_curr,
+            used_graph=w_ema,
+            previous_laplacian=self.state.l_prev,
+            previous_h_spec_ema=self.state.h_spec_ema,
         )
-        h_spec_raw_current = heterogeneity(z_mat, l_raw_current)
-        h_spec_current = heterogeneity(z_mat, l_curr)
-        h_spec = heterogeneity(z_mat, l_for_metric)
-        metric_eigvals = np.linalg.eigvalsh(l_for_metric)
-        metric_lambda_max = float(max(np.max(metric_eigvals), 1e-12))
-        h_spec_normalized = float(h_spec / (metric_lambda_max + 1e-12))
-        h_spec_current_normalized = float(
-            h_spec_current / (float(max(np.max(np.linalg.eigvalsh(l_curr)), 1e-12)) + 1e-12)
-        )
-        h_spec_raw_current_normalized = float(
-            h_spec_raw_current
-            / (float(max(np.max(np.linalg.eigvalsh(l_raw_current)), 1e-12)) + 1e-12)
-        )
-        h_spec_ema_candidate = 0.9 * self.state.h_spec_ema + 0.1 * h_spec
+        l_curr = spectral_metrics.l_curr
         if not in_warmup:
-            self.state.h_spec_ema = h_spec_ema_candidate
-        spectral_diag = spectral_energy_diagnostics(z_mat=z_mat, l_mat=l_curr)
+            self.state.h_spec_ema = spectral_metrics.h_spec_ema_candidate
 
         # ----------------- spectral filtering and conflict score
         z_tilde, filter_diag = apply_spectral_filter_with_diagnostics(
@@ -481,11 +468,11 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
 
         tau_source = resolve_tau_source(
             tau_source=self.tau_source,
-            h_spec=h_spec,
-            h_spec_normalized=h_spec_normalized,
+            h_spec=spectral_metrics.h_spec,
+            h_spec_normalized=spectral_metrics.h_spec_normalized,
             e_std=e_std_for_tau,
             h_spec_ema=self.state.h_spec_ema,
-            h_spec_ema_candidate=h_spec_ema_candidate,
+            h_spec_ema_candidate=spectral_metrics.h_spec_ema_candidate,
             tau_signal_ema=self.state.tau_signal_ema,
         )
         if tau_source.source_used != "h_spec" and not in_warmup:
@@ -663,23 +650,23 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         )
 
         spectral_context = {
-            "h_spec": h_spec,
-            "h_spec_current": h_spec_current,
-            "h_spec_raw_current": h_spec_raw_current,
-            "h_spec_normalized": h_spec_normalized,
-            "h_spec_current_normalized": h_spec_current_normalized,
-            "h_spec_raw_current_normalized": h_spec_raw_current_normalized,
-            "metric_lambda_max": metric_lambda_max,
+            "h_spec": spectral_metrics.h_spec,
+            "h_spec_current": spectral_metrics.h_spec_current,
+            "h_spec_raw_current": spectral_metrics.h_spec_raw_current,
+            "h_spec_normalized": spectral_metrics.h_spec_normalized,
+            "h_spec_current_normalized": spectral_metrics.h_spec_current_normalized,
+            "h_spec_raw_current_normalized": spectral_metrics.h_spec_raw_current_normalized,
+            "metric_lambda_max": spectral_metrics.metric_lambda_max,
             "h_spec_ema": self.state.h_spec_ema,
-            "h_spec_ema_candidate": h_spec_ema_candidate,
-            "metric_graph_source": metric_graph_source,
+            "h_spec_ema_candidate": spectral_metrics.h_spec_ema_candidate,
+            "metric_graph_source": spectral_metrics.metric_graph_source,
             "in_warmup": in_warmup,
             "tau": tau,
             "tau_source_used": tau_source.source_used,
             "tau_source_signal": tau_source.source_signal,
             "tau_source_ema": tau_source.ema_value,
             "tau_source_ema_candidate": tau_source.ema_candidate,
-            "spectral_diag": spectral_diag,
+            "spectral_diag": spectral_metrics.spectral_diag,
             "filter_diag": filter_diag,
             "target_filter_diag": target_filter_diag,
             "diagnostic_filter_diag": diagnostic_filter_diag,

@@ -198,6 +198,7 @@ and impact scope.
 | 2026-05-21 | `aggregate_fit` still owns diagnostic CSV row construction for round, graph, and client artifacts. | Extract row builders to `strategies/graphfl/artifact_rows.py`; keep CSV append calls in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `aggregate_fit` still owns default counterfactual spec retargeting, runner setup, and artifact row construction. | Extract counterfactual artifact orchestration to `strategies/graphfl/counterfactual_artifacts.py`; keep CSV/JSONL append calls in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `aggregate_fit` still owns config context field selection for logs and metrics. | Extract config context projection to `strategies/graphfl/config_context.py`; keep the explicit field list tested. |
+| 2026-05-21 | `aggregate_fit` still owns round Laplacian/H_spec/spectral energy metric calculation. | Extract spectral metric bundle to `strategies/graphfl/spectral_metrics.py`; keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`. |
 
 ## Closure Policy
 
