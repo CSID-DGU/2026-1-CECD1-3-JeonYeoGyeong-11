@@ -202,6 +202,7 @@ and impact scope.
 | 2026-05-21 | `aggregate_fit` still owns graph-filtered conflict, tau resolution, and conflict-weight calculation. | Extract conflict metric bundle to `strategies/graphfl/conflict_metrics.py`; keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `aggregate_fit` still owns the sequence that selects aggregation weights and then applies correction-family post-processing. | Extract round weight orchestration to `strategies/graphfl/round_weights.py`; preserve existing alpha_mode composition. |
 | 2026-05-21 | `aggregate_fit` still owns local update construction and repeated flat/norm update-space arrays. | Extract update-space arrays to `strategies/graphfl/update_space.py`; preserve flattened delta matrix used by diagnostics and counterfactuals. |
+| 2026-05-21 | `aggregate_fit` still owns seeded relation graph construction, pre-weight calculation, graph diagnostics, and EMA graph selection. | Extract round graph state to `strategies/graphfl/round_graph.py`; preserve graph seed formula and sample-weight normalization. |
 
 ## Closure Policy
 

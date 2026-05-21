@@ -36,7 +36,6 @@ from flwr.common import (
 from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
-from graphfl_lab.graph.builders import build_relation_graph
 from graphfl_lab.graph.registry import load_graph_plugins
 from graphfl_lab.diagnostics.logging import (
     append_client_metrics_csv,
@@ -47,7 +46,6 @@ from graphfl_lab.diagnostics.logging import (
     init_artifact_dir,
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
-from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
@@ -78,10 +76,9 @@ from graphfl_lab.strategies.graphfl.diagnostic_targets import (
 )
 from graphfl_lab.strategies.graphfl.ema import update_client_update_ema
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
-from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta
-from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
+from graphfl_lab.strategies.graphfl.round_graph import build_round_graph_state
 from graphfl_lab.strategies.graphfl.round_weights import select_round_weights
 from graphfl_lab.strategies.graphfl.spectral_metrics import (
     compute_round_spectral_metrics,
@@ -403,43 +400,38 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         z_norms = np.array([float(np.linalg.norm(z)) for z in z_list])
 
         # ----------------- client similarity graph
-        graph_rng = np.random.default_rng(
-            int(self.graph_seed) * 1009 + int(server_round) * 13
-        )
-        pre_weights = n_examples_arr / (float(np.sum(n_examples_arr)) + 1e-12)
-        w_curr, graph_meta = build_relation_graph(
+        round_graph = build_round_graph_state(
             z_mat=z_mat,
-            mode=self.graph_mode,
+            cids=cids,
+            n_examples_arr=n_examples_arr,
+            server_round=int(server_round),
+            graph_seed=int(self.graph_seed),
+            graph_mode=self.graph_mode,
             knn_k=self.knn_k,
             edge_threshold=self.edge_threshold,
-            rng=graph_rng,
             graph_scale_sigma=self.graph_scale_sigma,
             learned_graph_lambda=self.learned_graph_lambda,
             correction_family=self.correction_family,
             control_graph_mode=self.control_graph_mode,
-            graph_source=graph_source_used,
+            graph_source_used=graph_source_used,
             aggregation_target=self.aggregation_target,
             cluster_method=self.cluster_method,
             cluster_k=self.cluster_k,
             cluster_auto_k=self.cluster_auto_k,
-            cluster_seed=int(self.graph_seed) + int(server_round),
-            client_sample_weights=pre_weights,
-        )
-        client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)
-        graph_diag_current = compute_graph_diagnostics(w_curr)
-        w_ema, graph_used_source = select_round_graph(
-            current_graph=w_curr,
             previous_graph_ema=self.state.w_ema,
             use_ema_graph=self.use_ema_graph,
             in_warmup=in_warmup,
             ema_alpha=self.ema_alpha,
         )
-        graph_diag = compute_graph_diagnostics(w_ema)
-
-        # Safety: if the graph is empty, fall back to FedAvg weights but still
-        # log diagnostics.  This matches the spec ("don't crash; warn; record
-        # graph_empty=true").
-        graph_fallback_used = bool(graph_diag["graph_empty"])
+        pre_weights = round_graph.pre_weights
+        w_curr = round_graph.current_graph
+        graph_meta = round_graph.graph_meta
+        client_cluster_ids = round_graph.client_cluster_ids
+        graph_diag_current = round_graph.graph_diag_current
+        w_ema = round_graph.used_graph
+        graph_used_source = round_graph.graph_used_source
+        graph_diag = round_graph.graph_diag
+        graph_fallback_used = round_graph.graph_fallback_used
 
         spectral_metrics = compute_round_spectral_metrics(
             z_mat=z_mat,
