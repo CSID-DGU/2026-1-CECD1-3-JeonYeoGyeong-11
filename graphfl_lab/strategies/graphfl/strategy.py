@@ -71,6 +71,10 @@ from graphfl_lab.graph.sources import (
     normalize_key,
 )
 from graphfl_lab.projection import flatten_weights
+from graphfl_lab.strategies.graphfl.client_metrics import (
+    extract_metric,
+    weighted_optional_mean,
+)
 from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
 from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
@@ -654,10 +658,10 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             weights_post=alpha_norm,
             loo_enabled=self.loo_enabled,
         )
-        client_train_acc = self._extract_metric(client_metrics, "accuracy", "train_accuracy")
-        client_train_loss = self._extract_metric(client_metrics, "loss", "train_loss")
-        round_accuracy = self._weighted_optional_mean(client_train_acc, n_examples_arr)
-        round_loss = self._weighted_optional_mean(client_train_loss, n_examples_arr)
+        client_train_acc = extract_metric(client_metrics, "accuracy", "train_accuracy")
+        client_train_loss = extract_metric(client_metrics, "loss", "train_loss")
+        round_accuracy = weighted_optional_mean(client_train_acc, n_examples_arr)
+        round_loss = weighted_optional_mean(client_train_loss, n_examples_arr)
 
         # ----------------- diagnostic artifact rows
         if self.diagnostics_enable and self.diagnostics_artifact_dir is not None:
@@ -975,52 +979,6 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             pre_post_round=pre_post["round"],
         )
         return ndarrays_to_parameters(new_global), metrics
-
-    # ------------------------------------------------------------------ helpers
-
-    @staticmethod
-    def _extract_metric(
-        client_metrics: List[Dict[str, Any]], *keys: str
-    ) -> Optional[List[Optional[float]]]:
-        """Look up a metric by any of the given key aliases per client.
-
-        Returns None if no client provides the metric (so analysis scripts
-        can store null instead of misleading zeros).  Returns a list of
-        floats / None otherwise.
-        """
-        out: List[Optional[float]] = []
-        any_found = False
-        for m in client_metrics:
-            v: Optional[float] = None
-            for k in keys:
-                if k in m:
-                    try:
-                        v = float(m[k])
-                        any_found = True
-                        break
-                    except (TypeError, ValueError):
-                        continue
-            out.append(v)
-        return out if any_found else None
-
-    @staticmethod
-    def _weighted_optional_mean(
-        values: Optional[List[Optional[float]]],
-        weights: np.ndarray,
-    ) -> float:
-        if values is None:
-            return float("nan")
-        num = 0.0
-        den = 0.0
-        for value, weight in zip(values, weights):
-            if value is None:
-                continue
-            num += float(value) * float(weight)
-            den += float(weight)
-        if den <= 0.0:
-            return float("nan")
-        return float(num / den)
-
 
 SpectralConflictAwareStrategy = GraphFLDiagnosticStrategy
 

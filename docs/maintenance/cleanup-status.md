@@ -189,6 +189,7 @@ and impact scope.
 | 2026-05-21 | Recursive suffix handling (`fixed_tau`, `graph_filter_only`, `lp`, `serverm`) is now the last non-routing logic inside `variants.py`. | Move suffix handling to `experiments/suites/vision/variant_suffixes.py` with the parser callback injected to preserve recursive behavior. |
 | 2026-05-21 | Gate 5d starts with `strategy.py` still owning client-update EMA copy/update logic. | Extract only the EMA calculation/copy helper to `strategies/graphfl/ema.py`; keep state assignment in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `strategy.py` still owns the cached projection branch used before graph construction. | Extract projection calculation to `strategies/graphfl/projection.py`; keep projection matrix storage on `GraphFLDiagnosticStrategy`. |
+| 2026-05-21 | `strategy.py` still owns client metric alias extraction and optional weighted means. | Extract metric readers to `strategies/graphfl/client_metrics.py`; keep aggregate_fit call sites unchanged apart from function names. |
 
 ## Closure Policy
 

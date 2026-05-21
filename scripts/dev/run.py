@@ -432,14 +432,22 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "initialized_current_update",
         "ema_update",
     ),
+    "graphfl_lab/strategies/graphfl/client_metrics.py": (
+        "extract_metric",
+        "weighted_optional_mean",
+        "return out if any_found else None",
+    ),
     "graphfl_lab/strategies/graphfl/projection.py": (
         "project_with_cached_matrix",
         "make_gaussian_projection",
         "compression_seed",
     ),
     "graphfl_lab/strategies/graphfl/strategy.py": (
+        "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
+        "extract_metric(client_metrics",
+        "weighted_optional_mean(client_train_acc",
         "update_client_update_ema(",
         "project_with_cached_matrix(",
     ),
@@ -447,12 +455,17 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_update_client_update_ema_initializes_and_copies_updates",
         "test_update_client_update_ema_blends_existing_updates",
     ),
+    "tests/strategies/graphfl/test_client_metrics.py": (
+        "test_extract_metric_uses_first_available_alias_per_client",
+        "test_weighted_optional_mean_skips_missing_values",
+    ),
     "tests/strategies/graphfl/test_projection.py": (
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
+        "keep aggregate_fit call sites unchanged apart from function names",
         "keep state assignment in `GraphFLDiagnosticStrategy`",
         "keep projection matrix storage on `GraphFLDiagnosticStrategy`",
     ),
