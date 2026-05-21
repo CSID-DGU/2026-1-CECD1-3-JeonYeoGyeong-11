@@ -38,22 +38,12 @@ from flwr.server.client_proxy import ClientProxy
 
 from graphfl_lab.graph.registry import load_graph_plugins
 from graphfl_lab.diagnostics.logging import (
-    append_client_metrics_csv,
-    append_counterfactual_metrics_csv,
-    append_graph_stats_csv,
-    append_module_traces_jsonl,
-    append_round_metrics_csv,
     init_artifact_dir,
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
-)
-from graphfl_lab.strategies.graphfl.artifact_rows import (
-    build_client_diagnostic_rows,
-    build_graph_stats_row,
-    build_round_diagnostics_row,
 )
 from graphfl_lab.strategies.graphfl.client_metrics import (
     extract_metric,
@@ -64,12 +54,12 @@ from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
 from graphfl_lab.strategies.graphfl.conflict_metrics import (
     compute_conflict_metric_bundle,
 )
-from graphfl_lab.strategies.graphfl.counterfactual_artifacts import (
-    run_counterfactual_artifacts,
-)
 from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
     build_round_log,
+)
+from graphfl_lab.strategies.graphfl.diagnostic_artifacts import (
+    write_round_diagnostic_artifacts,
 )
 from graphfl_lab.strategies.graphfl.diagnostic_targets import (
     flatten_diagnostic_post_updates,
@@ -519,89 +509,39 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
 
         # ----------------- diagnostic artifact rows
         if self.diagnostics_enable and self.diagnostics_artifact_dir is not None:
-            graph_meta_kind = str(graph_meta.get("graph_kind", graph_meta.get("kind", "")))
-            wall_time_sec = float(time.perf_counter() - aggregate_started_at)
-            round_diag = build_round_diagnostics_row(
+            write_round_diagnostic_artifacts(
+                artifact_dir=self.diagnostics_artifact_dir,
                 run_id=self.diagnostics_run_id,
                 variant=self.diagnostics_variant,
                 seed=int(self.diagnostics_seed),
                 server_round=int(server_round),
                 accuracy=float(round_accuracy),
                 loss=float(round_loss),
-                pre_post_round=pre_post["round"],
+                pre_post=pre_post,
                 graph_diag=graph_diag,
-                wall_time_sec=wall_time_sec,
+                wall_time_sec=float(time.perf_counter() - aggregate_started_at),
                 graph_method=str(self.graph_method),
                 correction_family=str(self.correction_family),
-                graph_source=str(graph_source_used),
+                graph_source_used=str(graph_source_used),
                 graph_variant=str(self.graph_mode),
-                aggregation_target=str(diagnostic_target_used),
-                graph_kind=graph_meta_kind,
-            )
-            append_round_metrics_csv(
-                self.diagnostics_artifact_dir / "round_metrics.csv",
-                round_diag,
-            )
-            append_graph_stats_csv(
-                self.diagnostics_artifact_dir / "graph_stats.csv",
-                build_graph_stats_row(
-                    run_id=self.diagnostics_run_id,
-                    variant=self.diagnostics_variant,
-                    seed=int(self.diagnostics_seed),
-                    server_round=int(server_round),
-                    graph_method=str(self.graph_method),
-                    correction_family=str(self.correction_family),
-                    graph_source=str(graph_source_used),
-                    graph_variant=str(self.graph_mode),
-                    aggregation_target=str(diagnostic_target_used),
-                    graph_kind=graph_meta_kind,
-                    graph_used_source=str(graph_used_source),
-                    graph_diag=graph_diag,
-                    control_graph_mode=str(self.control_graph_mode),
-                    cluster_method=str(self.cluster_method),
-                    cluster_k=int(self.cluster_k),
-                    cluster_auto_k=bool(self.cluster_auto_k),
-                ),
-            )
-            client_rows = build_client_diagnostic_rows(
-                run_id=self.diagnostics_run_id,
-                variant=self.diagnostics_variant,
-                seed=int(self.diagnostics_seed),
-                server_round=int(server_round),
+                diagnostic_target_used=str(diagnostic_target_used),
+                graph_used_source=str(graph_used_source),
+                graph_meta=graph_meta,
+                control_graph_mode=str(self.control_graph_mode),
+                cluster_method=str(self.cluster_method),
+                cluster_k=int(self.cluster_k),
+                cluster_auto_k=bool(self.cluster_auto_k),
                 cids=cids,
                 n_examples_arr=n_examples_arr,
-                pre_post=pre_post,
                 client_cluster_ids=client_cluster_ids,
-            )
-            append_client_metrics_csv(
-                self.diagnostics_artifact_dir / "client_metrics.csv",
-                client_rows,
-            )
-            counterfactual_artifacts = run_counterfactual_artifacts(
                 flat_updates=update_space.flat_delta_matrix,
                 weights_pre=pre_weights,
                 actual_adjacency=w_ema,
-                diagnostic_target_used=str(diagnostic_target_used),
                 aggregation_target=self.aggregation_target,
-                diagnostics_seed=int(self.diagnostics_seed),
                 graph_seed=int(self.graph_seed),
-                server_round=int(server_round),
                 graph_filter_strength=self.graph_filter_strength,
                 graph_free_gamma=self.graph_free_gamma,
                 loo_enabled=self.loo_enabled,
-                graph_meta=graph_meta,
-                run_id=self.diagnostics_run_id,
-                variant=self.diagnostics_variant,
-                graph_method=str(self.graph_method),
-                graph_variant=str(self.graph_mode),
-            )
-            append_counterfactual_metrics_csv(
-                self.diagnostics_artifact_dir / "counterfactual_metrics.csv",
-                counterfactual_artifacts.counterfactual_rows,
-            )
-            append_module_traces_jsonl(
-                self.diagnostics_artifact_dir / "module_traces.jsonl",
-                counterfactual_artifacts.module_trace_rows,
             )
 
         # ----------------- aggregate configured target and apply
