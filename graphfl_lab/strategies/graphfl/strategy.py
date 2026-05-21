@@ -54,10 +54,6 @@ from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
 from graphfl_lab.strategies.graphfl.conflict_metrics import (
     compute_conflict_metric_bundle,
 )
-from graphfl_lab.strategies.graphfl.diagnostics import (
-    build_fit_metrics,
-    build_round_log,
-)
 from graphfl_lab.strategies.graphfl.diagnostic_artifacts import (
     write_round_diagnostic_artifacts,
 )
@@ -68,15 +64,8 @@ from graphfl_lab.strategies.graphfl.ema import update_client_update_ema
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
-from graphfl_lab.strategies.graphfl.round_context import (
-    build_alpha_context,
-    build_client_context,
-    build_conflict_context,
-    build_graph_context,
-    build_spectral_context,
-    build_update_context,
-)
 from graphfl_lab.strategies.graphfl.round_graph import build_round_graph_state
+from graphfl_lab.strategies.graphfl.round_outputs import build_strategy_round_outputs
 from graphfl_lab.strategies.graphfl.round_weights import select_round_weights
 from graphfl_lab.strategies.graphfl.spectral_metrics import (
     compute_round_spectral_metrics,
@@ -98,10 +87,7 @@ from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
-from graphfl_lab.strategies.graphfl.tracing import (
-    make_round_trace_payload,
-    matrix_log_if_small,
-)
+from graphfl_lab.strategies.graphfl.tracing import matrix_log_if_small
 from graphfl_lab.strategies.graphfl.update_space import (
     compute_local_updates,
     compute_update_space_arrays,
@@ -565,34 +551,28 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             max_clients=self.log_w_matrix_max_clients,
         )
 
-        spectral_context = build_spectral_context(
+        config_context = build_config_context(self)
+        round_outputs = build_strategy_round_outputs(
+            server_round=server_round,
+            cids=cids,
             spectral_metrics=spectral_metrics,
             h_spec_ema=self.state.h_spec_ema,
             in_warmup=in_warmup,
             conflict_metrics=conflict_metrics,
             target_filter_diag=target_filter_diag,
             diagnostic_filter_diag=diagnostic_filter_diag,
-        )
-        conflict_context = build_conflict_context(
-            conflict_metrics=conflict_metrics,
             conflict_weight=conflict_weight,
             graph_fallback_used=graph_fallback_used,
-        )
-        update_context = build_update_context(
             z_norms=z_norms,
             update_space=update_space,
             graph_source_norms=graph_source_norms,
             ema_update_source=ema_update_source,
-        )
-        graph_context = build_graph_context(
             graph_source_used=graph_source_used,
             graph_used_source=graph_used_source,
             graph_meta=graph_meta,
             graph_diag_current=graph_diag_current,
             graph_diag=graph_diag,
             w_matrix_log=w_matrix_log,
-        )
-        alpha_context = build_alpha_context(
             alpha_raw=alpha_raw,
             alpha_norm=alpha_norm,
             alpha_mode=alpha_mode,
@@ -601,46 +581,16 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             diagnostic_target_used=diagnostic_target_used,
             server_opt_diag=server_opt_diag,
             pre_post=pre_post,
-        )
-        client_context = build_client_context(
             n_examples_arr=n_examples_arr,
             client_train_acc=client_train_acc,
             client_train_loss=client_train_loss,
-        )
-        config_context = build_config_context(self)
-        round_log = build_round_log(
-            server_round=server_round,
-            cids=cids,
-            spectral=spectral_context,
-            conflict=conflict_context,
-            update_stats=update_context,
-            graph=graph_context,
-            alpha=alpha_context,
-            client=client_context,
             config=config_context,
+            correction_family=self.correction_family,
+            control_graph_mode=self.control_graph_mode,
+            graph_mode=self.graph_mode,
         )
-        round_log.update(
-            make_round_trace_payload(
-                correction_family=self.correction_family,
-                control_graph_mode=self.control_graph_mode,
-                graph_mode=self.graph_mode,
-                alpha_mode=alpha_mode,
-                pre_post_round=pre_post["round"],
-            )
-        )
-        self.round_logs.append(round_log)
-
-        metrics = build_fit_metrics(
-            spectral=spectral_context,
-            conflict=conflict_context,
-            alpha_norm=alpha_norm,
-            graph_diag_current=graph_diag_current,
-            graph_diag=graph_diag,
-            filter_diag=conflict_metrics.filter_diag,
-            config=config_context,
-            pre_post_round=pre_post["round"],
-        )
-        return ndarrays_to_parameters(new_global), metrics
+        self.round_logs.append(round_outputs.round_log)
+        return ndarrays_to_parameters(new_global), round_outputs.fit_metrics
 
 SpectralConflictAwareStrategy = GraphFLDiagnosticStrategy
 
