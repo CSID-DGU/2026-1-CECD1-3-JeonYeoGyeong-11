@@ -76,11 +76,25 @@ client representation
 -> shared diagnostics
 ```
 
-구조는 네 층으로 볼 수 있다.
+이 흐름은 graph를 만드는 기능과 graph를 판단하는 기능을 분리하지 않는다. 새
+graph 후보를 만들면 같은 schema로 바로 control suite에 올리고,
+`matched_random`, `shuffled`, `uniform`, `identity`, `clustering_only`,
+`graphfree_dominance_reweight`와 비교한다. 그래서 직접 설계한 graph가 실제
+relation 정보를 살리는지, 단순 smoothing에 가까운지, coarse clustering만으로
+충분한지, dominance correction으로도 대체 가능한지 판단할 수 있다.
+
+이런 구조에서는 graph design이 일회성 구현이 아니라 반복 가능한 loop가 된다.
+새 graph를 조립하고, matched control과 diagnostic metric으로 검증하고, 결과에
+따라 representation, topology, weight, target을 다시 조정한다. 연구자는 이
+프레임워크 안에서 graph를 만들고, 그 graph가 어떤 조건에서 의미 있는지 같은
+실험 언어로 설명할 수 있다.
+
+구조는 다섯 층으로 볼 수 있다.
 
 | 층 | 역할 |
 |---|---|
 | execution layer | 같은 seed, config, runner, output schema에서 방법과 control을 실행 |
+| graph authoring layer | 새 graph 후보를 source, relation score, topology, weight, target 조각으로 조립 |
 | graph design layer | `graph_source`, `graph_mode`, `aggregation_target`, `correction_family`로 graph intervention을 분해 |
 | control layer | `real_graph`, `matched_random`, `shuffled`, `uniform`, `identity`, `clustering_only`, `graphfree_dominance_reweight`를 같은 조건에서 비교 |
 | diagnosis layer | accuracy/loss와 함께 real-control gap, graph-free gap, alignment, LOO, DI, N_eff, graph/spectral metric을 저장 |
