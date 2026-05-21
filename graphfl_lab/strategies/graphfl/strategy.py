@@ -19,7 +19,6 @@ are configurable via the strategy constructor.
 
 from __future__ import annotations
 
-from dataclasses import replace
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -49,11 +48,6 @@ from graphfl_lab.diagnostics.logging import (
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
 from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
-from graphfl_lab.lifecycle.counterfactuals import default_counterfactual_specs
-from graphfl_lab.lifecycle.diagnostic_runner import (
-    CounterfactualDiagnosticRunner,
-    MinimalAggregationAdapter,
-)
 from graphfl_lab.strategies.graphfl.aggregation import (
     apply_correction_family,
     compute_conflict_weights,
@@ -76,6 +70,9 @@ from graphfl_lab.strategies.graphfl.client_metrics import (
     weighted_optional_mean,
 )
 from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
+from graphfl_lab.strategies.graphfl.counterfactual_artifacts import (
+    run_counterfactual_artifacts,
+)
 from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
     build_round_log,
@@ -113,7 +110,6 @@ from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
 )
-from graphfl_lab.strategies.graphfl.trace_context import with_run_context
 from graphfl_lab.strategies.graphfl.tracing import (
     make_round_trace_payload,
     matrix_log_if_small,
@@ -617,76 +613,31 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
                 self.diagnostics_artifact_dir / "client_metrics.csv",
                 client_rows,
             )
-            counterfactual_target = str(diagnostic_target_used or self.aggregation_target)
-            counterfactual_specs = tuple(
-                (
-                    spec
-                    if spec.name == "graphfree_dominance_reweight"
-                    else replace(spec, aggregation_target=counterfactual_target)
-                )
-                for spec in default_counterfactual_specs()
-            )
-            seed_base = (
-                int(self.diagnostics_seed)
-                if int(self.diagnostics_seed) >= 0
-                else int(self.graph_seed)
-            )
-            counterfactual_runner = CounterfactualDiagnosticRunner(
-                aggregation_adapter=MinimalAggregationAdapter(
-                    filter_strength=self.graph_filter_strength,
-                    dominance_gamma=self.graph_free_gamma,
-                ),
-                loo_enabled=self.loo_enabled,
-                rng=np.random.default_rng(seed_base * 4099 + int(server_round)),
-            )
-            counterfactual_results = counterfactual_runner.run(
+            counterfactual_artifacts = run_counterfactual_artifacts(
                 flat_updates=np.stack(flat_deltas, axis=0),
                 weights_pre=pre_weights,
                 actual_adjacency=w_ema,
-                specs=counterfactual_specs,
-                round_number=int(server_round),
+                diagnostic_target_used=str(diagnostic_target_used),
+                aggregation_target=self.aggregation_target,
+                diagnostics_seed=int(self.diagnostics_seed),
+                graph_seed=int(self.graph_seed),
+                server_round=int(server_round),
+                graph_filter_strength=self.graph_filter_strength,
+                graph_free_gamma=self.graph_free_gamma,
+                loo_enabled=self.loo_enabled,
+                graph_meta=graph_meta,
+                run_id=self.diagnostics_run_id,
+                variant=self.diagnostics_variant,
+                graph_method=str(self.graph_method),
+                graph_variant=str(self.graph_mode),
             )
-            counterfactual_rows = []
-            module_trace_rows = []
-
-            for trace in graph_meta.get("lifecycle_trace", []) or []:
-                module_trace_rows.append(
-                    with_run_context(
-                        dict(trace),
-                        round_number=int(server_round),
-                        run_id=self.diagnostics_run_id,
-                        variant=self.diagnostics_variant,
-                        seed=int(self.diagnostics_seed),
-                    )
-                )
-            for result in counterfactual_results:
-                counterfactual_row = {
-                    "run_id": self.diagnostics_run_id,
-                    "variant": self.diagnostics_variant,
-                    "seed": int(self.diagnostics_seed),
-                    "round": int(server_round),
-                    "graph_method": str(self.graph_method),
-                    "graph_variant": str(self.graph_mode),
-                    **dict(result.metrics),
-                }
-                counterfactual_rows.append(counterfactual_row)
-                for trace in result.trace_records:
-                    module_trace_rows.append(
-                        with_run_context(
-                            trace.to_dict(),
-                            round_number=int(server_round),
-                            run_id=self.diagnostics_run_id,
-                            variant=self.diagnostics_variant,
-                            seed=int(self.diagnostics_seed),
-                        )
-                    )
             append_counterfactual_metrics_csv(
                 self.diagnostics_artifact_dir / "counterfactual_metrics.csv",
-                counterfactual_rows,
+                counterfactual_artifacts.counterfactual_rows,
             )
             append_module_traces_jsonl(
                 self.diagnostics_artifact_dir / "module_traces.jsonl",
-                module_trace_rows,
+                counterfactual_artifacts.module_trace_rows,
             )
 
         # ----------------- aggregate configured target and apply

@@ -442,6 +442,12 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "weighted_optional_mean",
         "return out if any_found else None",
     ),
+    "graphfl_lab/strategies/graphfl/counterfactual_artifacts.py": (
+        "run_counterfactual_artifacts",
+        "counterfactual_specs_for_target",
+        "graphfree_dominance_reweight",
+        "from graphfl_lab.strategies.graphfl.trace_context import with_run_context",
+    ),
     "graphfl_lab/strategies/graphfl/diagnostic_targets.py": (
         "flatten_diagnostic_post_updates",
         "spectral_filtered_client_ema_update_delta",
@@ -475,16 +481,17 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "graphfl_lab/strategies/graphfl/strategy.py": (
         "from graphfl_lab.strategies.graphfl.artifact_rows import",
         "from graphfl_lab.strategies.graphfl.client_metrics import",
+        "from graphfl_lab.strategies.graphfl.counterfactual_artifacts import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
         "from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta",
         "from graphfl_lab.strategies.graphfl.graph_state import select_round_graph",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
-        "from graphfl_lab.strategies.graphfl.trace_context import with_run_context",
         "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
         "build_round_diagnostics_row(",
         "build_graph_stats_row(",
         "build_client_diagnostic_rows(",
+        "counterfactual_artifacts = run_counterfactual_artifacts(",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
         "fit_batch = collect_client_fit_batch(results)",
@@ -504,6 +511,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "tests/strategies/graphfl/test_client_metrics.py": (
         "test_extract_metric_uses_first_available_alias_per_client",
         "test_weighted_optional_mean_skips_missing_values",
+    ),
+    "tests/strategies/graphfl/test_counterfactual_artifacts.py": (
+        "test_counterfactual_specs_for_target_retargets_graph_variants_only",
+        "test_run_counterfactual_artifacts_emits_rows_and_trace_context",
     ),
     "tests/strategies/graphfl/test_diagnostic_targets.py": (
         "test_flatten_diagnostic_post_updates_returns_update_delta_matrix",
@@ -531,6 +542,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
+        "keep CSV/JSONL append calls in `GraphFLDiagnosticStrategy`",
         "keep CSV append calls in `GraphFLDiagnosticStrategy`",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
