@@ -91,6 +91,7 @@ from graphfl_lab.strategies.graphfl.filtering import (
     laplacian,
     normalized_conflicts,
 )
+from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
 from graphfl_lab.strategies.baselines import (
@@ -105,8 +106,6 @@ from graphfl_lab.strategies.baselines import (
     TracingFedTrimmedAvg,
     TracingFedYogi,
     _EvalTracer,
-    _fit_result_cid_key,
-    sort_fit_results_by_cid as _sort_fit_results_by_cid,
 )
 from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
@@ -380,18 +379,11 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             return super().aggregate_fit(server_round, results, failures)
 
         # ----------------- collect client local weights and metadata
-        ordered_results = _sort_fit_results_by_cid(results)
-        cids: List[str] = []
-        local_weights: List[NDArrays] = []
-        n_examples: List[int] = []
-        client_metrics: List[Dict[str, Any]] = []
-        for proxy, fit_res in ordered_results:
-            metrics = dict(fit_res.metrics or {})
-            cids.append(str(metrics.get("cid", getattr(proxy, "cid", "?"))))
-            local_weights.append(parameters_to_ndarrays(fit_res.parameters))
-            n_examples.append(int(fit_res.num_examples))
-            client_metrics.append(metrics)
-        n_examples_arr = np.array(n_examples, dtype=np.float64)
+        fit_batch = collect_client_fit_batch(results)
+        cids = fit_batch.cids
+        local_weights = fit_batch.local_weights
+        n_examples_arr = fit_batch.n_examples_arr
+        client_metrics = fit_batch.client_metrics
         in_warmup = int(server_round) <= int(self.warmup_rounds)
 
         # ----------------- update space and projection

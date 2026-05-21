@@ -442,6 +442,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "spectral_filtered_client_ema_update_delta",
         "Unknown diagnostic aggregation_target",
     ),
+    "graphfl_lab/strategies/graphfl/fit_results.py": (
+        "ClientFitBatch",
+        "collect_client_fit_batch",
+        "sort_fit_results_by_cid",
+    ),
     "graphfl_lab/strategies/graphfl/projection.py": (
         "project_with_cached_matrix",
         "make_gaussian_projection",
@@ -454,6 +459,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
+        "fit_batch = collect_client_fit_batch(results)",
         "weighted_optional_mean(client_train_acc",
         "update_client_update_ema(",
         "project_with_cached_matrix(",
@@ -470,12 +476,17 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_flatten_diagnostic_post_updates_returns_update_delta_matrix",
         "test_flatten_diagnostic_post_updates_supports_filtered_ema_aliases",
     ),
+    "tests/strategies/graphfl/test_fit_results.py": (
+        "test_collect_client_fit_batch_sorts_by_numeric_cid_and_converts_arrays",
+        "test_collect_client_fit_batch_uses_proxy_cid_when_metric_missing",
+    ),
     "tests/strategies/graphfl/test_projection.py": (
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
+        "preserve stable CID ordering from baselines ordering",
         "keep aggregate_fit call sites unchanged apart from function names",
         "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
         "keep state assignment in `GraphFLDiagnosticStrategy`",
