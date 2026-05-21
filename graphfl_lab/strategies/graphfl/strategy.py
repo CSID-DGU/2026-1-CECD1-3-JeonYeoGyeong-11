@@ -48,10 +48,6 @@ from graphfl_lab.diagnostics.logging import (
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
 from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
-from graphfl_lab.strategies.graphfl.aggregation import (
-    apply_correction_family,
-    select_aggregation_weights,
-)
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
@@ -87,6 +83,7 @@ from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_fro
 from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
+from graphfl_lab.strategies.graphfl.round_weights import select_round_weights
 from graphfl_lab.strategies.graphfl.spectral_metrics import (
     compute_round_spectral_metrics,
 )
@@ -474,7 +471,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             self.state.tau_signal_ema = conflict_metrics.tau_source.ema_candidate
 
         # ----------------- aggregation weights
-        weight_selection = select_aggregation_weights(
+        weight_selection = select_round_weights(
             n_examples=n_examples_arr,
             conflict_weight=conflict_metrics.conflict_weight,
             diagnostic_only=self.diagnostic_only,
@@ -483,11 +480,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             graph_fallback_used=graph_fallback_used,
             conflict_mix=self.conflict_mix,
             min_client_weight=self.min_client_weight,
-        )
-        weight_selection = apply_correction_family(
             correction_family=self.correction_family,
-            selection=weight_selection,
-            n_examples=n_examples_arr,
             graph_free_mode=self.graph_free_mode,
             graph_free_gamma=self.graph_free_gamma,
             contribution_cap=self.contribution_cap,

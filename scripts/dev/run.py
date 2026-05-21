@@ -483,6 +483,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "make_gaussian_projection",
         "compression_seed",
     ),
+    "graphfl_lab/strategies/graphfl/round_weights.py": (
+        "select_round_weights",
+        "select_aggregation_weights",
+        "apply_correction_family",
+    ),
     "graphfl_lab/strategies/graphfl/spectral_metrics.py": (
         "RoundSpectralMetrics",
         "compute_round_spectral_metrics",
@@ -504,6 +509,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta",
         "from graphfl_lab.strategies.graphfl.graph_state import select_round_graph",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
+        "from graphfl_lab.strategies.graphfl.round_weights import select_round_weights",
         "from graphfl_lab.strategies.graphfl.spectral_metrics import",
         "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
         "build_round_diagnostics_row(",
@@ -520,6 +526,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "weighted_optional_mean(client_train_acc",
         "update_client_update_ema(",
         "project_with_cached_matrix(",
+        "weight_selection = select_round_weights(",
     ),
     "tests/strategies/graphfl/test_ema.py": (
         "test_update_client_update_ema_initializes_and_copies_updates",
@@ -565,6 +572,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
     ),
+    "tests/strategies/graphfl/test_round_weights.py": (
+        "test_select_round_weights_preserves_conflict_aware_alpha_mode",
+        "test_select_round_weights_preserves_graph_free_alpha_mode_suffix",
+    ),
     "tests/strategies/graphfl/test_spectral_metrics.py": (
         "test_compute_round_spectral_metrics_uses_current_graph_without_previous",
         "test_compute_round_spectral_metrics_uses_previous_laplacian_for_metric",
@@ -580,6 +591,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "keep the explicit field list tested",
         "keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`",
         "keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`",
+        "preserve existing alpha_mode composition",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",
