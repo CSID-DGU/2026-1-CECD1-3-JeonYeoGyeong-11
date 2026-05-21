@@ -10,11 +10,11 @@ from __future__ import annotations
 import argparse
 import csv
 import math
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
+from graphfl_lab.experiments.suites.execution import run_cmd
 from graphfl_lab.experiments.suites.result_writer import write_json
 
 
@@ -245,7 +245,7 @@ def run(args) -> None:
         suite_dir.mkdir(parents=True, exist_ok=True)
         cmd = suite_cmd(args=args, num_clients=int(n_clients), out_dir=suite_dir, tag=tag)
         print(f"=== Running client-count suite: num_clients={n_clients} ===", flush=True)
-        subprocess.run(cmd, cwd=str(PROJECT_ROOT), check=True)
+        run_cmd(cmd, cwd=PROJECT_ROOT)
         all_rows.extend(
             read_summary_rows(
                 (

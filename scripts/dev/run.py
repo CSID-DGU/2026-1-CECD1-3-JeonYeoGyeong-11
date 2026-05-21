@@ -279,6 +279,14 @@ GATE5B_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.experiments.suites.execution import execute_or_reuse_result",
         "cwd=PROJECT_ROOT",
     ),
+    "graphfl_lab/experiments/vision/client_count_sweep.py": (
+        "from graphfl_lab.experiments.suites.execution import run_cmd",
+        "run_cmd(cmd, cwd=PROJECT_ROOT)",
+    ),
+    "graphfl_lab/experiments/vision/stress_grid.py": (
+        "from graphfl_lab.experiments.suites.execution import run_cmd",
+        "run_cmd(cmd, cwd=PROJECT_ROOT)",
+    ),
     "tests/experiments/test_suite_execution.py": (
         "test_execute_reuses_existing_result_without_running_command",
         "test_execute_runs_when_reuse_disabled",

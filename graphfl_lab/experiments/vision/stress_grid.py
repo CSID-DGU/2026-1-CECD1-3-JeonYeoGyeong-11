@@ -12,11 +12,11 @@ import argparse
 import csv
 import itertools
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Sequence
 
+from graphfl_lab.experiments.suites.execution import run_cmd
 from graphfl_lab.experiments.suites.result_writer import write_json
 
 
@@ -700,7 +700,7 @@ def run(args) -> None:
                 status = "skipped_existing"
             else:
                 print(f"=== Running stress-grid suite {idx}: {tag} ===", flush=True)
-                subprocess.run(cmd, cwd=str(PROJECT_ROOT), check=True)
+                run_cmd(cmd, cwd=PROJECT_ROOT)
                 status = "completed"
             if not summary_path.is_file() and compatibility_summary_path.is_file():
                 summary_path = compatibility_summary_path

@@ -171,6 +171,7 @@ and impact scope.
 | 2026-05-21 | User prefers continuing with local commits and no immediate push. | Leave Gate 4c completion pending; allow local Gate 5a prep commits that do not require remote workflow state and do not claim full Gate 5a completion. |
 | 2026-05-21 | Vision suite orchestration contains reusable run-or-reuse subprocess logic. | Extract only the execution helper as Gate 5b-prep; keep result aggregation and public runner behavior unchanged. |
 | 2026-05-21 | Gate 5b-prep is not a complete Gate 5b modularization. | Keep the golden/nightly prerequisite visible and do not claim full Gate 5b completion. |
+| 2026-05-21 | Client-count and stress-grid wrappers still invoke subprocesses directly with the project root. | Reuse the new execution helper for those wrapper calls only; keep wrapper arguments, outputs, and skip/reuse behavior unchanged. |
 
 ## Closure Policy
 
