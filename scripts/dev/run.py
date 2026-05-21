@@ -214,6 +214,17 @@ GATE4C_REQUIRED_TEXT = {
         "graphfl_lab",
         "python -m unittest discover -s tests",
     ),
+    "scripts/dev/golden.py": (
+        "VOLATILE_FIELDS",
+        "REQUIRED_RESULT_SCHEMA_KEYS",
+        "normalize_payload",
+        "compare_payloads",
+    ),
+    "tests/dev/test_golden.py": (
+        "test_normalized_compare_ignores_volatile_fields",
+        "test_compare_fails_on_schema_shape_change",
+        "test_compare_fails_on_normalized_value_change",
+    ),
     "tests/golden/README.md": (
         "Gate 4c captures smoke outputs",
         "Volatile Fields",

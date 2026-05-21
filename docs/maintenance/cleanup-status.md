@@ -167,6 +167,7 @@ and impact scope.
 | 2026-05-21 | `run_experiment.py` was still a Cora-only wrapper after Gate 3. | Gate 4a adds `graphfl_lab.cli.experiment_dispatcher`; missing `--track` keeps Cora behavior with `DeprecationWarning`, while `--track vision|cora` selects the canonical runner. |
 | 2026-05-21 | Only single-run facades have a unified dispatcher equivalent in Gate 4b. | Rewire `run_vision_experiment.py` and `run_general_experiment.py` through dispatcher track helpers; keep suite/stress/count wrappers on package CLI modules until their unified equivalents exist. |
 | 2026-05-21 | Existing CI compile step still referenced the pre-move package layout. | Update CI compile paths to `graphfl_lab` plus the `spectral_fl` shim and add a separate scheduled/manual nightly workflow. |
+| 2026-05-21 | Pushing the Gate branch is required for GitHub nightly/manual-nightly verification, but external publication needs explicit user approval. | Do not push or trigger remote workflows yet; continue only local Gate 4c prep such as golden comparison tooling and keep Gate 4c fail-closed. |
 
 ## Closure Policy
 
