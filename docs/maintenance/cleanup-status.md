@@ -180,6 +180,7 @@ and impact scope.
 | 2026-05-21 | Gate-check self-tests still verify earlier prep gates after moving `current_gate` forward. | Keep completed prep gate names visible in status text so older checks remain reproducible while Gate 5c-prep proceeds. |
 | 2026-05-21 | `variants.py` still mixes token parsing with base command assembly. | Move only `build_base_cmd` to `experiments/suites/vision/variant_commands.py`; keep `variant_cmd` and `parse_variant` public imports stable. |
 | 2026-05-21 | `parse_variant` still contains baseline/Fed* parsing before the Ours graph families. | Move only baseline/Fed* family parsing to `experiments/suites/vision/variant_families.py`; leave recursive Ours suffix handling and graph families in place. |
+| 2026-05-21 | Current diagnostic protocol tokens (`real_graph`, matched controls, cluster-only, graph-free controls) are mixed into the general Ours parser. | Move only those diagnostic protocol tokens to `experiments/suites/vision/variant_diagnostics.py`; keep all older Ours graph families in `parse_variant`. |
 
 ## Closure Policy
 

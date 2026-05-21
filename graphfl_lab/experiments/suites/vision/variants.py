@@ -8,10 +8,9 @@ from pathlib import Path
 from typing import List, Tuple
 
 from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd
+from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diagnostic_variant
 from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
-    diagnostic_graph_args as _diagnostic_graph_args,
-    diagnostic_graph_free_args as _diagnostic_graph_free_args,
     legacy_residual_reweight_args as _legacy_residual_reweight_args,
     result_path_for_variant,
     token_float as _token_float,
@@ -124,65 +123,9 @@ def parse_variant(
             ],
         )
 
-    if v == "ours_real_graph":
-        return (
-            "ours",
-            v,
-            _diagnostic_graph_args(
-                correction_family="real_graph",
-                knn_k=str(default_knn_k),
-            ),
-        )
-
-    m = re.match(r"^ours_real_graph_k(\d+)$", v)
-    if m:
-        return (
-            "ours",
-            v,
-            _diagnostic_graph_args(
-                correction_family="real_graph",
-                knn_k=m.group(1),
-            ),
-        )
-
-    m = re.match(r"^ours_(random|shuffled|uniform|identity)_control(?:_k(\d+))?$", v)
-    if m:
-        mode = m.group(1)
-        k = m.group(2) or str(default_knn_k)
-        return (
-            "ours",
-            v,
-            _diagnostic_graph_args(
-                correction_family="control_graph",
-                control_graph_mode=mode,
-                knn_k=k,
-            ),
-        )
-
-    m = re.match(r"^ours_cluster_only(?:_k(\d+))?$", v)
-    if m:
-        k = m.group(1) or str(default_knn_k)
-        return (
-            "ours",
-            v,
-            _diagnostic_graph_args(
-                correction_family="clustering_only",
-                knn_k=k,
-            ),
-        )
-
-    graph_free_modes = {
-        "normclip": "norm_clip",
-        "norm_clip": "norm_clip",
-        "cap": "contribution_cap",
-        "contribution_cap": "contribution_cap",
-        "reweight": "dominance_reweight",
-        "dominance_reweight": "dominance_reweight",
-    }
-    m = re.match(r"^ours_graphfree_(normclip|norm_clip|cap|contribution_cap|reweight|dominance_reweight)$", v)
-    if m:
-        mode = graph_free_modes[m.group(1)]
-        return "ours", v, _diagnostic_graph_free_args(mode)
+    diagnostic = parse_diagnostic_variant(v, default_knn_k)
+    if diagnostic is not None:
+        return diagnostic
 
     m = re.match(r"^ours_knn_k(\d+)$", v)
     if m:
