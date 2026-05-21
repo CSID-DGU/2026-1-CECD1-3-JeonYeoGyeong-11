@@ -42,7 +42,7 @@ class GateCheckEntrypointTest(unittest.TestCase):
     def test_future_gate_checks_fail_closed_until_implemented(self):
         module = load_run_module()
 
-        report = module.run_gate_check("4c", ROOT)
+        report = module.run_gate_check("5a", ROOT)
 
         self.assertFalse(report["pass"])
         self.assertIn("not implemented yet", report["failed_checks"][0])
@@ -183,6 +183,14 @@ class GateCheckEntrypointTest(unittest.TestCase):
 
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "4b")
+
+    def test_gate4c_prep_exists_but_requires_remote_green(self):
+        module = load_run_module()
+
+        report = module.run_gate_check("4c", ROOT)
+
+        self.assertFalse(report["pass"])
+        self.assertTrue(any("manual-nightly green" in item for item in report["failed_checks"]))
 
 
 if __name__ == "__main__":

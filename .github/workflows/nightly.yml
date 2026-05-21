@@ -1,8 +1,9 @@
-name: ci
+name: nightly
 
 on:
-  push:
-  pull_request:
+  schedule:
+    - cron: "17 18 * * *"
+  workflow_dispatch:
 
 jobs:
   smoke:

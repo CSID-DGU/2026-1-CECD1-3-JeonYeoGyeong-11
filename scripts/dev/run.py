@@ -202,6 +202,25 @@ GATE4B_REQUIRED_TEXT = {
     ),
 }
 
+GATE4C_REQUIRED_TEXT = {
+    ".github/workflows/ci.yml": (
+        "graphfl_lab",
+        "spectral_fl",
+        "python -m unittest discover -s tests",
+    ),
+    ".github/workflows/nightly.yml": (
+        "schedule:",
+        "workflow_dispatch:",
+        "graphfl_lab",
+        "python -m unittest discover -s tests",
+    ),
+    "tests/golden/README.md": (
+        "Gate 4c captures smoke outputs",
+        "Volatile Fields",
+        "Schema comparison is exact",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -339,6 +358,11 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     elif gate == "4b":
         failed_checks.extend(_missing_text(root, GATE4A_REQUIRED_TEXT))
         failed_checks.extend(_missing_text(root, GATE4B_REQUIRED_TEXT))
+    elif gate == "4c":
+        failed_checks.extend(_missing_text(root, GATE4C_REQUIRED_TEXT))
+        failed_checks.append(
+            "Gate 4c requires one GitHub nightly or manual-nightly green run before completion."
+        )
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

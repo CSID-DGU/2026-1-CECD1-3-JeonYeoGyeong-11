@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 4b - runner facade rewiring |
-| status | Gate 4a unified dispatcher complete; Gate 4b single-run facades in progress |
+| current_gate | Gate 4c - nightly/golden baseline prep |
+| status | Gate 4b single-run facades complete; Gate 4c workflow prep in progress |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | verify `run_vision_experiment.py` and `run_general_experiment.py` route through the package dispatcher |
+| next_step | run or record one GitHub nightly/manual-nightly green before declaring Gate 4c complete |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -166,6 +166,7 @@ and impact scope.
 | 2026-05-21 | Gate 3 real move leaves only `spectral_fl/__init__.py` as the legacy package shim. | Update line-budget paths and gate checks to `graphfl_lab/*`; verify legacy submodule imports through shim `__path__` for old pickle paths. |
 | 2026-05-21 | `run_experiment.py` was still a Cora-only wrapper after Gate 3. | Gate 4a adds `graphfl_lab.cli.experiment_dispatcher`; missing `--track` keeps Cora behavior with `DeprecationWarning`, while `--track vision|cora` selects the canonical runner. |
 | 2026-05-21 | Only single-run facades have a unified dispatcher equivalent in Gate 4b. | Rewire `run_vision_experiment.py` and `run_general_experiment.py` through dispatcher track helpers; keep suite/stress/count wrappers on package CLI modules until their unified equivalents exist. |
+| 2026-05-21 | Existing CI compile step still referenced the pre-move package layout. | Update CI compile paths to `graphfl_lab` plus the `spectral_fl` shim and add a separate scheduled/manual nightly workflow. |
 
 ## Closure Policy
 
