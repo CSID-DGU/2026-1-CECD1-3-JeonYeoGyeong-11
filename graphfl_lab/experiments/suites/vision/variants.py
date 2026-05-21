@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import re
 from pathlib import Path
 from typing import List, Tuple
 
@@ -13,12 +12,12 @@ from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diag
 from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
     result_path_for_variant,
-    token_float as _token_float,
 )
 from graphfl_lab.experiments.suites.vision.variant_legacy import (
     parse_legacy_residual_variant,
 )
 from graphfl_lab.experiments.suites.vision.variant_sources import parse_source_variant
+from graphfl_lab.experiments.suites.vision.variant_suffixes import parse_suffix_variant
 from graphfl_lab.experiments.suites.vision.variant_targets import parse_target_variant
 
 
@@ -32,84 +31,9 @@ def parse_variant(
     if baseline is not None:
         return baseline
 
-    tau_suffix_args = {
-        "fixed_tau": ["--disable-adaptive-tau", "true"],
-        "norm_tau": ["--tau-source", "h_spec_normalized"],
-        "normalized_tau": ["--tau-source", "h_spec_normalized"],
-        "estd_tau": ["--tau-source", "e_std"],
-        "e_std_tau": ["--tau-source", "e_std"],
-        "norm_estd_tau": ["--tau-source", "h_spec_normalized_times_e_std"],
-        "norm_e_std_tau": ["--tau-source", "h_spec_normalized_times_e_std"],
-    }
-    if v != "ours_fixed_tau":
-        for suffix, tau_args in sorted(
-            tau_suffix_args.items(), key=lambda item: -len(item[0])
-        ):
-            marker = f"_{suffix}"
-            if v.endswith(marker):
-                base = v[: -len(marker)]
-                try:
-                    method, _, extras = parse_variant(base, args)
-                except ValueError:
-                    continue
-                if method != "ours":
-                    continue
-                return "ours", v, extras + tau_args
-
-    for suffix in ("graph_filter_only", "filter_only", "spectral_only", "speconly"):
-        marker = f"_{suffix}"
-        if v.endswith(marker):
-            base = v[: -len(marker)]
-            method, _, extras = parse_variant(base, args)
-            if method != "ours":
-                raise ValueError(
-                    f"Graph-filter-only suffix is only supported for Ours variants: {variant!r}"
-                )
-            return (
-                "ours",
-                v,
-                extras
-                + [
-                    "--conflict-mix",
-                    "0.0",
-                    "--min-client-weight",
-                    "0.0",
-                    "--ours-server-learning-rate",
-                    "1.0",
-                    "--ours-server-momentum",
-                    "0.0",
-                ],
-            )
-
-    m = re.match(r"^(?P<base>.+)_lp(?P<strength>[0-9][0-9p.]*)$", v)
-    if m:
-        method, _, extras = parse_variant(m.group("base"), args)
-        if method != "ours":
-            raise ValueError(f"Low-pass suffix is only supported for Ours variants: {variant!r}")
-        return (
-            "ours",
-            v,
-            extras + ["--graph-filter-strength", _token_float(m.group("strength"))],
-        )
-
-    if v.endswith("_serverm"):
-        base = v[: -len("_serverm")]
-        method, _, extras = parse_variant(base, args)
-        if method != "ours":
-            raise ValueError(
-                f"Server momentum suffix is only supported for Ours variants: {variant!r}"
-            )
-        return (
-            "ours",
-            v,
-            extras
-            + [
-                "--ours-server-learning-rate",
-                str(args.ours_server_learning_rate),
-                "--ours-server-momentum",
-                str(args.server_momentum),
-            ],
-        )
+    suffix = parse_suffix_variant(variant, args, parse_variant)
+    if suffix is not None:
+        return suffix
 
     diagnostic = parse_diagnostic_variant(v, default_knn_k)
     if diagnostic is not None:

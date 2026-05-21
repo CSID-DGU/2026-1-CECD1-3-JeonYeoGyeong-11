@@ -362,6 +362,11 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "classifier_head_weight",
         "layer_slice_update",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_suffixes.py": (
+        "parse_suffix_variant",
+        "graph_filter_only",
+        "parser(base, args)",
+    ),
     "graphfl_lab/experiments/suites/vision/variant_targets.py": (
         "parse_target_variant",
         "graph_filtered_update",
@@ -375,6 +380,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
         "from graphfl_lab.experiments.suites.vision.variant_legacy import",
         "from graphfl_lab.experiments.suites.vision.variant_sources import parse_source_variant",
+        "from graphfl_lab.experiments.suites.vision.variant_suffixes import parse_suffix_variant",
         "from graphfl_lab.experiments.suites.vision.variant_targets import parse_target_variant",
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
@@ -405,6 +411,10 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_variant_sources.py": (
         "test_parse_source_variant_handles_weight_and_head_graphs",
         "test_parse_source_variant_returns_none_for_target_only_family",
+    ),
+    "tests/experiments/vision/test_variant_suffixes.py": (
+        "test_parse_suffix_variant_handles_tau_lowpass_and_server_momentum",
+        "test_parse_suffix_variant_handles_filter_only_and_rejects_baselines",
     ),
     "tests/experiments/vision/test_variant_targets.py": (
         "test_parse_target_variant_handles_graph_filtered_family",
