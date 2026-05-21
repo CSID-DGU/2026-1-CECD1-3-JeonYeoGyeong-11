@@ -70,7 +70,7 @@ from graphfl_lab.graph.sources import (
     graph_vectors_for_spectral,
     normalize_key,
 )
-from graphfl_lab.projection import flatten_weights, make_gaussian_projection
+from graphfl_lab.projection import flatten_weights
 from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
 from graphfl_lab.strategies.graphfl.diagnostics import (
     build_fit_metrics,
@@ -85,6 +85,7 @@ from graphfl_lab.strategies.graphfl.filtering import (
     normalized_conflicts,
 )
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
+from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix
 from graphfl_lab.strategies.baselines import (
     TracingFedAdagrad,
     TracingFedAdam,
@@ -239,16 +240,13 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
     # ------------------------------------------------------------------ utils
 
     def _project(self, vec: np.ndarray) -> np.ndarray:
-        if vec.size <= self.compression_dim:
-            return vec.astype(np.float32, copy=False)
-        if self._proj_matrix is None:
-            self._proj_matrix = make_gaussian_projection(
-                n_features=int(vec.size),
-                n_dim=int(self.compression_dim),
-                seed=int(self.compression_seed),
-            )
-        v = vec.astype(np.float32, copy=False)
-        return v @ self._proj_matrix
+        projected, self._proj_matrix = project_with_cached_matrix(
+            vec,
+            projection_matrix=self._proj_matrix,
+            compression_dim=self.compression_dim,
+            compression_seed=self.compression_seed,
+        )
+        return projected
 
     def _update_client_update_ema(
         self,

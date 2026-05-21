@@ -188,6 +188,7 @@ and impact scope.
 | 2026-05-21 | Target-only filtered variants (`graph_filtered_*` and legacy `spectral_filtered_*`) remain as the last large family inside `parse_variant`. | Move those target-family tokens to `experiments/suites/vision/variant_targets.py`; preserve legacy spectral tokens until Gate 6. |
 | 2026-05-21 | Recursive suffix handling (`fixed_tau`, `graph_filter_only`, `lp`, `serverm`) is now the last non-routing logic inside `variants.py`. | Move suffix handling to `experiments/suites/vision/variant_suffixes.py` with the parser callback injected to preserve recursive behavior. |
 | 2026-05-21 | Gate 5d starts with `strategy.py` still owning client-update EMA copy/update logic. | Extract only the EMA calculation/copy helper to `strategies/graphfl/ema.py`; keep state assignment in `GraphFLDiagnosticStrategy`. |
+| 2026-05-21 | `strategy.py` still owns the cached projection branch used before graph construction. | Extract projection calculation to `strategies/graphfl/projection.py`; keep projection matrix storage on `GraphFLDiagnosticStrategy`. |
 
 ## Closure Policy
 
