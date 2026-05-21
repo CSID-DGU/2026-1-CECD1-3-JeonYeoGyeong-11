@@ -483,6 +483,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "make_gaussian_projection",
         "compression_seed",
     ),
+    "graphfl_lab/strategies/graphfl/round_context.py": (
+        "build_spectral_context",
+        "build_conflict_context",
+        "build_alpha_context",
+    ),
     "graphfl_lab/strategies/graphfl/round_graph.py": (
         "RoundGraphState",
         "build_round_graph_state",
@@ -519,6 +524,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
+        "from graphfl_lab.strategies.graphfl.round_context import",
         "from graphfl_lab.strategies.graphfl.round_graph import build_round_graph_state",
         "from graphfl_lab.strategies.graphfl.round_weights import select_round_weights",
         "from graphfl_lab.strategies.graphfl.spectral_metrics import",
@@ -526,6 +532,9 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "build_round_diagnostics_row(",
         "build_graph_stats_row(",
         "build_client_diagnostic_rows(",
+        "spectral_context = build_spectral_context(",
+        "conflict_context = build_conflict_context(",
+        "alpha_context = build_alpha_context(",
         "config_context = build_config_context(self)",
         "conflict_metrics = compute_conflict_metric_bundle(",
         "counterfactual_artifacts = run_counterfactual_artifacts(",
@@ -585,6 +594,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_project_with_cached_matrix_returns_float32_when_small",
         "test_project_with_cached_matrix_creates_and_reuses_matrix",
     ),
+    "tests/strategies/graphfl/test_round_context.py": (
+        "test_build_spectral_context_preserves_tau_and_filter_fields",
+        "test_build_context_helpers_preserve_round_log_inputs",
+    ),
     "tests/strategies/graphfl/test_round_weights.py": (
         "test_select_round_weights_preserves_conflict_aware_alpha_mode",
         "test_select_round_weights_preserves_graph_free_alpha_mode_suffix",
@@ -614,6 +627,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`",
         "preserve flattened delta matrix used by diagnostics and counterfactuals",
         "preserve graph seed formula and sample-weight normalization",
+        "keep `build_round_log` and `build_fit_metrics` as the output contract",
         "preserve existing alpha_mode composition",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
