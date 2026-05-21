@@ -426,6 +426,26 @@ GATE5C_PREP_REQUIRED_TEXT = {
     ),
 }
 
+GATE5D_PREP_REQUIRED_TEXT = {
+    "graphfl_lab/strategies/graphfl/ema.py": (
+        "update_client_update_ema",
+        "initialized_current_update",
+        "ema_update",
+    ),
+    "graphfl_lab/strategies/graphfl/strategy.py": (
+        "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
+        "update_client_update_ema(",
+    ),
+    "tests/strategies/graphfl/test_ema.py": (
+        "test_update_client_update_ema_initializes_and_copies_updates",
+        "test_update_client_update_ema_blends_existing_updates",
+    ),
+    "docs/maintenance/cleanup-status.md": (
+        "Gate 5d-prep",
+        "keep state assignment in `GraphFLDiagnosticStrategy`",
+    ),
+}
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -574,6 +594,8 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_missing_text(root, GATE5B_PREP_REQUIRED_TEXT))
     elif gate == "5c-prep":
         failed_checks.extend(_missing_text(root, GATE5C_PREP_REQUIRED_TEXT))
+    elif gate == "5d-prep":
+        failed_checks.extend(_missing_text(root, GATE5D_PREP_REQUIRED_TEXT))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."
@@ -599,7 +621,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     gate = sub.add_parser("gate-check", help="Run a cleanup gate check.")
-    gate.add_argument("gate", help="Gate id, for example 0, 4a, or 5c.")
+    gate.add_argument("gate", help="Gate id, for example 0, 4a, or 5d-prep.")
     args = parser.parse_args(argv)
 
     root = repo_root()

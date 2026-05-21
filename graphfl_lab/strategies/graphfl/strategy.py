@@ -78,6 +78,7 @@ from graphfl_lab.strategies.graphfl.diagnostics import (
     heterogeneity,
     spectral_energy_diagnostics,
 )
+from graphfl_lab.strategies.graphfl.ema import update_client_update_ema
 from graphfl_lab.strategies.graphfl.filtering import (
     apply_spectral_filter_with_diagnostics,
     laplacian,
@@ -254,33 +255,15 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         local_updates: List[NDArrays],
         cids: List[str],
     ) -> Tuple[List[NDArrays], str]:
-        alpha = min(max(float(self.client_update_ema_alpha), 0.0), 1.0)
-        if (
-            self.state.client_update_ema is None
-            or self.state.client_update_ema_cids != list(cids)
-        ):
-            ema_updates = [
-                [np.array(arr, copy=True) for arr in update]
-                for update in local_updates
-            ]
-            source = "initialized_current_update"
-        else:
-            ema_updates = []
-            for old_update, current_update in zip(
-                self.state.client_update_ema, local_updates
-            ):
-                ema_updates.append(
-                    [
-                        alpha * old + (1.0 - alpha) * current
-                        for old, current in zip(old_update, current_update)
-                    ]
-                )
-            source = "ema_update"
-        self.state.client_update_ema = [
-            [np.array(arr, copy=True) for arr in update]
-            for update in ema_updates
-        ]
-        self.state.client_update_ema_cids = list(cids)
+        ema_updates, source, stored_updates, stored_cids = update_client_update_ema(
+            local_updates=local_updates,
+            cids=cids,
+            previous_updates=self.state.client_update_ema,
+            previous_cids=self.state.client_update_ema_cids,
+            alpha=self.client_update_ema_alpha,
+        )
+        self.state.client_update_ema = stored_updates
+        self.state.client_update_ema_cids = stored_cids
         return ema_updates, source
 
     @staticmethod

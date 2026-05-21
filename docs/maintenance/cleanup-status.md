@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5c-prep - variant helper extraction |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep and Gate 5b-prep committed; Gate 5c-prep in progress |
+| current_gate | Gate 5d-prep - graphfl strategy helper extraction |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep, Gate 5b-prep, and Gate 5c-prep committed; Gate 5d-prep in progress |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | extract behavior-preserving variant token and path helpers without marking Gate 5c complete before golden baseline exists |
+| next_step | extract behavior-preserving strategy helpers without marking Gate 5d complete before golden baseline exists |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -187,6 +187,7 @@ and impact scope.
 | 2026-05-21 | Source-specific Ours variants (`weight`, `layerwise`, classifier-head, EMA, tail slices) are still mixed into the main parser. | Move those source-family tokens to `experiments/suites/vision/variant_sources.py`; keep target-only filtered families separate for the next step. |
 | 2026-05-21 | Target-only filtered variants (`graph_filtered_*` and legacy `spectral_filtered_*`) remain as the last large family inside `parse_variant`. | Move those target-family tokens to `experiments/suites/vision/variant_targets.py`; preserve legacy spectral tokens until Gate 6. |
 | 2026-05-21 | Recursive suffix handling (`fixed_tau`, `graph_filter_only`, `lp`, `serverm`) is now the last non-routing logic inside `variants.py`. | Move suffix handling to `experiments/suites/vision/variant_suffixes.py` with the parser callback injected to preserve recursive behavior. |
+| 2026-05-21 | Gate 5d starts with `strategy.py` still owning client-update EMA copy/update logic. | Extract only the EMA calculation/copy helper to `strategies/graphfl/ema.py`; keep state assignment in `GraphFLDiagnosticStrategy`. |
 
 ## Closure Policy
 
