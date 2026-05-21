@@ -498,6 +498,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "values.setdefault(\"run_id\"",
         "round_number",
     ),
+    "graphfl_lab/strategies/graphfl/update_space.py": (
+        "UpdateSpaceArrays",
+        "compute_local_updates",
+        "compute_update_space_arrays",
+    ),
     "graphfl_lab/strategies/graphfl/strategy.py": (
         "from graphfl_lab.strategies.graphfl.artifact_rows import",
         "from graphfl_lab.strategies.graphfl.client_metrics import",
@@ -511,6 +516,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
         "from graphfl_lab.strategies.graphfl.round_weights import select_round_weights",
         "from graphfl_lab.strategies.graphfl.spectral_metrics import",
+        "from graphfl_lab.strategies.graphfl.update_space import",
         "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
         "build_round_diagnostics_row(",
         "build_graph_stats_row(",
@@ -518,6 +524,8 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "config_context = build_config_context(self)",
         "conflict_metrics = compute_conflict_metric_bundle(",
         "counterfactual_artifacts = run_counterfactual_artifacts(",
+        "local_updates = compute_local_updates(",
+        "update_space = compute_update_space_arrays(",
         "spectral_metrics = compute_round_spectral_metrics(",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
@@ -584,6 +592,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_with_run_context_adds_missing_round_and_values",
         "test_with_run_context_preserves_existing_round_and_values",
     ),
+    "tests/strategies/graphfl/test_update_space.py": (
+        "test_compute_local_updates_subtracts_global_parameters",
+        "test_compute_update_space_arrays_preserves_flat_delta_matrix_and_norms",
+    ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
         "keep CSV/JSONL append calls in `GraphFLDiagnosticStrategy`",
@@ -591,6 +603,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "keep the explicit field list tested",
         "keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`",
         "keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`",
+        "preserve flattened delta matrix used by diagnostics and counterfactuals",
         "preserve existing alpha_mode composition",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",

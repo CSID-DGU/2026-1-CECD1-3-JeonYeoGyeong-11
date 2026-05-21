@@ -201,6 +201,7 @@ and impact scope.
 | 2026-05-21 | `aggregate_fit` still owns round Laplacian/H_spec/spectral energy metric calculation. | Extract spectral metric bundle to `strategies/graphfl/spectral_metrics.py`; keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `aggregate_fit` still owns graph-filtered conflict, tau resolution, and conflict-weight calculation. | Extract conflict metric bundle to `strategies/graphfl/conflict_metrics.py`; keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`. |
 | 2026-05-21 | `aggregate_fit` still owns the sequence that selects aggregation weights and then applies correction-family post-processing. | Extract round weight orchestration to `strategies/graphfl/round_weights.py`; preserve existing alpha_mode composition. |
+| 2026-05-21 | `aggregate_fit` still owns local update construction and repeated flat/norm update-space arrays. | Extract update-space arrays to `strategies/graphfl/update_space.py`; preserve flattened delta matrix used by diagnostics and counterfactuals. |
 
 ## Closure Policy
 

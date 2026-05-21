@@ -52,7 +52,6 @@ from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
 )
-from graphfl_lab.projection import flatten_weights
 from graphfl_lab.strategies.graphfl.artifact_rows import (
     build_client_diagnostic_rows,
     build_graph_stats_row,
@@ -107,6 +106,10 @@ from graphfl_lab.strategies.graphfl.targets import (
 from graphfl_lab.strategies.graphfl.tracing import (
     make_round_trace_payload,
     matrix_log_if_small,
+)
+from graphfl_lab.strategies.graphfl.update_space import (
+    compute_local_updates,
+    compute_update_space_arrays,
 )
 
 
@@ -376,20 +379,19 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         in_warmup = int(server_round) <= int(self.warmup_rounds)
 
         # ----------------- update space and projection
-        local_updates: List[NDArrays] = [
-            [lp - gp for lp, gp in zip(local, self._current_global)]
-            for local in local_weights
-        ]
+        local_updates = compute_local_updates(
+            local_weights=local_weights,
+            current_global=self._current_global,
+        )
         ema_updates, ema_update_source = self._update_client_update_ema(
             local_updates=local_updates,
             cids=cids,
         )
-        flat_deltas = [flatten_weights(g_i) for g_i in local_updates]
-        delta_norms = np.array([float(np.linalg.norm(g)) for g in flat_deltas])
-        flat_ema_deltas = [flatten_weights(g_i) for g_i in ema_updates]
-        ema_delta_norms = np.array([float(np.linalg.norm(g)) for g in flat_ema_deltas])
-        flat_weights = [flatten_weights(w_i) for w_i in local_weights]
-        weight_norms = np.array([float(np.linalg.norm(w)) for w in flat_weights])
+        update_space = compute_update_space_arrays(
+            local_weights=local_weights,
+            local_updates=local_updates,
+            ema_updates=ema_updates,
+        )
         graph_vectors, graph_source_used = self._graph_vectors(
             local_weights=local_weights,
             local_updates=local_updates,
@@ -485,7 +487,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             graph_free_gamma=self.graph_free_gamma,
             contribution_cap=self.contribution_cap,
             clip_quantile=self.clip_quantile,
-            update_norms=delta_norms,
+            update_norms=update_space.delta_norms,
         )
         alpha_raw = weight_selection.alpha_raw
         alpha_norm = weight_selection.alpha_norm
@@ -504,7 +506,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             )
         )
         pre_post = summarize_pre_post(
-            flat_updates=np.stack(flat_deltas, axis=0),
+            flat_updates=update_space.flat_delta_matrix,
             flat_updates_post=post_flat_updates,
             weights_pre=pre_weights,
             weights_post=alpha_norm,
@@ -576,7 +578,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
                 client_rows,
             )
             counterfactual_artifacts = run_counterfactual_artifacts(
-                flat_updates=np.stack(flat_deltas, axis=0),
+                flat_updates=update_space.flat_delta_matrix,
                 weights_pre=pre_weights,
                 actual_adjacency=w_ema,
                 diagnostic_target_used=str(diagnostic_target_used),
@@ -657,9 +659,9 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         }
         update_context = {
             "z_norms": z_norms,
-            "delta_norms": delta_norms,
-            "ema_delta_norms": ema_delta_norms,
-            "weight_norms": weight_norms,
+            "delta_norms": update_space.delta_norms,
+            "ema_delta_norms": update_space.ema_delta_norms,
+            "weight_norms": update_space.weight_norms,
             "graph_source_norms": graph_source_norms,
             "ema_update_source": ema_update_source,
         }
