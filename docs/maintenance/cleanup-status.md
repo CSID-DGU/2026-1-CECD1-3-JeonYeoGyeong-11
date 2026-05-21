@@ -185,6 +185,7 @@ and impact scope.
 | 2026-05-21 | Basic Ours graph-mode tokens are stable and independent of source/aggregation-target families. | Move those basic graph-mode tokens to `experiments/suites/vision/variant_core.py`; keep source-specific graph families in `parse_variant`. |
 | 2026-05-21 | After extracting core graph variants, `ours_default_graph` remained duplicated in `variants.py`. | Remove the duplicate local branch and route it through `parse_core_graph_variant` like the rest of the core graph family. |
 | 2026-05-21 | Source-specific Ours variants (`weight`, `layerwise`, classifier-head, EMA, tail slices) are still mixed into the main parser. | Move those source-family tokens to `experiments/suites/vision/variant_sources.py`; keep target-only filtered families separate for the next step. |
+| 2026-05-21 | Target-only filtered variants (`graph_filtered_*` and legacy `spectral_filtered_*`) remain as the last large family inside `parse_variant`. | Move those target-family tokens to `experiments/suites/vision/variant_targets.py`; preserve legacy spectral tokens until Gate 6. |
 
 ## Closure Policy
 
