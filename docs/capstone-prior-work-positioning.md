@@ -1,14 +1,14 @@
 # Capstone Shared Research Direction
 
-이 문서는 종합설계 1 양식을 쓰기 전에 팀원들이 같은 방향을 보기 위한
-공용 기준서다. 핵심은 선행연구를 단순 요약하지 않고, 우리 프로젝트가
-무엇을 평가하려는지 분명히 잡는 것이다.
+종합설계 1 문서 작성과 프로젝트 범위 확정을 위한 기준 문서다.
+핵심은 선행연구를 단순 요약하지 않고, 본 프로젝트가 무엇을 평가하려는지
+분명히 잡는 것이다.
 
 ## 프로젝트 정의
 
-우리 프로젝트는 새로운 Graph-FL SOTA 알고리즘을 제안하는 것이 아니다.
+본 프로젝트는 새로운 Graph-FL SOTA 알고리즘을 제안하는 것이 아니다.
 
-우리는 Graph-FL에서 성능 향상이 발생했을 때, 그 이유가 실제 client relation
+Graph-FL에서 성능 향상이 발생했을 때, 그 이유가 실제 client relation
 정보 때문인지, 아니면 단순 smoothing, graph density, update norm/dominance
 보정, optimizer 차이 같은 요인 때문인지 분해해서 검증하는 실험 프레임워크를
 만든다.
@@ -27,7 +27,7 @@
 non-IID 환경에서 유효할 수 있음을 보여준다.
 
 하지만 많은 연구는 주로 최종 성능이나 개인화 성능을 중심으로 효과를 설명한다.
-우리의 질문은 조금 다르다.
+본 프로젝트의 질문은 조금 다르다.
 
 ```text
 graph를 써서 좋아졌는가?
@@ -54,11 +54,11 @@ graph를 써서 좋아졌는가?
 
 ## 차별성
 
-우리의 차별점은 graph를 사용한다는 사실 자체가 아니다.
+본 프로젝트의 차별점은 graph를 사용한다는 사실 자체가 아니다.
 
 차별점은 graph 효과를 여러 대조군과 지표로 분해한다는 점이다.
 
-| 일반적인 비교 | 우리 비교 |
+| 일반적인 비교 | 본 프로젝트의 비교 |
 |---|---|
 | FedAvg보다 높은가 | real graph가 matched random, shuffled, uniform, identity, graph-free control도 넘는가 |
 | 최종 accuracy 중심 | accuracy와 함께 DI, N_eff, alignment, LOO, graph/spectral metrics를 기록 |
@@ -117,7 +117,7 @@ schema 안에 함께 남아야 한다.
 
 예시:
 
-| 연구 계열 | 우리 문서에서의 처리 |
+| 연구 계열 | 본 프로젝트에서의 처리 |
 |---|---|
 | FedAMP-like | weight/RBF/graph-filtered target proxy |
 | SFL-like | learned graph/server graph operator proxy |
@@ -126,7 +126,7 @@ schema 안에 함께 남아야 한다.
 | FED-PUB/GPFL | functional embedding, personalized delivery는 interface-target |
 | hypernetwork/GNN server aggregation | future extension 또는 interface-target |
 
-이렇게 쓰면 선행연구를 존중하면서도, 우리가 무엇을 구현했고 무엇을 확장 대상으로
+이렇게 쓰면 선행연구를 존중하면서도, 무엇을 구현했고 무엇을 확장 대상으로
 남겼는지 과장 없이 정리할 수 있다.
 
 ## 종합설계 1에서 말할 수 있는 결과물
@@ -188,7 +188,7 @@ alignment/LOO/DI/N_eff에서도 일관된 변화가 보이면 graph-specific exp
 모든 양식과 발표는 아래 방향에서 벗어나지 않게 쓴다.
 
 ```text
-우리 프로젝트의 핵심은 graph를 사용했다는 사실이 아니라,
+본 프로젝트의 핵심은 graph를 사용했다는 사실이 아니라,
 graph 사용으로 얻은 성능 향상을 여러 control과 diagnostic metric으로 분해해
 해석 가능하게 만든다는 점이다.
 ```
