@@ -11,9 +11,11 @@ from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cm
 from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diagnostic_variant
 from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
-    legacy_residual_reweight_args as _legacy_residual_reweight_args,
     result_path_for_variant,
     token_float as _token_float,
+)
+from graphfl_lab.experiments.suites.vision.variant_legacy import (
+    parse_legacy_residual_variant,
 )
 
 
@@ -127,6 +129,10 @@ def parse_variant(
     if diagnostic is not None:
         return diagnostic
 
+    legacy = parse_legacy_residual_variant(v)
+    if legacy is not None:
+        return legacy
+
     m = re.match(r"^ours_knn_k(\d+)$", v)
     if m:
         k = m.group(1)
@@ -158,65 +164,6 @@ def parse_variant(
                 "--knn-k",
                 k,
             ],
-        )
-
-    m = re.match(r"^ours_residual_reweight_knn_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("knn", k),
-        )
-
-    m = re.match(r"^ours_residual_reweight_random_matched_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("random", k),
-        )
-
-    if v == "ours_legacy_residual_reweight_dense":
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("dense"),
-        )
-
-    if v == "ours_legacy_residual_reweight_uniform":
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("uniform"),
-        )
-
-    m = re.match(r"^ours_legacy_residual_reweight_knn_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("knn", k),
-        )
-
-    m = re.match(r"^ours_legacy_residual_reweight_random_matched_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("random", k),
-        )
-
-    m = re.match(r"^ours_legacy_residual_reweight_magnitude_knn_k(\d+)$", v)
-    if m:
-        k = m.group(1)
-        return (
-            "ours",
-            v,
-            _legacy_residual_reweight_args("magnitude_knn", k),
         )
 
     m = re.match(r"^ours_mutual_knn_k(\d+)$", v)

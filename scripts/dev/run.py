@@ -347,11 +347,17 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "ours_real_graph",
         "ours_graphfree_",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_legacy.py": (
+        "parse_legacy_residual_variant",
+        "ours_legacy_residual_reweight",
+        "legacy_residual_reweight_args",
+    ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
         "from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diagnostic_variant",
         "from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant",
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
+        "from graphfl_lab.experiments.suites.vision.variant_legacy import",
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
     "tests/experiments/vision/test_variant_helpers.py": (
@@ -369,6 +375,10 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_variant_diagnostics.py": (
         "test_parse_diagnostic_variant_handles_real_and_control_graphs",
         "test_parse_diagnostic_variant_returns_none_for_other_families",
+    ),
+    "tests/experiments/vision/test_variant_legacy.py": (
+        "test_parse_legacy_residual_variant_handles_old_and_compat_tokens",
+        "test_parse_legacy_residual_variant_returns_none_for_current_tokens",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5c-prep",
