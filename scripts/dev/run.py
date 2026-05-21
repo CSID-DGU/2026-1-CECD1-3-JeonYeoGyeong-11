@@ -447,6 +447,11 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "spectral_filter_strength",
         "warmup_rounds",
     ),
+    "graphfl_lab/strategies/graphfl/conflict_metrics.py": (
+        "ConflictMetrics",
+        "compute_conflict_metric_bundle",
+        "tau_source_name",
+    ),
     "graphfl_lab/strategies/graphfl/counterfactual_artifacts.py": (
         "run_counterfactual_artifacts",
         "counterfactual_specs_for_target",
@@ -492,6 +497,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.artifact_rows import",
         "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.config_context import build_config_context",
+        "from graphfl_lab.strategies.graphfl.conflict_metrics import",
         "from graphfl_lab.strategies.graphfl.counterfactual_artifacts import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
@@ -504,6 +510,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "build_graph_stats_row(",
         "build_client_diagnostic_rows(",
         "config_context = build_config_context(self)",
+        "conflict_metrics = compute_conflict_metric_bundle(",
         "counterfactual_artifacts = run_counterfactual_artifacts(",
         "spectral_metrics = compute_round_spectral_metrics(",
         "extract_metric(client_metrics",
@@ -529,6 +536,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "tests/strategies/graphfl/test_config_context.py": (
         "test_build_config_context_projects_explicit_round_config_fields",
         "spectral_filter_strength",
+    ),
+    "tests/strategies/graphfl/test_conflict_metrics.py": (
+        "test_compute_conflict_metric_bundle_uses_h_spec_tau_source",
+        "test_compute_conflict_metric_bundle_updates_non_hspec_tau_candidate",
     ),
     "tests/strategies/graphfl/test_counterfactual_artifacts.py": (
         "test_counterfactual_specs_for_target_retargets_graph_variants_only",
@@ -568,6 +579,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "keep CSV append calls in `GraphFLDiagnosticStrategy`",
         "keep the explicit field list tested",
         "keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`",
+        "keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",

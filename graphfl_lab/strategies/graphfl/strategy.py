@@ -50,9 +50,6 @@ from graphfl_lab.diagnostics.metrics import summarize_pre_post
 from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 from graphfl_lab.strategies.graphfl.aggregation import (
     apply_correction_family,
-    compute_conflict_weights,
-    compute_tau,
-    resolve_tau_source,
     select_aggregation_weights,
 )
 from graphfl_lab.graph.sources import (
@@ -71,6 +68,9 @@ from graphfl_lab.strategies.graphfl.client_metrics import (
 )
 from graphfl_lab.strategies.graphfl.config_context import build_config_context
 from graphfl_lab.strategies.graphfl.config import GraphFLStrategyState
+from graphfl_lab.strategies.graphfl.conflict_metrics import (
+    compute_conflict_metric_bundle,
+)
 from graphfl_lab.strategies.graphfl.counterfactual_artifacts import (
     run_counterfactual_artifacts,
 )
@@ -82,10 +82,6 @@ from graphfl_lab.strategies.graphfl.diagnostic_targets import (
     flatten_diagnostic_post_updates,
 )
 from graphfl_lab.strategies.graphfl.ema import update_client_update_ema
-from graphfl_lab.strategies.graphfl.filtering import (
-    apply_spectral_filter_with_diagnostics,
-    normalized_conflicts,
-)
 from graphfl_lab.strategies.graphfl.fit_results import collect_client_fit_batch
 from graphfl_lab.strategies.graphfl.graph_metadata import client_cluster_ids_from_meta
 from graphfl_lab.strategies.graphfl.graph_state import select_round_graph
@@ -458,47 +454,32 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             self.state.h_spec_ema = spectral_metrics.h_spec_ema_candidate
 
         # ----------------- spectral filtering and conflict score
-        z_tilde, filter_diag = apply_spectral_filter_with_diagnostics(
+        conflict_metrics = compute_conflict_metric_bundle(
             z_mat=z_mat,
             l_mat=l_curr,
             filter_strength=self.graph_filter_strength,
-        )
-        e = normalized_conflicts(z_mat=z_mat, z_tilde=z_tilde)
-        e_std_for_tau = float(np.std(e))
-
-        tau_source = resolve_tau_source(
-            tau_source=self.tau_source,
+            tau_source_name=self.tau_source,
             h_spec=spectral_metrics.h_spec,
             h_spec_normalized=spectral_metrics.h_spec_normalized,
-            e_std=e_std_for_tau,
             h_spec_ema=self.state.h_spec_ema,
             h_spec_ema_candidate=spectral_metrics.h_spec_ema_candidate,
             tau_signal_ema=self.state.tau_signal_ema,
-        )
-        if tau_source.source_used != "h_spec" and not in_warmup:
-            self.state.tau_signal_ema = tau_source.ema_candidate
-
-        tau = compute_tau(
-            h_spec_ema=tau_source.ema_value,
             tau_max=self.tau_max,
             tau_gain=self.tau_gain,
-            adaptive=self.adaptive_tau,
+            adaptive_tau=self.adaptive_tau,
             fixed_tau=self.fixed_tau,
+            e_std_threshold=self.e_std_threshold,
         )
-
-        e_z, conflict_weight, raw_cw, estd_disabled, e_mean_val, e_std_val_raw = (
-            compute_conflict_weights(
-                e=e, tau=tau, e_std_threshold=self.e_std_threshold
-            )
-        )
+        if conflict_metrics.tau_source.source_used != "h_spec" and not in_warmup:
+            self.state.tau_signal_ema = conflict_metrics.tau_source.ema_candidate
 
         # ----------------- aggregation weights
         weight_selection = select_aggregation_weights(
             n_examples=n_examples_arr,
-            conflict_weight=conflict_weight,
+            conflict_weight=conflict_metrics.conflict_weight,
             diagnostic_only=self.diagnostic_only,
             in_warmup=in_warmup,
-            estd_disabled=estd_disabled,
+            estd_disabled=conflict_metrics.estd_disabled,
             graph_fallback_used=graph_fallback_used,
             conflict_mix=self.conflict_mix,
             min_client_weight=self.min_client_weight,
@@ -661,24 +642,24 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             "h_spec_ema_candidate": spectral_metrics.h_spec_ema_candidate,
             "metric_graph_source": spectral_metrics.metric_graph_source,
             "in_warmup": in_warmup,
-            "tau": tau,
-            "tau_source_used": tau_source.source_used,
-            "tau_source_signal": tau_source.source_signal,
-            "tau_source_ema": tau_source.ema_value,
-            "tau_source_ema_candidate": tau_source.ema_candidate,
+            "tau": conflict_metrics.tau,
+            "tau_source_used": conflict_metrics.tau_source.source_used,
+            "tau_source_signal": conflict_metrics.tau_source.source_signal,
+            "tau_source_ema": conflict_metrics.tau_source.ema_value,
+            "tau_source_ema_candidate": conflict_metrics.tau_source.ema_candidate,
             "spectral_diag": spectral_metrics.spectral_diag,
-            "filter_diag": filter_diag,
+            "filter_diag": conflict_metrics.filter_diag,
             "target_filter_diag": target_filter_diag,
             "diagnostic_filter_diag": diagnostic_filter_diag,
         }
         conflict_context = {
-            "e": e,
-            "e_z": e_z,
+            "e": conflict_metrics.e,
+            "e_z": conflict_metrics.e_z,
             "conflict_weight": conflict_weight,
-            "raw_cw": raw_cw,
-            "e_mean": e_mean_val,
-            "e_std": e_std_val_raw,
-            "estd_disabled": estd_disabled,
+            "raw_cw": conflict_metrics.raw_cw,
+            "e_mean": conflict_metrics.e_mean,
+            "e_std": conflict_metrics.e_std_raw,
+            "estd_disabled": conflict_metrics.estd_disabled,
             "graph_fallback_used": graph_fallback_used,
         }
         update_context = {
@@ -747,7 +728,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             alpha_norm=alpha_norm,
             graph_diag_current=graph_diag_current,
             graph_diag=graph_diag,
-            filter_diag=filter_diag,
+            filter_diag=conflict_metrics.filter_diag,
             config=config_context,
             pre_post_round=pre_post["round"],
         )
