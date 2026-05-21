@@ -20,6 +20,20 @@ Graph-FL에서 성능 향상이 발생했을 때, 그 이유가 실제 client re
 분해해 검증하는 실험 프레임워크
 ```
 
+최소 성과 기준에서도 이 프로젝트는 의미가 있다. 모든 Graph-FL 계열 알고리즘을
+완성하거나 SOTA 성능을 달성하지 못하더라도, graph source, graph mode,
+aggregation target, control graph, diagnostic metric을 같은 규칙으로 실행하고
+비교할 수 있는 프레임워크를 제공하면 이후 그래프 기반 연합학습 연구에 계속
+재사용할 수 있다.
+
+잘 작동할 경우에는 더 강한 주장으로 확장된다. real graph가 matched random,
+shuffled, uniform, identity, graph-free control을 넘고, alignment, LOO,
+DI, N_eff 같은 mechanism metric에서도 일관된 개선을 보이면 단순 성능 비교를
+넘어 graph-specific effect에 대한 근거를 제시할 수 있다. 반대로 real graph와
+control의 차이가 작아도 실패가 아니다. 그 경우에도 기존 Graph-FL 성능 향상이
+relation 정보보다 smoothing, dominance correction, optimizer effect로 설명될
+수 있음을 보여주는 진단 결과가 된다.
+
 ## 선행연구를 보는 관점
 
 기존 연구는 중요하다. FedAMP, SFL, pFedGraph, FedAGA, FED-PUB/GPFL 같은
@@ -40,6 +54,19 @@ graph를 써서 좋아졌는가?
 ```
 
 이다.
+
+이 질문은 선행연구와 자연스럽게 연결된다. FedAvg/FedOpt 계열은 graph 없이도
+non-IID 환경에서 일정한 안정화 효과를 낸다. Personalized FL 계열은 모든
+client를 같은 방식으로 취급하는 것이 충분하지 않다는 문제의식을 제공한다.
+Graph-FL/PFL 계열은 client relation을 직접 모델링해 협력 구조를 만든다.
+여기까지 오면 다음 질문이 자연스럽게 생긴다.
+
+```text
+client relation graph가 유효하다면, 그 유효성은 정확히 어떤 요인으로 설명되는가?
+```
+
+따라서 본 주제는 선행연구와 별개의 뜬금없는 아이디어가 아니라, Graph-FL/PFL
+연구가 성능 개선을 보여준 이후 반드시 따라오는 평가 문제다.
 
 따라서 선행연구를 쓸 때는 “어떤 알고리즘이 성능이 좋다”가 아니라 다음 축으로
 분해해서 본다.
@@ -71,6 +98,14 @@ graph를 써서 좋아졌는가?
 본 과제의 차별성은 Graph-FL 알고리즘 하나를 추가하는 것이 아니라,
 Graph-FL 성능 향상을 relation effect, smoothing effect, dominance correction,
 graph-free correction으로 분해해 평가하는 데 있다.
+```
+
+이 차별성은 두 단계로 포장한다.
+
+```text
+최소 주장: Graph-FL 연구를 위한 reusable evaluation framework를 제공한다.
+확장 주장: 충분한 실험 결과가 나오면 graph-specific effect의 존재와 한계를
+control/diagnostic evidence로 주장할 수 있다.
 ```
 
 ## 실험에서 반드시 남겨야 하는 비교
