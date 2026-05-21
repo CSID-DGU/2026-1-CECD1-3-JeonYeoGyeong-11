@@ -48,10 +48,6 @@ from graphfl_lab.diagnostics.logging import (
     init_artifact_dir,
 )
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
-from graphfl_lab.diagnostics.schema import (
-    ClientRoundDiagnostics,
-    RoundDiagnostics,
-)
 from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 from graphfl_lab.lifecycle.counterfactuals import default_counterfactual_specs
 from graphfl_lab.lifecycle.diagnostic_runner import (
@@ -68,9 +64,13 @@ from graphfl_lab.strategies.graphfl.aggregation import (
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_spectral,
-    normalize_key,
 )
 from graphfl_lab.projection import flatten_weights
+from graphfl_lab.strategies.graphfl.artifact_rows import (
+    build_client_diagnostic_rows,
+    build_graph_stats_row,
+    build_round_diagnostics_row,
+)
 from graphfl_lab.strategies.graphfl.client_metrics import (
     extract_metric,
     weighted_optional_mean,
@@ -272,10 +272,6 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         self.state.client_update_ema = stored_updates
         self.state.client_update_ema_cids = stored_cids
         return ema_updates, source
-
-    @staticmethod
-    def _norm_key(value: str) -> str:
-        return normalize_key(value)
 
     def _graph_vectors(
         self,
@@ -565,24 +561,15 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         if self.diagnostics_enable and self.diagnostics_artifact_dir is not None:
             graph_meta_kind = str(graph_meta.get("graph_kind", graph_meta.get("kind", "")))
             wall_time_sec = float(time.perf_counter() - aggregate_started_at)
-            round_diag = RoundDiagnostics(
+            round_diag = build_round_diagnostics_row(
                 run_id=self.diagnostics_run_id,
                 variant=self.diagnostics_variant,
                 seed=int(self.diagnostics_seed),
-                round=int(server_round),
+                server_round=int(server_round),
                 accuracy=float(round_accuracy),
                 loss=float(round_loss),
-                di_pre=float(pre_post["round"]["di_pre"]),
-                di_post=float(pre_post["round"]["di_post"]),
-                neff_pre=float(pre_post["round"]["neff_pre"]),
-                neff_post=float(pre_post["round"]["neff_post"]),
-                align_mean_pre=float(pre_post["round"]["align_mean_pre"]),
-                align_mean_post=float(pre_post["round"]["align_mean_post"]),
-                loo_mean_pre=float(pre_post["round"]["loo_mean_pre"]),
-                loo_mean_post=float(pre_post["round"]["loo_mean_post"]),
-                graph_density=float(graph_diag["graph_density"]),
-                graph_entropy=float(graph_diag["graph_entropy"]),
-                alpha_entropy=float(pre_post["round"]["alpha_entropy"]),
+                pre_post_round=pre_post["round"],
+                graph_diag=graph_diag,
                 wall_time_sec=wall_time_sec,
                 graph_method=str(self.graph_method),
                 correction_family=str(self.correction_family),
@@ -593,59 +580,39 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             )
             append_round_metrics_csv(
                 self.diagnostics_artifact_dir / "round_metrics.csv",
-                round_diag.to_dict(),
+                round_diag,
             )
             append_graph_stats_csv(
                 self.diagnostics_artifact_dir / "graph_stats.csv",
-                {
-                    "run_id": self.diagnostics_run_id,
-                    "variant": self.diagnostics_variant,
-                    "seed": int(self.diagnostics_seed),
-                    "round": int(server_round),
-                    "graph_method": str(self.graph_method),
-                    "correction_family": str(self.correction_family),
-                    "graph_source": str(graph_source_used),
-                    "graph_variant": str(self.graph_mode),
-                    "aggregation_target": str(diagnostic_target_used),
-                    "graph_kind": graph_meta_kind,
-                    "graph_used_source": str(graph_used_source),
-                    "graph_source_used": str(graph_source_used),
-                    "graph_density": float(graph_diag["graph_density"]),
-                    "graph_entropy": float(graph_diag["graph_entropy"]),
-                    "graph_num_nodes": int(graph_diag["graph_num_nodes"]),
-                    "number_of_edges": int(graph_diag["number_of_edges"]),
-                    "graph_degree_mean": float(graph_diag["graph_degree_mean"]),
-                    "graph_degree_min": int(graph_diag["graph_degree_min"]),
-                    "graph_degree_max": int(graph_diag["graph_degree_max"]),
-                    "graph_empty": bool(graph_diag["graph_empty"]),
-                    "control_graph_mode": str(self.control_graph_mode),
-                    "cluster_method": str(self.cluster_method),
-                    "cluster_k_config": int(self.cluster_k),
-                    "cluster_auto_k": bool(self.cluster_auto_k),
-                },
-            )
-            client_rows: List[Dict[str, object]] = []
-            norms_pre = pre_post["norms_pre"]
-            norms_post = pre_post["norms_post"]
-            for i, cid in enumerate(cids):
-                row = ClientRoundDiagnostics(
+                build_graph_stats_row(
                     run_id=self.diagnostics_run_id,
                     variant=self.diagnostics_variant,
                     seed=int(self.diagnostics_seed),
-                    round=int(server_round),
-                    cid=str(cid),
-                    num_examples=int(n_examples_arr[i]),
-                    update_norm_raw=float(norms_pre[i]),
-                    update_norm_corrected=float(norms_post[i]),
-                    q_raw=float(pre_post["q_pre"][i]),
-                    q_corrected=float(pre_post["q_post"][i]),
-                    alignment_raw=float(pre_post["align_pre"][i]),
-                    alignment_corrected=float(pre_post["align_post"][i]),
-                    loo_raw=float(pre_post["loo_pre"][i]),
-                    loo_corrected=float(pre_post["loo_post"][i]),
-                    cluster_id=int(client_cluster_ids[i]),
-                )
-                client_rows.append(row.to_dict())
+                    server_round=int(server_round),
+                    graph_method=str(self.graph_method),
+                    correction_family=str(self.correction_family),
+                    graph_source=str(graph_source_used),
+                    graph_variant=str(self.graph_mode),
+                    aggregation_target=str(diagnostic_target_used),
+                    graph_kind=graph_meta_kind,
+                    graph_used_source=str(graph_used_source),
+                    graph_diag=graph_diag,
+                    control_graph_mode=str(self.control_graph_mode),
+                    cluster_method=str(self.cluster_method),
+                    cluster_k=int(self.cluster_k),
+                    cluster_auto_k=bool(self.cluster_auto_k),
+                ),
+            )
+            client_rows = build_client_diagnostic_rows(
+                run_id=self.diagnostics_run_id,
+                variant=self.diagnostics_variant,
+                seed=int(self.diagnostics_seed),
+                server_round=int(server_round),
+                cids=cids,
+                n_examples_arr=n_examples_arr,
+                pre_post=pre_post,
+                client_cluster_ids=client_cluster_ids,
+            )
             append_client_metrics_csv(
                 self.diagnostics_artifact_dir / "client_metrics.csv",
                 client_rows,

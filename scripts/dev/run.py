@@ -427,6 +427,11 @@ GATE5C_PREP_REQUIRED_TEXT = {
 }
 
 GATE5D_PREP_REQUIRED_TEXT = {
+    "graphfl_lab/strategies/graphfl/artifact_rows.py": (
+        "build_round_diagnostics_row",
+        "build_graph_stats_row",
+        "build_client_diagnostic_rows",
+    ),
     "graphfl_lab/strategies/graphfl/ema.py": (
         "update_client_update_ema",
         "initialized_current_update",
@@ -468,6 +473,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "round_number",
     ),
     "graphfl_lab/strategies/graphfl/strategy.py": (
+        "from graphfl_lab.strategies.graphfl.artifact_rows import",
         "from graphfl_lab.strategies.graphfl.client_metrics import",
         "from graphfl_lab.strategies.graphfl.diagnostic_targets import",
         "from graphfl_lab.strategies.graphfl.ema import update_client_update_ema",
@@ -476,6 +482,9 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.strategies.graphfl.projection import project_with_cached_matrix",
         "from graphfl_lab.strategies.graphfl.trace_context import with_run_context",
         "client_cluster_ids = client_cluster_ids_from_meta(graph_meta, cids)",
+        "build_round_diagnostics_row(",
+        "build_graph_stats_row(",
+        "build_client_diagnostic_rows(",
         "extract_metric(client_metrics",
         "flatten_diagnostic_post_updates(",
         "fit_batch = collect_client_fit_batch(results)",
@@ -487,6 +496,10 @@ GATE5D_PREP_REQUIRED_TEXT = {
     "tests/strategies/graphfl/test_ema.py": (
         "test_update_client_update_ema_initializes_and_copies_updates",
         "test_update_client_update_ema_blends_existing_updates",
+    ),
+    "tests/strategies/graphfl/test_artifact_rows.py": (
+        "test_build_round_diagnostics_row_preserves_full_metric_contract",
+        "test_build_client_diagnostic_rows_preserves_per_client_metrics",
     ),
     "tests/strategies/graphfl/test_client_metrics.py": (
         "test_extract_metric_uses_first_available_alias_per_client",
@@ -518,6 +531,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5d-prep",
+        "keep CSV append calls in `GraphFLDiagnosticStrategy`",
         "preserve stable CID ordering from baselines ordering",
         "preserve `-1` fallback for missing or mismatched cluster lists",
         "preserve existing `ema_graph` label when EMA is enabled outside warmup",
