@@ -357,6 +357,11 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "ours_legacy_residual_reweight",
         "legacy_residual_reweight_args",
     ),
+    "graphfl_lab/experiments/suites/vision/variant_sources.py": (
+        "parse_source_variant",
+        "classifier_head_weight",
+        "layer_slice_update",
+    ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
         "from graphfl_lab.experiments.suites.vision.variant_core import parse_core_graph_variant",
@@ -364,6 +369,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant",
         "from graphfl_lab.experiments.suites.vision.variant_helpers import",
         "from graphfl_lab.experiments.suites.vision.variant_legacy import",
+        "from graphfl_lab.experiments.suites.vision.variant_sources import parse_source_variant",
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
     "tests/experiments/vision/test_variant_helpers.py": (
@@ -389,6 +395,10 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "tests/experiments/vision/test_variant_legacy.py": (
         "test_parse_legacy_residual_variant_handles_old_and_compat_tokens",
         "test_parse_legacy_residual_variant_returns_none_for_current_tokens",
+    ),
+    "tests/experiments/vision/test_variant_sources.py": (
+        "test_parse_source_variant_handles_weight_and_head_graphs",
+        "test_parse_source_variant_returns_none_for_target_only_family",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5c-prep",
