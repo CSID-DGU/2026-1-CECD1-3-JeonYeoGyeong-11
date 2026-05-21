@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5d-prep - graphfl strategy helper extraction |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep, Gate 5b-prep, and Gate 5c-prep committed; Gate 5d-prep in progress |
+| current_gate | Gate 5d-prep stabilized; moving to local smoke/docs readiness |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; optional deeper modularization is deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | extract behavior-preserving strategy helpers without marking Gate 5d complete before golden baseline exists |
+| next_step | run representative local smoke checks and tighten current-project docs without claiming Gate 4c/5/6 completion before golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -151,6 +151,24 @@ Gate 5b and Gate 5c.
 Golden baseline updates are allowed only in a separate PR with explicit reason
 and impact scope.
 
+## Deferred Internal Debt
+
+The items below are intentionally deferred because the current local cleanup
+already supports experiment-readiness work. Resume them only after smoke runs or
+golden comparisons show that the boundary is actually painful.
+
+| Area | Current state | Deferred work | Resume trigger |
+|---|---|---|---|
+| `graphfl_lab/strategies/graphfl/strategy.py` | about 600 lines; calculation, artifact writing, round outputs, projection, and graph construction helpers are extracted | split remaining `aggregate_fit` orchestration only if it becomes hard to test or change | repeated edits to the same round-flow block or a failed smoke that requires deeper isolation |
+| `graphfl_lab/experiments/suites/vision/reporting.py` | about 619 lines; currently the largest remaining vision-suite file | split normalization, result table building, and golden/report comparison helpers | Gate 5 golden comparison work or report/schema changes touch this file again |
+| `graphfl_lab/strategies/graphfl/diagnostics.py` | about 426 lines; mostly metric and spectral diagnostic math | split metric families only if tests need narrower fixtures | new diagnostic metric families or repeated changes to `build_round_log` / `build_fit_metrics` |
+| `graphfl_lab/strategies/graphfl/aggregation.py` | about 311 lines; shared aggregation/math helper surface | defer further split to avoid moving stable math during smoke validation | new aggregation target families or conflicts between graph-free and graph-aware paths |
+
+Deferred means "recorded, acceptable, and not blocking current smoke/docs work."
+It does not mean "forgotten." Any future refactor of these areas remains
+behavior-preserving unless a new Gate explicitly changes public CLI, config, or
+result-schema contracts.
+
 ## Findings And Decisions
 
 | Date | Finding | Decision |
@@ -208,6 +226,7 @@ and impact scope.
 | 2026-05-22 | `aggregate_fit` still assembled round log contexts and scalar fit metrics inline after context helpers existed. | Move round output composition to `strategies/graphfl/round_outputs.py`; preserve `round_logs` and Flower metrics payloads. |
 | 2026-05-22 | `aggregate_fit` still mixed graph-source vector selection with projection-space construction. | Move projected graph-space preparation to `strategies/graphfl/round_projection.py`; keep projection matrix state on the strategy. |
 | 2026-05-22 | Existing graph-source tests exercise the private `_graph_vectors` wrapper. | Keep `_graph_vectors` as a compatibility wrapper around the extracted graph-source helper during Gate 5d-prep. |
+| 2026-05-22 | Further line shaving would mostly target orchestration readability rather than immediate experiment readiness. | Defer optional deeper splits of `strategy.py`, `vision/reporting.py`, `diagnostics.py`, and `aggregation.py`; move next to local smoke checks and docs tightening. |
 
 ## Closure Policy
 
