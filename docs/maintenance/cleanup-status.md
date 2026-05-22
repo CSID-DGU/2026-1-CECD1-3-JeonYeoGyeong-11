@@ -10,11 +10,11 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; local Migration C5 public-surface alignment in progress |
-| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass; recent slices include canonical-first suite summary writes, plot/report artifact readers, runner/report compatibility docstrings, and README reporting guidance; optional deeper modularization remains deferred |
+| status | Migration C5 doc/command alignment complete locally; Gate 4c remote nightly green remains pending (workflow file present); Gate 5d-prep local checks pass; Gate 6 compatibility removal blocked on 4c evidence; optional deeper modularization remains deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
-| last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
-| next_step | finish Migration C5 command/docs polish and canonical-first suite artifact writes; then Gate 4c nightly when push is approved; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
+| last_verified | see `docs/maintenance/last_gate_check.json` |
+| next_step | close Migration C5 doc sync (`MIGRATION.md`, `docs/structure.md`, inventory tables); keep Gate 4c completion pending one remote nightly green after push approval; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -126,8 +126,9 @@ Flower bootstrap for canonical and legacy app paths
 
 ### Nightly Policy
 
-There is no scheduled nightly workflow yet. Gate 4c introduces a workflow with
-both `schedule` and `workflow_dispatch`.
+`.github/workflows/nightly.yml` exists locally with `schedule` and
+`workflow_dispatch`, but Gate 4c completion still requires one remote green run
+after the gate branch is pushed.
 
 Gate 4c completion requires one scheduled or manual nightly green run. Gate 6
 entry requires seven consecutive nightly green runs after Gate 4c.
@@ -247,6 +248,8 @@ result-schema contracts.
 | 2026-05-22 | Suite orchestration still keyed reuse/load paths on `result_general_*` even though Flower now writes canonical `result_vision_*` aliases too; reporting already pairs canonical and legacy filtered variant families separately. | Prefer `result_vision_*` for new suite paths, resolve existing results from either filename family, and document filtered-family pairing policy in `reporting.py` without collapsing historical variant tags. |
 | 2026-05-22 | Plot/report helpers duplicated suite artifact discovery with `general_suite_*` checked before `vision_suite_*` in some readers even though suite outputs now emit both families. | Add shared artifact discovery helpers that prefer canonical `vision_*` filenames while retaining `general_*` compatibility readers through Gate 6. |
 | 2026-05-22 | `run_vision_suite.py` still wrote `general_suite_*` as the primary JSON/CSV paths and duplicated shorter `vision_*` aliases afterward, which keeps new outputs looking legacy-first in directory listings. | Write canonical `vision_suite_*` artifacts first and mirror compatibility `general_suite_*` copies in one reporting helper. |
+| 2026-05-22 | `cleanup-status.md` still claimed no nightly workflow even though `.github/workflows/nightly.yml` is present on the gate branch. | Sync status/plan docs with the local workflow file; keep Gate 4c blocked on remote green evidence, not workflow absence. |
+| 2026-05-22 | `MIGRATION.md` and `docs/structure.md` did not yet document canonical `vision_suite_*` / `result_vision_*` artifact policy or shared discovery helpers added during C5. | Add artifact/reporting guidance to current docs and mark C5 doc sync as the active slice before Gate 4c push. |
 
 ## Closure Policy
 

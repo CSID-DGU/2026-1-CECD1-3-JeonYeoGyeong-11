@@ -24,6 +24,7 @@ Source code is organized by responsibility, not experiment name. Use the narrowe
 | Change Cora graph ablation | `graphfl_lab/experiments/cora/graph_ablation.py` | `tests/experiments/cora/` |
 | Change suite variant grammar | `graphfl_lab/experiments/suites/vision/variants.py` | `tests/experiments/vision/` |
 | Change suite reporting | `graphfl_lab/experiments/suites/vision/reporting.py` | `tests/experiments/vision/` |
+| Change suite artifact discovery | `graphfl_lab/experiments/suites/vision/artifacts.py` | `tests/experiments/suites/vision/` |
 | Change CLI arguments | `graphfl_lab/cli/` | CLI help/import tests |
 | Add/edit config | `configs/` | JSON validation |
 
@@ -65,6 +66,9 @@ graphfl_lab/
     cora/
     suites/
       vision/
+        artifacts.py         canonical/compatibility filename discovery
+        reporting.py         suite summaries, dashboard, interpretation
+        variant_helpers.py   per-run result path resolution
       general/               compatibility wrappers
 ```
 
@@ -145,6 +149,22 @@ Generated results:
 ```text
 experiments_current/
 ```
+
+## Suite Output Artifacts
+
+Vision suites write canonical artifacts first and mirror compatibility names:
+
+```text
+vision_suite_summary.json   # canonical
+general_suite_summary.json  # compatibility mirror (Gate 6 removal)
+vision_suite_rows.json
+result_vision_<method>_seed<seed>_<tag>.json
+result_general_<method>_seed<seed>_<tag>.json  # compatibility mirror
+```
+
+Use `write_suite_summary_artifacts()` in `reporting.py` for suite-level files.
+Use `resolve_result_path_for_variant()` or `discover_result_json_paths()` when
+reading prior runs. Do not add new logic that reads only `general_*` paths.
 
 ## Adding New Code
 

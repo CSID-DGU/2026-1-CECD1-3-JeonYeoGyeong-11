@@ -14,8 +14,10 @@ legacy surface is discovered.
 | `run_vision_*` | current vision runner | rewire through unified path in Gate 4b |
 | `run_graph_ablation.py` | Cora graph ablation runner | keep thin wrapper, rewire carefully |
 | `configs/general/...` | old config path | keep resolver alias until Gate 6 |
-| `result_general_*` | old result filename | keep reader/writer compatibility until Gate 6 |
-| `general_suite_*` | old suite artifact filename | keep reader/writer compatibility until Gate 6 |
+| `result_general_*` | old result filename | compatibility mirror; new writes also emit `result_vision_*`; readers resolve either until Gate 6 |
+| `general_suite_*` | old suite artifact filename | compatibility mirror; new writes emit `vision_suite_*` first via `write_suite_summary_artifacts()` until Gate 6 |
+| `result_vision_*`, `vision_suite_*` | canonical output filenames | prefer in new docs, scripts, and directory listings |
+| `graphfl_lab/experiments/suites/vision/artifacts.py` | artifact discovery helper | canonical-first readers for plots/smoke/sweeps |
 | `spectral_filter_strength` | old config/result key | schema policy in Gate 2, removal in Gate 6 |
 | `spectral_filtered_*` | old aggregation target/result spelling | internal migration in Gate 3, removal in Gate 6 |
 | `ours_spectral_filtered_*` | old suite token | keep through deprecation |

@@ -151,7 +151,7 @@ C1 add graphfl_lab/ alias package (done)
 C2 add Flower entrypoint bridge (done)
 C3 migrate internal imports in batches (done)
 C4 move implementation files (done)
-C5 update docs/commands (in progress: canonical-first suite artifact writes and runner/report docs largely done; remaining C5 items are minor doc polish and Gate 6 removal prep after Gate 4c)
+C5 update docs/commands (local complete: canonical runners, suite artifacts, CLI help, plot/report readers, `MIGRATION.md`/`structure.md` sync; Gate 6 removal prep blocked on Gate 4c remote nightly)
 C6 run full checks (local smoke and `gate-check 5d-prep` pass; remote/nightly pending)
 ```
 
@@ -171,6 +171,7 @@ python -m unittest discover -s tests
 python scripts/checks/diagnostic_suite_preflight.py
 python run_vision_experiment.py --help
 python run_vision_suite.py --help
+python scripts/reports/plot_vision_convergence.py --help
 python run_general_suite.py --help
 tiny --engine print-flwr-run smoke
 ```

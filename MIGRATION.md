@@ -34,6 +34,46 @@ spectral_filter_strength
 spectral_filtered_*
 ```
 
+Compatibility wrappers (`run_general_*`, `plot_general_convergence.py`,
+`merge_general_fedavg_ours.py`, `deep_dive_general.py`) delegate to the
+vision-named implementations. Prefer the vision names in new scripts and docs.
+
+## Output Artifacts
+
+New vision runs write canonical filenames and compatibility mirrors:
+
+| Canonical (prefer in new work) | Compatibility mirror (Gate 6 removal) |
+|---|---|
+| `result_vision_*.json` | `result_general_*.json` |
+| `vision_suite_summary.json` / `.csv` / `.md` | `general_suite_summary.*` |
+| `vision_suite_rows.json` | `general_suite_rows.json` |
+
+Readers and suite helpers resolve either family, preferring canonical paths when
+both exist. See `graphfl_lab/experiments/suites/vision/artifacts.py` and
+`variant_helpers.resolve_result_path_for_variant`.
+
+Single-run JSON may also record:
+
+```text
+meta.canonical_output_path
+meta.compatibility_output_path
+```
+
+## Reporting Commands
+
+Canonical report and analysis entrypoints:
+
+```text
+scripts/reports/plot_vision_convergence.py
+scripts/reports/generate_dashboard_mockup.py
+scripts/analysis/deep_dive_vision.py
+scripts/analysis/merge_vision_fedavg_ours.py
+```
+
+Legacy `*_general_*` script names remain as thin wrappers until Gate 6.
+
+## Schema Fields
+
 New results will eventually include:
 
 ```text
@@ -79,6 +119,11 @@ Gate 6 must provide `scripts/dev/migrate_serialized_objects.py` before removing
 old import aliases. Any preserved pickle/checkpoint asset with `spectral_fl.*`
 module paths must be migrated before hard cleanup or explicitly declared outside
 post-Gate-6 compatibility guarantees.
+
+Migration C5 (public docs/commands) status: largely complete locally — canonical
+runners, suite artifact writes, CLI aggregation-target help, and plot/report
+readers align with `docs/framework/naming-and-compatibility.md`. Gate 4c remote
+nightly evidence and Gate 6 compatibility removal remain open.
 
 ## Rollback
 
