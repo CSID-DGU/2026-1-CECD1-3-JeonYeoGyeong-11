@@ -23,6 +23,7 @@ from graphfl_lab.diagnostics.result_schema import (
     validate_result_schema,
     with_result_schema,
 )
+from graphfl_lab.diagnostics.evidence_bundle import validate_evidence_bundle
 
 __all__ = [
     "LEGACY_RESULT_SCHEMA_VERSION",
@@ -41,6 +42,7 @@ __all__ = [
     "RoundDiagnostics",
     "summarize_pre_post",
     "unsupported_components_from_args",
+    "validate_evidence_bundle",
     "validate_result_schema",
     "with_result_schema",
 ]

@@ -236,6 +236,7 @@ result-schema contracts.
 | 2026-05-22 | Cora graph ablation smoke completed, but its subprocess commands still invoked `run_experiment.py` without `--track cora` and triggered the Gate 4a deprecation warning. | Add `--track cora` to graph-ablation subprocess commands and cover the command contract with a focused test. |
 | 2026-05-22 | Current docs such as `docs/structure.md` still presented `spectral_fl/...` as the active edit path after the package move. | Update current routing docs to `graphfl_lab/...`; keep `spectral_fl` references only where they describe deprecation compatibility or cleanup inventory. |
 | 2026-05-22 | Gate-check self-test found `line-budget-allowlist.txt` still referenced non-existent `graphfl_lab/experiments/suites/vision/suite.py` instead of the actual orchestration file. | Align the protected path with `scripts/dev/run.py`: `graphfl_lab/experiments/vision/suite.py`. |
+| 2026-05-22 | Result schema checks guarantee top-level contract fields, but they do not independently verify that performance, mechanism, and secondary diagnostic metrics are present together. | Add an evidence-bundle validator for single-run results and suite summaries, so missing DI/N_eff/alignment/LOO/spectral fields fail as a checkable contract. |
 
 ## Closure Policy
 

@@ -104,7 +104,7 @@ client 간 관계를 나타낸다.
 | control family | identity, matched random, shuffled, uniform, clustering-only, graph-free dominance reweight | gain의 대안 설명 분리 |
 | diagnostics/schema | `result_schema_version`, `config_aliases_used`, `unsupported_components`, alignment, DI, N_eff, graph/spectral metrics | 결과 계약과 mechanism 해석 |
 | executable configs | vision default graph run, vision diagnostic configs, Cora ablation run | vision setting 중심 실행, Cora는 graph-structured input 확장 확인 |
-| validation tests | `tests/designs`, `tests/graph`, `tests/diagnostics`, runner/schema/golden tests | design registry, graph builder, control graph, result contract, runner wiring 확인 |
+| validation tests | `tests/designs`, `tests/graph`, `tests/diagnostics`, runner/schema/evidence/golden tests | design registry, graph builder, control graph, result contract, runner wiring 확인 |
 
 대표 pipeline은 update-cosine-kNN graph에서 출발한다.
 
