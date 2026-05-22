@@ -13,8 +13,18 @@ import html
 import json
 import math
 import re
+import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from graphfl_lab.experiments.suites.vision.artifacts import (  # noqa: E402
+    discover_result_json_paths,
+    load_suite_rows_json,
+)
 
 
 MetricPoint = Tuple[int, float]
@@ -127,17 +137,9 @@ def pair_series(raw: Any) -> List[MetricPoint]:
 
 def load_variant_tokens(suite_dir: Path) -> List[str]:
     tokens = set()
-    for name in ("general_suite_rows.json", "suite_rows.json"):
-        path = suite_dir / name
-        if not path.is_file():
-            continue
-        try:
-            rows = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        for row in rows:
-            if isinstance(row, dict) and row.get("variant"):
-                tokens.add(str(row["variant"]))
+    for row in load_suite_rows_json(suite_dir):
+        if isinstance(row, dict) and row.get("variant"):
+            tokens.add(str(row["variant"]))
     return sorted(tokens, key=len, reverse=True)
 
 
@@ -249,12 +251,7 @@ def load_suite_records(
 ) -> List[Dict[str, Any]]:
     records: List[Dict[str, Any]] = []
     variant_tokens = load_variant_tokens(suite_dir)
-    result_paths: dict[str, Path] = {}
-    for path in sorted(suite_dir.glob("result_general_*.json")):
-        result_paths[path.name.replace("result_general_", "", 1)] = path
-    for path in sorted(suite_dir.glob("result_vision_*.json")):
-        result_paths[path.name.replace("result_vision_", "", 1)] = path
-    for path in sorted(result_paths.values()):
+    for path in sorted(discover_result_json_paths(suite_dir).values()):
         try:
             obj = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):

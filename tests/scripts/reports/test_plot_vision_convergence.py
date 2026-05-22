@@ -56,6 +56,24 @@ class PlotVisionConvergenceTest(unittest.TestCase):
         self.assertEqual(method, "ours")
         self.assertEqual(seed, 44)
 
+    def test_load_variant_tokens_prefers_vision_suite_rows(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            suite_dir = Path(tmp)
+            (suite_dir / "general_suite_rows.json").write_text(
+                json.dumps([{"variant": "legacy_only"}]),
+                encoding="utf-8",
+            )
+            (suite_dir / "vision_suite_rows.json").write_text(
+                json.dumps([{"variant": "ours_graph_filtered_knn_k1"}]),
+                encoding="utf-8",
+            )
+            tokens = self.plot.load_variant_tokens(suite_dir)
+
+        self.assertEqual(tokens, ["ours_graph_filtered_knn_k1"])
+
 
 if __name__ == "__main__":
     unittest.main()

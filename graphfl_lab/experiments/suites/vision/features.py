@@ -13,6 +13,7 @@ from graphfl_lab.experiments.suites.stats import (
     round_trace_field,
     safe_mean,
 )
+from graphfl_lab.experiments.suites.vision.artifacts import discover_result_json_paths
 
 
 def load_preloaded_fedavg_accs(dir_path: Path) -> Dict[int, float]:
@@ -20,12 +21,9 @@ def load_preloaded_fedavg_accs(dir_path: Path) -> Dict[int, float]:
     out: Dict[int, float] = {}
     if not dir_path.is_dir():
         return out
-    result_paths: dict[str, Path] = {}
-    for p in sorted(dir_path.glob("result_general_fedavg_seed*.json")):
-        result_paths[p.name.replace("result_general_", "", 1)] = p
-    for p in sorted(dir_path.glob("result_vision_fedavg_seed*.json")):
-        result_paths[p.name.replace("result_vision_", "", 1)] = p
-    for p in sorted(result_paths.values()):
+    for p in sorted(discover_result_json_paths(dir_path).values()):
+        if "fedavg" not in p.name:
+            continue
         try:
             obj = load_json(p)
             seed = obj.get("meta", {}).get("experiment", {}).get("seed")

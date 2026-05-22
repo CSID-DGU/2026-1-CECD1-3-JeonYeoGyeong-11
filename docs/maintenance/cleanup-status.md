@@ -10,7 +10,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; local Migration C5 public-surface alignment in progress |
-| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass at `2ac0aa9`; recent slices canonicalized docs, graphfl source helper, preset/method targets, internal output labels, and legacy suite token CLI flags while keeping legacy token names; optional deeper modularization remains deferred |
+| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass; recent slices canonicalized docs, graph source helper, preset/method targets, internal output labels, legacy suite token CLI flags, reporting/result paths, and plot/report suite artifact readers (`vision_suite_*` preferred over `general_suite_*`); optional deeper modularization remains deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
@@ -245,6 +245,7 @@ result-schema contracts.
 | 2026-05-22 | Legacy vision suite tokens such as `ours_spectral_filtered_*` and `ours_*_spectral_weight_agg_*` still emitted `spectral_filtered_*` CLI flags even though canonical aliases are accepted. | Keep legacy token names for historical run tags, but emit `graph_filtered_*` aggregation-target flags from suite parsers. |
 | 2026-05-22 | Experiment CLIs duplicated `--aggregation-target` choices with legacy spellings listed beside canonical ones but without explicit deprecation guidance. | Centralize choices/help in `graphfl_lab/cli/aggregation_targets.py`, list canonical targets first, and keep `spectral_filtered_*` only as documented compatibility aliases per Migration C5 and Gate 6 policy. |
 | 2026-05-22 | Suite orchestration still keyed reuse/load paths on `result_general_*` even though Flower now writes canonical `result_vision_*` aliases too; reporting already pairs canonical and legacy filtered variant families separately. | Prefer `result_vision_*` for new suite paths, resolve existing results from either filename family, and document filtered-family pairing policy in `reporting.py` without collapsing historical variant tags. |
+| 2026-05-22 | Plot/report helpers duplicated suite artifact discovery with `general_suite_*` checked before `vision_suite_*` in some readers even though suite outputs now emit both families. | Add shared artifact discovery helpers that prefer canonical `vision_*` filenames while retaining `general_*` compatibility readers through Gate 6. |
 
 ## Closure Policy
 

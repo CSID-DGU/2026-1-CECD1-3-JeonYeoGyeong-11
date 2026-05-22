@@ -16,6 +16,10 @@ from typing import Any, Dict, List
 
 from graphfl_lab.experiments.suites.execution import run_cmd
 from graphfl_lab.experiments.suites.result_writer import write_json
+from graphfl_lab.experiments.suites.vision.artifacts import (
+    SUITE_SUMMARY_CSV_FILENAMES,
+    resolve_suite_artifact,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -246,13 +250,10 @@ def run(args) -> None:
         cmd = suite_cmd(args=args, num_clients=int(n_clients), out_dir=suite_dir, tag=tag)
         print(f"=== Running client-count suite: num_clients={n_clients} ===", flush=True)
         run_cmd(cmd, cwd=PROJECT_ROOT)
+        summary_path = resolve_suite_artifact(suite_dir, SUITE_SUMMARY_CSV_FILENAMES)
         all_rows.extend(
             read_summary_rows(
-                (
-                    suite_dir / "vision_suite_summary.csv"
-                    if (suite_dir / "vision_suite_summary.csv").is_file()
-                    else suite_dir / "general_suite_summary.csv"
-                ),
+                summary_path if summary_path is not None else suite_dir / "vision_suite_summary.csv",
                 num_clients=int(n_clients),
                 suite_dir=suite_dir,
             )
