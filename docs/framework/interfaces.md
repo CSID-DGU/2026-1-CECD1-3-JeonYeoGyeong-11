@@ -51,7 +51,7 @@ out-of-scope
 Add a source only when the client representation is new.
 
 ```python
-from spectral_fl.graph import GraphSourceResult, register_graph_source
+from graphfl_lab.graph import GraphSourceResult, register_graph_source
 
 
 @register_graph_source("my_client_state")
@@ -81,7 +81,7 @@ Add a builder only when relation or topology construction is new.
 ```python
 import numpy as np
 
-from spectral_fl.graph import GraphBuildContext, register_graph_builder, require_graph_context
+from graphfl_lab.graph import GraphBuildContext, register_graph_builder, require_graph_context
 
 
 @register_graph_builder("my_relation_graph")

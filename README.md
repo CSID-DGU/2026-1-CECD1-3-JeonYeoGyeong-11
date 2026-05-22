@@ -173,13 +173,13 @@ python run_vision_experiment.py --config configs/vision/smoke/default_similarity
 
 | Interface | Role | Location |
 |---|---|---|
-| `GraphFLDesign` | lifecycle component profile | `spectral_fl/designs/` |
-| `graph_method` | runnable method/profile selection | `spectral_fl/graph/method_specs.py`, `spectral_fl/graph/presets.py` |
-| `graph_source` | client representation | `spectral_fl/graph/sources/`, `spectral_fl/graph/signals/` |
-| `graph_mode` | relation/topology construction | `spectral_fl/graph/registry.py`, `spectral_fl/graph/builders.py` |
-| `aggregation_target` | graph application target | `spectral_fl/strategies/graphfl/targets.py` |
-| diagnostics | graph/control metrics | `spectral_fl/diagnostics/`, `spectral_fl/strategies/graphfl/diagnostics.py` |
-| suite grammar | repeatable variant tokens | `spectral_fl/experiments/suites/vision/variants.py` |
+| `GraphFLDesign` | lifecycle component profile | `graphfl_lab/designs/` |
+| `graph_method` | runnable method/profile selection | `graphfl_lab/graph/method_specs.py`, `graphfl_lab/graph/presets.py` |
+| `graph_source` | client representation | `graphfl_lab/graph/sources/`, `graphfl_lab/graph/signals/` |
+| `graph_mode` | relation/topology construction | `graphfl_lab/graph/registry.py`, `graphfl_lab/graph/builders.py` |
+| `aggregation_target` | graph application target | `graphfl_lab/strategies/graphfl/targets.py` |
+| diagnostics | graph/control metrics | `graphfl_lab/diagnostics/`, `graphfl_lab/strategies/graphfl/diagnostics.py` |
+| suite grammar | repeatable variant tokens | `graphfl_lab/experiments/suites/vision/variants.py` |
 
 ## Add A Graph Algorithm
 
@@ -194,7 +194,7 @@ python run_vision_experiment.py --config configs/vision/smoke/default_similarity
 Builder example:
 
 ```python
-from spectral_fl.graph import GraphBuildContext, register_graph_builder
+from graphfl_lab.graph import GraphBuildContext, register_graph_builder
 
 
 @register_graph_builder("my_relation_graph")
@@ -226,7 +226,7 @@ configs/                         experiment configs
   vision/                         current vision configs
   cora/                           Cora/FGL ablation configs
 
-spectral_fl/
+graphfl_lab/
   cli/                            parser-only modules
   data/                           dataset loading and partitioning
   designs/                        GraphFLDesign registry/presets
@@ -241,6 +241,9 @@ spectral_fl/
     vision/                       current run orchestration
     suites/vision/                suite grammar and reporting
     general/                      old module compatibility
+
+spectral_fl/
+  __init__.py                     old package import shim
 
 scripts/
   checks/                         non-training validation
@@ -280,9 +283,9 @@ Detailed routing: [docs/structure.md](docs/structure.md)
 ```text
 run_vision_suite.py
 -> run_vision_experiment.py
--> spectral_fl/flower_runner.py
--> spectral_fl/flower_app.py
--> spectral_fl/strategies/graphfl/strategy.py
+-> graphfl_lab/flower_runner.py
+-> graphfl_lab/flower_app.py
+-> graphfl_lab/strategies/graphfl/strategy.py
 -> graph source / graph builder / filtering / aggregation / diagnostics
 ```
 
@@ -299,6 +302,7 @@ python run_vision_stress_grid.py --help
 
 ```powershell
 python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
+python scripts/checks/result_evidence_bundle.py experiments_current/default_similarity_knn_smoke/result_vision_ours_seed42_default_similarity_knn_smoke.json --kind single-run
 python scripts/checks/diagnostic_suite_preflight.py
 python run_vision_suite.py --config configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json
 python scripts/smoke/prior_work_proxy.py
@@ -319,8 +323,9 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 | Old name | Role |
 |---|---|
 | `run_general_*.py` | `run_vision_*.py` compatibility wrapper |
-| `spectral_fl/experiments/general/` | old import path wrapper |
-| `spectral_fl/strategies/spectral/` | `strategies/graphfl/` wrapper |
+| `spectral_fl` | old package import shim |
+| `graphfl_lab/experiments/general/` | old import path wrapper |
+| `graphfl_lab/strategies/spectral/` | `graphfl_lab/strategies/graphfl/` wrapper |
 | `spectral_filtered_*`, `spectral_filter_strength` | config/result compatibility alias |
 
 Do not add new logic to compatibility paths.
