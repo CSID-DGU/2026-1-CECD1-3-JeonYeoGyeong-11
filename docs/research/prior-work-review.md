@@ -12,6 +12,15 @@ Lens: what mechanism can the framework diagnose, not what paper is exactly repro
 | Implementation risk | requires explicit proxy/support level |
 | Expansion | privacy, robustness, fairness, scalability diagnostics |
 
+Novelty wording:
+
+```text
+Semantic relation vs generic smoothing is not claimed as a new phenomenon by itself.
+The project claim is the executable attribution protocol: matched controls,
+graph-free controls, and diagnostics that test whether a graph-specific
+explanation survives.
+```
+
 ## Relevant Families
 
 | Family | Contribution | Framework role |

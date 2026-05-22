@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.builders import build_client_graph, build_relation_graph
-from spectral_fl.graph.clustering import build_block_uniform_graph, cluster_clients
+from graphfl_lab.graph.builders import build_client_graph, build_relation_graph
+from graphfl_lab.graph.clustering import build_block_uniform_graph, cluster_clients
 
 
 class ClusteringControlTest(unittest.TestCase):

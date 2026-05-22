@@ -1,8 +1,8 @@
 """Run smoke-scale prior-work-inspired GraphFLDesign presets.
 
 This script validates that runnable prior-work proxy presets resolve through
-GraphFLDesign, execute through the general FL entrypoint, and emit the standard
-diagnostic artifacts.
+GraphFLDesign, execute through ``run_vision_experiment.py``, and emit the
+standard diagnostic artifacts.
 """
 
 from __future__ import annotations
@@ -15,6 +15,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from graphfl_lab.experiments.suites.vision.variant_helpers import (
+    resolve_result_path_for_variant,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -108,9 +112,8 @@ def _module_trace_summary(path: Path) -> dict[str, Any]:
 
 
 def _summarize_run(run_dir: Path, run: dict[str, str], args: argparse.Namespace) -> dict[str, Any]:
-    result_path = (
-        run_dir
-        / f"result_general_{args.method}_seed{args.seed}_{run['label']}.json"
+    result_path = resolve_result_path_for_variant(
+        run_dir, args.method, args.seed, run["label"]
     )
     loaded = _load_result(result_path, args.method)
     meta = loaded["meta"]

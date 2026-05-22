@@ -1,6 +1,6 @@
 """Compatibility wrapper for the graph ablation CLI."""
 
-from spectral_fl.cli import graph_ablation as _impl
+from graphfl_lab.cli import graph_ablation as _impl
 
 globals().update(
     {

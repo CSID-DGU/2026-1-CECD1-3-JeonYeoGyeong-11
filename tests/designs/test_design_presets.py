@@ -1,7 +1,7 @@
 import unittest
 
-from spectral_fl.designs import ComponentSpec, interface_target_designs, resolve_design
-from spectral_fl.graph.presets import graph_preset_names, resolve_graph_preset_spec
+from graphfl_lab.designs import ComponentSpec, interface_target_designs, resolve_design
+from graphfl_lab.graph.presets import graph_preset_names, resolve_graph_preset_spec
 
 
 class DesignPresetTest(unittest.TestCase):
@@ -25,7 +25,7 @@ class DesignPresetTest(unittest.TestCase):
         self.assertEqual(args["graph_method"], "pfedgraph")
         self.assertEqual(args["graph_source"], "update")
         self.assertEqual(args["graph_mode"], "pfedgraph_qp")
-        self.assertEqual(args["aggregation_target"], "spectral_filtered_update")
+        self.assertEqual(args["aggregation_target"], "graph_filtered_update")
 
     def test_legacy_graph_preset_alias_resolves_through_design(self):
         spec = resolve_graph_preset_spec("pfedgraph_like")
@@ -34,7 +34,7 @@ class DesignPresetTest(unittest.TestCase):
         self.assertEqual(spec["graph_method"], "pfedgraph")
         self.assertEqual(spec["graph_source"], "update")
         self.assertEqual(spec["graph_mode"], "pfedgraph_qp")
-        self.assertEqual(spec["aggregation_target"], "spectral_filtered_update")
+        self.assertEqual(spec["aggregation_target"], "graph_filtered_update")
 
     def test_graph_preset_names_include_designs_and_legacy_aliases(self):
         names = graph_preset_names()

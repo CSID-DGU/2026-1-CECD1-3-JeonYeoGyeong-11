@@ -6,14 +6,14 @@ Use these interfaces instead of adding method-specific branches to the strategy 
 
 | Layer | Question | Interface | Location |
 |---|---|---|---|
-| Method design | component 조합 | `GraphFLDesign`, `ComponentSpec` | `spectral_fl/designs/` |
-| Client state | client representation | `register_graph_source`, `GraphSourceContext`, `GraphSourceResult` | `spectral_fl/graph/sources/`, `spectral_fl/graph/signals/` |
-| Relation estimator | relation score | `register_graph_builder`, `GraphBuildContext`, `GraphBuildResult` | `spectral_fl/graph/registry.py` |
-| Topology operator | dense/sparse/control graph | graph builder, sparsification helpers | `spectral_fl/graph/sparsification.py`, `spectral_fl/graph/controls.py` |
-| Aggregation operator | graph application target | `aggregation_target` | `spectral_fl/strategies/graphfl/targets.py` |
-| Runtime strategy | round execution order | `GraphFLDiagnosticStrategy` | `spectral_fl/strategies/graphfl/strategy.py` |
-| Diagnostics | correction effects | metric/artifact writers | `spectral_fl/diagnostics/`, `spectral_fl/strategies/graphfl/diagnostics.py` |
-| Suite grammar | repeatable run token | variant parser | `spectral_fl/experiments/suites/vision/variants.py` |
+| Method design | component 조합 | `GraphFLDesign`, `ComponentSpec` | `graphfl_lab/designs/` |
+| Client state | client representation | `register_graph_source`, `GraphSourceContext`, `GraphSourceResult` | `graphfl_lab/graph/sources/`, `graphfl_lab/graph/signals/` |
+| Relation estimator | relation score | `register_graph_builder`, `GraphBuildContext`, `GraphBuildResult` | `graphfl_lab/graph/registry.py` |
+| Topology operator | dense/sparse/control graph | graph builder, sparsification helpers | `graphfl_lab/graph/sparsification.py`, `graphfl_lab/graph/controls.py` |
+| Aggregation operator | graph application target | `aggregation_target` | `graphfl_lab/strategies/graphfl/targets.py` |
+| Runtime strategy | round execution order | `GraphFLDiagnosticStrategy` | `graphfl_lab/strategies/graphfl/strategy.py` |
+| Diagnostics | correction effects | metric/artifact writers | `graphfl_lab/diagnostics/`, `graphfl_lab/strategies/graphfl/diagnostics.py` |
+| Suite grammar | repeatable run token | variant parser | `graphfl_lab/experiments/suites/vision/variants.py` |
 
 ## GraphFLDesign
 
@@ -51,7 +51,7 @@ out-of-scope
 Add a source only when the client representation is new.
 
 ```python
-from spectral_fl.graph import GraphSourceResult, register_graph_source
+from graphfl_lab.graph import GraphSourceResult, register_graph_source
 
 
 @register_graph_source("my_client_state")
@@ -81,7 +81,7 @@ Add a builder only when relation or topology construction is new.
 ```python
 import numpy as np
 
-from spectral_fl.graph import GraphBuildContext, register_graph_builder, require_graph_context
+from graphfl_lab.graph import GraphBuildContext, register_graph_builder, require_graph_context
 
 
 @register_graph_builder("my_relation_graph")

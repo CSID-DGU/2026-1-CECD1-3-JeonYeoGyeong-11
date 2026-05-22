@@ -1,6 +1,6 @@
 import unittest
 
-from spectral_fl.lifecycle.local_hooks import (
+from graphfl_lab.lifecycle.local_hooks import (
     InterfaceTargetLocalObjectiveHook,
     LocalHookContext,
     NoneLocalObjectiveHook,

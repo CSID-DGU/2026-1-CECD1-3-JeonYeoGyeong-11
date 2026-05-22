@@ -1,13 +1,13 @@
 import unittest
 
-from spectral_fl.lifecycle.delivery import (
+from graphfl_lab.lifecycle.delivery import (
     DeliveryContext,
     GlobalDeliveryPolicy,
     InterfaceTargetDeliveryPolicy,
     MissingPersonalizedStateError,
     PreviousPersonalizedDeliveryPolicy,
 )
-from spectral_fl.lifecycle.state_store import StateStore
+from graphfl_lab.lifecycle.state_store import StateStore
 
 
 class DeliveryPolicyTest(unittest.TestCase):

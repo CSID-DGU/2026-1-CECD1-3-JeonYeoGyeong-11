@@ -39,6 +39,33 @@ Graph-FL gain
 + low-order statistic effect
 ```
 
+## Semantic / Smoothing Vocabulary
+
+`Semantic Gain` and `Smoothing Gain` may be used as presentation shorthand, but
+they are not separate directly observed quantities in this project.
+
+Project-safe translation:
+
+```text
+Estimated semantic contribution
+= Score(real_graph) - Score(matched control)
+
+Generic smoothing contribution
+= relation-free or relation-destroyed control behavior
+```
+
+Interpretation rules:
+
+| Term | Project meaning |
+|---|---|
+| `Semantic Graph` | `real_graph`: graph built from a chosen client representation and topology |
+| `Semantic Gain` | estimated `real-control gap`, not a pure causal residue |
+| `Smoothing Gain` | effect suggested by `uniform`, `matched_random`, `identity`, and smoothness diagnostics |
+| `Random Graph` | matched counterfactual, not assumed to be pure smoothing |
+
+Use this framing to explain intuition. Use the control matrix and diagnostics for
+claim strength.
+
 ## Evidence Required
 
 claim은 `Separation -> Control -> Mechanism -> Boundary` 순서로 세운다.

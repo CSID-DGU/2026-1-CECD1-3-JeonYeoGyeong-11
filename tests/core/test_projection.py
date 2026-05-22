@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.projection import flatten_weights, unflatten_like
+from graphfl_lab.projection import flatten_weights, unflatten_like
 
 
 class ProjectionTest(unittest.TestCase):

@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spectral_fl.experiments.vision.suite import (
+from graphfl_lab.experiments.vision.suite import (
     _variant_k_number,
     append_validation_verdict,
     collect_timing_features,
@@ -313,8 +313,11 @@ class GeneralSuiteReportTest(unittest.TestCase):
             )
 
             self.assertTrue((out_dir / "vision_suite_summary.json").is_file())
+            self.assertTrue((out_dir / "general_suite_summary.json").is_file())
             self.assertTrue((out_dir / "vision_suite_rows.json").is_file())
+            self.assertTrue((out_dir / "general_suite_rows.json").is_file())
             self.assertTrue((out_dir / "vision_suite_summary.csv").is_file())
+            self.assertTrue((out_dir / "general_suite_summary.csv").is_file())
             self.assertTrue((out_dir / "suite_summary.json").is_file())
             self.assertTrue((out_dir / "general_suite_summary.md").is_file())
             self.assertEqual(md_path.name, "vision_suite_summary.md")

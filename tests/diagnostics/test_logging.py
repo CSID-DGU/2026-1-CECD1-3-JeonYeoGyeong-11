@@ -4,11 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spectral_fl.diagnostics.logging import (
+from graphfl_lab.diagnostics.logging import (
     append_counterfactual_metrics_csv,
     append_module_traces_jsonl,
 )
-from spectral_fl.lifecycle.traces import TraceRecord
+from graphfl_lab.lifecycle.traces import TraceRecord
 
 
 class DiagnosticsLoggingTest(unittest.TestCase):

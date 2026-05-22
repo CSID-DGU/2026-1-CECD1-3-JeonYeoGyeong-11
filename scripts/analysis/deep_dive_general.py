@@ -1,4 +1,7 @@
-"""Compatibility wrapper for ``deep_dive_vision.py``."""
+"""Compatibility wrapper for ``deep_dive_vision.py``.
+
+Prefer ``scripts/analysis/deep_dive_vision.py`` for new analysis.
+"""
 
 from importlib import util
 from pathlib import Path

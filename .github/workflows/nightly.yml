@@ -1,0 +1,41 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pytest
+
+      - name: Compile Python files
+        run: |
+          python -m py_compile run_experiment.py run_vision_experiment.py run_vision_suite.py run_graph_ablation.py
+          python -m py_compile run_general_experiment.py run_general_suite.py
+          python -m py_compile graphfl_lab/*.py spectral_fl/*.py
+          python -m compileall -q graphfl_lab spectral_fl tests scripts
+
+      - name: Unit smoke tests
+        run: python -m unittest discover -s tests
+
+      - name: Pytest subset
+        run: |
+          python -m pytest -q tests/experiments/vision tests/scripts/reports -k "report or plot"

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.strategies.graphfl.aggregation import (
+from graphfl_lab.strategies.graphfl.aggregation import (
     AggregationWeightSelection,
     apply_correction_family,
     apply_min_client_weight,

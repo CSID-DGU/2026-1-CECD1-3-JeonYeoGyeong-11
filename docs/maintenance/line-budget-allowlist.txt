@@ -1,0 +1,39 @@
+# Line Budget Allowlist
+#
+# Gate 1 starts a line-growth guard for large files. The default measurement is:
+#
+#   git diff --numstat <gate-start-sha> -- <protected-paths>
+#
+# For each protected file, added - removed must be <= 0.
+# Comments, whitespace, and blank lines count because the measurement is
+# numstat-based. Exceptions must include an expiry date and a reason.
+#
+# Format:
+# path | expires_on | reason
+#
+# No active exceptions.
+
+## Protected Paths
+
+Gate 1 line-growth guard starts with these large files:
+
+```text
+graphfl_lab/experiments/suites/vision/variants.py
+graphfl_lab/strategies/graphfl/strategy.py
+graphfl_lab/experiments/vision/suite.py
+```
+
+Default rule: for each protected path, `added - removed <= 0` relative to the
+Gate start SHA. Exceptions must be recorded above before code changes.
+
+## Deferred Watchlist
+
+These files are not immediate blockers for local smoke readiness, but future
+changes should avoid net growth unless the change is tied to a recorded Gate or
+smoke failure:
+
+```text
+graphfl_lab/experiments/suites/vision/reporting.py
+graphfl_lab/strategies/graphfl/diagnostics.py
+graphfl_lab/strategies/graphfl/aggregation.py
+```

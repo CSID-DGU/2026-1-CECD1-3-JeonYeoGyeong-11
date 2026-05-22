@@ -4,7 +4,7 @@ Current claim docs:
 
 ```text
 claim.md
-experimental-design.md
+graph_fl_experimental_design.md
 diagnostics.md
 ```
 
@@ -19,5 +19,5 @@ Rules:
 ```text
 Do not add single accuracy leaderboards here.
 Do not use archived low-pass results as current claim evidence.
-Use experimental-design.md primary table format for new results.
+Use graph_fl_experimental_design.md primary table format for new results.
 ```

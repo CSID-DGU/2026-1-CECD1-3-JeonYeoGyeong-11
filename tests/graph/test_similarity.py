@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.similarity import (
+from graphfl_lab.graph.similarity import (
     dense_absolute_cosine,
     dense_negative_cosine,
     dense_positive_cosine,

@@ -2,14 +2,14 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.lifecycle.client_state import ClientStateOutput, ClientStatePayload
-from spectral_fl.lifecycle.context import RelationContext, RoundContext, TopologyContext
-from spectral_fl.lifecycle.relation import (
+from graphfl_lab.lifecycle.client_state import ClientStateOutput, ClientStatePayload
+from graphfl_lab.lifecycle.context import RelationContext, RoundContext, TopologyContext
+from graphfl_lab.lifecycle.relation import (
     GraphRelationEstimator,
     UnsupportedRelationEstimator,
     estimate_relation_from_vectors,
 )
-from spectral_fl.lifecycle.topology import (
+from graphfl_lab.lifecycle.topology import (
     ClusterBlockTopologyOperator,
     GraphTopologyOperator,
     UnsupportedTopologyOperator,

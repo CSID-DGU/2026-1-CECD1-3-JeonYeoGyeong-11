@@ -6,31 +6,32 @@ Source code is organized by responsibility, not experiment name. Use the narrowe
 
 | Request | Primary edit location | Test neighborhood |
 |---|---|---|
-| Add/change `graph_source` | `spectral_fl/graph/signals/`, `spectral_fl/graph/sources/` | `tests/graph/` |
-| Add/change `graph_mode` | `spectral_fl/graph/similarity/`, `spectral_fl/graph/sparsification.py`, `spectral_fl/graph/builders.py` | `tests/graph/` |
-| Add graph diagnostics | `spectral_fl/graph/diagnostics.py` | `tests/graph/` |
-| Add diagnostics artifact fields/writers | `spectral_fl/diagnostics/` | `tests/diagnostics/` |
-| Add/change `GraphFLDesign` preset | `spectral_fl/designs/` | `tests/designs/` |
-| Add lifecycle behavior | `spectral_fl/lifecycle/` | `tests/lifecycle/` |
-| Change graph filtering math | `spectral_fl/strategies/graphfl/filtering.py` | `tests/strategies/graphfl/` |
-| Change client/conflict weights | `spectral_fl/strategies/graphfl/aggregation.py` | `tests/strategies/graphfl/` |
-| Add `aggregation_target` | `spectral_fl/strategies/graphfl/targets.py` | `tests/strategies/graphfl/` |
-| Change server momentum/optimizer interaction | `spectral_fl/strategies/graphfl/momentum.py` | `tests/strategies/graphfl/` |
-| Add baseline | `spectral_fl/strategies/baselines/` | `tests/strategies/baselines/` |
-| Change vision single run | `spectral_fl/experiments/vision/single_run.py` | `tests/experiments/vision/` |
-| Change vision suite orchestration | `spectral_fl/experiments/vision/suite.py` | `tests/experiments/vision/` |
-| Change stress/client-count sweep | `spectral_fl/experiments/vision/stress_grid.py`, `spectral_fl/experiments/vision/client_count_sweep.py` | `tests/experiments/vision/` |
-| Change Cora single run | `spectral_fl/experiments/cora/single_run.py` | `tests/experiments/cora/` |
-| Change Cora graph ablation | `spectral_fl/experiments/cora/graph_ablation.py` | `tests/experiments/cora/` |
-| Change suite variant grammar | `spectral_fl/experiments/suites/vision/variants.py` | `tests/experiments/vision/` |
-| Change suite reporting | `spectral_fl/experiments/suites/vision/reporting.py` | `tests/experiments/vision/` |
-| Change CLI arguments | `spectral_fl/cli/` | CLI help/import tests |
+| Add/change `graph_source` | `graphfl_lab/graph/signals/`, `graphfl_lab/graph/sources/` | `tests/graph/` |
+| Add/change `graph_mode` | `graphfl_lab/graph/similarity/`, `graphfl_lab/graph/sparsification.py`, `graphfl_lab/graph/builders.py` | `tests/graph/` |
+| Add graph diagnostics | `graphfl_lab/graph/diagnostics.py` | `tests/graph/` |
+| Add diagnostics artifact fields/writers | `graphfl_lab/diagnostics/` | `tests/diagnostics/` |
+| Add/change `GraphFLDesign` preset | `graphfl_lab/designs/` | `tests/designs/` |
+| Add lifecycle behavior | `graphfl_lab/lifecycle/` | `tests/lifecycle/` |
+| Change graph filtering math | `graphfl_lab/strategies/graphfl/filtering.py` | `tests/strategies/graphfl/` |
+| Change client/conflict weights | `graphfl_lab/strategies/graphfl/aggregation.py` | `tests/strategies/graphfl/` |
+| Add `aggregation_target` | `graphfl_lab/strategies/graphfl/targets.py` | `tests/strategies/graphfl/` |
+| Change server momentum/optimizer interaction | `graphfl_lab/strategies/graphfl/momentum.py` | `tests/strategies/graphfl/` |
+| Add baseline | `graphfl_lab/strategies/baselines/` | `tests/strategies/baselines/` |
+| Change vision single run | `graphfl_lab/experiments/vision/single_run.py` | `tests/experiments/vision/` |
+| Change vision suite orchestration | `graphfl_lab/experiments/vision/suite.py` | `tests/experiments/vision/` |
+| Change stress/client-count sweep | `graphfl_lab/experiments/vision/stress_grid.py`, `graphfl_lab/experiments/vision/client_count_sweep.py` | `tests/experiments/vision/` |
+| Change Cora single run | `graphfl_lab/experiments/cora/single_run.py` | `tests/experiments/cora/` |
+| Change Cora graph ablation | `graphfl_lab/experiments/cora/graph_ablation.py` | `tests/experiments/cora/` |
+| Change suite variant grammar | `graphfl_lab/experiments/suites/vision/variants.py` | `tests/experiments/vision/` |
+| Change suite reporting | `graphfl_lab/experiments/suites/vision/reporting.py` | `tests/experiments/vision/` |
+| Change suite artifact discovery | `graphfl_lab/experiments/suites/vision/artifacts.py` | `tests/experiments/suites/vision/` |
+| Change CLI arguments | `graphfl_lab/cli/` | CLI help/import tests |
 | Add/edit config | `configs/` | JSON validation |
 
 ## Source Layout
 
 ```text
-spectral_fl/
+graphfl_lab/
   app/                       Flower app config/runtime glue
   cli/                       argparse only
   clients/                   Flower client implementations
@@ -65,6 +66,9 @@ spectral_fl/
     cora/
     suites/
       vision/
+        artifacts.py         canonical/compatibility filename discovery
+        reporting.py         suite summaries, dashboard, interpretation
+        variant_helpers.py   per-run result path resolution
       general/               compatibility wrappers
 ```
 
@@ -73,28 +77,29 @@ spectral_fl/
 Keep these thin. Add new logic in scoped modules, then re-export only if compatibility requires it.
 
 ```text
-spectral_fl/aggregation.py
-spectral_fl/client.py
-spectral_fl/general_client.py
-spectral_fl/general_data.py
-spectral_fl/general_models.py
-spectral_fl/general_suite_variants.py
-spectral_fl/cli/general_experiment.py
-spectral_fl/cli/general_suite.py
-spectral_fl/cli/general_client_count_sweep.py
-spectral_fl/cli/general_stress_grid.py
-spectral_fl/model.py
-spectral_fl/spectral_diagnostics.py
-spectral_fl/strategy.py
-spectral_fl/suite_stats.py
-spectral_fl/update_graph.py
-spectral_fl/strategies/spectral/
-spectral_fl/experiments/general/
-spectral_fl/experiments/suites/general/
-spectral_fl/experiments/suite.py
-spectral_fl/experiments/stress_grid.py
-spectral_fl/experiments/client_count_sweep.py
-spectral_fl/experiments/graph_ablation.py
+spectral_fl/__init__.py
+graphfl_lab/aggregation.py
+graphfl_lab/client.py
+graphfl_lab/general_client.py
+graphfl_lab/general_data.py
+graphfl_lab/general_models.py
+graphfl_lab/general_suite_variants.py
+graphfl_lab/cli/general_experiment.py
+graphfl_lab/cli/general_suite.py
+graphfl_lab/cli/general_client_count_sweep.py
+graphfl_lab/cli/general_stress_grid.py
+graphfl_lab/model.py
+graphfl_lab/spectral_diagnostics.py
+graphfl_lab/strategy.py
+graphfl_lab/suite_stats.py
+graphfl_lab/update_graph.py
+graphfl_lab/strategies/spectral/
+graphfl_lab/experiments/general/
+graphfl_lab/experiments/suites/general/
+graphfl_lab/experiments/suite.py
+graphfl_lab/experiments/stress_grid.py
+graphfl_lab/experiments/client_count_sweep.py
+graphfl_lab/experiments/graph_ablation.py
 scripts/analysis/deep_dive_general.py
 scripts/analysis/merge_general_fedavg_ours.py
 scripts/reports/plot_general_convergence.py
@@ -105,16 +110,16 @@ run_general_*.py
 
 | Area | Owns | Must not own |
 |---|---|---|
-| `spectral_fl/cli/` | argument parsing | datasets, models, strategies, graphs, reports |
-| `spectral_fl/experiments/` | orchestration, subprocesses, metadata, output files | graph math, strategy internals |
-| `spectral_fl/graph/` | relation graph construction | Flower strategies, experiment runners |
-| `spectral_fl/strategies/graphfl/` | server-side aggregation behavior | config paths, suite output layouts |
-| `spectral_fl/strategies/spectral/` | compatibility wrapper | new logic |
-| `spectral_fl/strategies/baselines/` | baseline strategies, tracing helpers | graph builder internals |
-| `spectral_fl/designs/` | method composition metadata | experiment execution |
-| `spectral_fl/lifecycle/` | contracts, traces, state store, side-effect-free diagnostics | runtime graph builders |
-| `spectral_fl/diagnostics/` | schemas, metrics, writers | suite-specific configs |
-| `spectral_fl/app/` | Flower App glue | CLI parsing |
+| `graphfl_lab/cli/` | argument parsing | datasets, models, strategies, graphs, reports |
+| `graphfl_lab/experiments/` | orchestration, subprocesses, metadata, output files | graph math, strategy internals |
+| `graphfl_lab/graph/` | relation graph construction | Flower strategies, experiment runners |
+| `graphfl_lab/strategies/graphfl/` | server-side aggregation behavior | config paths, suite output layouts |
+| `graphfl_lab/strategies/spectral/` | compatibility wrapper | new logic |
+| `graphfl_lab/strategies/baselines/` | baseline strategies, tracing helpers | graph builder internals |
+| `graphfl_lab/designs/` | method composition metadata | experiment execution |
+| `graphfl_lab/lifecycle/` | contracts, traces, state store, side-effect-free diagnostics | runtime graph builders |
+| `graphfl_lab/diagnostics/` | schemas, metrics, writers | suite-specific configs |
+| `graphfl_lab/app/` | Flower App glue | CLI parsing |
 
 ## Config Layout
 
@@ -144,6 +149,22 @@ Generated results:
 ```text
 experiments_current/
 ```
+
+## Suite Output Artifacts
+
+Vision suites write canonical artifacts first and mirror compatibility names:
+
+```text
+vision_suite_summary.json   # canonical
+general_suite_summary.json  # compatibility mirror (Gate 6 removal)
+vision_suite_rows.json
+result_vision_<method>_seed<seed>_<tag>.json
+result_general_<method>_seed<seed>_<tag>.json  # compatibility mirror
+```
+
+Use `write_suite_summary_artifacts()` in `reporting.py` for suite-level files.
+Use `resolve_result_path_for_variant()` or `discover_result_json_paths()` when
+reading prior runs. Do not add new logic that reads only `general_*` paths.
 
 ## Adding New Code
 

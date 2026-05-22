@@ -1,6 +1,6 @@
 import unittest
 
-from spectral_fl.experiments.vision.stress_grid import (
+from graphfl_lab.experiments.vision.stress_grid import (
     build_auto_review_rows,
     expand_variant_templates,
     variant_k_from_label,

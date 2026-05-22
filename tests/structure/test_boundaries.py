@@ -1,4 +1,4 @@
-﻿import ast
+import ast
 import unittest
 from pathlib import Path
 
@@ -58,34 +58,34 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "flwr",
             "numpy",
             "torch",
-            "spectral_fl.clients",
-            "spectral_fl.data",
-            "spectral_fl.flower_app",
-            "spectral_fl.flower_runner",
-            "spectral_fl.graph",
-            "spectral_fl.models",
-            "spectral_fl.strategies",
+            "graphfl_lab.clients",
+            "graphfl_lab.data",
+            "graphfl_lab.flower_app",
+            "graphfl_lab.flower_runner",
+            "graphfl_lab.graph",
+            "graphfl_lab.models",
+            "graphfl_lab.strategies",
         )
-        for path in python_files(ROOT / "spectral_fl" / "cli"):
+        for path in python_files(ROOT / "graphfl_lab" / "cli"):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_banned_imports(path, banned)
 
     def test_graph_package_does_not_depend_on_runners_or_strategies(self):
         banned = (
-            "spectral_fl.cli",
-            "spectral_fl.experiments",
-            "spectral_fl.strategies",
+            "graphfl_lab.cli",
+            "graphfl_lab.experiments",
+            "graphfl_lab.strategies",
         )
-        for path in python_files(ROOT / "spectral_fl" / "graph"):
+        for path in python_files(ROOT / "graphfl_lab" / "graph"):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_banned_imports(path, banned)
 
     def test_graphfl_strategy_does_not_depend_on_cli_or_experiments(self):
         banned = (
-            "spectral_fl.cli",
-            "spectral_fl.experiments",
+            "graphfl_lab.cli",
+            "graphfl_lab.experiments",
         )
-        for path in python_files(ROOT / "spectral_fl" / "strategies" / "graphfl"):
+        for path in python_files(ROOT / "graphfl_lab" / "strategies" / "graphfl"):
             with self.subTest(path=path.relative_to(ROOT)):
                 self.assert_no_banned_imports(path, banned)
 
@@ -101,42 +101,42 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "run_general_stress_grid.py",
             "run_general_suite.py",
             "run_graph_ablation.py",
-            "spectral_fl/aggregation.py",
-            "spectral_fl/client.py",
-            "spectral_fl/general_client.py",
-            "spectral_fl/general_data.py",
-            "spectral_fl/general_models.py",
-            "spectral_fl/general_suite_variants.py",
-            "spectral_fl/cli/general_client_count_sweep.py",
-            "spectral_fl/cli/general_experiment.py",
-            "spectral_fl/cli/general_stress_grid.py",
-            "spectral_fl/cli/general_suite.py",
-            "spectral_fl/model.py",
-            "spectral_fl/spectral_diagnostics.py",
-            "spectral_fl/strategy.py",
-            "spectral_fl/suite_stats.py",
-            "spectral_fl/update_graph.py",
-            "spectral_fl/strategies/spectral/__init__.py",
-            "spectral_fl/strategies/spectral/aggregation.py",
-            "spectral_fl/strategies/spectral/config.py",
-            "spectral_fl/strategies/spectral/diagnostics.py",
-            "spectral_fl/strategies/spectral/filtering.py",
-            "spectral_fl/strategies/spectral/momentum.py",
-            "spectral_fl/strategies/spectral/strategy.py",
-            "spectral_fl/strategies/spectral/targets.py",
-            "spectral_fl/strategies/spectral/tracing.py",
-            "spectral_fl/experiments/client_count_sweep.py",
-            "spectral_fl/experiments/graph_ablation.py",
-            "spectral_fl/experiments/stress_grid.py",
-            "spectral_fl/experiments/suite.py",
-            "spectral_fl/experiments/general/__init__.py",
-            "spectral_fl/experiments/general/client_count_sweep.py",
-            "spectral_fl/experiments/general/single_run.py",
-            "spectral_fl/experiments/general/stress_grid.py",
-            "spectral_fl/experiments/general/suite.py",
-            "spectral_fl/experiments/suites/general/__init__.py",
-            "spectral_fl/experiments/suites/general/reporting.py",
-            "spectral_fl/experiments/suites/general/variants.py",
+            "graphfl_lab/aggregation.py",
+            "graphfl_lab/client.py",
+            "graphfl_lab/general_client.py",
+            "graphfl_lab/general_data.py",
+            "graphfl_lab/general_models.py",
+            "graphfl_lab/general_suite_variants.py",
+            "graphfl_lab/cli/general_client_count_sweep.py",
+            "graphfl_lab/cli/general_experiment.py",
+            "graphfl_lab/cli/general_stress_grid.py",
+            "graphfl_lab/cli/general_suite.py",
+            "graphfl_lab/model.py",
+            "graphfl_lab/spectral_diagnostics.py",
+            "graphfl_lab/strategy.py",
+            "graphfl_lab/suite_stats.py",
+            "graphfl_lab/update_graph.py",
+            "graphfl_lab/strategies/spectral/__init__.py",
+            "graphfl_lab/strategies/spectral/aggregation.py",
+            "graphfl_lab/strategies/spectral/config.py",
+            "graphfl_lab/strategies/spectral/diagnostics.py",
+            "graphfl_lab/strategies/spectral/filtering.py",
+            "graphfl_lab/strategies/spectral/momentum.py",
+            "graphfl_lab/strategies/spectral/strategy.py",
+            "graphfl_lab/strategies/spectral/targets.py",
+            "graphfl_lab/strategies/spectral/tracing.py",
+            "graphfl_lab/experiments/client_count_sweep.py",
+            "graphfl_lab/experiments/graph_ablation.py",
+            "graphfl_lab/experiments/stress_grid.py",
+            "graphfl_lab/experiments/suite.py",
+            "graphfl_lab/experiments/general/__init__.py",
+            "graphfl_lab/experiments/general/client_count_sweep.py",
+            "graphfl_lab/experiments/general/single_run.py",
+            "graphfl_lab/experiments/general/stress_grid.py",
+            "graphfl_lab/experiments/general/suite.py",
+            "graphfl_lab/experiments/suites/general/__init__.py",
+            "graphfl_lab/experiments/suites/general/reporting.py",
+            "graphfl_lab/experiments/suites/general/variants.py",
             "scripts/analysis/deep_dive_general.py",
             "scripts/analysis/merge_general_fedavg_ours.py",
             "scripts/reports/plot_general_convergence.py",

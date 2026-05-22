@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.strategies.graphfl.momentum import apply_server_optimizer
+from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 
 
 class SpectralMomentumModuleTest(unittest.TestCase):

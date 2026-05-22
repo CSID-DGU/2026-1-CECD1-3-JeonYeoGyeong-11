@@ -2,9 +2,9 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.diagnostics.metrics import summarize_pre_post
-from spectral_fl.lifecycle.counterfactuals import CounterfactualSpec, default_counterfactual_specs
-from spectral_fl.lifecycle.diagnostic_runner import (
+from graphfl_lab.diagnostics.metrics import summarize_pre_post
+from graphfl_lab.lifecycle.counterfactuals import CounterfactualSpec, default_counterfactual_specs
+from graphfl_lab.lifecycle.diagnostic_runner import (
     CounterfactualDiagnosticRunner,
     MinimalAggregationAdapter,
 )
@@ -141,7 +141,7 @@ class CounterfactualRunnerTest(unittest.TestCase):
         self.assertEqual([result.metrics["status"] for result in results], ["ok", "ok", "ok"])
         self.assertEqual(
             results[0].metrics["aggregation_target_used"],
-            "spectral_filtered_update_delta",
+            "graph_filtered_update_delta",
         )
 
     def test_unsupported_or_invalid_variant_emits_error_record(self):

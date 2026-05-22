@@ -2,13 +2,13 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.lifecycle.client_state import (
+from graphfl_lab.lifecycle.client_state import (
     ClientStateOutput,
     ClientStatePayload,
     GraphSourceClientStateExtractor,
     UnsupportedClientStateExtractor,
 )
-from spectral_fl.lifecycle.context import make_state_extraction_context
+from graphfl_lab.lifecycle.context import make_state_extraction_context
 
 
 class ClientStateModuleTest(unittest.TestCase):

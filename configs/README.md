@@ -9,7 +9,7 @@ configs/vision/
 Compatibility path:
 
 ```text
-configs/general/... -> configs/vision/... via spectral_fl.config_io.resolve_config_path
+configs/general/... -> configs/vision/... via graphfl_lab.config_io.resolve_config_path
 ```
 
 Use the narrowest current track/question folder:
@@ -23,3 +23,7 @@ configs/vision/stress/
 configs/vision/sweeps/
 configs/cora/ablations/
 ```
+
+Suite and single-run outputs under `experiments_current/` prefer `vision_suite_*`
+and `result_vision_*` filenames. Historical `general_suite_*` and
+`result_general_*` artifacts remain readable until Gate 6. See `MIGRATION.md`.

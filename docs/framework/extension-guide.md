@@ -46,8 +46,8 @@ pfedgraph_like -> pfedgraph_proxy
 ## Graph Source Plugin
 
 ```python
-from spectral_fl.graph import GraphSourceResult, register_graph_source
-from spectral_fl.projection import flatten_weights
+from graphfl_lab.graph import GraphSourceResult, register_graph_source
+from graphfl_lab.projection import flatten_weights
 
 
 @register_graph_source("my_functional_embedding")
@@ -74,7 +74,7 @@ custom client state
 ```python
 import numpy as np
 
-from spectral_fl.graph import GraphBuildContext, register_graph_builder, require_graph_context
+from graphfl_lab.graph import GraphBuildContext, register_graph_builder, require_graph_context
 
 
 @register_graph_builder("my_relation_graph")

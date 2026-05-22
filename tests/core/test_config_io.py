@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from spectral_fl.config_io import add_config_argument, load_config, parse_args_with_config, resolve_config_path
+from graphfl_lab.config_io import add_config_argument, load_config, parse_args_with_config, resolve_config_path
 
 
 class ConfigIoTest(unittest.TestCase):

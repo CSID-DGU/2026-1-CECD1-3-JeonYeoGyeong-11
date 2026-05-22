@@ -1,8 +1,8 @@
 import json
 import unittest
 
-from spectral_fl.lifecycle.traces import TRACE_SCHEMA_VERSION
-from spectral_fl.strategies.graphfl.tracing import make_round_trace_payload
+from graphfl_lab.lifecycle.traces import TRACE_SCHEMA_VERSION
+from graphfl_lab.strategies.graphfl.tracing import make_round_trace_payload
 
 
 class SpectralTracingTest(unittest.TestCase):

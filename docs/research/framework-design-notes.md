@@ -21,16 +21,16 @@ diagnostics and controls
 
 | Responsibility | Canonical path |
 |---|---|
-| Method metadata | `spectral_fl/designs/` |
-| Graph source/signal extraction | `spectral_fl/graph/sources/`, `spectral_fl/graph/signals/` |
-| Builders and registry | `spectral_fl/graph/builders.py`, `spectral_fl/graph/registry.py` |
-| Controls/clustering | `spectral_fl/graph/controls.py`, `spectral_fl/graph/clustering.py` |
-| Graph-FL runtime | `spectral_fl/strategies/graphfl/` |
-| Baselines | `spectral_fl/strategies/baselines/` |
-| Lifecycle/counterfactuals | `spectral_fl/lifecycle/` |
-| Metrics/writers | `spectral_fl/diagnostics/` |
-| Vision orchestration | `spectral_fl/experiments/vision/` |
-| Vision suite/reporting | `spectral_fl/experiments/suites/vision/` |
+| Method metadata | `graphfl_lab/designs/` |
+| Graph source/signal extraction | `graphfl_lab/graph/sources/`, `graphfl_lab/graph/signals/` |
+| Builders and registry | `graphfl_lab/graph/builders.py`, `graphfl_lab/graph/registry.py` |
+| Controls/clustering | `graphfl_lab/graph/controls.py`, `graphfl_lab/graph/clustering.py` |
+| Graph-FL runtime | `graphfl_lab/strategies/graphfl/` |
+| Baselines | `graphfl_lab/strategies/baselines/` |
+| Lifecycle/counterfactuals | `graphfl_lab/lifecycle/` |
+| Metrics/writers | `graphfl_lab/diagnostics/` |
+| Vision orchestration | `graphfl_lab/experiments/vision/` |
+| Vision suite/reporting | `graphfl_lab/experiments/suites/vision/` |
 | Configs | `configs/vision/` |
 
 Compatibility paths:
@@ -40,7 +40,7 @@ run_general_*.py
 configs/general/...
 result_general_*
 general_suite_summary.*
-spectral_fl/strategies/spectral/
+graphfl_lab/strategies/spectral/
 ```
 
 ## Runtime Flow
@@ -70,7 +70,7 @@ Ownership:
 
 | Use | Name |
 |---|---|
-| strategy package | `spectral_fl.strategies.graphfl` |
+| strategy package | `graphfl_lab.strategies.graphfl` |
 | runtime class | `GraphFLDiagnosticStrategy` |
 | aggregation targets | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
 | filter key | `graph_filter_strength` |
@@ -81,7 +81,7 @@ Compatibility debt:
 
 ```text
 SpectralConflictAwareStrategy
-spectral_fl.strategies.spectral
+graphfl_lab.strategies.spectral
 spectral_filtered_*
 spectral_fl package root
 ```

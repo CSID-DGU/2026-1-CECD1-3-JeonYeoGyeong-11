@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.graph.builders import build_relation_graph
-from spectral_fl.graph.registry import (
+from graphfl_lab.graph.builders import build_relation_graph
+from graphfl_lab.graph.registry import (
     GraphBuildContext,
     register_graph_builder,
     require_graph_context,

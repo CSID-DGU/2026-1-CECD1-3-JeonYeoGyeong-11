@@ -1,6 +1,6 @@
-"""Compatibility wrapper for the Cora experiment CLI."""
+"""Compatibility wrapper for the unified experiment dispatcher."""
 
-from spectral_fl.cli import cora_experiment as _impl
+from graphfl_lab.cli import experiment_dispatcher as _impl
 
 globals().update(
     {

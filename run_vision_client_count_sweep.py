@@ -1,6 +1,6 @@
 """Canonical launcher for vision FL client-count sweeps."""
 
-from spectral_fl.cli import vision_client_count_sweep as _impl
+from graphfl_lab.cli import vision_client_count_sweep as _impl
 
 globals().update(
     {

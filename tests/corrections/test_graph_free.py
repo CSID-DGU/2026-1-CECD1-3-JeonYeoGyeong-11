@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from spectral_fl.corrections.graph_free import (
+from graphfl_lab.corrections.graph_free import (
     compute_contribution_cap_weights,
     resolve_graph_free_correction,
 )
