@@ -14,7 +14,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | close Migration C5 doc sync (`MIGRATION.md`, `docs/structure.md`, inventory tables); keep Gate 4c completion pending one remote nightly green after push approval; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
+| next_step | Migration C5 closed locally; next unblock is Gate 4c (push branch + one remote nightly green). Until then: no Gate 6 removals; optional local-only hardening only |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -250,6 +250,18 @@ result-schema contracts.
 | 2026-05-22 | `run_vision_suite.py` still wrote `general_suite_*` as the primary JSON/CSV paths and duplicated shorter `vision_*` aliases afterward, which keeps new outputs looking legacy-first in directory listings. | Write canonical `vision_suite_*` artifacts first and mirror compatibility `general_suite_*` copies in one reporting helper. |
 | 2026-05-22 | `cleanup-status.md` still claimed no nightly workflow even though `.github/workflows/nightly.yml` is present on the gate branch. | Sync status/plan docs with the local workflow file; keep Gate 4c blocked on remote green evidence, not workflow absence. |
 | 2026-05-22 | `MIGRATION.md` and `docs/structure.md` did not yet document canonical `vision_suite_*` / `result_vision_*` artifact policy or shared discovery helpers added during C5. | Add artifact/reporting guidance to current docs and mark C5 doc sync as the active slice before Gate 4c push. |
+| 2026-05-22 | Migration C5 public-surface alignment (runners, CLI help, suite writes, plot/report readers, docs) is complete on the gate branch; only Gate 4c remote evidence and Gate 6 removal remain for the rename track. | Record C5 as locally closed in `cleanup-plan.md` and `cleanup-status.md`; do not remove compatibility aliases until Gate 4c/6 criteria are met. |
+| 2026-05-22 | CI/nightly compile steps still py_compiled only `run_general_*` entrypoints, not canonical `run_vision_*`, on a branch where vision runners are primary. | Align `.github/workflows/ci.yml` and `nightly.yml` compile lists with canonical runners plus compatibility wrappers. |
+
+## Gate 4c Local Readiness
+
+```text
+present: .github/workflows/nightly.yml (schedule + workflow_dispatch)
+present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.md
+local pass: python scripts/dev/run.py gate-check 5d-prep
+local fail (expected): python scripts/dev/run.py gate-check 4c  # needs remote green
+blocked on: push approval + one GitHub Actions nightly/manual-nightly green run
+```
 
 ## Closure Policy
 

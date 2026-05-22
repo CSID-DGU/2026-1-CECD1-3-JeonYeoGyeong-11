@@ -24,7 +24,8 @@ jobs:
 
       - name: Compile Python files
         run: |
-          python -m py_compile run_experiment.py run_general_experiment.py run_general_suite.py run_graph_ablation.py
+          python -m py_compile run_experiment.py run_vision_experiment.py run_vision_suite.py run_graph_ablation.py
+          python -m py_compile run_general_experiment.py run_general_suite.py
           python -m py_compile graphfl_lab/*.py spectral_fl/*.py scripts/*.py
           python -m compileall graphfl_lab spectral_fl tests scripts
 

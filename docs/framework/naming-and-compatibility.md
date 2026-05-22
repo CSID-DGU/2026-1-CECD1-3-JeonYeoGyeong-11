@@ -39,6 +39,7 @@ Keep compatibility names until their migration gates are satisfied.
 | `deep_dive_general.py`, `merge_general_fedavg_ours.py` | old analysis command | vision-named helpers |
 | `result_general_*.json` | historical outputs | `result_vision_*` |
 | `general_suite_summary.*`, `general_suite_rows.json` | historical outputs | `vision_suite_*` |
+| `graphfl_lab/experiments/suites/vision/artifacts.py` | duplicated reader discovery | canonical-first `resolve_suite_artifact`, `discover_result_json_paths` |
 | `configs/general/...` | old config paths | `configs/vision/...` |
 | `experiments_current/` | local output root | consider `outputs/` later |
 | `graphfl_lab/strategies/spectral/` | old strategy imports | `graphfl_lab/strategies/graphfl/` wrappers |
