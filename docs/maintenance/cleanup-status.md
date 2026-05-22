@@ -10,11 +10,11 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; moving to local smoke/docs readiness |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; optional deeper modularization is deferred |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke checks passed; optional deeper modularization is deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | run representative local smoke checks and tighten current-project docs without claiming Gate 4c/5/6 completion before golden/nightly evidence |
+| next_step | continue current-project docs/readiness work or run a tiny experiment smoke only when result evidence is needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -227,6 +227,7 @@ result-schema contracts.
 | 2026-05-22 | `aggregate_fit` still mixed graph-source vector selection with projection-space construction. | Move projected graph-space preparation to `strategies/graphfl/round_projection.py`; keep projection matrix state on the strategy. |
 | 2026-05-22 | Existing graph-source tests exercise the private `_graph_vectors` wrapper. | Keep `_graph_vectors` as a compatibility wrapper around the extracted graph-source helper during Gate 5d-prep. |
 | 2026-05-22 | Further line shaving would mostly target orchestration readability rather than immediate experiment readiness. | Defer optional deeper splits of `strategy.py`, `vision/reporting.py`, `diagnostics.py`, and `aggregation.py`; move next to local smoke checks and docs tightening. |
+| 2026-05-22 | Representative local smoke checks passed: `gate-check 5d-prep`, focused graph/design/schema/golden/runner tests, and runner help checks for `run_experiment.py`, `run_vision_experiment.py`, and `run_graph_ablation.py`. | Keep Gate 4c remote/nightly completion pending; use these local checks as readiness evidence only, not full Gate completion. |
 
 ## Closure Policy
 
