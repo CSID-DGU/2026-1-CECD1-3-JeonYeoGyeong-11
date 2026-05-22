@@ -90,5 +90,31 @@ def diagnostic_graph_free_args(mode: str) -> List[str]:
     return out
 
 
-def result_path_for_variant(out_dir: Path, method: str, seed: int, run_tag: str) -> Path:
+def compatibility_result_path_for_variant(
+    out_dir: Path, method: str, seed: int, run_tag: str
+) -> Path:
     return out_dir / f"result_general_{method}_seed{seed}_{run_tag}.json"
+
+
+def canonical_result_path_for_variant(
+    out_dir: Path, method: str, seed: int, run_tag: str
+) -> Path:
+    return out_dir / f"result_vision_{method}_seed{seed}_{run_tag}.json"
+
+
+def result_path_for_variant(out_dir: Path, method: str, seed: int, run_tag: str) -> Path:
+    """Canonical per-run JSON path used for new suite orchestration."""
+    return canonical_result_path_for_variant(out_dir, method, seed, run_tag)
+
+
+def resolve_result_path_for_variant(
+    out_dir: Path, method: str, seed: int, run_tag: str
+) -> Path:
+    """Return an existing result path when present, else the canonical target."""
+    canonical = canonical_result_path_for_variant(out_dir, method, seed, run_tag)
+    compatibility = compatibility_result_path_for_variant(out_dir, method, seed, run_tag)
+    if canonical.is_file():
+        return canonical
+    if compatibility.is_file():
+        return compatibility
+    return canonical

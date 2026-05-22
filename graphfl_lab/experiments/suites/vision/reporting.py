@@ -1,4 +1,10 @@
-"""Reporting helpers for vision-FL suite outputs."""
+"""Reporting helpers for vision-FL suite outputs.
+
+Migration B policy: keep historical variant tags intact, but let reporting pair
+canonical ``ours_graph_filtered_*`` families with legacy ``ours_spectral_filtered_*``
+families when comparing kNN vs matched-random summaries. Do not collapse those
+families into one prefix during Gate 5/C5 cleanup.
+"""
 
 from __future__ import annotations
 
@@ -12,17 +18,27 @@ from typing import Any, Dict, List, Tuple
 from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 
 
+BASE_KNN_PAIR_PREFIX = "ours_knn_k"
+GRAPH_FILTERED_KNN_PAIR_PREFIX = "ours_graph_filtered_knn_k"
+LEGACY_SPECTRAL_FILTERED_KNN_PAIR_PREFIX = "ours_spectral_filtered_knn_k"
+LEGACY_RESIDUAL_KNN_PAIR_PREFIX = "ours_legacy_residual_reweight_knn_k"
+
+BASE_RANDOM_PAIR_PREFIX = "ours_random_matched_k"
+GRAPH_FILTERED_RANDOM_PAIR_PREFIX = "ours_graph_filtered_random_matched_k"
+LEGACY_SPECTRAL_FILTERED_RANDOM_PAIR_PREFIX = "ours_spectral_filtered_random_matched_k"
+LEGACY_RESIDUAL_RANDOM_PAIR_PREFIX = "ours_legacy_residual_reweight_random_matched_k"
+
 KNN_PAIR_PREFIXES = (
-    "ours_knn_k",
-    "ours_graph_filtered_knn_k",
-    "ours_spectral_filtered_knn_k",
-    "ours_legacy_residual_reweight_knn_k",
+    BASE_KNN_PAIR_PREFIX,
+    GRAPH_FILTERED_KNN_PAIR_PREFIX,
+    LEGACY_SPECTRAL_FILTERED_KNN_PAIR_PREFIX,
+    LEGACY_RESIDUAL_KNN_PAIR_PREFIX,
 )
 RANDOM_PAIR_PREFIXES = (
-    "ours_random_matched_k",
-    "ours_graph_filtered_random_matched_k",
-    "ours_spectral_filtered_random_matched_k",
-    "ours_legacy_residual_reweight_random_matched_k",
+    BASE_RANDOM_PAIR_PREFIX,
+    GRAPH_FILTERED_RANDOM_PAIR_PREFIX,
+    LEGACY_SPECTRAL_FILTERED_RANDOM_PAIR_PREFIX,
+    LEGACY_RESIDUAL_RANDOM_PAIR_PREFIX,
 )
 
 

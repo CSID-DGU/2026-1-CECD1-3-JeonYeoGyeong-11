@@ -14,7 +14,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
-| next_step | continue Migration C5 in small slices: reporting/historical reader aliases for legacy suite tokens and result filenames; do not claim Gate 4c/5/6 completion or remove compatibility CLI inputs until golden/nightly evidence |
+| next_step | continue Migration C5 with remaining reader/report-script aliases (`result_general_*`, `general_suite_*`, plot/report commands) or pause for Gate 4c nightly evidence; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -244,6 +244,7 @@ result-schema contracts.
 | 2026-05-22 | Low-level aggregation and diagnostic helpers accepted `graph_filtered_*` aliases but still returned `spectral_filtered_*` target labels in new outputs. | Return canonical `graph_filtered_*` labels from strategy, lifecycle, and counterfactual diagnostics while preserving legacy input aliases. |
 | 2026-05-22 | Legacy vision suite tokens such as `ours_spectral_filtered_*` and `ours_*_spectral_weight_agg_*` still emitted `spectral_filtered_*` CLI flags even though canonical aliases are accepted. | Keep legacy token names for historical run tags, but emit `graph_filtered_*` aggregation-target flags from suite parsers. |
 | 2026-05-22 | Experiment CLIs duplicated `--aggregation-target` choices with legacy spellings listed beside canonical ones but without explicit deprecation guidance. | Centralize choices/help in `graphfl_lab/cli/aggregation_targets.py`, list canonical targets first, and keep `spectral_filtered_*` only as documented compatibility aliases per Migration C5 and Gate 6 policy. |
+| 2026-05-22 | Suite orchestration still keyed reuse/load paths on `result_general_*` even though Flower now writes canonical `result_vision_*` aliases too; reporting already pairs canonical and legacy filtered variant families separately. | Prefer `result_vision_*` for new suite paths, resolve existing results from either filename family, and document filtered-family pairing policy in `reporting.py` without collapsing historical variant tags. |
 
 ## Closure Policy
 

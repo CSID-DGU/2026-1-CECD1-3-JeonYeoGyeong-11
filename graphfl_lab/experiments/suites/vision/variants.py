@@ -11,7 +11,7 @@ from graphfl_lab.experiments.suites.vision.variant_core import parse_core_graph_
 from graphfl_lab.experiments.suites.vision.variant_diagnostics import parse_diagnostic_variant
 from graphfl_lab.experiments.suites.vision.variant_families import parse_baseline_variant
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
-    result_path_for_variant,
+    resolve_result_path_for_variant,
 )
 from graphfl_lab.experiments.suites.vision.variant_legacy import (
     parse_legacy_residual_variant,
@@ -74,5 +74,5 @@ def variant_cmd(
         + ["--method", method, "--seed", str(seed), "--run-tag", run_tag]
         + extras
     )
-    path = result_path_for_variant(out_dir, method, seed, run_tag)
+    path = resolve_result_path_for_variant(out_dir, method, seed, run_tag)
     return cmd, method, path
