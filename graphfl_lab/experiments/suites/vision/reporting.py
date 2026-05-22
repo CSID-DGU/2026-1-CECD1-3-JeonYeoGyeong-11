@@ -419,7 +419,7 @@ def write_suite_summary_artifacts(
     summary_rows: List[Dict[str, Any]],
     rows: List[Dict[str, Any]],
 ) -> tuple[Path, Path, Path]:
-    """Write canonical suite artifacts and compatibility mirrors.
+    """Write canonical suite artifacts and short aliases (Gate 6: no general_* mirrors).
 
     Returns ``(summary_json, rows_path, csv_path)`` using canonical filenames.
     """
@@ -431,17 +431,10 @@ def write_suite_summary_artifacts(
     write_json(rows_path, rows)
     write_json(out_dir / "suite_summary.json", suite_summary)
     write_json(out_dir / "suite_rows.json", rows)
-    write_json(out_dir / "general_suite_summary.json", suite_summary)
-    write_json(out_dir / "general_suite_rows.json", rows)
 
     if summary_rows:
         fieldnames = list(summary_rows[0].keys())
         write_csv_rows(csv_path, summary_rows, fieldnames=fieldnames)
-        write_csv_rows(
-            out_dir / "general_suite_summary.csv",
-            summary_rows,
-            fieldnames=fieldnames,
-        )
         write_csv_rows(
             out_dir / "suite_summary.csv",
             summary_rows,
@@ -522,9 +515,7 @@ def write_summary_markdown(
             "- Check `knn_vs_random_matched.csv` before attributing gains to graph similarity.",
         ]
     )
-    content = "\n".join(lines)
-    path.write_text(content, encoding="utf-8")
-    (out_dir / "general_suite_summary.md").write_text(content, encoding="utf-8")
+    path.write_text("\n".join(lines), encoding="utf-8")
     return path
 
 
@@ -599,7 +590,7 @@ def write_dashboard_mockup(
         "## Overview",
         "",
         f"- Variants: {max(len(summary_rows) - 1, 0)} (excluding fedavg)",
-        f"- Generated files: `vision_suite_summary.csv`, `general_suite_summary.csv`, `knn_vs_random_matched.csv`",
+        f"- Generated files: `vision_suite_summary.csv`, `knn_vs_random_matched.csv`",
     ]
     if diagnostic_csv_path is not None:
         lines.append(f"- Diagnostic summary: `{diagnostic_csv_path.name}`")
@@ -633,7 +624,6 @@ def write_dashboard_mockup(
             "## Linked Artifacts",
             "",
             "- `vision_suite_summary.md`",
-            "- `general_suite_summary.md`",
             "- `interpretation.md`",
             "- `knn_vs_random_matched.csv`",
             "- `diagnostic_summary.csv`",

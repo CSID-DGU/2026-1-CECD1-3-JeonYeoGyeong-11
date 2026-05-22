@@ -112,8 +112,7 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     tag = f"_{args.run_tag}" if args.run_tag else ""
-    out_path = out_dir / f"result_general_{args.method}_seed{args.seed}{tag}.json"
-    vision_alias_path = out_dir / f"result_vision_{args.method}_seed{args.seed}{tag}.json"
+    out_path = out_dir / f"result_vision_{args.method}_seed{args.seed}{tag}.json"
     class_dist = [s.label_hist for s in shards]
     all_results: Dict[str, Any] = with_result_schema(
         {
@@ -123,7 +122,7 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
         config_aliases_used=config_aliases_from_args(args),
         unsupported_components=unsupported_components_from_args(args),
     )
-    all_results["meta"]["canonical_output_path"] = str(vision_alias_path)
+    all_results["meta"]["canonical_output_path"] = str(out_path)
     all_results["meta"]["compatibility_output_path"] = str(out_path)
 
     methods = ["fedavg", "ours"] if args.method == "both" else [args.method]
@@ -148,10 +147,7 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
 
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(all_results, f, indent=2)
-    with vision_alias_path.open("w", encoding="utf-8") as f:
-        json.dump(all_results, f, indent=2)
     print(f"\nSaved: {out_path}")
-    print(f"Saved: {vision_alias_path} (canonical alias)")
 
 
 def _run_cora_server(grid: Grid, args: Namespace) -> None:

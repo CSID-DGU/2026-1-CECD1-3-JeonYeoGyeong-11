@@ -31,8 +31,8 @@ replace with the recommended check above unless you explicitly want a week-long 
 
 ## Removal Order (when entry criteria are met)
 
-1. Confirm serialized assets: run or add `scripts/dev/migrate_serialized_objects.py`; document any out-of-scope pickles.
-2. Remove compatibility **writers** of duplicate artifacts (stop emitting `general_*` mirrors) while readers still accept both for one release cycle — optional soft step.
+1. [x] Confirm serialized assets: `python scripts/dev/migrate_serialized_objects.py` (tracked Cora cache `.pt` only; no `spectral_fl` pickle paths).
+2. [x] Remove compatibility **writers** of duplicate artifacts (`general_suite_*`, `result_general_*` mirrors); readers still accept legacy paths.
 3. Remove `run_general_*` root wrappers and `plot_general_*` / `merge_general_*` / `deep_dive_general` script wrappers.
 4. Remove `graphfl_lab/experiments/general/` and `graphfl_lab/experiments/suites/general/` import facades.
 5. Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).

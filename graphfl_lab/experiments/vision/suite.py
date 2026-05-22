@@ -391,7 +391,6 @@ def run(args):
     print(f"Saved: {csv_path}")
     print(f"Saved: {diagnostic_csv}")
     print(f"Saved: {dashboard_md}")
-    print(f"Saved: {out_dir / 'general_suite_summary.json'} (compatibility mirror)")
     print(f"Saved: {out_dir / 'suite_summary.json'} (short alias)")
     if knn_csv:
         print(f"Saved: {knn_csv}")

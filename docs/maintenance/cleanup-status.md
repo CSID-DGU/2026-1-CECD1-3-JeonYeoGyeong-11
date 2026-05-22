@@ -267,6 +267,7 @@ result-schema contracts.
 | 2026-05-22 | After CI workflow fixes and `pre-graphfl-rename` tag push, branch `ci` run 26288418334 succeeded on `codex-graphfl-cleanup-gate-0`. | Treat as interim remote smoke evidence; formal Gate 4c still needs `nightly` on `main` + one green dispatch. |
 | 2026-05-22 | PR #2 merged; `gh workflow run nightly.yml --ref main` produced green run 26288800411. | Record in `docs/maintenance/last_nightly_run.json` and teach `gate-check 4c` to accept that artifact for Gate 4c entry (Gate 6 still needs 7 consecutive greens). |
 | 2026-05-22 | Seven consecutive nightly greens assume a maintainer watching CI daily for a week; this repo finished Gate 4c in a focused session instead. | Relax Gate 6 entry to 4c + post-merge CI/nightly evidence; require only one fresh green before the first shim deletion batch; document removal order in `gate-6-prep.md`. |
+| 2026-05-22 | Gate 6 batch 2: new suite/vision runs should stop duplicating `general_*` artifact files while readers still resolve legacy paths. | Drop `general_suite_*` and `result_general_*` writers; add `scripts/dev/migrate_serialized_objects.py` for serialized inventory. |
 
 ## Gate 4c Local Readiness
 
