@@ -9,7 +9,7 @@ configs/vision/
 Compatibility path:
 
 ```text
-configs/general/... -> configs/vision/... via spectral_fl.config_io.resolve_config_path
+configs/general/... -> configs/vision/... via graphfl_lab.config_io.resolve_config_path
 ```
 
 Use the narrowest current track/question folder:

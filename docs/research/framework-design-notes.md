@@ -70,7 +70,7 @@ Ownership:
 
 | Use | Name |
 |---|---|
-| strategy package | `spectral_fl.strategies.graphfl` |
+| strategy package | `graphfl_lab.strategies.graphfl` |
 | runtime class | `GraphFLDiagnosticStrategy` |
 | aggregation targets | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
 | filter key | `graph_filter_strength` |
@@ -81,7 +81,7 @@ Compatibility debt:
 
 ```text
 SpectralConflictAwareStrategy
-spectral_fl.strategies.spectral
+graphfl_lab.strategies.spectral
 spectral_filtered_*
 spectral_fl package root
 ```
