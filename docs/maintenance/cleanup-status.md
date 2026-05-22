@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5d-prep stabilized; moving to local smoke/docs readiness |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke plus tiny vision and Cora experiment paths passed; optional deeper modularization is deferred |
+| current_gate | Gate 5d-prep stabilized; local Migration C5 public-surface alignment in progress |
+| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass at `2ac0aa9`; recent slices canonicalized docs, graphfl source helper, preset/method targets, internal output labels, and legacy suite token CLI flags while keeping legacy token names; optional deeper modularization remains deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
-| last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | continue current-project docs/readiness work or broader suite preparation only when needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
+| last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
+| next_step | continue Migration C5 in small slices: CLI `--aggregation-target` help/choices, then reporting/historical reader aliases; do not claim Gate 4c/5/6 completion or remove compatibility inputs until golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
