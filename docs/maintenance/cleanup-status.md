@@ -242,6 +242,7 @@ result-schema contracts.
 | 2026-05-22 | The graph-source vector helper still exposed the old `graph_vectors_for_spectral` name as the active helper in strategy and baseline code. | Add canonical `graph_vectors_for_graphfl`, migrate active imports, and retain `graph_vectors_for_spectral` as a Gate 6 compatibility alias. |
 | 2026-05-22 | Runnable GraphFLDesign presets and graph method specs still emitted `spectral_filtered_*` aggregation targets even though the strategy accepts canonical `graph_filtered_*` aliases. | Switch preset/method defaults and prior-work parity expectations to `graph_filtered_*`; leave CLI choices, legacy suite tokens, readers, and low-level alias handling until Gate 6 cleanup. |
 | 2026-05-22 | Low-level aggregation and diagnostic helpers accepted `graph_filtered_*` aliases but still returned `spectral_filtered_*` target labels in new outputs. | Return canonical `graph_filtered_*` labels from strategy, lifecycle, and counterfactual diagnostics while preserving legacy input aliases. |
+| 2026-05-22 | Legacy vision suite tokens such as `ours_spectral_filtered_*` and `ours_*_spectral_weight_agg_*` still emitted `spectral_filtered_*` CLI flags even though canonical aliases are accepted. | Keep legacy token names for historical run tags, but emit `graph_filtered_*` aggregation-target flags from suite parsers. |
 
 ## Closure Policy
 

@@ -64,7 +64,7 @@ def parse_source_variant(v: str) -> ParsedVariant | None:
         return (
             "ours",
             "ours_weight_graph_spectral_weight_agg",
-            _source_target_mode("weight", "spectral_filtered_weight"),
+            _source_target_mode("weight", "graph_filtered_weight"),
         )
 
     m = re.match(r"^ours_weight_graph_knn_k(\d+)$", v)
@@ -81,7 +81,7 @@ def parse_source_variant(v: str) -> ParsedVariant | None:
 
     m = re.match(r"^ours_weight_graph_spectral_weight_agg_knn_k(\d+)$", v)
     if m:
-        return "ours", v, _source_target_knn("weight", "spectral_filtered_weight", m.group(1))
+        return "ours", v, _source_target_knn("weight", "graph_filtered_weight", m.group(1))
 
     if v == "ours_layerwise_graph":
         return "ours", "ours_layerwise_graph", _source_mode("layerwise_update")
@@ -119,7 +119,7 @@ def parse_source_variant(v: str) -> ParsedVariant | None:
         return (
             "ours",
             v,
-            _source_target_knn("classifier_head_weight", "spectral_filtered_weight", m.group(1)),
+            _source_target_knn("classifier_head_weight", "graph_filtered_weight", m.group(1)),
         )
 
     m = re.match(r"^ours_layerwise_head_graph_knn_k(\d+)$", v)

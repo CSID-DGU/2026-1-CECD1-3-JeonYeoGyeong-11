@@ -20,7 +20,7 @@ class VisionVariantSourceTest(unittest.TestCase):
 
         _, _, args = parse_source_variant("ours_head_weight_graph_spectral_weight_agg_knn_k3")
         self.assertEqual(_last_flag_value(args, "--graph-source"), "classifier_head_weight")
-        self.assertEqual(_last_flag_value(args, "--aggregation-target"), "spectral_filtered_weight")
+        self.assertEqual(_last_flag_value(args, "--aggregation-target"), "graph_filtered_weight")
         self.assertEqual(_last_flag_value(args, "--knn-k"), "3")
 
     def test_parse_source_variant_handles_layerwise_ema_and_tail_sources(self):

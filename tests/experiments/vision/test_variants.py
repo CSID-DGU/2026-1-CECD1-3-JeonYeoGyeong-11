@@ -104,7 +104,7 @@ class GeneralSuiteVariantTest(unittest.TestCase):
             ),
             "ours_weight_graph_spectral_weight_agg_knn_k2": (
                 "--aggregation-target",
-                "spectral_filtered_weight",
+                "graph_filtered_weight",
             ),
             "ours_head_graph_knn_k2": (
                 "--graph-source",
@@ -124,7 +124,7 @@ class GeneralSuiteVariantTest(unittest.TestCase):
             ),
             "ours_head_weight_graph_spectral_weight_agg_knn_k2": (
                 "--aggregation-target",
-                "spectral_filtered_weight",
+                "graph_filtered_weight",
             ),
             "ours_layerwise_head_graph_knn_k2": (
                 "--graph-source",
@@ -169,7 +169,7 @@ class GeneralSuiteVariantTest(unittest.TestCase):
             ),
             "ours_spectral_filtered_knn_k2": (
                 "--aggregation-target",
-                "spectral_filtered_update",
+                "graph_filtered_update",
             ),
             "ours_spectral_filtered_random_matched_k2": (
                 "--graph-mode",
