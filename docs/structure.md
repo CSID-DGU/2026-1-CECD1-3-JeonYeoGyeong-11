@@ -32,60 +32,57 @@ Source code is organized by responsibility, not experiment name. Use the narrowe
 
 ```text
 graphfl_lab/
-  app/                       Flower app config/runtime glue
-  cli/                       argparse only
-  clients/                   Flower client implementations
-  data/                      dataset loading and partitioning
-  designs/                   GraphFLDesign composer/registry/presets
-  diagnostics/               schemas, metrics, CSV/JSONL writers
-  graph/                     client relation graph construction
-    builders.py
-    diagnostics.py
-    method_specs.py
-    registry.py
-    signals/
-    similarity/
-    sources/
-    sparsification.py
-  lifecycle/                 contracts, traces, counterfactual runner
-  strategies/
-    baselines/
-    graphfl/
-      aggregation.py
-      config.py
-      diagnostics.py
-      filtering.py
-      momentum.py
-      strategy.py
-      targets.py
-      tracing.py
-  experiments/
-    vision/
-    cora/
-    suites/
-      vision/
-        artifacts.py         result/suite artifact discovery
-        reporting.py         suite summaries, dashboard, interpretation
-        variant_helpers.py   per-run result path resolution
+├── app/                              Flower App config and runtime glue
+├── cli/                              argparse only (vision, cora, suite, sweep)
+├── clients/                          Flower client train/eval implementations
+├── data/                             dataset loading and Dirichlet partition
+├── designs/                          GraphFLDesign composer, registry, presets
+├── diagnostics/                      result schemas, metrics, evidence bundle
+├── graph/                            client relation graph construction
+│   ├── builders.py                   register builders; compose relation + topology
+│   ├── registry.py                   graph_mode lookup and plugin dispatch
+│   ├── method_specs.py               runnable graph_method profiles
+│   ├── presets.py                    named graph presets
+│   ├── signals/                      raw client signals (update, head, …)
+│   ├── similarity/                   cosine, magnitude, RBF helpers
+│   ├── sources/                      graph_source adapters (graphfl, fedsim, …)
+│   └── sparsification.py             kNN and sparsification utilities
+├── lifecycle/                        contracts, traces, counterfactual runner
+├── models/                           CNN/MLP and Cora model wrappers
+├── strategies/
+│   ├── graphfl/                      Graph-FL server strategy
+│   │   ├── strategy.py               round loop and orchestration
+│   │   ├── filtering.py              Laplacian / graph filter on client matrices
+│   │   ├── aggregation.py            weighted combine and dominance hooks
+│   │   ├── targets.py                aggregation_target dispatch
+│   │   └── diagnostics.py            per-round graph/control metrics
+│   └── baselines/                    non-graph and proxy baselines
+└── experiments/
+    ├── vision/                       single_run, suite, stress_grid, sweeps
+    ├── cora/                         single_run, graph_ablation helpers
+    └── suites/vision/
+        ├── variants.py               suite token grammar
+        ├── artifacts.py              result/suite path discovery
+        ├── reporting.py              summaries, dashboard, interpretation
+        └── variant_helpers.py        per-variant result path resolution
 ```
 
 ## Compatibility Facades
 
-Keep these thin. Add new logic in scoped modules, then re-export only if compatibility requires it.
+Keep these thin. Add new logic in scoped modules, then re-export only if a stable import path requires it.
 
 ```text
-graphfl_lab/aggregation.py
-graphfl_lab/client.py
-graphfl_lab/model.py
-graphfl_lab/spectral_diagnostics.py
-graphfl_lab/strategy.py
-graphfl_lab/suite_stats.py
-graphfl_lab/update_graph.py
-graphfl_lab/experiments/suite.py
-graphfl_lab/experiments/stress_grid.py
-graphfl_lab/experiments/client_count_sweep.py
-graphfl_lab/experiments/graph_ablation.py
-run_vision_*.py (canonical entrypoints; `run_general_*` removed Gate 6 batch 3)
+graphfl_lab/aggregation.py            re-export lifecycle aggregation helpers
+graphfl_lab/client.py                 re-export Flower client entry
+graphfl_lab/model.py                  re-export model factory
+graphfl_lab/strategy.py               re-export strategy factory
+graphfl_lab/suite_stats.py            re-export suite statistics helpers
+graphfl_lab/update_graph.py           re-export graph update utilities
+graphfl_lab/experiments/suite.py      re-export vision suite runner
+graphfl_lab/experiments/stress_grid.py re-export stress grid runner
+graphfl_lab/experiments/client_count_sweep.py re-export client-count sweep
+graphfl_lab/experiments/graph_ablation.py re-export Cora ablation runner
+run_vision_*.py                       root thin launchers (canonical public CLI)
 ```
 
 ## Boundary Rules
@@ -106,29 +103,29 @@ run_vision_*.py (canonical entrypoints; `run_general_*` removed Gate 6 batch 3)
 
 ```text
 configs/
-  cora/
-    ablations/
-      graph/
-  vision/
-    baselines/
-    diagnostic/
-    smoke/
-    probes/
-      frequency/
-      graph_source/
-      structure/
-      tau/
-    stress/
-      client_count/
-      fedavg_collapse/
-    sweeps/
-      client_count/
+├── vision/                           Fashion-MNIST / vision track
+│   ├── baselines/                    FedAvg, FedOpt, dominance baselines
+│   ├── diagnostic/                   mechanism and diagnostic suites
+│   ├── smoke/                        shortest runnable configs
+│   ├── probes/                       single-knob attribution probes
+│   │   ├── frequency/                warmup / frequency ablations
+│   │   ├── graph_source/             client-state source comparisons
+│   │   ├── structure/                topology / relation structure
+│   │   └── tau/                      tau and filter-strength sweeps
+│   ├── stress/                       Non-IID stress and collapse checks
+│   │   ├── client_count/             scaling num_clients
+│   │   └── fedavg_collapse/          FedAvg failure modes
+│   └── sweeps/                       multi-config sweep grids
+│       └── client_count/
+└── cora/                             Cora / FGL track
+    └── ablations/
+        └── graph/                    graph construction ablation smoke/full
 ```
 
-Generated results:
+Generated results (gitignored output root, name from `--out-dir` / config):
 
 ```text
-experiments_current/
+<output-dir>/                         per-run JSON, suite summaries, plots
 ```
 
 ## Suite Output Artifacts

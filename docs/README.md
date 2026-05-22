@@ -6,23 +6,29 @@ Use `framework/` for current work. Use `research/` for background notes. Use `ar
 
 ```text
 docs/
-├── README.md
-├── structure.md
-├── framework/
-│   ├── claim.md
-│   ├── graph_fl_experimental_design.md
-│   ├── graph_fl_experimental_design_appendix.md
-│   ├── diagnostics.md
-│   ├── interfaces.md
-│   ├── lifecycle.md
-│   ├── prior-work-mapping.md
-│   ├── extension-guide.md
-│   ├── cleanup-plan.md
-│   ├── naming-and-compatibility.md
-│   ├── project-prompt.md
-│   └── experiment-results.md
-├── research/
-└── archive/
+├── README.md                         this index
+├── structure.md                      where to edit code; source and config maps
+├── removed-materials.md              Gate 6 removals and remaining read-only aliases
+├── framework/                        active framework documentation
+│   ├── claim.md                      project claim and non-goals
+│   ├── graph_fl_experimental_design.md   main experiment design
+│   ├── graph_fl_experimental_design_appendix.md   metric definitions
+│   ├── diagnostics.md                how to read diagnostic traces
+│   ├── interfaces.md                 GraphFLDesign, graph_source, aggregation_target
+│   ├── lifecycle.md                  lifecycle modules and contracts
+│   ├── prior-work-mapping.md         exact vs proxy vs out-of-scope prior work
+│   ├── extension-guide.md            add graph_source / builder workflow
+│   ├── cleanup-plan.md               rename execution summary (closed)
+│   ├── naming-and-compatibility.md   canonical names vs read-only aliases
+│   ├── project-prompt.md             handoff prompt for agents/maintainers
+│   └── experiment-results.md         how to store and cite experiment outputs
+├── maintenance/                      gate checks and rename inventory (cleanup closed)
+│   ├── cleanup-status.md             Gate 6 execution log (closed)
+│   ├── gate-6-prep.md                Gate 6 checklist
+│   ├── rename-inventory.md           legacy name inventory
+│   └── last_gate_check.json          latest gate-check record
+├── research/                         literature and design notes (non-normative)
+└── archive/                          superseded direction and migration phases
 ```
 
 ## First Read

@@ -140,35 +140,40 @@ Guide: [docs/framework/extension-guide.md](docs/framework/extension-guide.md)
 
 ```text
 .
-├── configs/
-│   ├── vision/
-│   └── cora/
-├── graphfl_lab/
-│   ├── cli/
-│   ├── data/
-│   ├── designs/
-│   ├── diagnostics/
-│   ├── graph/
-│   ├── lifecycle/
+├── configs/                          JSON configs (track, smoke, suite, stress)
+│   ├── vision/                       Fashion-MNIST vision track
+│   └── cora/                         Cora / FGL graph-ablation track
+├── graphfl_lab/                      installable package (Graph-FL runtime)
+│   ├── app/                          Flower App config and server glue
+│   ├── cli/                          argparse-only CLI modules
+│   ├── clients/                      Flower client implementations
+│   ├── data/                         dataset load and partition helpers
+│   ├── designs/                      GraphFLDesign registry and presets
+│   ├── diagnostics/                  result schemas, metrics, evidence writers
+│   ├── graph/                        client relation graph (source, builder, registry)
+│   ├── lifecycle/                    contracts, traces, counterfactual runner
+│   ├── models/                       vision / Cora model definitions
 │   ├── strategies/
-│   │   ├── graphfl/
-│   │   └── baselines/
+│   │   ├── graphfl/                  graph-FL server strategy (filter, aggregate, trace)
+│   │   └── baselines/                FedAvgM, FedSim, dominance-aware, graph_smooth, …
 │   └── experiments/
-│       ├── vision/
-│       └── suites/vision/
+│       ├── vision/                   single-run and suite orchestration
+│       ├── cora/                       Cora single-run and ablation helpers
+│       └── suites/vision/            variant grammar, artifacts, reporting
 ├── scripts/
-│   ├── checks/
-│   ├── smoke/
-│   ├── reports/
-│   └── analysis/
-├── docs/
-│   ├── framework/
-│   ├── research/
-│   └── archive/
-├── tests/
-├── run_vision_experiment.py
-├── run_vision_suite.py
-└── run_graph_ablation.py
+│   ├── checks/                       validation without full training
+│   ├── smoke/                        short executable smoke workflows
+│   ├── reports/                      convergence plots and dashboard helpers
+│   ├── analysis/                     suite deep-dive and merge helpers
+│   └── dev/                          gate-check, migration utilities
+├── docs/                             active and archived documentation
+├── tests/                            unit, graph, strategy, suite, structure tests
+├── data/                             dataset cache (gitignored)
+├── run_vision_experiment.py          thin launcher → vision single run
+├── run_vision_suite.py               thin launcher → vision suite
+├── run_vision_client_count_sweep.py  thin launcher → client-count sweep
+├── run_vision_stress_grid.py         thin launcher → stress grid
+└── run_graph_ablation.py             thin launcher → Cora graph ablation
 ```
 
 Edit routing: [docs/structure.md](docs/structure.md)
