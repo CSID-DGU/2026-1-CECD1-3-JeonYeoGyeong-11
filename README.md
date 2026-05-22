@@ -1,6 +1,6 @@
 # Graph-FL Design Lab
 
-Graph-FL gain이 실제 graph structure 때문인지, 아니면 dominance, norm, smoothing, optimizer 같은 단순 요인 때문인지 분해하는 실험 프레임워크.
+Client update를 이용해 프레임워크 내부에서 다양한 client graph를 구성·교체하고, control graph ablation을 통해 Graph-FL gain이 실제 client relation structure 때문인지 아니면 dominance, norm, smoothing, optimizer 효과 때문인지 분해하는 실험 프레임워크.
 
 Current names:
 
@@ -63,11 +63,6 @@ python3.11 -m venv .venv
 ./.venv/bin/python -m pip install -e .
 ```
 
-Existing local environment:
-
-```powershell
-D:\jongseol\.venv311\Scripts\python.exe --version
-```
 
 ### Verify
 
