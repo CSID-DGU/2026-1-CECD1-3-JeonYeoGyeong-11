@@ -70,7 +70,7 @@ def main() -> int:
         "gate6_action": (
             "no migration required"
             if not legacy
-            else "migrate or declare out-of-scope before removing spectral_fl shim"
+            else "no action (spectral_fl shim removed; scan for external pickle assets)"
         ),
     }
     print(json.dumps(report, indent=2))

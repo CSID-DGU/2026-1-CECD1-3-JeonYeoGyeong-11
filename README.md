@@ -231,14 +231,9 @@ graphfl_lab/
   strategies/
     graphfl/                      graph-FL runtime
     baselines/                    baseline strategies
-    spectral/                     old import compatibility
   experiments/
     vision/                       current run orchestration
     suites/vision/                suite grammar and reporting
-    general/                      old module compatibility
-
-spectral_fl/
-  __init__.py                     old package import shim
 
 scripts/
   checks/                         non-training validation
@@ -331,7 +326,6 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 
 | Old name | Role |
 |---|---|
-| `spectral_fl` | old package import shim |
 | `spectral_filtered_*`, `spectral_filter_strength` | config/result compatibility alias |
 | `general_suite_*`, `result_general_*` | historical output filenames (readers only; new runs use vision names) |
 

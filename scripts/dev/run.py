@@ -127,27 +127,19 @@ GATE3_REQUIRED_TEXT = {
     "graphfl_lab/__init__.py": (
         "Canonical package root",
     ),
-    "spectral_fl/__init__.py": (
-        "Deprecated compatibility shim",
-        "DeprecationWarning",
-        "GRAPHFL_LAB_SILENCE_DEPRECATION",
-        "graphfl_lab",
-        "__path__",
-        "__getattr__",
-    ),
     "pyproject.toml": (
         "graphfl_lab*",
         "graphfl_lab.flower_app:server_app",
         "graphfl_lab.flower_app:client_app",
     ),
+    "docs/removed-materials.md": (
+        "spectral_fl/__init__.py",
+        "Gate 6 batch 6",
+    ),
     "tests/core/test_package_alias.py": (
         "test_graphfl_lab_imports_flower_app",
-        "test_spectral_fl_warns_by_default",
-        "test_spectral_fl_warning_can_be_silenced",
-        "test_sys_modules_alias_roots_exist",
+        "test_spectral_fl_shim_removed",
         "test_pickle_round_trip_for_canonical_import",
-        "test_legacy_submodule_import_still_resolves",
-        "test_pickle_round_trip_for_legacy_import",
     ),
 }
 
@@ -155,8 +147,6 @@ GATE3B_FORBIDDEN_IMPORT_ALLOWLIST = {
     "graphfl_lab/__init__.py",
     "scripts/dev/migrate_serialized_objects.py",
     "scripts/dev/run.py",
-    "spectral_fl/__init__.py",
-    "tests/core/test_package_alias.py",
     "tests/dev/test_run_gate_check.py",
 }
 
@@ -203,7 +193,6 @@ GATE4B_REQUIRED_TEXT = {
 GATE4C_REQUIRED_TEXT = {
     ".github/workflows/ci.yml": (
         "graphfl_lab",
-        "spectral_fl",
         "python -m unittest discover -s tests",
     ),
     ".github/workflows/nightly.yml": (
@@ -779,11 +768,10 @@ def _forbidden_identity_imports(root: Path) -> list[str]:
 
 
 def _unexpected_legacy_package_files(root: Path) -> list[str]:
-    allowed = {"spectral_fl/__init__.py"}
     failures: list[str] = []
     for rel in _tracked_files(root):
-        if rel.startswith("spectral_fl/") and rel not in allowed:
-            failures.append(f"{rel}: legacy package should only contain the shim")
+        if rel.startswith("spectral_fl/"):
+            failures.append(f"{rel}: spectral_fl package removed in Gate 6 batch 6")
     return failures
 
 

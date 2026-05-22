@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["spectral_fl*", "graphfl_lab*"]
+include = ["graphfl_lab*"]
 
 [tool.flwr.app]
 publisher = "local"

@@ -17,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from spectral_fl.graph.presets import resolve_graph_preset_spec
+from graphfl_lab.graph.presets import resolve_graph_preset_spec
 
 
 def _result_path(out_dir: Path, seed: int, run_tag: str) -> Path:

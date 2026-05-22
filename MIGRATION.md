@@ -25,7 +25,6 @@ python run_experiment.py --track cora ...
 During deprecation, old names remain available where documented:
 
 ```text
-spectral_fl (shim; `strategies.spectral` import path removed in Gate 6 batch 5)
 configs/general/...
 result_general_*   (readers only; new runs no longer write mirrors)
 general_suite_*    (readers only; new runs no longer write mirrors)
@@ -100,25 +99,15 @@ Gate sequence:
 Gate 0  workspace/status/check contract
 Gate 1  inventory
 Gate 2  schema/config contract
-Gate 3  graphfl_lab package migration with spectral_fl shim
+Gate 3  graphfl_lab package migration (`spectral_fl` shim removed in Gate 6 batch 6)
 Gate 4  unified runner and nightly
 Gate 5  behavior-preserving modularization
 Gate 6  hard cleanup and 1.0.0
 ```
 
-Gate 3 keeps a `spectral_fl` shim until Gate 6. The shim must cover:
-
-```text
-DeprecationWarning
-GRAPHFL_LAB_SILENCE_DEPRECATION=1
-sys.modules alias behavior
-pickle round-trip compatibility
-```
-
-Gate 6 must provide `scripts/dev/migrate_serialized_objects.py` before removing
-old import aliases. Any preserved pickle/checkpoint asset with `spectral_fl.*`
-module paths must be migrated before hard cleanup or explicitly declared outside
-post-Gate-6 compatibility guarantees.
+Gate 6 batch 6 removed the `spectral_fl` import shim. Use `graphfl_lab` for all
+new imports. Run `scripts/dev/migrate_serialized_objects.py` before loading
+external pickle assets; tracked repo assets had no legacy module-path markers.
 
 Migration C5 (public docs/commands) status: complete on `main`. Gate 4c nightly
 evidence is recorded in `docs/maintenance/last_nightly_run.json`. Gate 6

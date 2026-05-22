@@ -29,8 +29,8 @@ jobs:
       - name: Compile Python files
         run: |
           python -m py_compile run_experiment.py run_vision_experiment.py run_vision_suite.py run_vision_stress_grid.py run_vision_client_count_sweep.py run_graph_ablation.py
-          python -m py_compile graphfl_lab/*.py spectral_fl/*.py
-          python -m compileall -q graphfl_lab spectral_fl tests scripts
+          python -m py_compile graphfl_lab/*.py
+          python -m compileall -q graphfl_lab tests scripts
 
       - name: Unit smoke tests
         run: python -m unittest discover -s tests

@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 4c complete on `main`; Gate 6 batches 1–3 in progress on `main` |
-| status | PR #2 merged; nightly 26288800411 green; Gate 6 batches 2–5 landed; `spectral_fl` shim and root `general_*` CLI facades remain per `gate-6-prep.md` |
+| current_gate | Gate 4c complete on `main`; Gate 6 batch 6 in progress on `main` |
+| status | PR #2 merged; nightly 26288800411 green; Gate 6 batches 2–6 landed (`spectral_fl` shim removed); root `general_*` CLI facades and batch 7–8 remain |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | Confirm CI green on batch 5 commit; then batch 6 (`spectral_fl` shim) only after grep shows no remaining imports; batch 7 legacy CLI tokens last |
+| next_step | Push batch 6 and confirm CI green; then batch 7 (legacy CLI choices / suite tokens); batch 8 close status + `removed-materials.md` |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -271,6 +271,8 @@ result-schema contracts.
 | 2026-05-22 | Gate 6 batch 3: root `run_general_*` and `plot_general_*` / `merge_general_*` / `deep_dive_general` wrappers only re-exported vision CLIs after C5. | Delete wrappers; compile canonical `run_vision_*` in CI/nightly; drop `run_general_experiment` from `gate-check 4b` contract. |
 | 2026-05-22 | Gate 6 batch 4: `graphfl_lab/experiments/general/` and `suites/general/` were star-import facades with no remaining in-repo consumers after batch 3. | Delete import-path wrappers; keep root `general_*` CLI shims and `strategies/spectral/` for batch 5+. |
 | 2026-05-22 | Gate 6 batch 5: `graphfl_lab/strategies/spectral/` mirrored `strategies/graphfl` with no in-repo Python imports; spectral math stays under `graph/operators` and `graphfl` modules. | Delete strategy import facades; use `graphfl_lab.strategies.graphfl` (or `spectral_fl.strategies.graphfl` via shim until batch 6). |
+| 2026-05-22 | Gate 6 batch 6 pre-check: active `spectral_fl` imports only in `tests/core/test_package_alias.py`, gate-check fixtures, `scripts/dev/*`, and `scripts/archive/` (archive skipped by gate 3b). `migrate_serialized_objects.py` reports 0 legacy byte markers. | Remove shim; tombstone in `docs/removed-materials.md`; update gate-check 3/4c and package tests; do not remove `general_*` CLI facades in same batch. |
+| 2026-05-22 | Deleting only `spectral_fl/__init__.py` left an on-disk `spectral_fl/__pycache__` tree; Python 3 still exposed a namespace package and gate-check 3 flagged the tracked path until the directory was removed. | Delete the full `spectral_fl/` directory (not only `__init__.py`); assert `ModuleNotFoundError` after clearing `sys.modules`. |
 
 ## Gate 4c Local Readiness
 
@@ -281,7 +283,7 @@ present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.
 local pass: python scripts/dev/run.py gate-check 4c
 local pass: python scripts/dev/run.py gate-check 5d-prep
 Gate 6 entry: pragmatic policy (4c + merge CI green; optional 1 more green before first deletion)
-Gate 6 hard removal: batches 2–5 done; batches 6–8 remain — see docs/maintenance/gate-6-prep.md
+Gate 6 hard removal: batches 2–6 done; batches 7–8 remain — see docs/maintenance/gate-6-prep.md
 ```
 
 ## Closure Policy

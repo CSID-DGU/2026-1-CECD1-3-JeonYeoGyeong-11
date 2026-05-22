@@ -77,7 +77,6 @@ graphfl_lab/
 Keep these thin. Add new logic in scoped modules, then re-export only if compatibility requires it.
 
 ```text
-spectral_fl/__init__.py
 graphfl_lab/aggregation.py
 graphfl_lab/client.py
 graphfl_lab/general_client.py
