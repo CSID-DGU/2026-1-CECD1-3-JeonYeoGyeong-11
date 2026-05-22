@@ -258,7 +258,11 @@ New code and new runs use `graphfl_lab`, `vision`, `graph_filtered_*`, and `grap
 | Path | Git |
 |---|---|
 | source code, runners, scripts | include |
+| `scripts/reports/` | include (report **code**) |
 | docs, configs, tests, CI | include |
 | `requirements.txt`, `pyproject.toml` | include |
-| `data/`, experiment output roots, `reports/`, `outputs/`, `runs/` | ignore |
+| `data/`, `experiments_current/`, `outputs/`, `runs/` | ignore (local only) |
+| `reports/` (repo root) | ignore (generated plots/tables; local only) |
 | `.venv/`, editor cache | ignore |
+
+Root `reports/` stays on disk but is not tracked; use `git rm -r --cached reports/` once if an old case study was committed before the ignore rule.

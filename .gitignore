@@ -26,6 +26,8 @@ htmlcov/
 # Experiment outputs and generated analysis artifacts
 /experiments_current/
 /experiments/
+# Generated report outputs (plot CSV/MD); keep scripts/reports/ in git
+/reports/
 # Pre-rename artifact filenames (local trees only; current code uses vision_* names)
 **/result_general_*.json
 **/general_suite_summary.*
