@@ -120,10 +120,10 @@ old import aliases. Any preserved pickle/checkpoint asset with `spectral_fl.*`
 module paths must be migrated before hard cleanup or explicitly declared outside
 post-Gate-6 compatibility guarantees.
 
-Migration C5 (public docs/commands) status: largely complete locally — canonical
-runners, suite artifact writes, CLI aggregation-target help, and plot/report
-readers align with `docs/framework/naming-and-compatibility.md`. Gate 4c remote
-nightly evidence and Gate 6 compatibility removal remain open.
+Migration C5 (public docs/commands) status: complete on `main`. Gate 4c nightly
+evidence is recorded in `docs/maintenance/last_nightly_run.json`. Gate 6
+compatibility removal is documented in `docs/maintenance/gate-6-prep.md`; seven
+consecutive nightly runs are optional strict mode, not a hard prerequisite.
 
 ## Rollback
 

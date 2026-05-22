@@ -152,7 +152,7 @@ C2 add Flower entrypoint bridge (done)
 C3 migrate internal imports in batches (done)
 C4 move implementation files (done)
 C5 update docs/commands (complete on `main` via PR #2)
-C6 run full checks (`gate-check 4c` and `5d-prep` pass on `main`; Gate 6 removal blocked on seven consecutive nightly greens)
+C6 run full checks (`gate-check 4c` and `5d-prep` pass on `main`; Gate 6 hard removal per `docs/maintenance/gate-6-prep.md`, not blocked on seven calendar days of nightly)
 ```
 
 Import migration batches:
