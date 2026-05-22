@@ -15,6 +15,7 @@ documents after Gate 6.
 | Path or material | Status | Replacement |
 |---|---|---|
 | `docs/maintenance/cleanup-status.md` | active until Gate 6 | After Gate 6, mark closed and link from this table. |
+| `docs/framework/experimental-design.md` | removed duplicate bridge | `docs/framework/graph_fl_experimental_design.md`, `docs/framework/graph_fl_experimental_design_appendix.md` |
 
 ## Archive Policy
 

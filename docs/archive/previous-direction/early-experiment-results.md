@@ -1,6 +1,6 @@
 ﻿# Experiment Results
 
-이 문서는 초기 low-pass/spectral 중심 실험 결과와 해석 상태를 기록합니다. 현재 프로젝트 claim은 `docs/framework/claim.md`와 `docs/framework/experimental-design.md`를 따르며, 아래 내용은 과거 판단과 실험 맥락을 확인할 때만 참고합니다.
+이 문서는 초기 low-pass/spectral 중심 실험 결과와 해석 상태를 기록합니다. 현재 프로젝트 claim은 `docs/framework/claim.md`와 `docs/framework/graph_fl_experimental_design.md`를 따르며, 아래 내용은 과거 판단과 실험 맥락을 확인할 때만 참고합니다.
 
 ## Current Status
 

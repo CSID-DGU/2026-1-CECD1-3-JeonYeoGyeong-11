@@ -237,6 +237,7 @@ result-schema contracts.
 | 2026-05-22 | Current docs such as `docs/structure.md` still presented `spectral_fl/...` as the active edit path after the package move. | Update current routing docs to `graphfl_lab/...`; keep `spectral_fl` references only where they describe deprecation compatibility or cleanup inventory. |
 | 2026-05-22 | Gate-check self-test found `line-budget-allowlist.txt` still referenced non-existent `graphfl_lab/experiments/suites/vision/suite.py` instead of the actual orchestration file. | Align the protected path with `scripts/dev/run.py`: `graphfl_lab/experiments/vision/suite.py`. |
 | 2026-05-22 | Result schema checks guarantee top-level contract fields, but they do not independently verify that performance, mechanism, and secondary diagnostic metrics are present together. | Add an evidence-bundle validator for single-run results and suite summaries, so missing DI/N_eff/alignment/LOO/spectral fields fail as a checkable contract. |
+| 2026-05-22 | `docs/framework/experimental-design.md` is now only a bridge to the canonical `graph_fl_experimental_design.md`. | Remove the duplicate bridge from current framework docs and record the replacement in `docs/removed-materials.md`. |
 
 ## Closure Policy
 
