@@ -22,6 +22,7 @@ from flwr.supercore.constant import NOOP_FEDERATION
 
 from graphfl_lab.config_io import public_args_dict
 from graphfl_lab.flower_app import DEFAULT_RUN_CONFIG, client_app, server_app
+from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
 
 
 def _toml_value(value: Any) -> str:
@@ -40,13 +41,24 @@ def _absolute_path(value: str) -> str:
     return str(Path(value).expanduser().resolve())
 
 
+def _resolved_args_for_run_config(args: Namespace) -> Namespace:
+    resolved = Namespace(**vars(args))
+    apply_graph_preset_to_namespace(resolved)
+    return resolved
+
+
 def args_to_run_config(args: Namespace, track: str) -> Dict[str, Any]:
+    resolved_args = _resolved_args_for_run_config(args)
+    original_public_keys = set(public_args_dict(args))
     cfg = dict(DEFAULT_RUN_CONFIG)
     cfg["track"] = track
-    for key, value in public_args_dict(args).items():
+    for key, value in public_args_dict(resolved_args).items():
         if key in {"engine", "config"}:
             continue
-        cfg[key.replace("_", "-")] = value
+        run_key = key.replace("_", "-")
+        if key not in original_public_keys and run_key not in DEFAULT_RUN_CONFIG:
+            continue
+        cfg[run_key] = value
     if "spectral-filter-strength" in cfg:
         cfg["graph-filter-strength"] = cfg["spectral-filter-strength"]
 
