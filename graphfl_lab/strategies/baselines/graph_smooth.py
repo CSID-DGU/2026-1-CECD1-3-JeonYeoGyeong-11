@@ -18,7 +18,7 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.client_proxy import ClientProxy
 
 from graphfl_lab.graph.builders import build_client_graph
-from graphfl_lab.graph.sources import GraphSourceConfig, graph_vectors_for_spectral
+from graphfl_lab.graph.sources import GraphSourceConfig, graph_vectors_for_graphfl
 from graphfl_lab.projection import flatten_weights, make_gaussian_projection
 from graphfl_lab.strategies.baselines.ordering import sort_fit_results_by_cid
 from graphfl_lab.strategies.baselines.tracing import _EvalTracer, _InteractionDiagnostics
@@ -239,7 +239,7 @@ class TracingGraphSmoothFedAvgM(
         local_updates: List[NDArrays],
     ) -> Tuple[List[np.ndarray], str]:
         ema_updates = self._update_client_update_ema(local_updates=local_updates, cids=cids)
-        vectors, source_used = graph_vectors_for_spectral(
+        vectors, source_used = graph_vectors_for_graphfl(
             local_weights=local_weights,
             local_updates=local_updates,
             ema_updates=ema_updates,

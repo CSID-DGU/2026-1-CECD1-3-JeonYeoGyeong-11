@@ -10,7 +10,7 @@ from flwr.common import NDArrays
 
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
-    graph_vectors_for_spectral,
+    graph_vectors_for_graphfl,
 )
 
 
@@ -32,7 +32,7 @@ def select_graph_source_vectors(
     graph_layer_start: int,
     graph_layer_end: int,
 ) -> Tuple[List[np.ndarray], str]:
-    return graph_vectors_for_spectral(
+    return graph_vectors_for_graphfl(
         local_weights=local_weights,
         local_updates=local_updates,
         ema_updates=ema_updates,

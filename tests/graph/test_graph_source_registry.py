@@ -6,6 +6,7 @@ from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     GraphSourceContext,
     GraphSourceResult,
+    graph_vectors_for_graphfl,
     graph_vectors_for_spectral,
     register_graph_source,
     unregister_graph_source,
@@ -33,7 +34,7 @@ class GraphSourceRegistryTest(unittest.TestCase):
             [np.array([3.0, 4.0], dtype=np.float32)],
             [np.array([0.0, 2.0], dtype=np.float32)],
         ]
-        vectors, source_used = graph_vectors_for_spectral(
+        vectors, source_used = graph_vectors_for_graphfl(
             local_weights=local_updates,
             local_updates=local_updates,
             config=GraphSourceConfig(source="unit_test_update_norms"),
@@ -42,6 +43,9 @@ class GraphSourceRegistryTest(unittest.TestCase):
         self.assertEqual(source_used, "unit_test_update_norms")
         self.assertTrue(np.allclose(vectors[0], np.array([5.0])))
         self.assertTrue(np.allclose(vectors[1], np.array([2.0])))
+
+    def test_legacy_spectral_helper_alias_matches_graphfl_helper(self):
+        self.assertIs(graph_vectors_for_spectral, graph_vectors_for_graphfl)
 
 
 if __name__ == "__main__":

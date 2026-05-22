@@ -8,7 +8,7 @@ import numpy as np
 from flwr.common import NDArrays
 
 from graphfl_lab.graph.sources.config import GraphSourceConfig, normalize_key
-from graphfl_lab.graph.sources.spectral import graph_vectors_for_spectral
+from graphfl_lab.graph.sources.graphfl import graph_vectors_for_graphfl
 
 
 def graph_vectors_for_fedsim(
@@ -47,7 +47,7 @@ def graph_vectors_for_fedsim(
             "FedSim graph_source currently supports update, normalized_update, or weight; "
             f"got {source!r}"
         )
-    return graph_vectors_for_spectral(
+    return graph_vectors_for_graphfl(
         local_weights=local_weights,
         local_updates=local_updates,
         ema_updates=ema_updates,

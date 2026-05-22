@@ -191,13 +191,17 @@ historical scripts have compatibility route
 | `graphfl_lab/graph/sources/spectral.py` | `graphfl_lab/graph/sources/graphfl.py` or `graphfl_lab/graph/sources/strategy.py` |
 | `graph_vectors_for_spectral` | `graph_vectors_for_graphfl` |
 
+Status: canonical helper/module added; active code uses
+`graph_vectors_for_graphfl`; `graph_vectors_for_spectral` remains as a
+compatibility alias until Gate 6.
+
 Plan:
 
 ```text
-add canonical helper/module
-keep old helper alias
-migrate strategy and baseline imports
-add alias tests
+done: add canonical helper/module
+done: keep old helper alias
+done: migrate strategy and baseline imports
+done: add alias tests
 remove old helper after package migration stabilizes
 ```
 
@@ -210,7 +214,7 @@ remove old helper after package migration stabilizes
 | Done | active configs graph naming | low |
 | Done | package alias `graphfl_lab` | high |
 | Done | real package move to `graphfl_lab/` | very high |
-| P1 | graph source helper rename | medium |
+| Done | graph source helper rename | medium |
 | P1 | migrate `spectral_filtered_*` internals | high |
 | P1 | decide removal date for `configs/general/...` alias | medium |
 | P1 | decide removal date for `result_general_*` names | medium |

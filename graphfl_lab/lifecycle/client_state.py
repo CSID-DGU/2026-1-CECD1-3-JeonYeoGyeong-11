@@ -94,7 +94,7 @@ def _client_meta(context: StateExtractionContext) -> tuple[Mapping[str, Any], ..
 
 
 class GraphSourceClientStateExtractor:
-    """Adapter around the existing spectral graph-source vector extractor."""
+    """Adapter around the canonical GraphFL graph-source vector extractor."""
 
     def __init__(self, source: str = "update", *, layer_start: int = 0, layer_end: int = 0) -> None:
         self.source = str(source)
@@ -102,11 +102,11 @@ class GraphSourceClientStateExtractor:
         self.layer_end = int(layer_end)
 
     def run(self, context: StateExtractionContext) -> ModuleResult:
-        from graphfl_lab.graph.sources import GraphSourceConfig, graph_vectors_for_spectral
+        from graphfl_lab.graph.sources import GraphSourceConfig, graph_vectors_for_graphfl
 
         try:
             ema_updates = context.round_context.config.get("ema_updates")
-            vectors, source_used = graph_vectors_for_spectral(
+            vectors, source_used = graph_vectors_for_graphfl(
                 local_weights=list(context.local_weights),
                 local_updates=list(context.local_updates),
                 ema_updates=ema_updates,

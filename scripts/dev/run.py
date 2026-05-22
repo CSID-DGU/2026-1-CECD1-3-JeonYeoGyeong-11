@@ -511,7 +511,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "ProjectedGraphSpace",
         "build_projected_graph_space",
         "select_graph_source_vectors",
-        "graph_vectors_for_spectral",
+        "graph_vectors_for_graphfl",
         "project_fn",
     ),
     "graphfl_lab/strategies/graphfl/round_weights.py": (
