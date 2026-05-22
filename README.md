@@ -331,13 +331,11 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 
 | Old name | Role |
 |---|---|
-| `run_general_*.py` | `run_vision_*.py` compatibility wrapper |
-| `plot_general_convergence.py`, `merge_general_fedavg_ours.py`, `deep_dive_general.py` | vision-named script wrappers |
 | `spectral_fl` | old package import shim |
 | `graphfl_lab/experiments/general/` | old import path wrapper |
 | `graphfl_lab/strategies/spectral/` | `graphfl_lab/strategies/graphfl/` wrapper |
 | `spectral_filtered_*`, `spectral_filter_strength` | config/result compatibility alias |
-| `general_suite_*`, `result_general_*` | historical output filenames (mirrored on new runs) |
+| `general_suite_*`, `result_general_*` | historical output filenames (readers only; new runs use vision names) |
 
 Do not add new logic to compatibility paths.
 

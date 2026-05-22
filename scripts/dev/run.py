@@ -153,6 +153,7 @@ GATE3_REQUIRED_TEXT = {
 
 GATE3B_FORBIDDEN_IMPORT_ALLOWLIST = {
     "graphfl_lab/__init__.py",
+    "scripts/dev/migrate_serialized_objects.py",
     "scripts/dev/run.py",
     "spectral_fl/__init__.py",
     "tests/core/test_package_alias.py",
@@ -191,10 +192,6 @@ GATE4B_REQUIRED_TEXT = {
         "cora_main",
     ),
     "run_vision_experiment.py": (
-        "experiment_dispatcher",
-        "main = _dispatcher.vision_main",
-    ),
-    "run_general_experiment.py": (
         "experiment_dispatcher",
         "main = _dispatcher.vision_main",
     ),

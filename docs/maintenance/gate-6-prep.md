@@ -33,7 +33,7 @@ replace with the recommended check above unless you explicitly want a week-long 
 
 1. [x] Confirm serialized assets: `python scripts/dev/migrate_serialized_objects.py` (tracked Cora cache `.pt` only; no `spectral_fl` pickle paths).
 2. [x] Remove compatibility **writers** of duplicate artifacts (`general_suite_*`, `result_general_*` mirrors); readers still accept legacy paths.
-3. Remove `run_general_*` root wrappers and `plot_general_*` / `merge_general_*` / `deep_dive_general` script wrappers.
+3. [x] Remove `run_general_*` root wrappers and `plot_general_*` / `merge_general_*` / `deep_dive_general` script wrappers.
 4. Remove `graphfl_lab/experiments/general/` and `graphfl_lab/experiments/suites/general/` import facades.
 5. Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).
 6. Remove `spectral_fl` package shim last, after grep shows no remaining imports outside tests explicitly checking deprecation.

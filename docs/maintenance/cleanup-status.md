@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 4c complete on `main`; Gate 6 prep (inventory/policy) in progress; hard shim removal not started |
-| status | PR #2 merged; nightly 26288800411 green; `gate-check 4c` passes; Gate 6 entry criteria met under pragmatic policy (see Nightly Policy); compatibility aliases remain until ordered removal in `gate-6-prep.md` |
+| current_gate | Gate 4c complete on `main`; Gate 6 batches 1–3 in progress on `main` |
+| status | PR #2 merged; nightly 26288800411 green; batches 2–3 landed (no `general_*` writers; `run_general_*` and general report script wrappers removed); package/import facades and `spectral_fl` shim still present per `gate-6-prep.md` |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | follow `docs/maintenance/gate-6-prep.md` removal order when ready; re-run nightly or CI once after first removal batch; do not wait for seven calendar days unless you want a strict watch period |
+| next_step | Gate 6 batch 4: remove `graphfl_lab/experiments/general/` and `suites/general/` facades; then spectral strategy wrappers and `spectral_fl` last; re-run CI/nightly after batch 4 |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -268,6 +268,7 @@ result-schema contracts.
 | 2026-05-22 | PR #2 merged; `gh workflow run nightly.yml --ref main` produced green run 26288800411. | Record in `docs/maintenance/last_nightly_run.json` and teach `gate-check 4c` to accept that artifact for Gate 4c entry (Gate 6 still needs 7 consecutive greens). |
 | 2026-05-22 | Seven consecutive nightly greens assume a maintainer watching CI daily for a week; this repo finished Gate 4c in a focused session instead. | Relax Gate 6 entry to 4c + post-merge CI/nightly evidence; require only one fresh green before the first shim deletion batch; document removal order in `gate-6-prep.md`. |
 | 2026-05-22 | Gate 6 batch 2: new suite/vision runs should stop duplicating `general_*` artifact files while readers still resolve legacy paths. | Drop `general_suite_*` and `result_general_*` writers; add `scripts/dev/migrate_serialized_objects.py` for serialized inventory. |
+| 2026-05-22 | Gate 6 batch 3: root `run_general_*` and `plot_general_*` / `merge_general_*` / `deep_dive_general` wrappers only re-exported vision CLIs after C5. | Delete wrappers; compile canonical `run_vision_*` in CI/nightly; drop `run_general_experiment` from `gate-check 4b` contract. |
 
 ## Gate 4c Local Readiness
 
@@ -278,7 +279,7 @@ present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.
 local pass: python scripts/dev/run.py gate-check 4c
 local pass: python scripts/dev/run.py gate-check 5d-prep
 Gate 6 entry: pragmatic policy (4c + merge CI green; optional 1 more green before first deletion)
-Gate 6 hard removal: not started — see docs/maintenance/gate-6-prep.md
+Gate 6 hard removal: batches 2–3 done (writers + root/script wrappers); batches 4–8 remain — see docs/maintenance/gate-6-prep.md
 ```
 
 ## Closure Policy

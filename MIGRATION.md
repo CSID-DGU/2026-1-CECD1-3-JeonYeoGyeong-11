@@ -26,23 +26,23 @@ During deprecation, old names remain available where documented:
 
 ```text
 spectral_fl
-run_general_*
 configs/general/...
-result_general_*
-general_suite_*
+result_general_*   (readers only; new runs no longer write mirrors)
+general_suite_*    (readers only; new runs no longer write mirrors)
 spectral_filter_strength
 spectral_filtered_*
 ```
 
-Compatibility wrappers (`run_general_*`, `plot_general_convergence.py`,
-`merge_general_fedavg_ours.py`, `deep_dive_general.py`) delegate to the
-vision-named implementations. Prefer the vision names in new scripts and docs.
+Root `run_general_*` and `plot_general_*` / `merge_general_*` /
+`deep_dive_general` script wrappers were removed in Gate 6 batch 3. Prefer
+`run_vision_*` and vision-named report/analysis scripts in new work.
 
 ## Output Artifacts
 
-New vision runs write canonical filenames and compatibility mirrors:
+New vision runs write canonical filenames only (Gate 6 batch 2). Readers still
+resolve legacy paths for older experiment directories:
 
-| Canonical (prefer in new work) | Compatibility mirror (Gate 6 removal) |
+| Canonical (new runs) | Legacy (read-only) |
 |---|---|
 | `result_vision_*.json` | `result_general_*.json` |
 | `vision_suite_summary.json` / `.csv` / `.md` | `general_suite_summary.*` |

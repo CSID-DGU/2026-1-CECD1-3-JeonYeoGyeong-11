@@ -100,10 +100,7 @@ graphfl_lab/experiments/suite.py
 graphfl_lab/experiments/stress_grid.py
 graphfl_lab/experiments/client_count_sweep.py
 graphfl_lab/experiments/graph_ablation.py
-scripts/analysis/deep_dive_general.py
-scripts/analysis/merge_general_fedavg_ours.py
-scripts/reports/plot_general_convergence.py
-run_general_*.py
+run_vision_*.py (canonical entrypoints; `run_general_*` removed Gate 6 batch 3)
 ```
 
 ## Boundary Rules

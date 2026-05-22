@@ -96,10 +96,6 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "run_vision_experiment.py",
             "run_vision_stress_grid.py",
             "run_vision_suite.py",
-            "run_general_client_count_sweep.py",
-            "run_general_experiment.py",
-            "run_general_stress_grid.py",
-            "run_general_suite.py",
             "run_graph_ablation.py",
             "graphfl_lab/aggregation.py",
             "graphfl_lab/client.py",
@@ -137,9 +133,6 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "graphfl_lab/experiments/suites/general/__init__.py",
             "graphfl_lab/experiments/suites/general/reporting.py",
             "graphfl_lab/experiments/suites/general/variants.py",
-            "scripts/analysis/deep_dive_general.py",
-            "scripts/analysis/merge_general_fedavg_ours.py",
-            "scripts/reports/plot_general_convergence.py",
         ]
         for rel in facades:
             path = ROOT / rel
