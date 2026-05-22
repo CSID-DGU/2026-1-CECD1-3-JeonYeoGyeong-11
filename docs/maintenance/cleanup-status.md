@@ -10,11 +10,11 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; moving to local smoke/docs readiness |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke checks passed; optional deeper modularization is deferred |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke and the tiny default graph vision experiment passed; optional deeper modularization is deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | continue current-project docs/readiness work or run a tiny experiment smoke only when result evidence is needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
+| next_step | continue current-project docs/readiness work or run a Cora smoke only when graph-dataset evidence is needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -230,6 +230,7 @@ result-schema contracts.
 | 2026-05-22 | Representative local smoke checks passed: `gate-check 5d-prep`, focused graph/design/schema/golden/runner tests, and runner help checks for `run_experiment.py`, `run_vision_experiment.py`, and `run_graph_ablation.py`. | Keep Gate 4c remote/nightly completion pending; use these local checks as readiness evidence only, not full Gate completion. |
 | 2026-05-22 | Diagnostic suite preflight initially reported `NEEDS_REVIEW` because its expected args still used legacy `spectral_filtered_update` while diagnostic variants now emit canonical `graph_filtered_update`. | Update preflight expectations to canonical `graph_filtered_update`; rerun preflight and related variant tests until green. |
 | 2026-05-22 | `print-flwr-run` generated a valid Flower command for `default_similarity_knn`, but displayed unresolved parser defaults such as `aggregation-target="update"` before the app-side graph-method preset was applied. | Resolve graph presets during run-config generation while preserving explicit user overrides, so printed and submitted Flower configs match the intended graph design. |
+| 2026-05-22 | Tiny representative vision run `configs/vision/smoke/default_similarity_knn.json` completed with `graph_method=default_similarity_knn`, `graph_mode=rbf_knn`, `aggregation_target=graph_filtered_update`, and schema fields `result_schema_version`, `config_aliases_used`, `unsupported_components`. | Treat this as local execution readiness evidence for the default graph pipeline; keep remote/nightly and broader suite evidence pending. |
 
 ## Closure Policy
 
