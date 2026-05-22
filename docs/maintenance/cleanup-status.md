@@ -254,6 +254,8 @@ result-schema contracts.
 | 2026-05-22 | CI/nightly compile steps still py_compiled only `run_general_*` entrypoints, not canonical `run_vision_*`, on a branch where vision runners are primary. | Align `.github/workflows/ci.yml` and `nightly.yml` compile lists with canonical runners plus compatibility wrappers. |
 | 2026-05-22 | `gate-check 5a-prep` and `5c-prep` contracts drifted after C5 refactors (`write_suite_summary_artifacts`, canonical result-path test rename, legacy token parser strings). | Refresh `scripts/dev/run.py` required-text anchors; keep `do not claim full Gate 5a/5b/5c completion` wording in status. |
 | 2026-05-22 | User approved pushing the gate branch for Gate 4c remote verification. | Pushed `codex-graphfl-cleanup-gate-0` to `origin`; next action is manual/scheduled `nightly` green on GitHub (local `gh` CLI unavailable in this environment). |
+| 2026-05-22 | Remote `ci` failed on push because `py_compile scripts/*.py` matched no top-level files under `scripts/` on Ubuntu bash. | Drop the `scripts/*.py` glob; rely on `compileall` for nested script packages; re-push and re-run `ci`. |
+| 2026-05-22 | `gh workflow run nightly.yml` returned 404: workflow is not registered on default branch `main` yet (file exists only on gate branch). | Merge `nightly.yml` to `main` (or merge gate PR) before `workflow_dispatch`; until then use branch `ci` green as interim remote smoke evidence only, not full Gate 4c closure. |
 
 ## Gate 4c Local Readiness
 
