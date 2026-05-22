@@ -14,7 +14,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | branch pushed to `origin/codex-graphfl-cleanup-gate-0`; trigger GitHub Actions `nightly` (workflow_dispatch) once and record green run for Gate 4c; then open PR or merge per team policy; no Gate 6 removals until 4c evidence |
+| next_step | branch `ci` green at run 26288418334; merge gate PR (or land `nightly.yml` on `main`) then run `gh workflow run nightly.yml` for formal Gate 4c closure; no Gate 6 removals until nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -259,6 +259,7 @@ result-schema contracts.
 | 2026-05-22 | Remote `ci` unit tests failed because tag `pre-graphfl-rename` existed locally but was not on `origin`. | Push tag `pre-graphfl-rename` to origin and re-run branch `ci`. |
 | 2026-05-22 | After pushing the tag, `ci` still failed because `actions/checkout@v4` default fetch did not include tags. | Set `fetch-depth: 0` and `fetch-tags: true` in `ci.yml` and `nightly.yml`. |
 | 2026-05-22 | Remote `ci` pytest step still targeted removed path `tests/experiments/general`. | Point pytest subset to `tests/experiments/vision` in `ci.yml` and `nightly.yml`. |
+| 2026-05-22 | After CI workflow fixes and `pre-graphfl-rename` tag push, branch `ci` run 26288418334 succeeded on `codex-graphfl-cleanup-gate-0`. | Treat as interim remote smoke evidence; formal Gate 4c still needs `nightly` on `main` + one green dispatch. |
 
 ## Gate 4c Local Readiness
 
