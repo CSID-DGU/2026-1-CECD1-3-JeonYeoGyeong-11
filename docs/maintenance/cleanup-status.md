@@ -258,6 +258,7 @@ result-schema contracts.
 | 2026-05-22 | `gh workflow run nightly.yml` returned 404: workflow is not registered on default branch `main` yet (file exists only on gate branch). | Merge `nightly.yml` to `main` (or merge gate PR) before `workflow_dispatch`; until then use branch `ci` green as interim remote smoke evidence only, not full Gate 4c closure. |
 | 2026-05-22 | Remote `ci` unit tests failed because tag `pre-graphfl-rename` existed locally but was not on `origin`. | Push tag `pre-graphfl-rename` to origin and re-run branch `ci`. |
 | 2026-05-22 | After pushing the tag, `ci` still failed because `actions/checkout@v4` default fetch did not include tags. | Set `fetch-depth: 0` and `fetch-tags: true` in `ci.yml` and `nightly.yml`. |
+| 2026-05-22 | Remote `ci` pytest step still targeted removed path `tests/experiments/general`. | Point pytest subset to `tests/experiments/vision` in `ci.yml` and `nightly.yml`. |
 
 ## Gate 4c Local Readiness
 
