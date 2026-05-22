@@ -14,7 +14,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | Migration C5 closed locally; next unblock is Gate 4c (push branch + one remote nightly green). Until then: no Gate 6 removals; optional local-only hardening only |
+| next_step | branch pushed to `origin/codex-graphfl-cleanup-gate-0`; trigger GitHub Actions `nightly` (workflow_dispatch) once and record green run for Gate 4c; then open PR or merge per team policy; no Gate 6 removals until 4c evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -253,6 +253,7 @@ result-schema contracts.
 | 2026-05-22 | Migration C5 public-surface alignment (runners, CLI help, suite writes, plot/report readers, docs) is complete on the gate branch; only Gate 4c remote evidence and Gate 6 removal remain for the rename track. | Record C5 as locally closed in `cleanup-plan.md` and `cleanup-status.md`; do not remove compatibility aliases until Gate 4c/6 criteria are met. |
 | 2026-05-22 | CI/nightly compile steps still py_compiled only `run_general_*` entrypoints, not canonical `run_vision_*`, on a branch where vision runners are primary. | Align `.github/workflows/ci.yml` and `nightly.yml` compile lists with canonical runners plus compatibility wrappers. |
 | 2026-05-22 | `gate-check 5a-prep` and `5c-prep` contracts drifted after C5 refactors (`write_suite_summary_artifacts`, canonical result-path test rename, legacy token parser strings). | Refresh `scripts/dev/run.py` required-text anchors; keep `do not claim full Gate 5a/5b/5c completion` wording in status. |
+| 2026-05-22 | User approved pushing the gate branch for Gate 4c remote verification. | Pushed `codex-graphfl-cleanup-gate-0` to `origin`; next action is manual/scheduled `nightly` green on GitHub (local `gh` CLI unavailable in this environment). |
 
 ## Gate 4c Local Readiness
 
