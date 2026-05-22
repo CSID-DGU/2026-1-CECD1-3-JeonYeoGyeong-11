@@ -1,4 +1,7 @@
-"""Compatibility wrapper for the vision FL stress-grid CLI."""
+"""Compatibility wrapper for the vision FL stress-grid CLI.
+
+Prefer ``run_vision_stress_grid.py`` for new scripts and docs.
+"""
 
 from graphfl_lab.cli import vision_stress_grid as _impl
 

@@ -316,6 +316,20 @@ python scripts/checks/diagnostic_suite_preflight.py
 python scripts/checks/prior_work_proxy_parity.py --summary experiments_current/prior_work_proxy_smoke/<stamp>/prior_work_proxy_summary.json
 ```
 
+## Reporting And Analysis
+
+Canonical report commands (compatibility wrappers keep the `general_*` names):
+
+```powershell
+python scripts/reports/plot_vision_convergence.py --suite-dir experiments_current/<suite_tag>
+python scripts/reports/generate_dashboard_mockup.py --suite-dir experiments_current/<suite_tag>
+python scripts/analysis/deep_dive_vision.py --suite-dir ... --suite-tag ... --variant ... --seed ...
+python scripts/analysis/merge_vision_fedavg_ours.py --help
+```
+
+Suite outputs prefer `vision_suite_*` and `result_vision_*` filenames. Readers also
+accept historical `general_suite_*` and `result_general_*` artifacts until Gate 6.
+
 ## Compatibility
 
 New code uses `vision`, `graphfl`, `graph_filtered_*`.
@@ -323,10 +337,12 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 | Old name | Role |
 |---|---|
 | `run_general_*.py` | `run_vision_*.py` compatibility wrapper |
+| `plot_general_convergence.py`, `merge_general_fedavg_ours.py`, `deep_dive_general.py` | vision-named script wrappers |
 | `spectral_fl` | old package import shim |
 | `graphfl_lab/experiments/general/` | old import path wrapper |
 | `graphfl_lab/strategies/spectral/` | `graphfl_lab/strategies/graphfl/` wrapper |
 | `spectral_filtered_*`, `spectral_filter_strength` | config/result compatibility alias |
+| `general_suite_*`, `result_general_*` | historical output filenames (mirrored on new runs) |
 
 Do not add new logic to compatibility paths.
 

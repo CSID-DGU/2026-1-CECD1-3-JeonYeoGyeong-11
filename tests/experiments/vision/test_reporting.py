@@ -313,8 +313,11 @@ class GeneralSuiteReportTest(unittest.TestCase):
             )
 
             self.assertTrue((out_dir / "vision_suite_summary.json").is_file())
+            self.assertTrue((out_dir / "general_suite_summary.json").is_file())
             self.assertTrue((out_dir / "vision_suite_rows.json").is_file())
+            self.assertTrue((out_dir / "general_suite_rows.json").is_file())
             self.assertTrue((out_dir / "vision_suite_summary.csv").is_file())
+            self.assertTrue((out_dir / "general_suite_summary.csv").is_file())
             self.assertTrue((out_dir / "suite_summary.json").is_file())
             self.assertTrue((out_dir / "general_suite_summary.md").is_file())
             self.assertEqual(md_path.name, "vision_suite_summary.md")

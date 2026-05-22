@@ -144,6 +144,7 @@ from graphfl_lab.experiments.suites.vision.reporting import (
     append_validation_verdict,
     compute_best_knn_meta,
     duplicate_suite_summaries,
+    write_suite_summary_artifacts,
     write_dashboard_mockup,
     write_diagnostic_csv,
     write_interpretation_md,
@@ -151,7 +152,6 @@ from graphfl_lab.experiments.suites.vision.reporting import (
     write_summary_markdown,
 )
 from graphfl_lab.experiments.suites.execution import execute_or_reuse_result
-from graphfl_lab.experiments.suites.result_writer import write_csv_rows, write_json
 from graphfl_lab.experiments.suites.vision.features import (
     collect_run_features,
     collect_timing_features,
@@ -358,17 +358,9 @@ def run(args):
         config_aliases_used=config_aliases_from_args(args),
         unsupported_components=unsupported_components_from_args(args),
     )
-    summary_json = out_dir / "general_suite_summary.json"
-    write_json(summary_json, suite_summary)
-
-    rows_path = out_dir / "general_suite_rows.json"
-    write_json(rows_path, rows)
-
-    csv_path = out_dir / "general_suite_summary.csv"
-    if summary_rows:
-        write_csv_rows(csv_path, summary_rows, fieldnames=list(summary_rows[0].keys()))
-
-    duplicate_suite_summaries(out_dir, suite_summary, summary_rows, rows)
+    summary_json, rows_path, csv_path = write_suite_summary_artifacts(
+        out_dir, suite_summary, summary_rows, rows
+    )
     diagnostic_csv = write_diagnostic_csv(out_dir, summary_rows)
     knn_csv = write_knn_vs_random_matched_csv(out_dir, summary_rows)
     interp_md = write_interpretation_md(out_dir, summary_rows, suite_meta, args)
@@ -399,7 +391,7 @@ def run(args):
     print(f"Saved: {csv_path}")
     print(f"Saved: {diagnostic_csv}")
     print(f"Saved: {dashboard_md}")
-    print(f"Saved: {out_dir / 'vision_suite_summary.json'} (canonical alias)")
+    print(f"Saved: {out_dir / 'general_suite_summary.json'} (compatibility mirror)")
     print(f"Saved: {out_dir / 'suite_summary.json'} (short alias)")
     if knn_csv:
         print(f"Saved: {knn_csv}")

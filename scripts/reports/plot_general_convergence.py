@@ -1,4 +1,8 @@
-"""Compatibility wrapper for ``plot_vision_convergence.py``."""
+"""Compatibility wrapper for ``plot_vision_convergence.py``.
+
+Prefer ``scripts/reports/plot_vision_convergence.py`` for new analysis. This
+script remains until Gate 6 removes legacy report command names.
+"""
 
 from importlib import util
 from pathlib import Path

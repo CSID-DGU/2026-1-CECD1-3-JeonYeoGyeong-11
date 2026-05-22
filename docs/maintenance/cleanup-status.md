@@ -10,11 +10,11 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; local Migration C5 public-surface alignment in progress |
-| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass; recent slices canonicalized docs, graph source helper, preset/method targets, internal output labels, legacy suite token CLI flags, reporting/result paths, and plot/report suite artifact readers (`vision_suite_*` preferred over `general_suite_*`); optional deeper modularization remains deferred |
+| status | Gate 4c remote green remains pending; Gate 5d-prep local checks pass; recent slices include canonical-first suite summary writes, plot/report artifact readers, runner/report compatibility docstrings, and README reporting guidance; optional deeper modularization remains deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
-| next_step | continue Migration C5 with remaining reader/report-script aliases (`result_general_*`, `general_suite_*`, plot/report commands) or pause for Gate 4c nightly evidence; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
+| next_step | finish Migration C5 command/docs polish and canonical-first suite artifact writes; then Gate 4c nightly when push is approved; do not claim Gate 4c/5/6 completion or remove compatibility surfaces until golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -246,6 +246,7 @@ result-schema contracts.
 | 2026-05-22 | Experiment CLIs duplicated `--aggregation-target` choices with legacy spellings listed beside canonical ones but without explicit deprecation guidance. | Centralize choices/help in `graphfl_lab/cli/aggregation_targets.py`, list canonical targets first, and keep `spectral_filtered_*` only as documented compatibility aliases per Migration C5 and Gate 6 policy. |
 | 2026-05-22 | Suite orchestration still keyed reuse/load paths on `result_general_*` even though Flower now writes canonical `result_vision_*` aliases too; reporting already pairs canonical and legacy filtered variant families separately. | Prefer `result_vision_*` for new suite paths, resolve existing results from either filename family, and document filtered-family pairing policy in `reporting.py` without collapsing historical variant tags. |
 | 2026-05-22 | Plot/report helpers duplicated suite artifact discovery with `general_suite_*` checked before `vision_suite_*` in some readers even though suite outputs now emit both families. | Add shared artifact discovery helpers that prefer canonical `vision_*` filenames while retaining `general_*` compatibility readers through Gate 6. |
+| 2026-05-22 | `run_vision_suite.py` still wrote `general_suite_*` as the primary JSON/CSV paths and duplicated shorter `vision_*` aliases afterward, which keeps new outputs looking legacy-first in directory listings. | Write canonical `vision_suite_*` artifacts first and mirror compatibility `general_suite_*` copies in one reporting helper. |
 
 ## Closure Policy
 

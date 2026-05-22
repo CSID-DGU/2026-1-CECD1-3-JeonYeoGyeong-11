@@ -413,28 +413,52 @@ def append_validation_verdict(out_dir: Path, summary_rows: List[Dict[str, Any]])
     flush()
 
 
+def write_suite_summary_artifacts(
+    out_dir: Path,
+    suite_summary: Dict[str, Any],
+    summary_rows: List[Dict[str, Any]],
+    rows: List[Dict[str, Any]],
+) -> tuple[Path, Path, Path]:
+    """Write canonical suite artifacts and compatibility mirrors.
+
+    Returns ``(summary_json, rows_path, csv_path)`` using canonical filenames.
+    """
+    summary_json = out_dir / "vision_suite_summary.json"
+    rows_path = out_dir / "vision_suite_rows.json"
+    csv_path = out_dir / "vision_suite_summary.csv"
+
+    write_json(summary_json, suite_summary)
+    write_json(rows_path, rows)
+    write_json(out_dir / "suite_summary.json", suite_summary)
+    write_json(out_dir / "suite_rows.json", rows)
+    write_json(out_dir / "general_suite_summary.json", suite_summary)
+    write_json(out_dir / "general_suite_rows.json", rows)
+
+    if summary_rows:
+        fieldnames = list(summary_rows[0].keys())
+        write_csv_rows(csv_path, summary_rows, fieldnames=fieldnames)
+        write_csv_rows(
+            out_dir / "general_suite_summary.csv",
+            summary_rows,
+            fieldnames=fieldnames,
+        )
+        write_csv_rows(
+            out_dir / "suite_summary.csv",
+            summary_rows,
+            fieldnames=fieldnames,
+        )
+
+    return summary_json, rows_path, csv_path
+
+
 def duplicate_suite_summaries(
     out_dir: Path,
     suite_summary: Dict[str, Any],
     summary_rows: List[Dict[str, Any]],
     rows: List[Dict[str, Any]],
 ) -> None:
-    """Write shorter suite aliases alongside compatibility-named outputs."""
-    write_json(out_dir / "vision_suite_summary.json", suite_summary)
-    write_json(out_dir / "vision_suite_rows.json", rows)
-    write_json(out_dir / "suite_summary.json", suite_summary)
-    write_json(out_dir / "suite_rows.json", rows)
-    if summary_rows:
-        write_csv_rows(
-            out_dir / "vision_suite_summary.csv",
-            summary_rows,
-            fieldnames=list(summary_rows[0].keys()),
-        )
-        write_csv_rows(
-            out_dir / "suite_summary.csv",
-            summary_rows,
-            fieldnames=list(summary_rows[0].keys()),
-        )
+    """Compatibility alias for ``write_suite_summary_artifacts``."""
+    write_suite_summary_artifacts(out_dir, suite_summary, summary_rows, rows)
 
 
 def write_summary_markdown(
@@ -626,6 +650,7 @@ __all__ = [
     "append_validation_verdict",
     "compute_best_knn_meta",
     "duplicate_suite_summaries",
+    "write_suite_summary_artifacts",
     "write_dashboard_mockup",
     "write_diagnostic_csv",
     "write_interpretation_md",

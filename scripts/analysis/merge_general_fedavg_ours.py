@@ -1,4 +1,7 @@
-"""Compatibility wrapper for ``merge_vision_fedavg_ours.py``."""
+"""Compatibility wrapper for ``merge_vision_fedavg_ours.py``.
+
+Prefer ``scripts/analysis/merge_vision_fedavg_ours.py`` for new analysis.
+"""
 
 from importlib import util
 from pathlib import Path
