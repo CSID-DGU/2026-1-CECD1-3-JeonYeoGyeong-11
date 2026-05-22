@@ -103,8 +103,8 @@ client 간 관계를 나타낸다.
 | aggregation target | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` | graph를 적용할 학습 신호 선택 |
 | control family | identity, matched random, shuffled, uniform, clustering-only, graph-free dominance reweight | gain의 대안 설명 분리 |
 | diagnostics/schema | `result_schema_version`, `config_aliases_used`, `unsupported_components`, alignment, DI, N_eff, graph/spectral metrics | 결과 계약과 mechanism 해석 |
-| executable configs | vision diagnostic configs, Cora extension/ablation config | vision setting 중심 실행, Cora는 graph-structured input 확장 확인 |
-| validation tests | `tests/designs`, `tests/graph`, `tests/diagnostics`, schema/golden/runner tests | design registry, graph builder, control graph, result contract 확인 |
+| executable configs | vision default graph run, vision diagnostic configs, Cora ablation run | vision setting 중심 실행, Cora는 graph-structured input 확장 확인 |
+| validation tests | `tests/designs`, `tests/graph`, `tests/diagnostics`, runner/schema/golden tests | design registry, graph builder, control graph, result contract, runner wiring 확인 |
 
 대표 pipeline은 update-cosine-kNN graph에서 출발한다.
 
@@ -239,7 +239,7 @@ real-control gap은 topology/spectral diagnostics와 함께 해석된다.
 | Similarity | cosine similarity |
 | Topology | kNN graph |
 | Normalization | row-normalized adjacency |
-| Aggregation target | client update |
+| Aggregation target | graph-filtered client update |
 | Baselines | FedAvg, FedAvgM 또는 FedOpt |
 | Essential controls | identity, matched_random, uniform |
 | Important control | graphfree_dominance_reweight |
@@ -258,6 +258,12 @@ real-control gap은 topology/spectral diagnostics와 함께 해석된다.
 
 Cora와 같은 graph-structured input dataset은 client relation graph와 구분해서
 다룬다. 기본 실험은 federated clients 사이의 relation graph를 대상으로 한다.
+
+대표 실행 경로는 vision default graph run과 Cora graph-ablation run으로 나뉜다.
+vision 경로는 `default_similarity_knn`이 source, topology, aggregation target,
+result schema까지 연결되는지 확인한다. Cora 경로는 graph-structured input 위에서도
+runner와 summary writer가 같은 방식으로 동작하는지 확인한다. Cora 결과는 확장
+가능성 확인에 가깝고, 핵심 주장은 vision 중심 diagnostic suite에서 형성된다.
 
 ## 9. Claim Shape
 
