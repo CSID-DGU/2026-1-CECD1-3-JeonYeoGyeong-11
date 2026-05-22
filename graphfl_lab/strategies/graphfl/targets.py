@@ -80,7 +80,7 @@ def aggregate_target(
             arrays=local_updates,
             l_mat=l_mat,
             filter_strength=float(config.filter_strength),
-            target_name="spectral_filtered_update",
+            target_name="graph_filtered_update",
         )
         agg_delta = weighted_average_by_alpha(
             local_updates=filtered_updates, alphas=alpha_norm
@@ -90,7 +90,7 @@ def aggregate_target(
         }
         return (
             _add_delta_to_global(current_global, agg_delta),
-            "spectral_filtered_update_delta",
+            "graph_filtered_update_delta",
             prefixed_filter_diag,
         )
 
@@ -107,7 +107,7 @@ def aggregate_target(
             arrays=ema_source,
             l_mat=l_mat,
             filter_strength=float(config.filter_strength),
-            target_name="spectral_filtered_ema_update",
+            target_name="graph_filtered_ema_update",
         )
         agg_delta = weighted_average_by_alpha(
             local_updates=filtered_updates, alphas=alpha_norm
@@ -117,7 +117,7 @@ def aggregate_target(
         }
         return (
             _add_delta_to_global(current_global, agg_delta),
-            "spectral_filtered_client_ema_update_delta",
+            "graph_filtered_client_ema_update_delta",
             prefixed_filter_diag,
         )
 
@@ -141,7 +141,7 @@ def aggregate_target(
             arrays=local_weights,
             l_mat=l_mat,
             filter_strength=float(config.filter_strength),
-            target_name="spectral_filtered_weight",
+            target_name="graph_filtered_weight",
         )
         prefixed_filter_diag = {
             f"weight_{key}": value for key, value in filter_diag.items()
@@ -150,7 +150,7 @@ def aggregate_target(
             weighted_average_by_alpha(
                 local_updates=filtered_weights, alphas=alpha_norm
             ),
-            "spectral_filtered_local_weight",
+            "graph_filtered_local_weight",
             prefixed_filter_diag,
         )
 

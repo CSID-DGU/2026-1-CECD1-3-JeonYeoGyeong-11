@@ -466,7 +466,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "graphfl_lab/strategies/graphfl/diagnostic_targets.py": (
         "flatten_diagnostic_post_updates",
-        "spectral_filtered_client_ema_update_delta",
+        "graph_filtered_client_ema_update_delta",
         "Unknown diagnostic aggregation_target",
     ),
     "graphfl_lab/strategies/graphfl/fit_results.py": (

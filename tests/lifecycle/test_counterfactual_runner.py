@@ -141,7 +141,7 @@ class CounterfactualRunnerTest(unittest.TestCase):
         self.assertEqual([result.metrics["status"] for result in results], ["ok", "ok", "ok"])
         self.assertEqual(
             results[0].metrics["aggregation_target_used"],
-            "spectral_filtered_update_delta",
+            "graph_filtered_update_delta",
         )
 
     def test_unsupported_or_invalid_variant_emits_error_record(self):

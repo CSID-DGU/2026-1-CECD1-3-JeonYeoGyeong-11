@@ -57,7 +57,7 @@ python scripts/dev/run.py gate-check <gate>
 | key `spectral_filter_strength` | remove after reader policy freeze | medium |
 | tokens `ours_spectral_filtered_*` | remove after old result reuse policy freeze | medium |
 | suffix `_spectral_only` / `_speconly` | remove after old result reuse policy freeze | low/medium |
-| targets `spectral_filtered_*` | remove after lifecycle/design/result readers use `graph_filtered_*` | high |
+| targets `spectral_filtered_*` | remove after readers and legacy inputs finish the compatibility window | high |
 
 ## Recommended Order
 
@@ -68,7 +68,7 @@ Lower-risk public spellings should stabilize before the package root rename.
 2. done: suite tokens -> ours_graph_filtered_*
 3. done: active configs/docs prefer new key/tokens
 4. done: top-level package rename to graphfl_lab with shim
-5. next: remaining spectral_filtered_* design/operator compatibility removal after Gate 6 entry
+5. next: remaining spectral_filtered_* input compatibility removal after Gate 6 entry
 ```
 
 ## Migration A. Result And Metadata Key
@@ -215,7 +215,7 @@ remove old helper after package migration stabilizes
 | Done | package alias `graphfl_lab` | high |
 | Done | real package move to `graphfl_lab/` | very high |
 | Done | graph source helper rename | medium |
-| P1 | migrate `spectral_filtered_*` internals | high |
+| Done | migrate `spectral_filtered_*` internal outputs | high |
 | P1 | decide removal date for `configs/general/...` alias | medium |
 | P1 | decide removal date for `result_general_*` names | medium |
 | P2 | generated cache cleanup | low |

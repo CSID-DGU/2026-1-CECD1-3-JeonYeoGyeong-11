@@ -56,7 +56,7 @@ Keep compatibility names until their migration gates are satisfied.
 | `spectral_filter_strength` | `graph_filter_strength` | canonical implemented; old field retained |
 | `ours_spectral_filtered_*` | `ours_graph_filtered_*` | canonical implemented; aliases retained |
 | `_spectral_only` / `_speconly` | `_graph_filter_only` | canonical implemented; aliases retained |
-| `spectral_filtered_*` operator outputs | `graph_filtered_*` | aliases exist; lower-level cleanup pending |
+| `spectral_filtered_*` operator outputs | `graph_filtered_*` | new outputs use canonical labels; input aliases retained |
 | `spectral_fl` package root | `graphfl_lab` | canonical package implemented; shim retained until Gate 6 |
 
 Recommended order:

@@ -65,7 +65,7 @@ class GraphFLDiagnosticTargetsTest(unittest.TestCase):
             filter_strength=0.0,
         )
 
-        self.assertEqual(target, "spectral_filtered_client_ema_update_delta")
+        self.assertEqual(target, "graph_filtered_client_ema_update_delta")
         self.assertEqual(diag["graph_filter_strength"], 0.0)
         np.testing.assert_allclose(mat, [[0.5, 1.5], [2.5, 3.5]])
 

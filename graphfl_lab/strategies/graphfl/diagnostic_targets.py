@@ -46,7 +46,7 @@ def flatten_diagnostic_post_updates(
             l_mat=l_mat,
             filter_strength=filter_strength,
         )
-        return filtered, "spectral_filtered_update_delta", diag
+        return filtered, "graph_filtered_update_delta", diag
 
     if target in {
         "spectral_filtered_ema_update",
@@ -63,7 +63,7 @@ def flatten_diagnostic_post_updates(
             l_mat=l_mat,
             filter_strength=filter_strength,
         )
-        return filtered, "spectral_filtered_client_ema_update_delta", diag
+        return filtered, "graph_filtered_client_ema_update_delta", diag
 
     if target in {"weight", "weights", "model_weight", "model_weights", "state"}:
         mat = _flat_matrix(local_weights) - global_flat[None, :]
@@ -84,7 +84,7 @@ def flatten_diagnostic_post_updates(
             l_mat=l_mat,
             filter_strength=filter_strength,
         )
-        return filtered - global_flat[None, :], "spectral_filtered_local_weight_delta", diag
+        return filtered - global_flat[None, :], "graph_filtered_local_weight_delta", diag
 
     raise ValueError(f"Unknown diagnostic aggregation_target {target!r}")
 

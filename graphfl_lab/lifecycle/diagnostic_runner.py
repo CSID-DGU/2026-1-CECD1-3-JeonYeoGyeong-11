@@ -43,6 +43,32 @@ def _spectral_filter(z_mat: np.ndarray, adjacency: np.ndarray, filter_strength: 
     return eigvecs @ (gains[:, None] * (eigvecs.T @ z_mat))
 
 
+def _canonical_filtered_target(target: str) -> str:
+    if target in {
+        "spectral_filtered_update",
+        "spectral_filtered_update_delta",
+        "filtered_update",
+        "filtered_update_delta",
+        "graph_filtered_update",
+    }:
+        return "graph_filtered_update_delta"
+    if target in {
+        "spectral_filtered_ema_update",
+        "spectral_filtered_client_ema_update_delta",
+        "graph_filtered_ema_update",
+    }:
+        return "graph_filtered_client_ema_update_delta"
+    if target in {
+        "spectral_filtered_weight",
+        "spectral_filtered_local_weight_delta",
+        "filtered_weight",
+        "filtered_local_weight_delta",
+        "graph_filtered_weight",
+    }:
+        return "graph_filtered_local_weight_delta"
+    return target
+
+
 def _row_entropy_mean(matrix: np.ndarray) -> float:
     w = np.asarray(matrix, dtype=np.float64)
     row_sums = np.sum(w, axis=1, keepdims=True)
@@ -110,7 +136,7 @@ class MinimalAggregationAdapter:
         }:
             post_updates = _spectral_filter(updates, np.asarray(adjacency, dtype=np.float64), self.filter_strength)
             weights_post = alpha
-            target_used = target
+            target_used = _canonical_filtered_target(target)
         elif target in {"graphfree_dominance_reweight", "graph_free_dominance_reweight"}:
             norms = np.linalg.norm(updates, axis=1)
             weights_post, mode_used = resolve_graph_free_correction(

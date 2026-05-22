@@ -33,18 +33,18 @@ class GraphFLCounterfactualArtifactsTest(unittest.TestCase):
 
     def test_counterfactual_specs_for_target_retargets_graph_variants_only(self):
         specs = counterfactual_specs_for_target(
-            diagnostic_target_used="spectral_filtered_update_delta",
+            diagnostic_target_used="graph_filtered_update_delta",
             aggregation_target="update",
         )
 
         by_name = {spec.name: spec for spec in specs}
         self.assertEqual(
             by_name["actual"].aggregation_target,
-            "spectral_filtered_update_delta",
+            "graph_filtered_update_delta",
         )
         self.assertEqual(
             by_name["matched_random"].aggregation_target,
-            "spectral_filtered_update_delta",
+            "graph_filtered_update_delta",
         )
         self.assertEqual(
             by_name["graphfree_dominance_reweight"].aggregation_target,

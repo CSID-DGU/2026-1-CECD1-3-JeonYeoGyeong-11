@@ -143,7 +143,7 @@ class GraphAggregationOperator:
         elif target in {"spectral_filtered_update", "filtered_update", "graph_filtered_update"}:
             post_updates = _spectral_filter(updates, adjacency, self.filter_strength)
             alpha_post = alpha
-            target_name = "spectral_filtered_update"
+            target_name = "graph_filtered_update"
         elif target in {
             "spectral_filtered_ema_update",
             "filtered_ema_update",
@@ -152,7 +152,7 @@ class GraphAggregationOperator:
             ema_updates = _as_matrix(config.get("ema_updates", context.local_updates))
             post_updates = _spectral_filter(ema_updates, adjacency, self.filter_strength)
             alpha_post = alpha
-            target_name = "spectral_filtered_ema_update"
+            target_name = "graph_filtered_ema_update"
         elif target in {"weight", "weights"}:
             local_weights = _as_matrix(config["local_weights"])
             return AggregationResult(
@@ -169,7 +169,7 @@ class GraphAggregationOperator:
             local_weights = _as_matrix(config["local_weights"])
             filtered = _spectral_filter(local_weights, adjacency, self.filter_strength)
             return AggregationResult(
-                aggregation_target="spectral_filtered_weight",
+                aggregation_target="graph_filtered_weight",
                 global_weights=[np.sum(alpha[:, None] * filtered, axis=0)],
                 alpha=alpha,
                 metadata=metadata,
