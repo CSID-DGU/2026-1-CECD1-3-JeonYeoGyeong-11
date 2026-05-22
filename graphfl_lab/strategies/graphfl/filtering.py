@@ -59,7 +59,7 @@ def apply_spectral_filter_with_diagnostics(
 
     diagnostics = {
         "graph_filter_strength": float(filter_strength),
-        "spectral_filter_strength": float(filter_strength),
+        "graph_filter_strength": float(filter_strength),
         "spectral_filter_gain_list": [float(x) for x in gains.tolist()],
         "spectral_filter_gain_min": float(np.min(gains)) if gains.size else 0.0,
         "spectral_filter_gain_max": float(np.max(gains)) if gains.size else 0.0,

@@ -17,7 +17,7 @@ class CounterfactualSpec:
     graph_source: str = "actual"
     relation_mode: str = "actual"
     topology_mode: str = "actual"
-    aggregation_target: str = "spectral_filtered_update"
+    aggregation_target: str = "graph_filtered_update"
     graph_free_mode: str = "none"
     cluster_method: str = "none"
     metadata: Mapping[str, Any] = field(default_factory=dict)

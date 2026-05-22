@@ -48,14 +48,14 @@ class AggregationOperatorTest(unittest.TestCase):
         self.assertTrue(np.allclose(result.output.alpha, np.array([0.5, 0.25, 0.25])))
         self.assertIn("alpha_entropy", result.trace_records[0].values)
 
-    def test_spectral_filtered_update_alias_executes_with_canonical_output(self):
-        result = GraphAggregationOperator("spectral_filtered_update").run(self._context())
+    def test_graph_filtered_update_executes_with_canonical_output(self):
+        result = GraphAggregationOperator("graph_filtered_update").run(self._context())
 
         self.assertEqual(result.status, "ok")
         self.assertEqual(result.output.aggregation_target, "graph_filtered_update")
         self.assertEqual(result.output.global_update.shape, (2,))
 
-    def test_weight_and_spectral_filtered_weight_execute_when_weights_are_available(self):
+    def test_weight_and_graph_filtered_weight_execute_when_weights_are_available(self):
         config = {
             "local_weights": np.array(
                 [
@@ -68,7 +68,7 @@ class AggregationOperatorTest(unittest.TestCase):
         }
 
         weight = GraphAggregationOperator("weight").run(self._context(config=config))
-        filtered = GraphAggregationOperator("spectral_filtered_weight").run(self._context(config=config))
+        filtered = GraphAggregationOperator("graph_filtered_weight").run(self._context(config=config))
 
         self.assertEqual(weight.output.aggregation_target, "weight")
         self.assertEqual(filtered.output.aggregation_target, "graph_filtered_weight")

@@ -416,7 +416,6 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
             "fixed_tau": float(args.fixed_tau),
             "tau_source": args.tau_source,
             "graph_filter_strength": float(args.graph_filter_strength),
-            "spectral_filter_strength": float(args.graph_filter_strength),
             "client_update_ema_alpha": float(args.client_update_ema_alpha),
         },
 
@@ -485,7 +484,6 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
         "fixed_tau": float(args.fixed_tau),
         "tau_source": args.tau_source,
         "graph_filter_strength": float(args.graph_filter_strength),
-        "spectral_filter_strength": float(args.graph_filter_strength),
         "min_client_weight": float(args.min_client_weight),
         "diagnostic_only": bool(args.diagnostic_only),
         "partition": args.partition,

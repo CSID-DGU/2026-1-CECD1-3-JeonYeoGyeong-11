@@ -58,10 +58,7 @@ def collect_run_features(result_obj: Dict[str, Any], method: str) -> Dict[str, A
         "server_optimizer": trace_value("server_optimizer"),
         "tau_source_used": trace_value("tau_source_used"),
         "graph_filter_strength": trace_value(
-            "graph_filter_strength", trace_value("spectral_filter_strength")
-        ),
-        "spectral_filter_strength": trace_value(
-            "spectral_filter_strength", trace_value("graph_filter_strength")
+            "graph_filter_strength", trace_value("graph_filter_strength")
         ),
         "client_update_ema_alpha": trace_value("client_update_ema_alpha"),
         "client_update_ema_source": trace_value("client_update_ema_source"),

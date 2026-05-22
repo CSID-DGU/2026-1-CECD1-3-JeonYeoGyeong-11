@@ -73,7 +73,7 @@ GATE1_REQUIRED_TEXT = {
         "tests/structure/test_boundaries.py",
         "spectral_fl",
         "result_general_",
-        "spectral_filter_strength",
+        "graph_filter_strength",
     ),
     "docs/maintenance/line-budget-allowlist.txt": (
         "Protected Paths",
@@ -432,7 +432,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "graphfl_lab/strategies/graphfl/config_context.py": (
         "build_config_context",
-        "spectral_filter_strength",
+        "graph_filter_strength",
         "warmup_rounds",
     ),
     "graphfl_lab/strategies/graphfl/conflict_metrics.py": (
@@ -567,7 +567,7 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
     "tests/strategies/graphfl/test_config_context.py": (
         "test_build_config_context_projects_explicit_round_config_fields",
-        "spectral_filter_strength",
+        "graph_filter_strength",
     ),
     "tests/strategies/graphfl/test_conflict_metrics.py": (
         "test_compute_conflict_metric_bundle_uses_h_spec_tau_source",

@@ -38,7 +38,6 @@ def build_config_context(strategy: Any) -> Dict[str, Any]:
         "server_learning_rate": strategy.server_learning_rate,
         "server_momentum": strategy.server_momentum,
         "graph_filter_strength": strategy.graph_filter_strength,
-        "spectral_filter_strength": strategy.graph_filter_strength,
         "tau_source": strategy.tau_source,
         "use_ema_graph": strategy.use_ema_graph,
         "warmup_rounds": strategy.warmup_rounds,

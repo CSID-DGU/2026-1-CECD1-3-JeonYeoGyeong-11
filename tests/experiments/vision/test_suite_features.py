@@ -21,7 +21,7 @@ class VisionSuiteFeatureTest(unittest.TestCase):
                     "round_trace": [
                         {
                             "graph_mode": "knn",
-                            "spectral_filter_strength": 0.5,
+                            "graph_filter_strength": 0.5,
                             "h_spec": 0.2,
                             "di_pre": 0.9,
                             "di_post": 0.4,
@@ -42,7 +42,6 @@ class VisionSuiteFeatureTest(unittest.TestCase):
 
         self.assertEqual(features["graph_mode"], "random")
         self.assertEqual(features["graph_filter_strength"], "0.7")
-        self.assertEqual(features["spectral_filter_strength"], "0.5")
         self.assertAlmostEqual(features["mean_h_spec"], 0.4)
         self.assertAlmostEqual(features["mean_di_pre"], 0.8)
         self.assertAlmostEqual(features["mean_di_post"], 0.35)

@@ -9,6 +9,25 @@ import numpy as np
 from flwr.common import NDArrays
 
 from graphfl_lab.graph.sources import normalize_key
+
+_AGGREGATION_TARGET_LEGACY_ALIASES = {
+    "spectral_filtered_update": "graph_filtered_update",
+    "spectral_filtered_ema_update": "graph_filtered_ema_update",
+    "spectral_filtered_weight": "graph_filtered_weight",
+    "spectral_filtered_update_delta": "graph_filtered_update",
+    "spectral_filtered_client_ema_update_delta": "graph_filtered_ema_update",
+    "spectral_filtered_local_weight_delta": "graph_filtered_weight",
+    "spectral_filtered_model_weight": "graph_filtered_weight",
+    "client_ema_spectral_filtered_update": "graph_filtered_ema_update",
+    "spectral_update": "graph_filtered_update",
+    "spectral_ema_update": "graph_filtered_ema_update",
+    "spectral_weight": "graph_filtered_weight",
+}
+
+
+def canonical_aggregation_target(target: str) -> str:
+    key = normalize_key(target)
+    return _AGGREGATION_TARGET_LEGACY_ALIASES.get(key, key)
 from graphfl_lab.projection import flatten_weights, unflatten_like
 from graphfl_lab.strategies.graphfl.aggregation import weighted_average_by_alpha
 from graphfl_lab.strategies.graphfl.filtering import (
@@ -60,7 +79,7 @@ def aggregate_target(
     l_mat: Optional[np.ndarray] = None,
     ema_updates: Optional[List[NDArrays]] = None,
 ) -> Tuple[NDArrays, str, Dict[str, Any]]:
-    target = normalize_key(config.target)
+    target = canonical_aggregation_target(config.target)
     ema_source = ema_updates if ema_updates is not None else local_updates
     if target in {"update", "delta", "update_delta"}:
         agg_delta = weighted_average_by_alpha(
@@ -69,12 +88,10 @@ def aggregate_target(
         return _add_delta_to_global(current_global, agg_delta), "update_delta", {}
 
     if target in {
-        "spectral_filtered_update",
         "filtered_update",
         "graph_filtered_update",
         "lowpass_update",
         "low_pass_update",
-        "spectral_update",
     }:
         filtered_updates, filter_diag = _filter_client_arrays(
             arrays=local_updates,
@@ -95,13 +112,10 @@ def aggregate_target(
         )
 
     if target in {
-        "spectral_filtered_ema_update",
         "filtered_ema_update",
         "graph_filtered_ema_update",
         "lowpass_ema_update",
         "low_pass_ema_update",
-        "spectral_ema_update",
-        "client_ema_spectral_filtered_update",
     }:
         filtered_updates, filter_diag = _filter_client_arrays(
             arrays=ema_source,
@@ -129,13 +143,10 @@ def aggregate_target(
         )
 
     if target in {
-        "spectral_filtered_weight",
         "filtered_weight",
         "graph_filtered_weight",
         "lowpass_weight",
         "low_pass_weight",
-        "spectral_weight",
-        "spectral_filtered_model_weight",
     }:
         filtered_weights, filter_diag = _filter_client_arrays(
             arrays=local_weights,
@@ -157,6 +168,5 @@ def aggregate_target(
     raise ValueError(
         "Unknown aggregation_target "
         f"{config.target!r}; expected update, graph_filtered_update, "
-        "graph_filtered_ema_update, weight, graph_filtered_weight, "
-        "or their spectral_filtered_* compatibility aliases"
+        "graph_filtered_ema_update, weight, or graph_filtered_weight"
     )

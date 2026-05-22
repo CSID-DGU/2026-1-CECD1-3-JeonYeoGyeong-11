@@ -119,15 +119,15 @@ class CounterfactualRunnerTest(unittest.TestCase):
         specs = [
             CounterfactualSpec(
                 name="filtered_update_delta",
-                aggregation_target="spectral_filtered_update_delta",
+                aggregation_target="graph_filtered_update_delta",
             ),
             CounterfactualSpec(
                 name="filtered_weight_delta",
-                aggregation_target="spectral_filtered_local_weight_delta",
+                aggregation_target="graph_filtered_local_weight_delta",
             ),
             CounterfactualSpec(
                 name="filtered_ema_delta",
-                aggregation_target="spectral_filtered_client_ema_update_delta",
+                aggregation_target="graph_filtered_client_ema_update_delta",
             ),
         ]
 

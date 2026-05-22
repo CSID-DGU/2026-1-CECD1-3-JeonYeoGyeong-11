@@ -86,7 +86,7 @@ class ConfigIoTest(unittest.TestCase):
                 sys.argv = old_argv
 
         self.assertEqual(args.graph_filter_strength, 0.5)
-        self.assertEqual(args.spectral_filter_strength, 0.5)
+        self.assertFalse(hasattr(args, "spectral_filter_strength"))
 
     def test_graph_filter_strength_config_populates_compat_attr(self):
         parser = argparse.ArgumentParser()
@@ -112,7 +112,6 @@ class ConfigIoTest(unittest.TestCase):
                 sys.argv = old_argv
 
         self.assertEqual(args.graph_filter_strength, 0.25)
-        self.assertEqual(args.spectral_filter_strength, 0.25)
 
 
 if __name__ == "__main__":

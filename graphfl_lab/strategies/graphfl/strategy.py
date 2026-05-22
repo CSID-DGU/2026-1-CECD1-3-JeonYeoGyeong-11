@@ -131,7 +131,6 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         adaptive_tau: bool = True,
         fixed_tau: float = 1.0,
         tau_source: str = "h_spec",
-        spectral_filter_strength: Optional[float] = None,
         graph_filter_strength: float = 1.0,
         client_update_ema_alpha: float = 0.8,
         diagnostics_enable: bool = False,
@@ -183,13 +182,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         self.adaptive_tau = bool(adaptive_tau)
         self.fixed_tau = float(fixed_tau)
         self.tau_source = str(tau_source)
-        filter_strength = (
-            graph_filter_strength
-            if spectral_filter_strength is None
-            else spectral_filter_strength
-        )
-        self.graph_filter_strength = max(float(filter_strength), 0.0)
-        self.spectral_filter_strength = self.graph_filter_strength
+        self.graph_filter_strength = max(float(graph_filter_strength), 0.0)
         self.client_update_ema_alpha = float(client_update_ema_alpha)
         self.diagnostics_enable = bool(diagnostics_enable)
         self.loo_enabled = bool(loo_enabled)

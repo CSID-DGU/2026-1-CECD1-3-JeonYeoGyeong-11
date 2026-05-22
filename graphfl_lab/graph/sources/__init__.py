@@ -17,7 +17,6 @@ from graphfl_lab.graph.sources.selection import (
     select_graph_layers,
 )
 from graphfl_lab.graph.sources.graphfl import graph_vectors_for_graphfl
-from graphfl_lab.graph.sources.spectral import graph_vectors_for_spectral
 
 __all__ = [
     "GraphSourceConfig",
@@ -28,7 +27,6 @@ __all__ = [
     "graph_source_names",
     "graph_vectors_for_fedsim",
     "graph_vectors_for_graphfl",
-    "graph_vectors_for_spectral",
     "normalize_key",
     "normalize_vector",
     "register_graph_source",

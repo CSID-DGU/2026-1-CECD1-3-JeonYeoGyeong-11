@@ -31,7 +31,7 @@ class GraphRegistryTest(unittest.TestCase):
             mode="unit_test_star",
             graph_scale_sigma=0.25,
             graph_source="classifier_head_update",
-            aggregation_target="spectral_filtered_update",
+            aggregation_target="graph_filtered_update",
         )
 
         self.assertTrue(np.allclose(adj[0, 1:], 0.25))
@@ -40,7 +40,7 @@ class GraphRegistryTest(unittest.TestCase):
         self.assertEqual(meta["base_graph_kind"], "plugin:star")
         self.assertEqual(meta["graph_kind"], "real_graph")
         self.assertEqual(meta["graph_source"], "classifier_head_update")
-        self.assertEqual(meta["aggregation_target"], "spectral_filtered_update")
+        self.assertEqual(meta["aggregation_target"], "graph_filtered_update")
 
     def test_registered_builder_can_restrict_source_and_target(self):
         @register_graph_builder("unit_test_source_bound", override=True)
@@ -58,7 +58,7 @@ class GraphRegistryTest(unittest.TestCase):
                 z_mat=z_mat,
                 mode="unit_test_source_bound",
                 graph_source="weight",
-                aggregation_target="spectral_filtered_update",
+                aggregation_target="graph_filtered_update",
             )
 
 

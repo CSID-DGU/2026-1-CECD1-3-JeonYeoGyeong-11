@@ -116,7 +116,6 @@ def build_vision_meta(
             "fixed_tau": float(args.fixed_tau),
             "tau_source": args.tau_source,
             "graph_filter_strength": float(args.graph_filter_strength),
-            "spectral_filter_strength": float(args.graph_filter_strength),
             "client_update_ema_alpha": float(args.client_update_ema_alpha),
         },
         "aggregation": {
@@ -197,7 +196,6 @@ def build_vision_meta(
         "diagnostic_only": bool(args.diagnostic_only),
         "tau_source": args.tau_source,
         "graph_filter_strength": float(args.graph_filter_strength),
-        "spectral_filter_strength": float(args.graph_filter_strength),
         "client_update_ema_alpha": float(args.client_update_ema_alpha),
         "graph_smoothing_lambda": float(getattr(args, "graph_smoothing_lambda", 0.05)),
         "graph_smoothing_operator": str(

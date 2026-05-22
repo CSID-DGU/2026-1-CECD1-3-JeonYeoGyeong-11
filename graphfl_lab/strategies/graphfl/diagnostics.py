@@ -313,8 +313,6 @@ def build_round_log(
         "tau_source_config": str(config["tau_source"]),
         "graph_filter_strength": graph_filter_strength,
         "graph_filter_strength_config": graph_filter_strength,
-        "spectral_filter_strength": graph_filter_strength,
-        "spectral_filter_strength_config": graph_filter_strength,
         "client_update_ema_alpha": float(config["client_update_ema_alpha"]),
         "client_update_ema_alpha_config": float(
             config["client_update_ema_alpha"]
@@ -376,7 +374,6 @@ def build_fit_metrics(
         "spectral_entropy": float(spectral["spectral_diag"]["spectral_entropy"]),
         "eigengap_max": float(spectral["spectral_diag"]["eigengap_max"]),
         "graph_filter_strength": graph_filter_strength,
-        "spectral_filter_strength": graph_filter_strength,
         "spectral_filter_gain_mean": float(
             filter_diag["spectral_filter_gain_mean"]
         ),

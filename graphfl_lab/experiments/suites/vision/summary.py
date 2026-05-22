@@ -35,11 +35,16 @@ def build_summary_rows(rows: List[Dict[str, Any]], args: Namespace) -> List[Dict
         def gmean(key: str):
             return safe_mean([x.get(key) for x in group])
 
-        def gfirst(key: str) -> str:
+        def gfirst(key: str, fallback_key: str | None = None) -> str:
             for x in group:
                 value = x.get(key)
                 if value not in (None, ""):
                     return str(value)
+            if fallback_key is not None:
+                for x in group:
+                    value = x.get(fallback_key)
+                    if value not in (None, ""):
+                        return str(value)
             return ""
 
         row_base = {
@@ -66,8 +71,7 @@ def build_summary_rows(rows: List[Dict[str, Any]], args: Namespace) -> List[Dict
             "aggregation_target_used": gfirst("aggregation_target_used"),
             "server_optimizer": gfirst("server_optimizer"),
             "tau_source_used": gfirst("tau_source_used"),
-            "graph_filter_strength": gfirst("graph_filter_strength"),
-            "spectral_filter_strength": gfirst("spectral_filter_strength"),
+            "graph_filter_strength": gfirst("graph_filter_strength", "spectral_filter_strength"),
             "client_update_ema_alpha": gfirst("client_update_ema_alpha"),
             "client_update_ema_source": gfirst("client_update_ema_source"),
             "server_learning_rate": gfirst("server_learning_rate"),

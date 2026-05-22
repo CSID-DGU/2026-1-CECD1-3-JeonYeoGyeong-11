@@ -8,6 +8,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from graphfl_lab.corrections.graph_free import resolve_graph_free_correction
+from graphfl_lab.strategies.graphfl.targets import canonical_aggregation_target
 
 from .context import AggregationContext
 from .modules import ModuleResult
@@ -129,6 +130,7 @@ class GraphAggregationOperator:
         )
 
     def _run_core(self, context: AggregationContext, target: str) -> AggregationResult:
+        target = canonical_aggregation_target(target)
         topology = context.topology_output
         adjacency = _adjacency(topology)
         updates = _as_matrix(context.local_updates)
@@ -140,15 +142,11 @@ class GraphAggregationOperator:
             post_updates = updates
             alpha_post = alpha
             target_name = "update"
-        elif target in {"spectral_filtered_update", "filtered_update", "graph_filtered_update"}:
+        elif target in {"filtered_update", "graph_filtered_update"}:
             post_updates = _spectral_filter(updates, adjacency, self.filter_strength)
             alpha_post = alpha
             target_name = "graph_filtered_update"
-        elif target in {
-            "spectral_filtered_ema_update",
-            "filtered_ema_update",
-            "graph_filtered_ema_update",
-        }:
+        elif target in {"filtered_ema_update", "graph_filtered_ema_update"}:
             ema_updates = _as_matrix(config.get("ema_updates", context.local_updates))
             post_updates = _spectral_filter(ema_updates, adjacency, self.filter_strength)
             alpha_post = alpha
@@ -161,11 +159,7 @@ class GraphAggregationOperator:
                 alpha=alpha,
                 metadata=metadata,
             )
-        elif target in {
-            "spectral_filtered_weight",
-            "filtered_weight",
-            "graph_filtered_weight",
-        }:
+        elif target in {"filtered_weight", "graph_filtered_weight"}:
             local_weights = _as_matrix(config["local_weights"])
             filtered = _spectral_filter(local_weights, adjacency, self.filter_strength)
             return AggregationResult(

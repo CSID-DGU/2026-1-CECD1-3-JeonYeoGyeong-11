@@ -194,7 +194,6 @@ def args_from_context(context: Context) -> Namespace:
         fixed_tau=float(cfg["fixed-tau"]),
         tau_source=str(cfg["tau-source"]),
         graph_filter_strength=float(cfg["graph-filter-strength"]),
-        spectral_filter_strength=float(cfg["graph-filter-strength"]),
         client_update_ema_alpha=float(cfg["client-update-ema-alpha"]),
         diagnostic_only=bool_value(cfg["diagnostic-only"]),
         e_std_threshold=float(cfg["e-std-threshold"]),

@@ -18,7 +18,8 @@ legacy surface is discovered.
 | `general_suite_*` | old suite artifact filename | compatibility mirror; new writes emit `vision_suite_*` first via `write_suite_summary_artifacts()` until Gate 6 |
 | `result_vision_*`, `vision_suite_*` | canonical output filenames | prefer in new docs, scripts, and directory listings |
 | `graphfl_lab/experiments/suites/vision/artifacts.py` | artifact discovery helper | canonical-first readers for plots/smoke/sweeps |
-| `spectral_filter_strength` | old config/result key | schema policy in Gate 2, removal in Gate 6 |
+| `graph_filter_strength` | canonical config/result key | prefer in new writes; JSON may still alias `spectral_filter_strength` via `config_io` |
+| `spectral_filter_strength` | old config/result key | JSON alias only after Gate 6 phase 2; not written to new traces |
 | `spectral_filtered_*` | old aggregation target/result spelling | internal migration in Gate 3, removal in Gate 6 |
 | `ours_spectral_filtered_*` | old suite token | keep through deprecation |
 | `_spectral_only`, `_speconly` | old suite suffixes | keep through deprecation |

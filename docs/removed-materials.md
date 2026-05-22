@@ -35,13 +35,24 @@ Execution log (findings and decisions): [`docs/maintenance/cleanup-status.md`](m
 
 Legacy experiment trees with old filenames stay **gitignored** (see root `.gitignore`).
 
+## Post-Gate-6 Phase 2 — Spectral Alias Trim (2026-05-22)
+
+| Removed / changed | Replacement / policy |
+|---|---|
+| `graphfl_lab/graph/sources/spectral.py` | `graph_vectors_for_graphfl` in `graph/sources/graphfl.py` |
+| `graph_vectors_for_spectral` export | removed; import `graph_vectors_for_graphfl` |
+| Strategy ctor / trace field `spectral_filter_strength` | `graph_filter_strength` only in new writes |
+| Dual CLI `Namespace` setattr for filter strength | JSON key alias in `config_io` only |
+| Explicit `spectral_filtered_*` branches in targets | `canonical_aggregation_target()` input map |
+
 ## Remaining Compatibility Debt
 
 | Surface | Status | Notes |
 |---|---|---|
-| Runtime `spectral_filtered_*` aggregation **input** aliases | retained | lifecycle/strategy accept legacy target strings |
-| `spectral_filter_strength` in traces / JSON config keys | retained | maps to `graph_filter_strength` |
+| Runtime `spectral_filtered_*` aggregation **input** aliases | retained | `targets.canonical_aggregation_target()` + `config_io` JSON keys |
+| `spectral_filter_strength` JSON config key | retained | read alias → `graph_filter_strength`; not written to new result meta |
 | `ours_spectral_filtered_*` in **reporting** result tags | retained | pairs historical run labels only; not suite launch tokens |
+| Diagnostic trace keys `spectral_filter_gain_*` | retained | metric names, not public rename surface |
 
 ## Tombstones
 

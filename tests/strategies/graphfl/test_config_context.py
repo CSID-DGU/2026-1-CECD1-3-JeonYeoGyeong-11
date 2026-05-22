@@ -49,7 +49,7 @@ class GraphFLConfigContextTest(unittest.TestCase):
         self.assertEqual(context["correction_family"], "real_graph")
         self.assertEqual(context["control_graph_mode"], "matched_random")
         self.assertEqual(context["graph_filter_strength"], 0.75)
-        self.assertEqual(context["spectral_filter_strength"], 0.75)
+        self.assertEqual(context["graph_filter_strength"], 0.75)
         self.assertEqual(context["warmup_rounds"], 2)
 
 

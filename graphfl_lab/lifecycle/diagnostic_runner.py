@@ -8,6 +8,7 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from graphfl_lab.corrections.graph_free import resolve_graph_free_correction
+from graphfl_lab.strategies.graphfl.targets import canonical_aggregation_target
 from graphfl_lab.diagnostics.metrics import summarize_pre_post
 from graphfl_lab.graph.diagnostics import compute_graph_diagnostics
 
@@ -109,7 +110,7 @@ class MinimalAggregationAdapter:
     ) -> MinimalAggregationOutput:
         updates = np.asarray(flat_updates, dtype=np.float64).copy()
         alpha = _normalize(weights_pre)
-        target = str(aggregation_target).strip().lower().replace("-", "_")
+        target = canonical_aggregation_target(str(aggregation_target))
         metadata: dict[str, Any] = {"aggregation_target": target}
 
         if target in {"global_update", "update", "update_delta"}:
@@ -117,18 +118,12 @@ class MinimalAggregationAdapter:
             weights_post = alpha
             target_used = "global_update"
         elif target in {
-            "spectral_filtered_update",
-            "spectral_filtered_update_delta",
-            "spectral_filtered_ema_update",
-            "spectral_filtered_client_ema_update_delta",
             "filtered_update",
             "filtered_update_delta",
             "graph_filtered_update",
             "graph_filtered_update_delta",
             "graph_filtered_ema_update",
             "graph_filtered_client_ema_update_delta",
-            "spectral_filtered_weight",
-            "spectral_filtered_local_weight_delta",
             "filtered_weight",
             "filtered_local_weight_delta",
             "graph_filtered_weight",

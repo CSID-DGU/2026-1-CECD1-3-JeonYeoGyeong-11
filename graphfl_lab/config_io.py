@@ -11,6 +11,9 @@ from typing import Any, Dict
 
 ARG_DEST_ALIASES = {
     "spectral_filter_strength": "graph_filter_strength",
+    "spectral_filtered_update": "graph_filtered_update",
+    "spectral_filtered_ema_update": "graph_filtered_ema_update",
+    "spectral_filtered_weight": "graph_filtered_weight",
 }
 
 
@@ -114,15 +117,7 @@ def parse_args_with_config(parser: argparse.ArgumentParser) -> argparse.Namespac
 
 
 def normalize_arg_aliases(args: argparse.Namespace) -> argparse.Namespace:
-    """Populate canonical/compatibility argparse attributes after parsing."""
-    if hasattr(args, "graph_filter_strength") and not hasattr(
-        args, "spectral_filter_strength"
-    ):
-        setattr(args, "spectral_filter_strength", args.graph_filter_strength)
-    if hasattr(args, "spectral_filter_strength") and not hasattr(
-        args, "graph_filter_strength"
-    ):
-        setattr(args, "graph_filter_strength", args.spectral_filter_strength)
+    """Normalize argparse namespace after parsing (canonical fields only)."""
     return args
 
 
