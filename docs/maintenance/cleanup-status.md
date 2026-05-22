@@ -228,6 +228,7 @@ result-schema contracts.
 | 2026-05-22 | Existing graph-source tests exercise the private `_graph_vectors` wrapper. | Keep `_graph_vectors` as a compatibility wrapper around the extracted graph-source helper during Gate 5d-prep. |
 | 2026-05-22 | Further line shaving would mostly target orchestration readability rather than immediate experiment readiness. | Defer optional deeper splits of `strategy.py`, `vision/reporting.py`, `diagnostics.py`, and `aggregation.py`; move next to local smoke checks and docs tightening. |
 | 2026-05-22 | Representative local smoke checks passed: `gate-check 5d-prep`, focused graph/design/schema/golden/runner tests, and runner help checks for `run_experiment.py`, `run_vision_experiment.py`, and `run_graph_ablation.py`. | Keep Gate 4c remote/nightly completion pending; use these local checks as readiness evidence only, not full Gate completion. |
+| 2026-05-22 | Diagnostic suite preflight initially reported `NEEDS_REVIEW` because its expected args still used legacy `spectral_filtered_update` while diagnostic variants now emit canonical `graph_filtered_update`. | Update preflight expectations to canonical `graph_filtered_update`; rerun preflight and related variant tests until green. |
 
 ## Closure Policy
 
