@@ -75,7 +75,7 @@ class DiagnosticReportScriptsTest(unittest.TestCase):
     def test_dashboard_mockup_script_loads_summary_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             suite_dir = Path(tmp)
-            summary_csv = suite_dir / "general_suite_summary.csv"
+            summary_csv = suite_dir / "vision_suite_summary.csv"
             with summary_csv.open("w", encoding="utf-8", newline="") as f:
                 writer = csv.DictWriter(
                     f,

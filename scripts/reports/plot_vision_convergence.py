@@ -63,7 +63,7 @@ def parse_args() -> argparse.Namespace:
         nargs="*",
         default=[],
         help=(
-            "Optional individual result_vision_*.json or result_general_*.json files. Multiple files "
+            "Optional individual result_vision_*.json files. Multiple files "
             "with the same label and variant are aggregated across seeds."
         ),
     )
@@ -558,7 +558,7 @@ def main() -> None:
             )
         )
     if not records:
-        raise SystemExit("No matching result_vision_*.json or result_general_*.json records found")
+        raise SystemExit("No matching result_vision_*.json records found")
 
     manifest_lines = [
         "# Convergence Plots",

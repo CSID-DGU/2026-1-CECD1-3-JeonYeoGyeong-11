@@ -1,7 +1,7 @@
 """Vision FL variant-by-seed suite implementation.
 
 Wraps ``run_vision_experiment.py`` with suite-level summaries
-(``vision_suite_summary.json``, compatibility ``general_suite_summary.json``,
+(``vision_suite_summary.json``,
 short ``suite_summary.json`` aliases, row files, ``knn_vs_random_matched.csv``,
 and ``interpretation.md``).
 
@@ -227,7 +227,7 @@ def run(args):
             print(f"Preloaded FedAvg accuracies for seeds {sorted(loaded.keys())} from {preload_dir}")
         elif "fedavg" not in args.variants:
             print(
-                f"Warning: --preload-fedavg-dir {preload_dir!r} had no result_vision/result_general FedAvg JSONs; "
+                f"Warning: --preload-fedavg-dir {preload_dir!r} had no result_vision_* FedAvg JSONs; "
                 "deltas vs FedAvg will be NaN unless you include fedavg in --variants."
             )
         if fedavg_acc_by_seed:

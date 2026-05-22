@@ -54,19 +54,6 @@ class VisionSuiteFeatureTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_json(
-                root / "result_general_fedavg_seed1.json",
-                {
-                    "meta": {"seed": 1},
-                    "results": {
-                        "fedavg": {
-                            "metrics_distributed": {
-                                "accuracy": [[1, 0.1], [2, 0.2]]
-                            }
-                        }
-                    },
-                },
-            )
-            write_json(
                 root / "result_vision_fedavg_seed1.json",
                 {
                     "meta": {"experiment": {"seed": 1}},

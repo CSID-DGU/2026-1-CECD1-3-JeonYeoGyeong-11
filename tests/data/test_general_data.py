@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from graphfl_lab.general_data import _dirichlet_partition, _ensure_min_samples_per_client
+from graphfl_lab.data.vision import _dirichlet_partition, _ensure_min_samples_per_client
 
 
 class GeneralDataPartitionTest(unittest.TestCase):

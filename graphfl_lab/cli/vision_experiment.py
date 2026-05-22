@@ -19,7 +19,6 @@ GRAPH_MODE_HELP = (
     "provided by --graph-plugin."
 )
 
-# Compatibility re-exports for older imports from graphfl_lab.cli.general_experiment.
 globals().update(
     {
         name: getattr(_experiment, name)

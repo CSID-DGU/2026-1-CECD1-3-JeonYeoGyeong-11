@@ -17,7 +17,7 @@ class SuiteArtifactsTest(unittest.TestCase):
             out_dir = Path(self.id().replace(".", "_"))
             out_dir.mkdir(parents=True, exist_ok=True)
             try:
-                (out_dir / "general_suite_rows.json").write_text("[]", encoding="utf-8")
+                (out_dir / "suite_rows.json").write_text("[]", encoding="utf-8")
                 (out_dir / "vision_suite_rows.json").write_text(
                     json.dumps([{"variant": "ours_knn_k1"}]),
                     encoding="utf-8",
@@ -33,7 +33,7 @@ class SuiteArtifactsTest(unittest.TestCase):
             out_dir = Path(self.id().replace(".", "_") + "_csv")
             out_dir.mkdir(parents=True, exist_ok=True)
             try:
-                (out_dir / "general_suite_summary.csv").write_text("variant\nfedavg\n", encoding="utf-8")
+                (out_dir / "suite_summary.csv").write_text("variant\nfedavg\n", encoding="utf-8")
                 (out_dir / "vision_suite_summary.csv").write_text("variant\nours\n", encoding="utf-8")
                 path = resolve_suite_artifact(out_dir, SUITE_SUMMARY_CSV_FILENAMES)
                 self.assertEqual(path.name, "vision_suite_summary.csv")
@@ -42,13 +42,11 @@ class SuiteArtifactsTest(unittest.TestCase):
                     child.unlink()
                 out_dir.rmdir()
 
-    def test_discover_result_json_paths_prefers_vision_alias(self):
+    def test_discover_result_json_paths_reads_vision_files(self):
         out_dir = Path(self.id().replace(".", "_") + "_results")
         out_dir.mkdir(parents=True, exist_ok=True)
         try:
-            general = out_dir / "result_general_ours_seed1_tag.json"
             vision = out_dir / "result_vision_ours_seed1_tag.json"
-            general.write_text('{"meta": {"seed": 1}}', encoding="utf-8")
             vision.write_text('{"meta": {"seed": 1, "canonical": true}}', encoding="utf-8")
             paths = discover_result_json_paths(out_dir)
             self.assertEqual(paths["ours_seed1_tag.json"], vision)

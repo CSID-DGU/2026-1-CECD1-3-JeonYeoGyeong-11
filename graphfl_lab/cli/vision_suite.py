@@ -233,7 +233,7 @@ def parse_args():
         default="",
         help=(
             "Directory containing completed result_vision_fedavg_seed*.json "
-            "or result_general_fedavg_seed*.json runs. "
+            "or result_vision_fedavg_seed*.json runs. "
             "Loads final FedAcc per seed for delta computation when FedAvg is omitted from --variants "
             "(resume after partial suite). Same-dir --out-dir is typical."
         ),

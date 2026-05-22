@@ -697,19 +697,14 @@ def run(args) -> None:
         suite_dir.mkdir(parents=True, exist_ok=True)
         cmd = suite_cmd(args, combo, suite_dir, tag, variants)
         summary_path = resolve_suite_artifact(suite_dir, SUITE_SUMMARY_CSV_FILENAMES)
-        compatibility_summary_path = suite_dir / "general_suite_summary.csv"
         status = "dry_run"
         if not dry_run:
-            if skip_existing and (
-                summary_path is not None or compatibility_summary_path.is_file()
-            ):
+            if skip_existing and summary_path is not None:
                 status = "skipped_existing"
             else:
                 print(f"=== Running stress-grid suite {idx}: {tag} ===", flush=True)
                 run_cmd(cmd, cwd=PROJECT_ROOT)
                 status = "completed"
-            if summary_path is None and compatibility_summary_path.is_file():
-                summary_path = compatibility_summary_path
             summary_rows.extend(
                 read_summary_rows(
                     summary_path

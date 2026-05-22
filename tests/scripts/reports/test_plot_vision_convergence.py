@@ -30,7 +30,7 @@ class PlotVisionConvergenceTest(unittest.TestCase):
     def test_infer_variant_accepts_bare_suite_run_tag(self):
         obj = {"meta": {"run_tag": "ours_spectral_filtered_knn_k1_serverm_fixed_tau_seed42"}}
         variant = self.plot.infer_variant(
-            Path("result_general_ours_seed42_ours_spectral_filtered_knn_k1_serverm_fixed_tau_seed42.json"),
+            Path("result_vision_ours_seed42_ours_spectral_filtered_knn_k1_serverm_fixed_tau_seed42.json"),
             obj,
             "ours",
             42,
@@ -44,7 +44,7 @@ class PlotVisionConvergenceTest(unittest.TestCase):
             "meta": {"experiment": {"seed": 43}},
             "results": {"fedavgm": {"metrics_distributed": {"accuracy": [[1, 0.4]]}}},
         }
-        method, seed = self.plot.result_method_and_seed(Path("result_general_fedavgm_seed43.json"), obj)
+        method, seed = self.plot.result_method_and_seed(Path("result_vision_fedavgm_seed43.json"), obj)
 
         self.assertEqual(method, "fedavgm")
         self.assertEqual(seed, 43)
@@ -62,7 +62,7 @@ class PlotVisionConvergenceTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             suite_dir = Path(tmp)
-            (suite_dir / "general_suite_rows.json").write_text(
+            (suite_dir / "suite_rows.json").write_text(
                 json.dumps([{"variant": "legacy_only"}]),
                 encoding="utf-8",
             )

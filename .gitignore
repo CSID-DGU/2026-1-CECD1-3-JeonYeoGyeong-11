@@ -26,6 +26,10 @@ htmlcov/
 # Experiment outputs and generated analysis artifacts
 /experiments_current/
 /experiments/
+# Pre-rename artifact filenames (local trees only; current code uses vision_* names)
+**/result_general_*.json
+**/general_suite_summary.*
+**/general_suite_rows.json
 /outputs_current/
 /outputs/
 /runs/

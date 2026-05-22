@@ -79,14 +79,6 @@ Keep these thin. Add new logic in scoped modules, then re-export only if compati
 ```text
 graphfl_lab/aggregation.py
 graphfl_lab/client.py
-graphfl_lab/general_client.py
-graphfl_lab/general_data.py
-graphfl_lab/general_models.py
-graphfl_lab/general_suite_variants.py
-graphfl_lab/cli/general_experiment.py
-graphfl_lab/cli/general_suite.py
-graphfl_lab/cli/general_client_count_sweep.py
-graphfl_lab/cli/general_stress_grid.py
 graphfl_lab/model.py
 graphfl_lab/spectral_diagnostics.py
 graphfl_lab/strategy.py

@@ -25,14 +25,23 @@ Execution log (findings and decisions): [`docs/maintenance/cleanup-status.md`](m
 | CLI `spectral_filtered_*` argparse choices; `--spectral-filter-strength` flag | 7 | `graph_filtered_*` choices; `--graph-filter-strength`; JSON key alias `spectral_filter_strength` retained in `config_io` |
 | Suite launch tokens `ours_spectral_filtered_*` | 7 | `ours_graph_filtered_*`; legacy result tags still paired in `reporting.py` |
 
-## Post-Gate-6 Compatibility Debt (intentional)
+## Post-Gate-6 Cleanup (2026-05-22)
+
+| Removed surface | Replacement / policy |
+|---|---|
+| `graphfl_lab/general_*`, `graphfl_lab/cli/general_*` import/CLI facades | `graphfl_lab.data.vision`, `graphfl_lab.cli.vision_*`, `experiments.suites.vision` |
+| `general_suite_*` / `result_general_*` in artifact discovery | `vision_suite_*` / `result_vision_*` only; short `suite_*` aliases kept |
+| Code paths reading `general_suite_summary.csv` for stress-grid skip | `vision_suite_summary.csv` via `resolve_suite_artifact` |
+
+Legacy experiment trees with old filenames stay **gitignored** (see root `.gitignore`).
+
+## Remaining Compatibility Debt
 
 | Surface | Status | Notes |
 |---|---|---|
-| `graphfl_lab/general_*`, `graphfl_lab/cli/general_*` | retained | thin CLI/import facades; not part of Gate 6 batch 2–7 |
-| `general_suite_*` / `result_general_*` artifact **readers** | retained | historical experiment directories |
 | Runtime `spectral_filtered_*` aggregation **input** aliases | retained | lifecycle/strategy accept legacy target strings |
 | `spectral_filter_strength` in traces / JSON config keys | retained | maps to `graph_filter_strength` |
+| `ours_spectral_filtered_*` in **reporting** result tags | retained | pairs historical run labels only; not suite launch tokens |
 
 ## Tombstones
 

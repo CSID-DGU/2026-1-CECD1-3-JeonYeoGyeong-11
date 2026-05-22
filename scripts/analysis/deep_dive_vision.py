@@ -1,7 +1,6 @@
 """Deep-dive helper for vision FL: merge per-method JSONs, then run ``deep_dive_seed``.
 
-``run_vision_experiment.py`` writes canonical ``result_vision_*.json`` files and
-compatibility ``result_general_*.json`` aliases. This script locates the pair for
+``run_vision_experiment.py`` writes ``result_vision_*.json`` files. This script locates the pair for
 a given suite tag, variant label, and seed, merges them (same layout as FGL
 ``--method both``), and invokes ``scripts/analysis/deep_dive_seed.py``.
 """
@@ -44,14 +43,8 @@ def main():
     seed = int(args.seed)
     v = args.variant.strip().lower()
 
-    fed = _first_existing(
-        sd / f"result_vision_fedavg_seed{seed}_{tag}_fedavg_seed{seed}.json",
-        sd / f"result_general_fedavg_seed{seed}_{tag}_fedavg_seed{seed}.json",
-    )
-    ours = _first_existing(
-        sd / f"result_vision_ours_seed{seed}_{tag}_{v}_seed{seed}.json",
-        sd / f"result_general_ours_seed{seed}_{tag}_{v}_seed{seed}.json",
-    )
+    fed = sd / f"result_vision_fedavg_seed{seed}_{tag}_fedavg_seed{seed}.json"
+    ours = sd / f"result_vision_ours_seed{seed}_{tag}_{v}_seed{seed}.json"
     if not fed.is_file():
         raise SystemExit(f"Missing FedAvg JSON: {fed}")
     if not ours.is_file():

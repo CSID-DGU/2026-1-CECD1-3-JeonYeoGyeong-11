@@ -308,7 +308,7 @@ python scripts/checks/prior_work_proxy_parity.py --summary experiments_current/p
 
 ## Reporting And Analysis
 
-Canonical report commands (compatibility wrappers keep the `general_*` names):
+Canonical report commands:
 
 ```powershell
 python scripts/reports/plot_vision_convergence.py --suite-dir experiments_current/<suite_tag>
@@ -317,8 +317,9 @@ python scripts/analysis/deep_dive_vision.py --suite-dir ... --suite-tag ... --va
 python scripts/analysis/merge_vision_fedavg_ours.py --help
 ```
 
-Suite outputs prefer `vision_suite_*` and `result_vision_*` filenames. Readers also
-accept historical `general_suite_*` and `result_general_*` artifacts until Gate 6.
+Suite outputs use `vision_suite_*` and `result_vision_*` filenames. Short `suite_*`
+aliases are still read when present. Pre-rename `general_*` / `result_general_*`
+files in local experiment trees are gitignored and not loaded by current code.
 
 ## Compatibility
 
@@ -327,9 +328,6 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 | Old name | Role |
 |---|---|
 | `spectral_filter_strength` | JSON config key alias via `config_io` (CLI flag is `--graph-filter-strength`) |
-| `general_suite_*`, `result_general_*` | historical output filenames (readers only; new runs use vision names) |
-
-Do not add new logic to compatibility paths.
 
 ## Git Policy
 

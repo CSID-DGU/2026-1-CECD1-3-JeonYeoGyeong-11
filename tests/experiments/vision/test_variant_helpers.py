@@ -4,7 +4,6 @@ from pathlib import Path
 
 from graphfl_lab.experiments.suites.vision.variant_helpers import (
     canonical_result_path_for_variant,
-    compatibility_result_path_for_variant,
     diagnostic_graph_args,
     diagnostic_graph_free_args,
     legacy_residual_reweight_args,
@@ -54,32 +53,13 @@ class VisionVariantHelperTest(unittest.TestCase):
             Path("out") / "result_vision_ours_seed7_ours_knn_k2_seed7.json",
         )
 
-    def test_resolve_result_path_for_variant_reuses_compatibility_file(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out_dir = Path(tmp)
-            compatibility = compatibility_result_path_for_variant(
-                out_dir, "ours", 7, "ours_knn_k2_seed7"
-            )
-            compatibility.write_text("{}", encoding="utf-8")
-            resolved = resolve_result_path_for_variant(
-                out_dir, "ours", 7, "ours_knn_k2_seed7"
-            )
-
-        self.assertEqual(resolved, compatibility)
-
-    def test_resolve_result_path_for_variant_prefers_canonical_when_both_exist(
-        self,
-    ):
+    def test_resolve_result_path_for_variant_returns_canonical_path(self):
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = Path(tmp)
             canonical = canonical_result_path_for_variant(
                 out_dir, "ours", 7, "ours_knn_k2_seed7"
             )
-            compatibility = compatibility_result_path_for_variant(
-                out_dir, "ours", 7, "ours_knn_k2_seed7"
-            )
             canonical.write_text('{"canonical": true}', encoding="utf-8")
-            compatibility.write_text('{"legacy": true}', encoding="utf-8")
             resolved = resolve_result_path_for_variant(
                 out_dir, "ours", 7, "ours_knn_k2_seed7"
             )

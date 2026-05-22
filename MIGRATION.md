@@ -26,28 +26,27 @@ python run_experiment.py --track cora ...
 During deprecation, old names remain available where documented:
 
 ```text
-configs/general/...
-result_general_*   (readers only; new runs no longer write mirrors)
-general_suite_*    (readers only; new runs no longer write mirrors)
+configs/general/...   (path alias to configs/vision in config loader)
 spectral_filter_strength   (JSON config key alias only; CLI uses --graph-filter-strength)
 ```
 
-Root `run_general_*` and `plot_general_*` / `merge_general_*` /
-`deep_dive_general` script wrappers were removed in Gate 6 batch 3. Prefer
-`run_vision_*` and vision-named report/analysis scripts in new work.
+Gate 6 and post-Gate-6 cleanup removed `run_general_*`, `graphfl_lab/general_*`,
+`general_suite_*` / `result_general_*` code paths. Prefer `run_vision_*`,
+`result_vision_*`, and `vision_suite_*` in new work. Old artifact filenames
+under local experiment dirs are gitignored, not read by current code.
 
 ## Output Artifacts
 
-New vision runs write canonical filenames only (Gate 6 batch 2). Readers still
-resolve legacy paths for older experiment directories:
+New vision runs write canonical filenames only (Gate 6 batch 2). Suite helpers
+also accept short `suite_*` artifact names when present:
 
-| Canonical (new runs) | Legacy (read-only) |
+| Canonical (new runs) | Short legacy (read-only) |
 |---|---|
-| `result_vision_*.json` | `result_general_*.json` |
-| `vision_suite_summary.json` / `.csv` / `.md` | `general_suite_summary.*` |
-| `vision_suite_rows.json` | `general_suite_rows.json` |
+| `result_vision_*.json` | — |
+| `vision_suite_summary.json` / `.csv` / `.md` | `suite_summary.*` |
+| `vision_suite_rows.json` | `suite_rows.json` |
 
-Readers and suite helpers resolve either family, preferring canonical paths when
+Readers and suite helpers prefer canonical paths when
 both exist. See `graphfl_lab/experiments/suites/vision/artifacts.py` and
 `variant_helpers.resolve_result_path_for_variant`.
 
@@ -68,8 +67,6 @@ scripts/reports/generate_dashboard_mockup.py
 scripts/analysis/deep_dive_vision.py
 scripts/analysis/merge_vision_fedavg_ours.py
 ```
-
-Legacy `*_general_*` script names remain as thin wrappers until Gate 6.
 
 ## Schema Fields
 
