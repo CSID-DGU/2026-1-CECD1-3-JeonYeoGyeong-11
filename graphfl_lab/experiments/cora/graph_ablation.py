@@ -97,6 +97,7 @@ def variant_command(
     common = [
         args.python_bin,
         "run_experiment.py",
+        "--track", "cora",
         "--num-clients", str(args.num_clients),
         "--rounds", str(args.rounds),
         "--local-epochs", str(args.local_epochs),

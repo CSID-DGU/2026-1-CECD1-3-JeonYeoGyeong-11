@@ -10,11 +10,11 @@ disagree, rerun the relevant gate check and update this file from the result.
 | Field | Value |
 |---|---|
 | current_gate | Gate 5d-prep stabilized; moving to local smoke/docs readiness |
-| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke and the tiny default graph vision experiment passed; optional deeper modularization is deferred |
+| status | Gate 4c remote green remains pending; local commit-only Gate 5a-prep through Gate 5d-prep are committed; representative local smoke plus tiny vision and Cora experiment paths passed; optional deeper modularization is deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | continue current-project docs/readiness work or run a Cora smoke only when graph-dataset evidence is needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
+| next_step | continue current-project docs/readiness work or broader suite preparation only when needed; do not claim Gate 4c/5/6 completion before golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -231,6 +231,9 @@ result-schema contracts.
 | 2026-05-22 | Diagnostic suite preflight initially reported `NEEDS_REVIEW` because its expected args still used legacy `spectral_filtered_update` while diagnostic variants now emit canonical `graph_filtered_update`. | Update preflight expectations to canonical `graph_filtered_update`; rerun preflight and related variant tests until green. |
 | 2026-05-22 | `print-flwr-run` generated a valid Flower command for `default_similarity_knn`, but displayed unresolved parser defaults such as `aggregation-target="update"` before the app-side graph-method preset was applied. | Resolve graph presets during run-config generation while preserving explicit user overrides, so printed and submitted Flower configs match the intended graph design. |
 | 2026-05-22 | Tiny representative vision run `configs/vision/smoke/default_similarity_knn.json` completed with `graph_method=default_similarity_knn`, `graph_mode=rbf_knn`, `aggregation_target=graph_filtered_update`, and schema fields `result_schema_version`, `config_aliases_used`, `unsupported_components`. | Treat this as local execution readiness evidence for the default graph pipeline; keep remote/nightly and broader suite evidence pending. |
+| 2026-05-22 | `configs/cora/ablations/graph/graph_ablation_smoke.json` still had mojibake in its description. | Replace only the description text before using it as graph-dataset smoke evidence. |
+| 2026-05-22 | Cora graph ablation smoke `configs/cora/ablations/graph/graph_ablation_smoke.json` completed for `fedavg`, `ours_knn`, and `ours_random`, producing per-run results plus `suite_cora_graph_ablation_smoke_summary.*`. | Treat this as graph-dataset local execution evidence; avoid interpreting the 1-round diagnostic-only numbers as research results. |
+| 2026-05-22 | Cora graph ablation smoke completed, but its subprocess commands still invoked `run_experiment.py` without `--track cora` and triggered the Gate 4a deprecation warning. | Add `--track cora` to graph-ablation subprocess commands and cover the command contract with a focused test. |
 
 ## Closure Policy
 

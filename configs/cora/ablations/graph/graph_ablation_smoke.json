@@ -1,5 +1,5 @@
 {
-  "description": "Cora/FGL graph ablation smoke. runner, graph construction, summary 저장 경로 확인.",
+  "description": "Tiny Cora graph ablation smoke for runner wiring, graph construction, and summary output.",
   "args": {
     "num_clients": 2,
     "rounds": 1,
