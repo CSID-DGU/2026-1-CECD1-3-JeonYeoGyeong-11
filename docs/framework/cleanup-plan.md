@@ -151,8 +151,8 @@ C1 add graphfl_lab/ alias package (done)
 C2 add Flower entrypoint bridge (done)
 C3 migrate internal imports in batches (done)
 C4 move implementation files (done)
-C5 update docs/commands (local complete: canonical runners, suite artifacts, CLI help, plot/report readers, `MIGRATION.md`/`structure.md` sync; Gate 6 removal prep blocked on Gate 4c remote nightly)
-C6 run full checks (local smoke and `gate-check 5d-prep` pass; remote/nightly pending)
+C5 update docs/commands (complete on `main` via PR #2)
+C6 run full checks (`gate-check 4c` and `5d-prep` pass on `main`; Gate 6 removal blocked on seven consecutive nightly greens)
 ```
 
 Import migration batches:

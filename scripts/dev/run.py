@@ -12,6 +12,7 @@ from typing import Iterable
 
 
 REPORT_PATH = Path("docs/maintenance/last_gate_check.json")
+NIGHTLY_REPORT_PATH = Path("docs/maintenance/last_nightly_run.json")
 
 GATE0_REQUIRED_FILES = (
     "docs/maintenance/cleanup-status.md",
@@ -680,6 +681,35 @@ def commit_sha(root: Path) -> str:
     return proc.stdout.strip()
 
 
+def _load_nightly_evidence(root: Path) -> dict[str, object] | None:
+    path = root / NIGHTLY_REPORT_PATH
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _gate4c_nightly_evidence_checks(root: Path) -> list[str]:
+    evidence = _load_nightly_evidence(root)
+    if evidence is None:
+        return [
+            "Gate 4c requires one GitHub nightly or manual-nightly green run before completion.",
+            f"Record evidence in {NIGHTLY_REPORT_PATH.as_posix()} after a green run.",
+        ]
+    if str(evidence.get("workflow", "")).strip() != "nightly":
+        return ["last_nightly_run.json: workflow must be 'nightly'"]
+    if str(evidence.get("conclusion", "")).strip().lower() != "success":
+        return [
+            "last_nightly_run.json: conclusion must be 'success' for Gate 4c entry"
+        ]
+    if str(evidence.get("ref", "")).strip() not in {"main", "refs/heads/main"}:
+        return ["last_nightly_run.json: ref must record a main-branch nightly run"]
+    return []
+
+
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
@@ -795,9 +825,7 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_missing_text(root, GATE4B_REQUIRED_TEXT))
     elif gate == "4c":
         failed_checks.extend(_missing_text(root, GATE4C_REQUIRED_TEXT))
-        failed_checks.append(
-            "Gate 4c requires one GitHub nightly or manual-nightly green run before completion."
-        )
+        failed_checks.extend(_gate4c_nightly_evidence_checks(root))
     elif gate == "5a-prep":
         failed_checks.extend(_missing_text(root, GATE5A_PREP_REQUIRED_TEXT))
     elif gate == "5b-prep":

@@ -9,12 +9,12 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5d-prep stabilized; Migration C5 closed locally; Gate 4c remote nightly pending |
-| status | Migration C5 doc/command alignment complete locally; Gate 5a-prep through Gate 5d-prep local contracts maintained; Gate 4c remote nightly green remains pending (workflow file present); Gate 6 compatibility removal blocked on 4c evidence; optional deeper modularization remains deferred |
+| current_gate | Gate 4c entry complete on `main`; Gate 5d-prep stabilized; Gate 6 blocked on seven consecutive nightly greens |
+| status | PR #2 merged to `main`; manual nightly run 26288800411 green; `gate-check 4c` passes with `docs/maintenance/last_nightly_run.json`; Gate 6 shim/alias removal still deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | branch `ci` green at run 26288418334; merge gate PR (or land `nightly.yml` on `main`) then run `gh workflow run nightly.yml` for formal Gate 4c closure; no Gate 6 removals until nightly evidence |
+| next_step | collect seven consecutive nightly greens on `main` for Gate 6 entry; keep compatibility aliases until then; optional local Gate 6 removal-prep inventory only |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -260,15 +260,17 @@ result-schema contracts.
 | 2026-05-22 | After pushing the tag, `ci` still failed because `actions/checkout@v4` default fetch did not include tags. | Set `fetch-depth: 0` and `fetch-tags: true` in `ci.yml` and `nightly.yml`. |
 | 2026-05-22 | Remote `ci` pytest step still targeted removed path `tests/experiments/general`. | Point pytest subset to `tests/experiments/vision` in `ci.yml` and `nightly.yml`. |
 | 2026-05-22 | After CI workflow fixes and `pre-graphfl-rename` tag push, branch `ci` run 26288418334 succeeded on `codex-graphfl-cleanup-gate-0`. | Treat as interim remote smoke evidence; formal Gate 4c still needs `nightly` on `main` + one green dispatch. |
+| 2026-05-22 | PR #2 merged; `gh workflow run nightly.yml --ref main` produced green run 26288800411. | Record in `docs/maintenance/last_nightly_run.json` and teach `gate-check 4c` to accept that artifact for Gate 4c entry (Gate 6 still needs 7 consecutive greens). |
 
 ## Gate 4c Local Readiness
 
 ```text
-present: .github/workflows/nightly.yml (schedule + workflow_dispatch)
+present: .github/workflows/nightly.yml on main (schedule + workflow_dispatch)
+present: docs/maintenance/last_nightly_run.json (run 26288800411, success)
 present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.md
+local pass: python scripts/dev/run.py gate-check 4c
 local pass: python scripts/dev/run.py gate-check 5d-prep
-local fail (expected): python scripts/dev/run.py gate-check 4c  # needs remote green
-blocked on: push approval + one GitHub Actions nightly/manual-nightly green run
+Gate 6 blocked on: seven consecutive nightly greens after Gate 4c entry
 ```
 
 ## Closure Policy

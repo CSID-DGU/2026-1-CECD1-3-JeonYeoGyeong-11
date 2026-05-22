@@ -184,13 +184,29 @@ class GateCheckEntrypointTest(unittest.TestCase):
         self.assertTrue(report["pass"], report["failed_checks"])
         self.assertEqual(report["gate"], "4b")
 
-    def test_gate4c_prep_exists_but_requires_remote_green(self):
+    def test_gate4c_requires_recorded_nightly_without_evidence_file(self):
+        module = load_run_module()
+        path = ROOT / module.NIGHTLY_REPORT_PATH
+        backup = path.read_text(encoding="utf-8") if path.is_file() else None
+        if path.is_file():
+            path.unlink()
+        try:
+            report = module.run_gate_check("4c", ROOT)
+            self.assertFalse(report["pass"])
+            self.assertTrue(
+                any("last_nightly_run.json" in item for item in report["failed_checks"])
+            )
+        finally:
+            if backup is not None:
+                path.write_text(backup, encoding="utf-8")
+
+    def test_gate4c_passes_with_recorded_nightly_green(self):
         module = load_run_module()
 
         report = module.run_gate_check("4c", ROOT)
 
-        self.assertFalse(report["pass"])
-        self.assertTrue(any("manual-nightly green" in item for item in report["failed_checks"]))
+        self.assertTrue(report["pass"], report["failed_checks"])
+        self.assertEqual(report["gate"], "4c")
 
     def test_current_gate5a_prep_contract_passes(self):
         module = load_run_module()
