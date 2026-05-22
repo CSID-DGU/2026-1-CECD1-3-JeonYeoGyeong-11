@@ -46,6 +46,8 @@ docs/
 python -m unittest discover -s tests
 python scripts/checks/diagnostic_suite_preflight.py
 python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
+python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json
+python scripts/dev/run.py gate-check 5d-prep
 ```
 
 ## Document Policy

@@ -234,6 +234,8 @@ result-schema contracts.
 | 2026-05-22 | `configs/cora/ablations/graph/graph_ablation_smoke.json` still had mojibake in its description. | Replace only the description text before using it as graph-dataset smoke evidence. |
 | 2026-05-22 | Cora graph ablation smoke `configs/cora/ablations/graph/graph_ablation_smoke.json` completed for `fedavg`, `ours_knn`, and `ours_random`, producing per-run results plus `suite_cora_graph_ablation_smoke_summary.*`. | Treat this as graph-dataset local execution evidence; avoid interpreting the 1-round diagnostic-only numbers as research results. |
 | 2026-05-22 | Cora graph ablation smoke completed, but its subprocess commands still invoked `run_experiment.py` without `--track cora` and triggered the Gate 4a deprecation warning. | Add `--track cora` to graph-ablation subprocess commands and cover the command contract with a focused test. |
+| 2026-05-22 | Current docs such as `docs/structure.md` still presented `spectral_fl/...` as the active edit path after the package move. | Update current routing docs to `graphfl_lab/...`; keep `spectral_fl` references only where they describe deprecation compatibility or cleanup inventory. |
+| 2026-05-22 | Gate-check self-test found `line-budget-allowlist.txt` still referenced non-existent `graphfl_lab/experiments/suites/vision/suite.py` instead of the actual orchestration file. | Align the protected path with `scripts/dev/run.py`: `graphfl_lab/experiments/vision/suite.py`. |
 
 ## Closure Policy
 

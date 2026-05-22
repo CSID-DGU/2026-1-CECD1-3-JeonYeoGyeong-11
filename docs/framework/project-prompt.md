@@ -20,19 +20,19 @@ Naming:
 - Prefer graph_filtered_*, graph_filter_strength, ours_graph_filtered_*, _graph_filter_only.
 
 Interfaces:
-- Method metadata: spectral_fl/designs/
-- Client-state extraction: spectral_fl/graph/sources/, spectral_fl/graph/signals/
-- Graph construction: spectral_fl/graph/registry.py, builders.py, similarity/, sparsification.py
-- Control graphs and clustering: spectral_fl/graph/controls.py, spectral_fl/graph/clustering.py
-- Aggregation targets: spectral_fl/strategies/graphfl/targets.py
-- Runtime: spectral_fl/strategies/graphfl/strategy.py
-- Diagnostics: spectral_fl/diagnostics/, spectral_fl/strategies/graphfl/diagnostics.py
-- Suite/reporting: spectral_fl/experiments/suites/vision/
-- Vision orchestration: spectral_fl/experiments/vision/
-- CLI parser modules: spectral_fl/cli/
+- Method metadata: graphfl_lab/designs/
+- Client-state extraction: graphfl_lab/graph/sources/, graphfl_lab/graph/signals/
+- Graph construction: graphfl_lab/graph/registry.py, builders.py, similarity/, sparsification.py
+- Control graphs and clustering: graphfl_lab/graph/controls.py, graphfl_lab/graph/clustering.py
+- Aggregation targets: graphfl_lab/strategies/graphfl/targets.py
+- Runtime: graphfl_lab/strategies/graphfl/strategy.py
+- Diagnostics: graphfl_lab/diagnostics/, graphfl_lab/strategies/graphfl/diagnostics.py
+- Suite/reporting: graphfl_lab/experiments/suites/vision/
+- Vision orchestration: graphfl_lab/experiments/vision/
+- CLI parser modules: graphfl_lab/cli/
 
 New graph algorithm workflow:
-1. Read README.md, docs/framework/experimental-design.md, docs/structure.md,
+1. Read README.md, docs/framework/graph_fl_experimental_design.md, docs/structure.md,
    docs/framework/interfaces.md, docs/framework/extension-guide.md.
 2. Write method profile:
    client_state, relation estimator, topology, aggregation target,
@@ -67,7 +67,7 @@ Read these before changing interfaces, experiment design, or public run paths.
 
 ```text
 README.md
-docs/framework/experimental-design.md
+docs/framework/graph_fl_experimental_design.md
 docs/framework/claim.md
 docs/structure.md
 docs/framework/interfaces.md
