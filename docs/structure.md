@@ -1,6 +1,11 @@
 # Repository Structure
 
-Source code is organized by responsibility, not experiment name. Use the narrowest module that owns the requested change.
+Source code is organized by responsibility, not experiment name. Use the narrowest
+module that owns the requested change.
+
+The root [README.md](../README.md) shows an **abbreviated** layout tree. This file
+is the **detailed** map: package modules, scripts, tests, configs, and which
+capabilities remain after Gate 6 (see [removed-materials.md](removed-materials.md)).
 
 ## Change Routing
 
@@ -55,17 +60,132 @@ graphfl_lab/
 │   │   ├── filtering.py              Laplacian / graph filter on client matrices
 │   │   ├── aggregation.py            weighted combine and dominance hooks
 │   │   ├── targets.py                aggregation_target dispatch
-│   │   └── diagnostics.py            per-round graph/control metrics
-│   └── baselines/                    non-graph and proxy baselines
+│   │   ├── diagnostics.py            per-round graph/control metrics
+│   │   ├── tracing.py                round trace hooks
+│   │   ├── momentum.py               server optimizer / FedAvgM interaction
+│   │   ├── config_context.py         per-round config snapshot for filtering
+│   │   └── …                         round_*, ema, projection, artifact_rows, …
+│   └── baselines/                    fedavgm, fedsim, graph_smooth, dominance_aware, …
+├── flower_app.py                     Flower App entry
+├── flower_runner.py                  subprocess / engine dispatch for experiments
+├── config_io.py                      JSON load; legacy key aliases
 └── experiments/
-    ├── vision/                       single_run, suite, stress_grid, sweeps
-    ├── cora/                         single_run, graph_ablation helpers
+    ├── vision/
+    │   ├── single_run.py             one vision experiment + result JSON
+    │   ├── suite.py                  multi-variant suite orchestration
+    │   ├── stress_grid.py            stress-grid runner
+    │   └── client_count_sweep.py     client-count sweep runner
+    ├── cora/
+    │   ├── single_run.py             Cora single run
+    │   └── graph_ablation.py         graph ablation orchestration
     └── suites/vision/
-        ├── variants.py               suite token grammar
+        ├── variants.py               suite token grammar entry
+        ├── variant_core.py           core variant parsing
+        ├── variant_targets.py        graph_filtered target tokens
+        ├── variant_sources.py        graph_source tokens
+        ├── variant_families.py       family grouping for reporting
+        ├── variant_commands.py       CLI flag emission per variant
+        ├── variant_suffixes.py       _graph_filter_only and legacy suffixes
+        ├── variant_diagnostics.py    diagnostic variant tokens
+        ├── variant_legacy.py         historical token spellings (read/parse)
         ├── artifacts.py              result/suite path discovery
         ├── reporting.py              summaries, dashboard, interpretation
+        ├── summary.py                suite summary row aggregation
+        ├── features.py               suite feature columns for CSV/summary
+        ├── metadata.py               suite-level metadata helpers
         └── variant_helpers.py        per-variant result path resolution
 ```
+
+## Scripts Layout
+
+```text
+scripts/
+├── checks/
+│   ├── diagnostic_suite_preflight.py   suite variant sanity before long runs
+│   ├── result_evidence_bundle.py       validate single-run result JSON bundle
+│   └── prior_work_proxy_parity.py      prior-work proxy summary parity check
+├── smoke/
+│   └── prior_work_proxy.py             short prior-work proxy smoke workflow
+├── reports/
+│   ├── plot_vision_convergence.py      suite convergence plots (canonical)
+│   ├── generate_dashboard_mockup.py    dashboard mockup from suite dir
+│   ├── generate_diagnostic_plots.py    diagnostic plot helpers
+│   ├── graph_label_alignment_report.py label–graph alignment report
+│   └── spectral_decomposition_report.py  spectral decomposition analysis (math)
+├── analysis/
+│   ├── deep_dive_vision.py             per-variant deep dive (canonical)
+│   ├── merge_vision_fedavg_ours.py     merge fedavg/ours tables
+│   ├── deep_dive_seed.py               seed-level deep dive helper
+│   └── aggregate_graph_ablation.py     Cora graph ablation aggregation
+├── dev/
+│   ├── run.py                          gate-check and dev orchestration
+│   ├── golden.py                       golden / regression helpers
+│   └── migrate_serialized_objects.py   pickle module-path migration utility
+├── util/
+│   └── print_round_table.py            print round table from result JSON
+└── archive/legacy-analysis/            frozen phase-1/2/3 analysis scripts (historical)
+```
+
+Removed script names (Gate 6): `plot_general_convergence.py`, `deep_dive_general.py`,
+`merge_general_fedavg_ours.py` — use vision-named scripts above.
+
+## Tests Layout
+
+```text
+tests/
+├── structure/                        import boundaries, facade thinness
+├── graph/                            graph builders, sources, registry
+├── strategies/graphfl/               filtering, targets, rounds, diagnostics
+├── strategies/baselines/             baseline strategies
+├── lifecycle/                        aggregation, counterfactuals, contracts
+├── designs/                          GraphFLDesign presets
+├── diagnostics/                      result schema and evidence
+├── experiments/vision/               suite variants, single-run helpers
+├── experiments/cora/                 Cora experiment helpers
+├── experiments/suites/vision/        artifact discovery, reporting
+├── cli/                              CLI parsing and choices
+├── clients/                          Flower client behavior
+├── core/                             config_io, package imports, runner
+├── scripts/                          report script smoke tests
+├── dev/                              gate-check entrypoint tests
+└── golden/                           golden-file comparisons
+```
+
+## Root Launchers
+
+```text
+run_vision_experiment.py              vision single run
+run_vision_suite.py                   vision suite
+run_vision_client_count_sweep.py      client-count sweep
+run_vision_stress_grid.py             stress grid
+run_graph_ablation.py                 Cora graph ablation
+run_experiment.py                     unified dispatcher (track argument)
+```
+
+## Capability Checklist (post-Gate-6)
+
+All rows are **present** on `main` unless marked removed. Verification:
+`python -m unittest discover -s tests`, `diagnostic_suite_preflight.py`.
+
+| Capability | Entry / module | Status |
+|---|---|---|
+| Vision single run | `run_vision_experiment.py` → `experiments/vision/single_run.py` | active |
+| Vision suite | `run_vision_suite.py` → `experiments/vision/suite.py` | active |
+| Stress grid | `run_vision_stress_grid.py` | active |
+| Client-count sweep | `run_vision_client_count_sweep.py` | active |
+| Cora graph ablation | `run_graph_ablation.py` | active |
+| Graph-FL strategy | `strategies/graphfl/strategy.py` | active |
+| Baselines (FedAvgM, FedSim, …) | `strategies/baselines/` | active |
+| Graph builders / sources | `graph/builders.py`, `graph/sources/` | active |
+| Aggregation targets `graph_filtered_*` | `strategies/graphfl/targets.py` | active |
+| Legacy target JSON alias `spectral_filtered_*` | `canonical_aggregation_target()` | read-only input |
+| Diagnostic suite preflight | `scripts/checks/diagnostic_suite_preflight.py` | active |
+| Suite reporting / artifacts | `suites/vision/reporting.py`, `artifacts.py` | active |
+| Convergence plots | `scripts/reports/plot_vision_convergence.py` | active |
+| `run_general_*` launchers | — | **removed** |
+| `result_general_*` / `general_suite_*` readers | — | **removed** |
+| `spectral_fl` import shim | — | **removed** |
+| Suite launch `ours_spectral_filtered_*` | — | **removed** (reporting tag pairing retained) |
 
 ## Compatibility Facades
 

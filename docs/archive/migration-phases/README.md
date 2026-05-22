@@ -3,7 +3,7 @@
 This directory is now a completed migration archive.  Do not treat it as the
 default entry point for new project work.  For day-to-day project execution,
 start from the run path in the repository `README.md`, the docs index in
-`docs/README.md`, and the current diagnostic configs under `configs/general/diagnostic/`.
+`docs/README.md`, and the current diagnostic configs under `configs/vision/diagnostic/`.
 
 ## Agent Entry Point
 

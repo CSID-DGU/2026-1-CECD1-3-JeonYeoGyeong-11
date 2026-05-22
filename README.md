@@ -176,7 +176,9 @@ Guide: [docs/framework/extension-guide.md](docs/framework/extension-guide.md)
 └── run_graph_ablation.py             thin launcher → Cora graph ablation
 ```
 
-Edit routing: [docs/structure.md](docs/structure.md)
+**Detailed map** (per-file trees, scripts, tests, capability checklist):
+[docs/structure.md](docs/structure.md). **Docs index:**
+[docs/README.md](docs/README.md).
 
 ## Documents
 

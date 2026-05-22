@@ -16,25 +16,27 @@ policy is in [`docs/removed-materials.md`](../removed-materials.md) and
 | `graphfl_lab`, `run_vision_*`, `vision_suite_*`, `graph_filter_strength` | **canonical** |
 | `configs/general/...`, `spectral_filter_strength`, `spectral_filtered_*` inputs | **read-only alias** only |
 
-## Gate 1 Inventory Scope
+## Gate 1 Inventory Scope (historical snapshot)
 
-| Pattern | Category | Current action |
-|---|---|---|
-| `spectral_fl` | package identity | Gate 3 canonical package, Gate 6 removal |
-| `graphfl_lab` | target package identity | planned canonical name |
-| `run_general_*` | old public runner | keep compatibility until Gate 6 |
-| `run_vision_*` | current vision runner | rewire through unified path in Gate 4b |
-| `run_graph_ablation.py` | Cora graph ablation runner | keep thin wrapper, rewire carefully |
-| `configs/general/...` | old config path | keep resolver alias until Gate 6 |
-| `result_general_*` | old result filename | compatibility mirror; new writes also emit `result_vision_*`; readers resolve either until Gate 6 |
-| `general_suite_*` | old suite artifact filename | compatibility mirror; new writes emit `vision_suite_*` first via `write_suite_summary_artifacts()` until Gate 6 |
-| `result_vision_*`, `vision_suite_*` | canonical output filenames | prefer in new docs, scripts, and directory listings |
-| `graphfl_lab/experiments/suites/vision/artifacts.py` | artifact discovery helper | canonical-first readers for plots/smoke/sweeps |
-| `graph_filter_strength` | canonical config/result key | prefer in new writes; JSON may still alias `spectral_filter_strength` via `config_io` |
-| `spectral_filter_strength` | old config/result key | JSON alias only after Gate 6 phase 2; not written to new traces |
-| `spectral_filtered_*` | old aggregation target/result spelling | internal migration in Gate 3, removal in Gate 6 |
-| `ours_spectral_filtered_*` | old suite token | keep through deprecation |
-| `_spectral_only`, `_speconly` | old suite suffixes | keep through deprecation |
+The **Current action** column records Gate 0–1 intent. For live policy after
+Gate 6 + Phase 2, use the Post-Gate-6 table at the top of this file.
+
+| Pattern | Category | Gate 1 action (historical) | Status on `main` now |
+|---|---|---|---|
+| `spectral_fl` | package identity | shim until Gate 6 | **removed** |
+| `graphfl_lab` | package identity | planned canonical | **canonical** |
+| `run_general_*` | old public runner | keep until Gate 6 | **removed** → `run_vision_*` |
+| `run_vision_*` | vision runner | Gate 4b rewire | **canonical** |
+| `run_graph_ablation.py` | Cora ablation | thin wrapper | **canonical** |
+| `configs/general/...` | old config path | alias until Gate 6 | **read-only alias** |
+| `result_general_*` | old result filename | mirror + readers | **removed** from readers |
+| `general_suite_*` | old suite artifact | mirror + readers | **removed** from readers |
+| `result_vision_*`, `vision_suite_*` | canonical outputs | prefer in new work | **canonical** |
+| `graph_filter_strength` | canonical key | prefer in new writes | **canonical** |
+| `spectral_filter_strength` | old key | schema policy | **JSON read alias only** |
+| `spectral_filtered_*` | old target spelling | Gate 3/6 migration | **input alias only** |
+| `ours_spectral_filtered_*` | old suite token | deprecation | **reporting tags only** |
+| `_spectral_only`, `_speconly` | old suffixes | deprecation | parsed as legacy suffix aliases |
 
 ## Gate 1 Pattern Summary
 

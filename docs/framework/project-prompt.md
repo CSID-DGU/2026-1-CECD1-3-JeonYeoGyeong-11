@@ -13,10 +13,13 @@ Goal:
   state_store, diagnostics.
 - Prioritize composability, diagnostics, controls, and claim boundaries over leaderboard accuracy.
 
-Naming:
-- Prefer canonical vision paths for new vision FL work.
-- Keep general paths only as compatibility wrappers or artifact/config aliases.
-- Treat spectral as an operator/backend word, not project identity.
+Naming (post-Gate-6 on main):
+- Package and imports: graphfl_lab (not spectral_fl).
+- Runners: run_vision_* (not run_general_*).
+- Outputs: result_vision_*, vision_suite_* (not general_* / result_general_*).
+- Read-only aliases only: configs/general/ JSON path, spectral_filter_strength key,
+  spectral_filtered_* aggregation inputs, ours_spectral_filtered_* in reporting tags.
+- Treat spectral as operator/math naming in diagnostics, not public project identity.
 - Prefer graph_filtered_*, graph_filter_strength, ours_graph_filtered_*, _graph_filter_only.
 
 Interfaces:

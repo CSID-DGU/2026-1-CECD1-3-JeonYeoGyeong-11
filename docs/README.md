@@ -1,13 +1,24 @@
 # Docs Index
 
-Use `framework/` for current work. Use `research/` for background notes. Use `archive/` only for prior direction or migration history.
+Use `framework/` for current work. Use `research/` for background notes. Use
+`archive/` only for prior direction or migration history.
+
+| Document | Role |
+|---|---|
+| [README.md](README.md) (this file) | docs index and run-path checklist |
+| [structure.md](structure.md) | **detailed** repo map, scripts, tests, edit routing |
+| [removed-materials.md](removed-materials.md) | Gate 6 removals and read-only aliases |
+| [../README.md](../README.md) | install, quick start, **abbreviated** repo layout |
+
+Post-Gate-6 rename/cleanup is **complete** on `main` (2026-05-22). Active policy:
+[naming-and-compatibility.md](framework/naming-and-compatibility.md).
 
 ## Layout
 
 ```text
 docs/
 ├── README.md                         this index
-├── structure.md                      where to edit code; source and config maps
+├── structure.md                      detailed repository map (files + scripts + tests)
 ├── removed-materials.md              Gate 6 removals and remaining read-only aliases
 ├── framework/                        active framework documentation
 │   ├── claim.md                      project claim and non-goals
@@ -24,11 +35,11 @@ docs/
 │   └── experiment-results.md         how to store and cite experiment outputs
 ├── maintenance/                      gate checks and rename inventory (cleanup closed)
 │   ├── cleanup-status.md             Gate 6 execution log (closed)
-│   ├── gate-6-prep.md                Gate 6 checklist
-│   ├── rename-inventory.md           legacy name inventory
+│   ├── gate-6-prep.md                Gate 6 checklist (all done)
+│   ├── rename-inventory.md           legacy name inventory (historical + post-Gate-6 note)
 │   └── last_gate_check.json          latest gate-check record
 ├── research/                         literature and design notes (non-normative)
-└── archive/                          superseded direction and migration phases
+└── archive/                          superseded direction and migration phases (historical)
 ```
 
 ## First Read
@@ -39,11 +50,12 @@ docs/
 | experimental design | [framework/graph_fl_experimental_design.md](framework/graph_fl_experimental_design.md) |
 | metric definitions | [framework/graph_fl_experimental_design_appendix.md](framework/graph_fl_experimental_design_appendix.md) |
 | install and run | [../README.md](../README.md) |
-| edit routing | [structure.md](structure.md) |
+| **file-level map** | [structure.md](structure.md) |
+| edit routing | [structure.md](structure.md) (Change Routing) |
 | add graph algorithm | [framework/interfaces.md](framework/interfaces.md), [framework/extension-guide.md](framework/extension-guide.md) |
 | prior-work proxy boundary | [framework/prior-work-mapping.md](framework/prior-work-mapping.md) |
 | diagnostic interpretation | [framework/diagnostics.md](framework/diagnostics.md) |
-| compatibility names | [framework/naming-and-compatibility.md](framework/naming-and-compatibility.md), [framework/cleanup-plan.md](framework/cleanup-plan.md) |
+| compatibility / removals | [framework/naming-and-compatibility.md](framework/naming-and-compatibility.md), [removed-materials.md](removed-materials.md) |
 | handoff prompt | [framework/project-prompt.md](framework/project-prompt.md) |
 
 ## Current Run Path
@@ -62,6 +74,7 @@ docs/
 | Area | Rule |
 |---|---|
 | `framework/` | active claim, experiment design, interface docs |
-| `research/` | literature review and design notes |
-| `archive/` | previous direction and migration phases |
-| root `README.md` | install, run, repository map |
+| `research/` | literature review and design notes; may mention legacy names historically |
+| `archive/` | frozen migration/previous direction; **not** current run policy |
+| `maintenance/` | gate inventory and closed cleanup log |
+| root `README.md` | install, run, abbreviated layout → detail in `structure.md` |

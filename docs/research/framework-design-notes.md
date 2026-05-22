@@ -33,14 +33,20 @@ diagnostics and controls
 | Vision suite/reporting | `graphfl_lab/experiments/suites/vision/` |
 | Configs | `configs/vision/` |
 
-Compatibility paths:
+Read-only compatibility (post-Gate-6; see `docs/removed-materials.md`):
 
 ```text
-run_general_*.py
-configs/general/...
-result_general_*
-general_suite_summary.*
-graphfl_lab/strategies/spectral/
+configs/general/...              path alias → configs/vision/...
+spectral_filter_strength       JSON key alias → graph_filter_strength
+spectral_filtered_*            aggregation input alias → graph_filtered_*
+ours_spectral_filtered_*       reporting result-tag pairing only
+```
+
+Removed from active code (use canonical replacements in naming-and-compatibility.md):
+
+```text
+run_general_*, result_general_*, general_suite_* readers
+graphfl_lab/strategies/spectral/ facades, spectral_fl package shim
 ```
 
 ## Runtime Flow
