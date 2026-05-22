@@ -94,8 +94,6 @@ graphfl_lab/strategy.py
 graphfl_lab/suite_stats.py
 graphfl_lab/update_graph.py
 graphfl_lab/strategies/spectral/
-graphfl_lab/experiments/general/
-graphfl_lab/experiments/suites/general/
 graphfl_lab/experiments/suite.py
 graphfl_lab/experiments/stress_grid.py
 graphfl_lab/experiments/client_count_sweep.py

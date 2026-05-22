@@ -125,14 +125,6 @@ class RepositoryBoundaryTest(unittest.TestCase):
             "graphfl_lab/experiments/graph_ablation.py",
             "graphfl_lab/experiments/stress_grid.py",
             "graphfl_lab/experiments/suite.py",
-            "graphfl_lab/experiments/general/__init__.py",
-            "graphfl_lab/experiments/general/client_count_sweep.py",
-            "graphfl_lab/experiments/general/single_run.py",
-            "graphfl_lab/experiments/general/stress_grid.py",
-            "graphfl_lab/experiments/general/suite.py",
-            "graphfl_lab/experiments/suites/general/__init__.py",
-            "graphfl_lab/experiments/suites/general/reporting.py",
-            "graphfl_lab/experiments/suites/general/variants.py",
         ]
         for rel in facades:
             path = ROOT / rel
