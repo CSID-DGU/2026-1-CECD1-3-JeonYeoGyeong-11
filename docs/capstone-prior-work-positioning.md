@@ -2,9 +2,14 @@
 
 ## 1. Project Position
 
-Graph-based Federated Learning(Graph-FL)은 client를 서로 독립적인 평균 대상이 아니라 관계를 가진 집합으로 본다. Non-IID 환경에서는 client마다 데이터 분포, update 방향, 모델 상태가 다르기 때문에 client relation graph를 만들고 이를 aggregation이나 personalization에 활용하는 접근이 자연스럽게 등장한다.
+Graph-based Federated Learning(Graph-FL)은 client를 서로 독립적인 평균 대상이
+아니라 관계를 가진 집합으로 본다. Non-IID 환경에서는 client마다 데이터 분포,
+update 방향, 모델 상태가 다르기 때문에 client relation graph를 만들고 이를
+aggregation이나 personalization에 활용하는 접근이 자연스럽게 등장한다.
 
-하지만 Graph-FL에서 성능이 올랐다고 해서 곧바로 graph가 의미 있는 client relation을 잘 잡았다고 말할 수는 없다. 같은 성능 향상은 여러 요인이 섞인 결과일 수 있다.
+하지만 Graph-FL에서 성능이 올랐다고 해서 곧바로 graph가 의미 있는 client
+relation을 잘 잡았다고 말할 수는 없다. 같은 성능 향상은 여러 요인이 섞인 결과일
+수 있다.
 
 ```text
 1. relation-specific effect
@@ -14,11 +19,31 @@ Graph-based Federated Learning(Graph-FL)은 client를 서로 독립적인 평균
 5. optimizer or aggregation-path effect
 ```
 
-예를 들어 real client graph를 사용했을 때 성능이 좋아졌더라도, 그것이 실제 client relation 때문인지, 단순히 update를 부드럽게 섞은 smoothing 효과 때문인지, 유사한 client를 대략적으로 묶은 clustering 효과 때문인지, 큰 update를 가진 client의 영향력을 줄인 dominance correction 효과 때문인지는 분리해서 봐야 한다.
+예를 들어 real client graph를 사용했을 때 성능이 좋아졌더라도, 그것이 실제
+client relation 때문인지, 단순히 update를 부드럽게 섞은 smoothing 효과 때문인지,
+유사한 client를 대략적으로 묶은 clustering 효과 때문인지, 큰 update를 가진
+client의 영향력을 줄인 dominance correction 효과 때문인지는 분리해서 봐야 한다.
 
-이 프로젝트는 **Graph-FL gain의 원인을 control graph와 diagnostic metric을 통해 분해해 보는 attribution framework**를 만드는 데 초점을 둔다. 이 프레임워크는 특정 graph 알고리즘 하나에 고정되지 않고, Graph-FL 방법을 조립 가능한 설계 요소로 나누어 같은 조건에서 비교한다.
+이 프로젝트는 **Graph-FL gain의 원인을 control graph와 diagnostic metric을 통해
+분해해 보는 attribution framework**를 만드는 데 초점을 둔다. 특정 graph 알고리즘
+하나에 고정되지 않고, Graph-FL 방법을 조립 가능한 설계 요소로 나누어 같은 조건에서
+비교한다.
 
-본 프레임워크는 Graph-FL 방법을 다음 구성요소의 조합으로 본다.
+핵심 질문은 다음과 같다.
+
+```text
+Q1. Graph-FL의 성능 향상은 실제 client relation graph 때문인가?
+Q2. 아니면 smoothing, clustering, dominance correction 같은 대안적 설명으로도 충분한가?
+Q3. real graph가 control보다 낫다면, 어떤 mechanism metric이 그 차이를 설명하는가?
+Q4. 새로운 graph-based intervention을 같은 구조 안에서 조립하고 비교할 수 있는가?
+```
+
+---
+
+## 2. Framework Flow
+
+프레임워크의 큰 흐름은 graph를 만들고, 같은 조건의 control과 비교하고, 같은 schema로
+진단 결과를 남기는 것이다.
 
 ```text
 client representation
@@ -30,29 +55,48 @@ client representation
 -> shared diagnostics
 ```
 
-따라서 새로운 graph-based intervention을 만들 때 기존 코드 전체를 다시 작성하지 않고, client representation, similarity, topology, normalization, aggregation target을 선택해 조립식으로 구성할 수 있다. 이후 같은 control suite와 diagnostic metric을 통해 해당 graph gain이 relation-specific한지, smoothing인지, clustering인지, dominance correction인지 분석한다.
+이 흐름은 graph authoring과 graph validation을 분리하지 않는다. 새로운 graph
+후보를 만들면 같은 control suite에 올리고, 그 graph가 실제 relation 정보를
+살리는지, 단순 smoothing에 가까운지, coarse clustering만으로 충분한지, dominance
+correction으로도 대체 가능한지 판단한다.
 
-이 프레임워크의 직접적인 사용자는 다음과 같은 상황에 있는 연구자 또는 개발자다.
-
-```text
-새로운 Graph-FL 방법을 만들었을 때,
-그 성능 향상이 실제 client relation 때문인지 확인하고 싶은 경우
-```
-
-사용자는 graph source, relation score, topology, aggregation target을 선택하고, 프레임워크는 real graph와 control variants를 같은 FL setting에서 실행한다. 이후 real-control gap, graph-free control gap, alignment, DI, N_eff 등을 이용해 성능 향상의 가능한 원인을 해석한다.
-
-이 프로젝트의 질문은 다음과 같다.
+하나의 실험 run은 가능한 한 동일한 seed, 동일한 non-IID split, 동일한 aggregation
+target에서 real graph와 control variants를 함께 실행한다. 각 variant의 성능과
+mechanism metric은 같은 schema로 저장한다.
 
 ```text
-Q1. Graph-FL의 성능 향상은 실제 client relation graph 때문인가?
-Q2. 아니면 smoothing, clustering, dominance correction 같은 대안적 설명으로도 충분한가?
-Q3. real graph가 control보다 낫다면, 어떤 mechanism metric이 그 차이를 설명하는가?
-Q4. 새로운 graph-based intervention을 같은 구조 안에서 조립하고 비교할 수 있는가?
+Input:
+- client updates
+- global model state
+- non-IID split configuration
+- graph construction configuration
+- control variant configuration
+
+Process:
+- build real client relation graph
+- build relation-destroyed controls
+- build relation-free or graph-free controls
+- run each variant under the same FL setting
+- compute performance and mechanism metrics
+
+Output:
+- accuracy / loss
+- real-control gap
+- graph-free control gap
+- alignment
+- DI
+- N_eff
+- optional topology / spectral / LOO diagnostics
 ```
+
+결과 해석은 `real_graph가 accuracy가 높다`에서 끝나지 않는다. real graph가 어떤
+control보다 높은지, relation-destroyed control에서도 차이가 유지되는지,
+graph-free dominance correction으로도 비슷한 결과가 나는지, alignment, DI,
+N_eff가 성능 변화와 함께 움직이는지를 함께 본다.
 
 ---
 
-## 2. Current Implementation Boundary
+## 3. Current Implementation Snapshot
 
 현재 구현은 단순한 아이디어 스케치가 아니라, client relation graph를 만들고,
 control과 함께 실행하며, 결과를 같은 schema로 남기는 연구형 runtime에 가깝다.
@@ -76,10 +120,10 @@ data graph가 아니라 federated clients 사이의 relation graph다.
 | aggregation target | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` | graph를 update, EMA update, weight signal에 적용 |
 | control family | identity, matched random, shuffled, uniform, clustering-only, graph-free dominance reweight | graph gain의 대안 설명을 분리 |
 | diagnostics/schema | `result_schema_version`, `config_aliases_used`, `unsupported_components`, alignment, DI, N_eff, graph/spectral metric | 결과를 같은 schema로 저장하고 해석 |
-| executable configs | vision smoke/diagnostic configs, Cora graph ablation smoke config | vision setting과 graph-dataset extension에서 초기 실행 가능 |
+| executable configs | vision diagnostic configs, Cora graph ablation initial config | vision setting과 graph-dataset extension에서 초기 실행 가능 |
 | validation tests | graph/design/diagnostic/schema/runner 관련 unit tests | graph design과 result contract가 코드로 고정됨 |
 
-현재 직접 지원하는 기본 pipeline은 다음 흐름이다.
+현재 직접 지원하는 대표 pipeline은 다음 흐름이다.
 
 ```text
 client update delta
@@ -118,76 +162,9 @@ intervention을 공통 runtime 위에 올리고, control과 diagnostic으로 검
 
 ---
 
-## 3. Framework Success Criteria
+## 4. Modular Design Space
 
-이 프로젝트의 성공 기준은 real graph가 항상 최고 성능을 내는 것이 아니다.
-
-성공 기준은 다음과 같다.
-
-```text
-1. client update 기반 real graph를 구성할 수 있다.
-2. real graph와 matched control graph를 같은 조건에서 실행할 수 있다.
-3. graph-free control과도 비교할 수 있다.
-4. performance gap과 mechanism metric을 같은 schema로 기록할 수 있다.
-5. 관찰된 gain을 relation-specific, smoothing, clustering, dominance correction 중 어느 설명과 더 잘 연결되는지 판단할 수 있다.
-```
-
-따라서 real graph가 control보다 높게 나오지 않아도 프로젝트가 실패하는 것은 아니다. 예를 들어 uniform control이 real graph와 비슷하다면, 해당 setting에서는 relation-specific effect보다 generic smoothing effect가 더 크다는 해석이 가능하다. graphfree_dominance_reweight가 real graph와 비슷하다면, graph relation보다 dominance correction이 주요 원인일 수 있다.
-
-이 프레임워크는 **Graph-FL gain의 원인을 통제된 실험 구조 안에서 해석 가능하게 만드는 것**에 초점을 둔다.
-
----
-
-## 4. Framework Structure
-
-프레임워크는 graph를 만드는 방식, graph를 적용하는 위치, 비교군, 진단 지표를 같은 실행 구조 안에 묶는다.
-
-```text
-client representation
--> similarity / relation score
--> topology construction
--> edge weight / normalization
--> aggregation target
--> correction or control variant
--> shared diagnostics
-```
-
-하나의 실험 run은 동일한 seed, 동일한 non-IID split, 동일한 aggregation target에서 real graph와 control variants를 함께 실행한다. 각 variant의 성능과 mechanism metric은 같은 schema로 저장한다.
-
-```text
-Input:
-- client updates
-- global model state
-- non-IID split configuration
-- graph construction configuration
-- control variant configuration
-
-Process:
-- build real client relation graph
-- build relation-destroyed controls
-- build relation-free or graph-free controls
-- run each variant under the same FL setting
-- compute performance and mechanism metrics
-
-Output:
-- accuracy / loss
-- real-control gap
-- graph-free control gap
-- alignment
-- DI
-- N_eff
-- optional topology / spectral / LOO diagnostics
-```
-
-결과 해석은 `real_graph가 accuracy가 높다`에서 끝나지 않는다. real graph가 어떤 control보다 높은지, relation-destroyed control에서도 차이가 유지되는지, graph-free dominance correction으로도 비슷한 결과가 나는지, alignment, DI, N_eff가 성능 변화와 함께 움직이는지를 함께 본다.
-
-이 구조에서 graph design은 일회성 구현이 아니라 반복 가능한 실험 단위가 된다. 새로운 graph 후보를 만들면 같은 schema로 control suite에 올리고, real graph가 smoothing, clustering, dominance correction과 구분되는지 확인한다.
-
----
-
-## 5. Modular Design Space
-
-현재 framework에서 graph-based intervention은 다음 조각들로 분해된다.
+프레임워크에서 graph-based intervention은 다음 조각들로 분해된다.
 
 | 조립 위치 | 만들 수 있는 것 | 의미 |
 |---|---|---|
@@ -199,9 +176,35 @@ Output:
 | correction/control family | real graph, matched random, shuffled, uniform, identity, clustering-only, graph-free dominance reweight | 성능 향상의 설명 후보 분리 |
 | diagnostics | accuracy/loss, real-control gap, graph-free gap, alignment, DI, N_eff, LOO, topology/spectral metrics | graph effect를 해석하기 위한 지표 |
 
-이 설계 공간은 각 graph method가 어느 구성요소를 바꾸는지 확인하기 위한 것이다. 각 변화가 어떤 설명과 연결되는지 작은 단위로 나누어 보면, graph gain을 relation, smoothing, clustering, dominance, topology, representation 효과로 더 명확히 해석할 수 있다.
+이 설계 공간은 각 graph method가 어느 구성요소를 바꾸는지 확인하기 위한 것이다.
+각 변화가 어떤 설명과 연결되는지 작은 단위로 나누어 보면, graph gain을 relation,
+smoothing, clustering, dominance, topology, representation 효과로 더 명확히
+해석할 수 있다.
 
-이 점에서 본 프레임워크의 장점은 Graph-FL 방법을 단일 알고리즘이 아니라 조립 가능한 실험 공간으로 다룬다는 데 있다. 새로운 graph construction 방식을 추가하더라도, 동일한 control suite와 metric을 그대로 사용해 기존 variant와 비교할 수 있다.
+이 점에서 프레임워크의 장점은 Graph-FL 방법을 단일 알고리즘이 아니라 조립 가능한
+실험 공간으로 다룬다는 데 있다. 새로운 graph construction 방식을 추가하더라도,
+동일한 control suite와 metric을 그대로 사용해 기존 variant와 비교할 수 있다.
+
+---
+
+## 5. Success Conditions
+
+이 프로젝트의 성공은 real graph가 항상 최고 성능을 내는 것이 아니다. 오히려
+성공은 graph gain이 어떤 설명과 더 잘 맞는지 분리해 말할 수 있는 상태에 가깝다.
+
+```text
+1. client update 기반 real graph를 구성할 수 있다.
+2. real graph와 matched control graph를 같은 조건에서 실행할 수 있다.
+3. graph-free control과도 비교할 수 있다.
+4. performance gap과 mechanism metric을 같은 schema로 기록할 수 있다.
+5. 관찰된 gain을 relation-specific, smoothing, clustering, dominance correction 중 어느 설명과 더 잘 연결되는지 판단할 수 있다.
+```
+
+따라서 real graph가 control보다 높게 나오지 않아도 프로젝트가 실패하는 것은 아니다.
+예를 들어 uniform control이 real graph와 비슷하다면, 해당 setting에서는
+relation-specific effect보다 generic smoothing effect가 더 크다는 해석이 가능하다.
+`graphfree_dominance_reweight`가 real graph와 비슷하다면, graph relation보다
+dominance correction이 주요 원인일 수 있다.
 
 ---
 
@@ -213,9 +216,10 @@ Output:
 | attribution | RQ2 | 관찰된 graph gain은 generic smoothing, coarse clustering, dominance correction으로 대체 설명 가능한가? | real_graph vs uniform / clustering_only / graphfree_dominance_reweight |
 | mechanism | RQ3 | real graph가 control을 넘을 때 alignment, DI, N_eff는 어떤 패턴을 보이는가? | performance gap + mechanism metrics |
 | design | RQ4 | graph gain은 graph operator 자체보다 client representation 또는 topology choice에 더 민감한가? | update / EMA / classifier-head source, kNN / threshold / dense topology |
-| framework | RQ5 | 새로운 graph-based intervention을 공통 interface 안에서 조립하고 같은 기준으로 비교할 수 있는가? | graph_source / relation_score / topology / target 조합 비교 |
+| framework | RQ5 | 새로운 graph-based intervention을 공통 interface 안에서 조립하고 같은 조건으로 비교할 수 있는가? | graph_source / relation_score / topology / target 조합 비교 |
 
-이 RQ들은 real graph의 우위를 전제하지 않고, Graph-FL gain을 어떤 설명으로 해석할 수 있는지 구분하는 데 초점을 둔다.
+이 RQ들은 real graph의 우위를 전제하지 않고, Graph-FL gain을 어떤 설명으로 해석할
+수 있는지 구분하는 데 초점을 둔다.
 
 | 범위 | 가설 | 관찰할 증거 | 해석 |
 |---|---|---|---|
@@ -231,7 +235,8 @@ Output:
 
 ## 7. Control Design
 
-Graph-specific effect를 해석하려면 real graph와 controls가 가능한 한 같은 graph construction pipeline을 공유해야 한다.
+Graph-specific effect를 해석하려면 real graph와 controls가 가능한 한 같은 graph
+construction pipeline을 공유해야 한다.
 
 ```text
 same representation
@@ -241,13 +246,18 @@ same aggregation target
 different tested factor only
 ```
 
-control 간 차이는 relation 의미, client identity 대응, fine-grained edge 구조, graph-free correction처럼 검증하려는 요인에만 둔다. 이 원칙을 통해 real-control gap을 더 안정적으로 해석한다.
+control 간 차이는 relation 의미, client identity 대응, fine-grained edge 구조,
+graph-free correction처럼 검증하려는 요인에만 둔다. 이 원칙을 통해 real-control
+gap을 더 안정적으로 해석한다.
 
-matched_random과 shuffled는 relation 정보를 약화하는 비교군이지만, edge 재배치 과정에서 topology나 spectral property도 함께 달라질 수 있다. 따라서 real-control gap은 단독으로 해석하지 않고, density, degree, entropy, smoothness, spectral energy와 함께 본다.
+matched_random과 shuffled는 relation 정보를 약화하는 비교군이지만, edge 재배치
+과정에서 topology나 spectral property도 함께 달라질 수 있다. 따라서 real-control
+gap은 단독으로 해석하지 않고, density, degree, entropy, smoothness, spectral
+energy와 함께 본다.
 
 | Control | Preserved factor | Broken / removed factor | Purpose |
 |---|---|---|---|
-| real_graph | client representation, similarity score, topology, edge weight | 없음 | 의도한 client relation을 사용한 기준 graph |
+| real_graph | client representation, similarity score, topology, edge weight | 없음 | 의도한 client relation을 사용한 graph |
 | matched_random | node 수, edge 수, 평균 degree 또는 weight scale | relation-specific structure | topology/smoothing만으로 gain이 나는지 확인 |
 | shuffled | graph structure, weight distribution | client identity-relation correspondence | relation assignment가 중요한지 확인 |
 | uniform | aggregation scale, smoothing operation | relation-specific weight | 단순 relation-free smoothing과 비교 |
@@ -255,7 +265,8 @@ matched_random과 shuffled는 relation 정보를 약화하는 비교군이지만
 | clustering_only | coarse community structure | fine-grained edge relation | cluster 수준 정보만으로 충분한지 확인 |
 | graphfree_dominance_reweight | graph-free aggregation path, contribution control | relation structure | dominance correction만으로 gain을 대체할 수 있는지 확인 |
 
-초기 구현과 발표에서는 모든 control을 같은 비중으로 다루지 않는다. 우선순위는 다음과 같이 둔다.
+초기 분석에서는 모든 control을 같은 비중으로 다루지 않는다. 우선순위는 다음과 같이
+둔다.
 
 | 우선순위 | Control | 이유 |
 |---|---|---|
@@ -270,7 +281,9 @@ matched_random과 shuffled는 relation 정보를 약화하는 비교군이지만
 
 ## 8. Metrics and Evidence Patterns
 
-주요 지표는 같은 result schema 안에 함께 남기되, 해석 우선순위를 나눈다. 본문에서는 attribution 판단에 직접 필요한 지표를 중심으로 설명하고, 수식과 세부 caveat는 appendix의 metric reference로 분리한다.
+주요 지표는 같은 result schema 안에 함께 남기되, 해석 우선순위를 나눈다. 본문에서는
+attribution 판단에 직접 필요한 지표를 중심으로 설명하고, 수식과 세부 caveat는
+appendix의 metric reference로 분리한다.
 
 | 우선순위 | 지표 | 역할 |
 |---|---|---|
@@ -278,9 +291,8 @@ matched_random과 shuffled는 relation 정보를 약화하는 비교군이지만
 | primary mechanism | alignment, DI, N_eff | relation quality와 dominance suppression이 함께 움직이는지 확인 |
 | secondary diagnostics | LOO, density/degree/entropy, smoothness/spectral energy | 보조적인 구조 해석 제공 |
 
-초기 발표와 1차 분석에서는 핵심 mechanism metric을 `alignment`, `DI`, `N_eff` 중심으로 둔다. 나머지 LOO, topology, spectral metric은 결과 해석을 보조하는 diagnostic으로 사용한다.
-
-지표는 다음 네 그룹으로 나누어 본다.
+초기 분석에서는 핵심 mechanism metric을 `alignment`, `DI`, `N_eff` 중심으로 둔다.
+나머지 LOO, topology, spectral metric은 결과 해석을 보조하는 diagnostic으로 사용한다.
 
 | Group | Metric | Role |
 |---|---|---|
@@ -303,9 +315,14 @@ Core metric은 다음처럼 해석한다.
 | smoothness | graph 위 update signal의 평탄성 | real graph가 update relation을 반영하는지, 또는 over-smoothing인지 확인 |
 | LOO | 특정 client 제거 시 aggregate 방향 변화 | 특정 client 영향력이 과도한지 확인 |
 
-각 metric은 단독으로 결론을 내기보다 함께 해석한다. 예를 들어 real-control gap이 양수라도 DI가 크게 줄고 N_eff가 증가했다면, 성능 향상은 relation-specific effect보다 dominance correction에 가까울 수 있다. 반대로 real graph가 matched_random과 uniform을 넘고 alignment도 함께 개선된다면, relation-specific explanation의 강도가 높아진다.
+각 metric은 단독으로 결론을 내기보다 함께 해석한다. 예를 들어 real-control gap이
+양수라도 DI가 크게 줄고 N_eff가 증가했다면, 성능 향상은 relation-specific effect보다
+dominance correction에 가까울 수 있다. 반대로 real graph가 matched_random과
+uniform을 넘고 alignment도 함께 개선된다면, relation-specific explanation의 강도가
+높아진다.
 
-실험 결과를 사후적으로 끼워 맞추지 않기 위해, 가능한 관찰 패턴과 해석을 미리 정리한다.
+실험 결과를 사후적으로 끼워 맞추지 않기 위해, 가능한 관찰 패턴과 해석을 미리
+정리한다.
 
 | Pattern | Observation | Supporting metric | Interpretation |
 |---|---|---|---|
@@ -350,9 +367,12 @@ Core metric은 다음처럼 해석한다.
 | Seeds | 최소 3개 |
 | Rounds | prototype에서는 짧은 round, main experiment에서는 충분한 round로 확장 |
 
-초기 실험은 같은 setting에서 real_graph와 controls가 어떤 차이를 보이는지 확인하고, 그 차이가 어떤 설명과 더 잘 맞는지 판단하는 데 둔다.
+초기 실험은 같은 setting에서 real_graph와 controls가 어떤 차이를 보이는지 확인하고,
+그 차이가 어떤 설명과 더 잘 맞는지 판단하는 데 둔다.
 
-Cora와 같은 graph-structured input dataset은 현재 client relation graph와 구분해서 다룬다. 기본 대상은 client relation graph이며, graph input data setting은 선행연구 맥락을 확인하기 위한 확장 검증으로 둔다.
+Cora와 같은 graph-structured input dataset은 현재 client relation graph와 구분해서
+다룬다. 기본 대상은 client relation graph이며, graph input data setting은 선행연구
+맥락을 확인하기 위한 확장 검증으로 둔다.
 
 ---
 
@@ -360,7 +380,9 @@ Cora와 같은 graph-structured input dataset은 현재 client relation graph와
 
 선행연구는 현재 실행 가능한 부분과 확장 대상으로 남는 부분을 분리해 흡수한다.
 
-본 프로젝트의 1차 목표는 update-based client relation graph와 aggregation-level intervention이다. 기존 Graph-FL/PFL 방법들은 이 프레임워크의 확장 대상으로 정리하되, 모든 방법의 exact reproduction은 현재 범위에 포함하지 않는다.
+현재 중심은 update-based client relation graph와 aggregation-level intervention이다.
+기존 Graph-FL/PFL 방법들은 이 프레임워크의 확장 대상으로 정리하되, 모든 방법의
+exact reproduction은 현재 범위에 포함하지 않는다.
 
 | 연구 계열 | 처리 |
 |---|---|
@@ -371,15 +393,18 @@ Cora와 같은 graph-structured input dataset은 현재 client relation graph와
 | FED-PUB/GPFL | functional embedding, personalized delivery는 interface-target |
 | hypernetwork/GNN server aggregation | future extension 또는 interface-target |
 
-이 구분을 통해 exact reproduction과 mechanism proxy를 분리한다. proxy-supported 항목은 “해당 논문에서 영감을 받은 mechanism proxy와 비교한다”고 표현한다.
+이 구분을 통해 exact reproduction과 mechanism proxy를 분리한다. proxy-supported 항목은
+“해당 논문에서 영감을 받은 mechanism proxy와 비교한다”고 표현한다.
 
-중요한 점은 이 섹션이 현재 구현 범위를 넓히기 위한 것이 아니라, 프레임워크가 향후 어떤 Graph-FL/PFL 계열을 흡수할 수 있는지 정리하기 위한 확장 지도라는 점이다.
+중요한 점은 이 섹션이 현재 구현 범위를 넓히기 위한 것이 아니라, 프레임워크가 향후
+어떤 Graph-FL/PFL 계열을 흡수할 수 있는지 정리하기 위한 확장 지도라는 점이다.
 
 ---
 
-## 11. Scope and Claim Boundary
+## 11. Claim Boundary
 
-현재 산출물의 중심은 graph-based intervention을 구성하고 비교할 수 있는 연구형 prototype과 평가 구조다.
+현재 산출물의 중심은 graph-based intervention을 구성하고 비교할 수 있는 연구형
+prototype과 평가 구조다.
 
 ```text
 1. Graph-FL/PFL 선행연구를 공통 축으로 분해한 비교 틀
@@ -402,13 +427,14 @@ Cora와 같은 graph-structured input dataset은 현재 client relation graph와
 6. graph-structured input dataset에 대한 완전한 일반화
 ```
 
-이 프레임워크의 목표는 controlled empirical attribution이다. 다음 표현은 사용하지 않는다.
+이 프레임워크의 목표는 controlled empirical attribution이다. 다음 표현은 사용하지
+않는다.
 
 ```text
 Semantic Graph - Random Graph = Pure Semantic Gain
 ```
 
-이 프레임워크의 claim은 다음과 같이 정리한다.
+claim은 다음과 같이 정리한다.
 
 ```text
 real graph가 matched controls와 graph-free controls를 모두 넘고,
@@ -425,7 +451,8 @@ real-control gap
 client-relation-dependent effect
 ```
 
-이 연구는 Graph-FL gain이 relation-destroyed controls 및 graph-free controls와 비교했을 때 얼마나 graph-specific하게 설명될 수 있는지를 평가한다.
+이 연구는 Graph-FL gain이 relation-destroyed controls 및 graph-free controls와
+비교했을 때 얼마나 graph-specific하게 설명될 수 있는지를 평가한다.
 
 ---
 
@@ -433,6 +460,9 @@ client-relation-dependent effect
 
 Graph-FL 방법의 성능 향상이 곧 의미 있는 client relation을 활용했다는 증거는 아니다.
 
-이 프레임워크는 Graph-FL 방법을 구성요소 단위로 분해하고, real graph, relation-destroyed controls, graph-free controls를 같은 조건에서 비교한다.
+이 프레임워크는 Graph-FL 방법을 구성요소 단위로 분해하고, real graph,
+relation-destroyed controls, graph-free controls를 같은 조건에서 비교한다.
 
-이를 통해 Graph-FL gain이 relation-specific effect인지, generic smoothing인지, coarse clustering인지, dominance correction인지, 또는 해당 setting에서 약한 evidence인지 판단한다.
+이를 통해 Graph-FL gain이 relation-specific effect인지, generic smoothing인지,
+coarse clustering인지, dominance correction인지, 또는 해당 setting에서 약한
+evidence인지 판단한다.
