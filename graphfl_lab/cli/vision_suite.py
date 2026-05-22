@@ -5,6 +5,10 @@ from __future__ import annotations
 import argparse
 import sys
 
+from graphfl_lab.cli.aggregation_targets import (
+    AGGREGATION_TARGET_CHOICES,
+    AGGREGATION_TARGET_SUITE_HELP,
+)
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 import graphfl_lab.experiments.vision.suite as _experiment
 
@@ -71,17 +75,8 @@ def parse_args():
         "--aggregation-target",
         type=str,
         default="update",
-        choices=[
-            "update",
-            "graph_filtered_update",
-            "graph_filtered_ema_update",
-            "graph_filtered_weight",
-            "spectral_filtered_update",
-            "spectral_filtered_ema_update",
-            "weight",
-            "spectral_filtered_weight",
-        ],
-        help="Default aggregation target forwarded to run_vision_experiment.",
+        choices=AGGREGATION_TARGET_CHOICES,
+        help=AGGREGATION_TARGET_SUITE_HELP,
     )
 
     p.add_argument(

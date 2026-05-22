@@ -151,7 +151,7 @@ C1 add graphfl_lab/ alias package (done)
 C2 add Flower entrypoint bridge (done)
 C3 migrate internal imports in batches (done)
 C4 move implementation files (done)
-C5 update docs/commands (in progress: public docs, preset/method specs, suite parsers emit canonical flags; CLI choices/reporting aliases remain)
+C5 update docs/commands (in progress: public docs, preset/method specs, suite parsers, and shared CLI aggregation-target choices/help done; reporting/historical reader aliases remain)
 C6 run full checks (local smoke and `gate-check 5d-prep` pass; remote/nightly pending)
 ```
 

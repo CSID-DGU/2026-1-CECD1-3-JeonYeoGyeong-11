@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import argparse
 
+from graphfl_lab.cli.aggregation_targets import (
+    AGGREGATION_TARGET_CHOICES,
+    AGGREGATION_TARGET_HELP,
+)
 from graphfl_lab.cli.argparse_types import str2bool
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 from graphfl_lab.experiments.cora import single_run as _experiment
@@ -124,17 +128,8 @@ def parse_args():
         "--aggregation-target",
         type=str,
         default="update",
-        choices=[
-            "update",
-            "graph_filtered_update",
-            "graph_filtered_ema_update",
-            "graph_filtered_weight",
-            "spectral_filtered_update",
-            "spectral_filtered_ema_update",
-            "weight",
-            "spectral_filtered_weight",
-        ],
-        help="AggregationOperator knob: object averaged with alpha_i to form the next global model.",
+        choices=AGGREGATION_TARGET_CHOICES,
+        help=AGGREGATION_TARGET_HELP,
     )
     p.add_argument("--knn-k", type=int, default=2)
     p.add_argument("--edge-threshold", type=float, default=0.0)

@@ -14,7 +14,7 @@ disagree, rerun the relevant gate check and update this file from the result.
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` (`gate=5d-prep`, `commit_sha=2ac0aa9`) |
-| next_step | continue Migration C5 in small slices: CLI `--aggregation-target` help/choices, then reporting/historical reader aliases; do not claim Gate 4c/5/6 completion or remove compatibility inputs until golden/nightly evidence |
+| next_step | continue Migration C5 in small slices: reporting/historical reader aliases for legacy suite tokens and result filenames; do not claim Gate 4c/5/6 completion or remove compatibility CLI inputs until golden/nightly evidence |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -243,6 +243,7 @@ result-schema contracts.
 | 2026-05-22 | Runnable GraphFLDesign presets and graph method specs still emitted `spectral_filtered_*` aggregation targets even though the strategy accepts canonical `graph_filtered_*` aliases. | Switch preset/method defaults and prior-work parity expectations to `graph_filtered_*`; leave CLI choices, legacy suite tokens, readers, and low-level alias handling until Gate 6 cleanup. |
 | 2026-05-22 | Low-level aggregation and diagnostic helpers accepted `graph_filtered_*` aliases but still returned `spectral_filtered_*` target labels in new outputs. | Return canonical `graph_filtered_*` labels from strategy, lifecycle, and counterfactual diagnostics while preserving legacy input aliases. |
 | 2026-05-22 | Legacy vision suite tokens such as `ours_spectral_filtered_*` and `ours_*_spectral_weight_agg_*` still emitted `spectral_filtered_*` CLI flags even though canonical aliases are accepted. | Keep legacy token names for historical run tags, but emit `graph_filtered_*` aggregation-target flags from suite parsers. |
+| 2026-05-22 | Experiment CLIs duplicated `--aggregation-target` choices with legacy spellings listed beside canonical ones but without explicit deprecation guidance. | Centralize choices/help in `graphfl_lab/cli/aggregation_targets.py`, list canonical targets first, and keep `spectral_filtered_*` only as documented compatibility aliases per Migration C5 and Gate 6 policy. |
 
 ## Closure Policy
 
