@@ -46,7 +46,7 @@ _SPECS: Dict[str, GraphFLMethodSpec] = {
         config_overrides={
             "graph_source": "weight",
             "graph_mode": "rbf",
-            "aggregation_target": "spectral_filtered_weight",
+            "aggregation_target": "graph_filtered_weight",
             "correction_family": "real_graph",
         },
         evidence=(
@@ -72,7 +72,7 @@ _SPECS: Dict[str, GraphFLMethodSpec] = {
         config_overrides={
             "graph_source": "weight",
             "graph_mode": "learned_smooth",
-            "aggregation_target": "spectral_filtered_weight",
+            "aggregation_target": "graph_filtered_weight",
             "correction_family": "real_graph",
         },
         evidence=(
@@ -97,7 +97,7 @@ _SPECS: Dict[str, GraphFLMethodSpec] = {
         config_overrides={
             "graph_source": "update",
             "graph_mode": "pfedgraph_qp",
-            "aggregation_target": "spectral_filtered_update",
+            "aggregation_target": "graph_filtered_update",
             "correction_family": "real_graph",
         },
         evidence=(
@@ -123,7 +123,7 @@ _SPECS: Dict[str, GraphFLMethodSpec] = {
         config_overrides={
             "graph_source": "ema_update",
             "graph_mode": "magnitude_knn",
-            "aggregation_target": "spectral_filtered_ema_update",
+            "aggregation_target": "graph_filtered_ema_update",
             "correction_family": "real_graph",
             "client_update_ema_alpha": 0.9,
         },

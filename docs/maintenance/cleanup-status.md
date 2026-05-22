@@ -240,6 +240,7 @@ result-schema contracts.
 | 2026-05-22 | `docs/framework/experimental-design.md` is now only a bridge to the canonical `graph_fl_experimental_design.md`. | Remove the duplicate bridge from current framework docs and record the replacement in `docs/removed-materials.md`. |
 | 2026-05-22 | Current docs `configs/README.md` and `docs/research/framework-design-notes.md` still described `spectral_fl` package paths as active implementation paths. | Update those current docs to `graphfl_lab`; keep `spectral_fl` mentions only for compatibility debt and archived/history records. |
 | 2026-05-22 | The graph-source vector helper still exposed the old `graph_vectors_for_spectral` name as the active helper in strategy and baseline code. | Add canonical `graph_vectors_for_graphfl`, migrate active imports, and retain `graph_vectors_for_spectral` as a Gate 6 compatibility alias. |
+| 2026-05-22 | Runnable GraphFLDesign presets and graph method specs still emitted `spectral_filtered_*` aggregation targets even though the strategy accepts canonical `graph_filtered_*` aliases. | Switch preset/method defaults and prior-work parity expectations to `graph_filtered_*`; leave CLI choices, legacy suite tokens, readers, and low-level alias handling until Gate 6 cleanup. |
 
 ## Closure Policy
 

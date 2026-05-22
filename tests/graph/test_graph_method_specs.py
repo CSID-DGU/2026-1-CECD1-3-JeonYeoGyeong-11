@@ -18,7 +18,7 @@ class GraphMethodSpecTest(unittest.TestCase):
         self.assertEqual(spec["graph_method"], "pfedgraph")
         self.assertEqual(spec["graph_source"], "update")
         self.assertEqual(spec["graph_mode"], "pfedgraph_qp")
-        self.assertEqual(spec["aggregation_target"], "spectral_filtered_update")
+        self.assertEqual(spec["aggregation_target"], "graph_filtered_update")
 
     def test_interface_only_method_is_not_exposed_as_runnable_preset(self):
         self.assertNotIn("fedpub_like", graph_preset_names())
