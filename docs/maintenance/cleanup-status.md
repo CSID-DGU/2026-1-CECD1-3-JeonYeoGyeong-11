@@ -9,8 +9,8 @@ disagree, rerun the relevant gate check and update this file from the result.
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 5d-prep stabilized; local Migration C5 public-surface alignment in progress |
-| status | Migration C5 doc/command alignment complete locally; Gate 4c remote nightly green remains pending (workflow file present); Gate 5d-prep local checks pass; Gate 6 compatibility removal blocked on 4c evidence; optional deeper modularization remains deferred |
+| current_gate | Gate 5d-prep stabilized; Migration C5 closed locally; Gate 4c remote nightly pending |
+| status | Migration C5 doc/command alignment complete locally; Gate 5a-prep through Gate 5d-prep local contracts maintained; Gate 4c remote nightly green remains pending (workflow file present); Gate 6 compatibility removal blocked on 4c evidence; optional deeper modularization remains deferred |
 | owner | codex |
 | started_at | 2026-05-21 |
 | last_verified | see `docs/maintenance/last_gate_check.json` |
@@ -187,7 +187,7 @@ result-schema contracts.
 | 2026-05-21 | Only single-run facades have a unified dispatcher equivalent in Gate 4b. | Rewire `run_vision_experiment.py` and `run_general_experiment.py` through dispatcher track helpers; keep suite/stress/count wrappers on package CLI modules until their unified equivalents exist. |
 | 2026-05-21 | Existing CI compile step still referenced the pre-move package layout. | Update CI compile paths to `graphfl_lab` plus the `spectral_fl` shim and add a separate scheduled/manual nightly workflow. |
 | 2026-05-21 | Pushing the Gate branch is required for GitHub nightly/manual-nightly verification, but external publication needs explicit user approval. | Do not push or trigger remote workflows yet; continue only local Gate 4c prep such as golden comparison tooling and keep Gate 4c fail-closed. |
-| 2026-05-21 | User prefers continuing with local commits and no immediate push. | Leave Gate 4c completion pending; allow local Gate 5a prep commits that do not require remote workflow state and do not claim full Gate 5a completion. |
+| 2026-05-21 | User prefers continuing with local commits and no immediate push. | Leave Gate 4c completion pending; allow local Gate 5a-prep commits that do not require remote workflow state and do not claim full Gate 5a completion. |
 | 2026-05-21 | Vision suite orchestration contains reusable run-or-reuse subprocess logic. | Extract only the execution helper as Gate 5b-prep; keep result aggregation and public runner behavior unchanged. |
 | 2026-05-21 | Gate 5b-prep is not a complete Gate 5b modularization. | Keep the golden/nightly prerequisite visible and do not claim full Gate 5b completion. |
 | 2026-05-21 | Client-count and stress-grid wrappers still invoke subprocesses directly with the project root. | Reuse the new execution helper for those wrapper calls only; keep wrapper arguments, outputs, and skip/reuse behavior unchanged. |
@@ -252,6 +252,7 @@ result-schema contracts.
 | 2026-05-22 | `MIGRATION.md` and `docs/structure.md` did not yet document canonical `vision_suite_*` / `result_vision_*` artifact policy or shared discovery helpers added during C5. | Add artifact/reporting guidance to current docs and mark C5 doc sync as the active slice before Gate 4c push. |
 | 2026-05-22 | Migration C5 public-surface alignment (runners, CLI help, suite writes, plot/report readers, docs) is complete on the gate branch; only Gate 4c remote evidence and Gate 6 removal remain for the rename track. | Record C5 as locally closed in `cleanup-plan.md` and `cleanup-status.md`; do not remove compatibility aliases until Gate 4c/6 criteria are met. |
 | 2026-05-22 | CI/nightly compile steps still py_compiled only `run_general_*` entrypoints, not canonical `run_vision_*`, on a branch where vision runners are primary. | Align `.github/workflows/ci.yml` and `nightly.yml` compile lists with canonical runners plus compatibility wrappers. |
+| 2026-05-22 | `gate-check 5a-prep` and `5c-prep` contracts drifted after C5 refactors (`write_suite_summary_artifacts`, canonical result-path test rename, legacy token parser strings). | Refresh `scripts/dev/run.py` required-text anchors; keep `do not claim full Gate 5a/5b/5c completion` wording in status. |
 
 ## Gate 4c Local Readiness
 

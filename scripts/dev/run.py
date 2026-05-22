@@ -238,9 +238,8 @@ GATE5A_PREP_REQUIRED_TEXT = {
         "write_csv_rows",
     ),
     "graphfl_lab/experiments/vision/suite.py": (
-        "write_json(summary_json, suite_summary)",
-        "write_json(rows_path, rows)",
-        "write_csv_rows(csv_path, summary_rows",
+        "write_suite_summary_artifacts(",
+        "summary_json, rows_path, csv_path = write_suite_summary_artifacts",
     ),
     "graphfl_lab/experiments/cora/graph_ablation.py": (
         "write_json(summary_json, suite_summary)",
@@ -256,7 +255,9 @@ GATE5A_PREP_REQUIRED_TEXT = {
         "write_json(root / \"client_count_sweep_summary.json\"",
     ),
     "graphfl_lab/experiments/suites/vision/reporting.py": (
-        "write_json(out_dir / \"vision_suite_summary.json\"",
+        "def write_suite_summary_artifacts(",
+        'summary_json = out_dir / "vision_suite_summary.json"',
+        "write_json(summary_json, suite_summary)",
         "write_csv_rows(",
     ),
     "tests/experiments/test_result_writer.py": (
@@ -370,7 +371,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "graphfl_lab/experiments/suites/vision/variant_targets.py": (
         "parse_target_variant",
         "graph_filtered_update",
-        "spectral_filtered_update",
+        '"spectral_filtered"',
     ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
@@ -385,7 +386,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "result_path_for_variant(out_dir, method, seed, run_tag)",
     ),
     "tests/experiments/vision/test_variant_helpers.py": (
-        "test_result_path_for_variant_preserves_existing_file_name_contract",
+        "test_result_path_for_variant_uses_canonical_vision_filename",
         "test_diagnostic_graph_args_adds_cluster_auto_k_for_cluster_only",
     ),
     "tests/experiments/vision/test_variant_commands.py": (
