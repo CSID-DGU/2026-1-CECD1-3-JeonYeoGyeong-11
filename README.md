@@ -2,143 +2,87 @@
 
 Client update를 이용해 프레임워크 내부에서 다양한 client graph를 구성·교체하고, control graph ablation을 통해 Graph-FL gain이 실제 client relation structure 때문인지 아니면 dominance, norm, smoothing, optimizer 효과 때문인지 분해하는 실험 프레임워크.
 
-Current names:
+## Naming
 
-```text
-vision              current experiment track
-graphfl             current strategy/runtime identity
-graph_filtered_*    current graph aggregation spelling
-general/spectral    compatibility names
-```
+| Area | Canonical | Notes |
+|---|---|---|
+| experiment track | `vision` | configs under `configs/vision/` |
+| strategy/runtime | `graphfl` | `graphfl_lab/strategies/graphfl/` |
+| aggregation | `graph_filtered_*` | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
+| filter strength | `graph_filter_strength` | CLI: `--graph-filter-strength` |
+| historical JSON | `spectral_*`, `configs/general/` | read-only aliases; see [Compatibility](#compatibility) |
 
 ## Project Summary
 
-```text
-Claim:
-  새 Graph-FL 알고리즘 제안이 아니라 graph gain의 원인 분해/진단 framework.
+| Topic | Content |
+|---|---|
+| Claim | 새 Graph-FL 알고리즘 제안이 아니라 graph gain의 원인 분해/진단 framework |
+| Core question | Does graph structure explain the observed gain beyond simpler confounders? |
+| Primary evidence | real-control gap, graph-free control gap, alignment, LOO, DI / N_eff |
+| Minimum experiments | Non-IID stress preflight; real vs counterfactual + graph-free controls; source/mode/target attribution; diagnostic mechanism chain |
 
-Core question:
-  Does graph structure explain the observed gain beyond simpler confounders?
-
-Primary evidence:
-  real-control gap, graph-free control gap, alignment, LOO, DI / N_eff.
-
-Minimum experiments:
-  Non-IID stress preflight
-  real graph vs counterfactual + graph-free controls
-  minimal source/mode/target attribution
-  diagnostic mechanism chain
-```
-
-Design doc: [docs/framework/graph_fl_experimental_design.md](docs/framework/graph_fl_experimental_design.md)
-Metric reference: [docs/framework/graph_fl_experimental_design_appendix.md](docs/framework/graph_fl_experimental_design_appendix.md)
+| Document | Link |
+|---|---|
+| Experimental design | [docs/framework/graph_fl_experimental_design.md](docs/framework/graph_fl_experimental_design.md) |
+| Metric reference | [docs/framework/graph_fl_experimental_design_appendix.md](docs/framework/graph_fl_experimental_design_appendix.md) |
+| Docs index | [docs/README.md](docs/README.md) |
 
 ## Quick Start
 
-Run from repository root.
+Run from repository root. Python 3.11 recommended.
 
 ### Environment
 
-```text
-Python 3.11
-pip
-PowerShell or bash
-```
-
-Windows PowerShell:
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m pip install -e .
-```
-
-macOS/Linux:
-
-```bash
-python3.11 -m venv .venv
-./.venv/bin/python -m pip install --upgrade pip
-./.venv/bin/python -m pip install -r requirements.txt
-./.venv/bin/python -m pip install -e .
-```
-
+| Step | Command |
+|---|---|
+| Create venv | `python3.11 -m venv .venv` |
+| Install deps | `.venv/bin/python -m pip install -r requirements.txt` (Windows: `.venv\Scripts\python.exe`) |
+| Editable install | same interpreter: `-m pip install -e .` |
 
 ### Verify
 
-```powershell
-python -m unittest discover -s tests
-python run_vision_experiment.py --help
-python run_vision_suite.py --help
-```
-
-Without activation:
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests
-```
+| Check | Command |
+|---|---|
+| Unit tests | `python -m unittest discover -s tests` |
+| Vision CLI | `python run_vision_experiment.py --help` |
+| Suite CLI | `python run_vision_suite.py --help` |
 
 ### Smallest Graph Smoke
 
-```powershell
-python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
-```
+| Step | Command |
+|---|---|
+| Run | `python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json` |
+| Output | `--out-dir` from config (gitignored experiment output root) |
 
-Output:
-
-```text
-experiments_current/default_similarity_knn_smoke/
-```
-
-Expected metadata:
-
-```text
-graph_method=default_similarity_knn
-graph_design=default_similarity_knn
-graph_source=update
-graph_mode=rbf_knn
-aggregation_target=graph_filtered_update
-graph_empty=false
-```
+| Metadata field | Expected |
+|---|---|
+| `graph_method` | `default_similarity_knn` |
+| `graph_design` | `default_similarity_knn` |
+| `graph_source` | `update` |
+| `graph_mode` | `rbf_knn` |
+| `aggregation_target` | `graph_filtered_update` |
+| `graph_empty` | `false` |
 
 ### Suite Preflight And Smoke
 
-```powershell
-python scripts/checks/diagnostic_suite_preflight.py
-python run_vision_suite.py --config configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json
-```
-
-### Manual Assembly
-
-```powershell
-python run_vision_experiment.py `
-  --method ours `
-  --dataset fashionmnist `
-  --model mlp `
-  --num-clients 2 `
-  --rounds 1 `
-  --train-subset-size 20 `
-  --test-subset-size 20 `
-  --graph-method default_similarity_knn `
-  --knn-k 1 `
-  --out-dir experiments_current/manual_default_graph `
-  --run-tag manual_k1
-```
+| Step | Command |
+|---|---|
+| Preflight | `python scripts/checks/diagnostic_suite_preflight.py` |
+| Suite | `python run_vision_suite.py --config configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json` |
 
 ## Assembly Model
 
-Graph-FL methods are represented as component assemblies, not strategy branches.
+| Stage | Role |
+|---|---|
+| method profile | selects component assembly |
+| client_state | `--graph-source` |
+| relation_estimator + topology_operator | `--graph-mode`, builders |
+| aggregation_operator | `--aggregation-target` |
+| diagnostics | traces and mechanism metrics |
 
-```text
-method profile
-  -> client_state
-  -> relation_estimator
-  -> topology_operator
-  -> aggregation_operator
-  -> diagnostics
-```
+Graph-FL methods are component assemblies, not strategy branches.
 
-CLI knobs:
+### CLI Knobs
 
 | Component | CLI knob | Examples |
 |---|---|---|
@@ -148,21 +92,9 @@ CLI knobs:
 | method profile | `--graph-method` | `default_similarity_knn`, `pfedgraph`, custom profile |
 | exact preset | `--graph-preset` | registered `GraphFLDesign` or compatibility alias |
 
-Default method:
-
-```text
-default_similarity_knn
-= update source
-+ RBF similarity
-+ kNN topology
-+ graph-filtered update aggregation
-```
-
-Run:
-
-```powershell
-python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
-```
+| Default method | Composition |
+|---|---|
+| `default_similarity_knn` | update source + RBF similarity + kNN topology + `graph_filtered_update` |
 
 ## Main Interfaces
 
@@ -178,15 +110,17 @@ python run_vision_experiment.py --config configs/vision/smoke/default_similarity
 
 ## Add A Graph Algorithm
 
-1. Write method profile: `client_state`, `relation`, `topology`, `aggregation`, `delivery`, `local_objective`, `state_store`, `diagnostics`.
-2. Assign support level: `core-supported`, `proxy-supported`, `interface-target`, `out-of-scope`.
-3. Add `graph_source` only for a new client representation.
-4. Add `graph_mode` or graph builder only for new relation/topology.
-5. Expose runnable combinations through `GraphFLDesign` and `--graph-method`.
-6. Add suite tokens/configs after lower-level source/mode/target path is verified.
-7. Test shape, determinism, metadata, diagnostics, and control comparability.
+| Step | Action |
+|---|---|
+| 1 | Write method profile: client_state, relation, topology, aggregation, delivery, local_objective, state_store, diagnostics |
+| 2 | Assign support level: `core-supported`, `proxy-supported`, `interface-target`, `out-of-scope` |
+| 3 | Add `graph_source` only for a new client representation |
+| 4 | Add `graph_mode` or builder only for new relation/topology |
+| 5 | Expose combinations through `GraphFLDesign` and `--graph-method` |
+| 6 | Add suite tokens/configs after source/mode/target path is verified |
+| 7 | Test shape, determinism, metadata, diagnostics, control comparability |
 
-Builder example:
+Builder sketch:
 
 ```python
 from graphfl_lab.graph import GraphBuildContext, register_graph_builder
@@ -200,58 +134,44 @@ def build_my_relation_graph(context: GraphBuildContext):
     return adj, {"base_graph_kind": "my_relation_graph"}
 ```
 
-Run:
-
-```powershell
-python run_vision_experiment.py `
-  --method ours `
-  --graph-plugin my_project.graph_plugins.my_method `
-  --graph-method my_method `
-  --graph-source classifier_head_update `
-  --graph-mode my_relation_graph `
-  --aggregation-target graph_filtered_update
-```
-
 Guide: [docs/framework/extension-guide.md](docs/framework/extension-guide.md)
 
 ## Repository Layout
 
 ```text
-configs/                         experiment configs
-  vision/                         current vision configs
-  cora/                           Cora/FGL ablation configs
-
-graphfl_lab/
-  cli/                            parser-only modules
-  data/                           dataset loading and partitioning
-  designs/                        GraphFLDesign registry/presets
-  diagnostics/                    metrics and artifact writers
-  graph/                          client relation graph construction
-  lifecycle/                      component contracts and traces
-  strategies/
-    graphfl/                      graph-FL runtime
-    baselines/                    baseline strategies
-  experiments/
-    vision/                       current run orchestration
-    suites/vision/                suite grammar and reporting
-
-scripts/
-  checks/                         non-training validation
-  smoke/                          executable smoke runs
-  reports/                        plotting/dashboard helpers
-  analysis/                       analysis helpers and legacy wrappers
-
-docs/
-  framework/                      active framework docs
-  research/                       literature/design notes
-  archive/                        previous direction and migrations
-
-tests/                            unit, structure, suite, graph, strategy tests
-data/                             local dataset cache, ignored
-experiments_current/              local experiment outputs, ignored
+.
+├── configs/
+│   ├── vision/
+│   └── cora/
+├── graphfl_lab/
+│   ├── cli/
+│   ├── data/
+│   ├── designs/
+│   ├── diagnostics/
+│   ├── graph/
+│   ├── lifecycle/
+│   ├── strategies/
+│   │   ├── graphfl/
+│   │   └── baselines/
+│   └── experiments/
+│       ├── vision/
+│       └── suites/vision/
+├── scripts/
+│   ├── checks/
+│   ├── smoke/
+│   ├── reports/
+│   └── analysis/
+├── docs/
+│   ├── framework/
+│   ├── research/
+│   └── archive/
+├── tests/
+├── run_vision_experiment.py
+├── run_vision_suite.py
+└── run_graph_ablation.py
 ```
 
-Detailed routing: [docs/structure.md](docs/structure.md)
+Edit routing: [docs/structure.md](docs/structure.md)
 
 ## Documents
 
@@ -266,78 +186,72 @@ Detailed routing: [docs/structure.md](docs/structure.md)
 | [docs/framework/extension-guide.md](docs/framework/extension-guide.md) | source/builder extension workflow |
 | [docs/framework/prior-work-mapping.md](docs/framework/prior-work-mapping.md) | exact/proxy/interface boundary |
 | [docs/framework/diagnostics.md](docs/framework/diagnostics.md) | diagnostic interpretation |
-| [docs/framework/naming-and-compatibility.md](docs/framework/naming-and-compatibility.md) | compatibility names |
+| [docs/framework/naming-and-compatibility.md](docs/framework/naming-and-compatibility.md) | compatibility policy |
 
 ## Execution Flow
 
-```text
-run_vision_suite.py
--> run_vision_experiment.py
--> graphfl_lab/flower_runner.py
--> graphfl_lab/flower_app.py
--> graphfl_lab/strategies/graphfl/strategy.py
--> graph source / graph builder / filtering / aggregation / diagnostics
-```
+| Step | Module |
+|---|---|
+| 1 | `run_vision_suite.py` |
+| 2 | `run_vision_experiment.py` |
+| 3 | `graphfl_lab/flower_runner.py` |
+| 4 | `graphfl_lab/flower_app.py` |
+| 5 | `graphfl_lab/strategies/graphfl/strategy.py` |
+| 6 | graph source / builder / filtering / aggregation / diagnostics |
 
-Help commands:
-
-```powershell
-python run_vision_experiment.py --help
-python run_vision_suite.py --help
-python run_vision_client_count_sweep.py --help
-python run_vision_stress_grid.py --help
-```
+| Entrypoint | Purpose |
+|---|---|
+| `run_vision_experiment.py` | single vision run |
+| `run_vision_suite.py` | suite orchestration |
+| `run_vision_client_count_sweep.py` | client-count sweep |
+| `run_vision_stress_grid.py` | stress grid |
+| `run_graph_ablation.py` | Cora graph ablation |
 
 ## Smoke And Verification
 
-```powershell
-python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
-python scripts/checks/result_evidence_bundle.py experiments_current/default_similarity_knn_smoke/result_vision_ours_seed42_default_similarity_knn_smoke.json --kind single-run
-python scripts/checks/diagnostic_suite_preflight.py
-python run_vision_suite.py --config configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json
-python scripts/smoke/prior_work_proxy.py
-```
-
-Full checks:
-
-```powershell
-python -m unittest discover -s tests
-python scripts/checks/diagnostic_suite_preflight.py
-python scripts/checks/prior_work_proxy_parity.py --summary experiments_current/prior_work_proxy_smoke/<stamp>/prior_work_proxy_summary.json
-```
+| Step | Command |
+|---|---|
+| Config smoke | `python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json` |
+| Result bundle | `python scripts/checks/result_evidence_bundle.py <result.json> --kind single-run` |
+| Suite preflight | `python scripts/checks/diagnostic_suite_preflight.py` |
+| Diagnostic suite | `python run_vision_suite.py --config configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json` |
+| Prior-work proxy | `python scripts/smoke/prior_work_proxy.py` |
+| Full unit tests | `python -m unittest discover -s tests` |
+| Proxy parity | `python scripts/checks/prior_work_proxy_parity.py --summary <summary.json>` |
 
 ## Reporting And Analysis
 
-Canonical report commands:
+| Tool | Command pattern |
+|---|---|
+| Convergence plot | `python scripts/reports/plot_vision_convergence.py --suite-dir <suite-dir>` |
+| Dashboard mockup | `python scripts/reports/generate_dashboard_mockup.py --suite-dir <suite-dir>` |
+| Deep dive | `python scripts/analysis/deep_dive_vision.py --suite-dir <dir> --suite-tag <tag> --variant <v> --seed <n>` |
+| Merge fedavg/ours | `python scripts/analysis/merge_vision_fedavg_ours.py --help` |
 
-```powershell
-python scripts/reports/plot_vision_convergence.py --suite-dir experiments_current/<suite_tag>
-python scripts/reports/generate_dashboard_mockup.py --suite-dir experiments_current/<suite_tag>
-python scripts/analysis/deep_dive_vision.py --suite-dir ... --suite-tag ... --variant ... --seed ...
-python scripts/analysis/merge_vision_fedavg_ours.py --help
-```
-
-Suite outputs use `vision_suite_*` and `result_vision_*` filenames. Short `suite_*`
-aliases are still read when present. Pre-rename `general_*` / `result_general_*`
-files in local experiment trees are gitignored and not loaded by current code.
+Suite outputs: `vision_suite_*`, `result_vision_*`. Short `suite_*` names are read-only when present. Pre-rename `general_*` artifact names are not loaded by current code.
 
 ## Compatibility
 
-New code uses `vision`, `graphfl`, `graph_filtered_*`.
+New code and new runs use `graphfl_lab`, `vision`, `graph_filtered_*`, and `graph_filter_strength`. Gate 6 removed `run_general_*`, `general_*` facades, and `spectral_fl` imports.
 
 | Old name | Role |
 |---|---|
-| `spectral_filter_strength` | JSON config key alias via `config_io` (CLI flag is `--graph-filter-strength`) |
+| `spectral_filter_strength` | JSON config key alias via `config_io` (CLI: `--graph-filter-strength`) |
+| `spectral_filtered_*` | aggregation target input alias via `targets.canonical_aggregation_target()` |
+| `configs/general/...` | config path alias to `configs/vision/...` |
+| `ours_spectral_filtered_*` | result-tag pairing in suite reporting only |
+
+| Reference | Link |
+|---|---|
+| Removals and tombstones | [docs/removed-materials.md](docs/removed-materials.md) |
+| Active policy | [docs/framework/naming-and-compatibility.md](docs/framework/naming-and-compatibility.md) |
 
 ## Git Policy
 
 | Path | Git |
 |---|---|
 | source code, runners, scripts | include |
-| docs | include |
-| configs | include |
-| tests and CI | include |
+| docs, configs, tests, CI | include |
 | `requirements.txt`, `pyproject.toml` | include |
-| `data/` | ignore |
-| `experiments_current/`, `reports/`, `outputs/`, `runs/` | ignore |
-| `.venv/`, `.venv311/`, editor cache | ignore |
+| `data/`, experiment output roots, `reports/`, `outputs/`, `runs/` | ignore |
+| `.venv/`, editor cache | ignore |

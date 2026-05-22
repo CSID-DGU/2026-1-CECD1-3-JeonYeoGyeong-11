@@ -1,5 +1,11 @@
 # Naming And Compatibility
 
+Gate 6 hard cleanup and post-Gate-6 alias trim are **complete** on `main`
+(2026-05-22). Removal history and tombstones:
+[`docs/removed-materials.md`](../removed-materials.md). The maintenance
+execution log is **closed**:
+[`docs/maintenance/cleanup-status.md`](../maintenance/cleanup-status.md).
+
 ## Canonical Names
 
 Use canonical names in new code, docs, configs, and reports.
@@ -16,58 +22,65 @@ Use canonical names in new code, docs, configs, and reports.
 | Archive | `docs/archive/` |
 | Graph-FL strategy runtime | `graphfl_lab/strategies/graphfl/` |
 | Graph-FL runtime class | `GraphFLDiagnosticStrategy` |
+| Graph vector helper | `graph_vectors_for_graphfl` (`graphfl_lab/graph/sources/graphfl.py`) |
 | Aggregation targets | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
-| Filter strength key | `graph_filter_strength` |
+| Filter strength key | `graph_filter_strength` (CLI: `--graph-filter-strength`) |
 | Suite token family | `ours_graph_filtered_*` |
 | Filter-only suffix | `_graph_filter_only` |
+| Result filenames | `result_vision_*.json` |
+| Suite artifact filenames | `vision_suite_summary.*`, `vision_suite_rows.json` |
 | Validation scripts | `scripts/checks/` |
 | Smoke scripts | `scripts/smoke/` |
 | Historical analysis scripts | `scripts/archive/legacy-analysis/` |
 
-## Compatibility Names
+## Removed Surfaces (Do Not Reintroduce)
 
-Keep compatibility names until their migration gates are satisfied.
+These names are **not** supported in active code paths. See
+`docs/removed-materials.md` for batch notes.
 
-| Compatibility name | Keep because | Target |
+| Removed | Replacement |
+|---|---|
+| `spectral_fl` package shim | `graphfl_lab` |
+| `run_general_*`, `graphfl_lab/general_*`, `cli/general_*` | `run_vision_*`, `vision_*` modules |
+| `result_general_*`, `general_suite_*` readers/writers | `result_vision_*`, `vision_suite_*` |
+| `graphfl_lab/strategies/spectral/` facades | `graphfl_lab/strategies/graphfl/` |
+| CLI `spectral_filtered_*` choices; `--spectral-filter-strength` | `graph_filtered_*`; `--graph-filter-strength` |
+| Suite launch tokens `ours_spectral_filtered_*` | `ours_graph_filtered_*` |
+| `graph_vectors_for_spectral`, `graph/sources/spectral.py` | `graph_vectors_for_graphfl` |
+
+## Remaining Read-Only Compatibility
+
+These exist only to load **historical** configs, aggregation target strings, or
+result tags. New runs should not depend on them.
+
+| Compatibility surface | Mechanism | Notes |
 |---|---|---|
-| `run_general_*.py` | old entrypoints | `run_vision_*.py` |
-| `graphfl_lab/cli/general_*.py` | old imports | `graphfl_lab/cli/vision_*.py` |
-| `graphfl_lab/experiments/general/` | old imports | `graphfl_lab/experiments/vision/` wrappers |
-| `graphfl_lab/experiments/suites/general/` | old imports | `graphfl_lab/experiments/suites/vision/` wrappers |
-| root `general_*` modules | boundary tests and old imports | package-level vision modules |
-| `plot_general_convergence.py` | old report command | `plot_vision_convergence.py` |
-| `deep_dive_general.py`, `merge_general_fedavg_ours.py` | old analysis command | vision-named helpers |
-| `result_general_*.json` | historical outputs | `result_vision_*` |
-| `general_suite_summary.*`, `general_suite_rows.json` | historical outputs | `vision_suite_*` |
-| `graphfl_lab/experiments/suites/vision/artifacts.py` | duplicated reader discovery | canonical-first `resolve_suite_artifact`, `discover_result_json_paths` |
-| `configs/general/...` | old config paths | `configs/vision/...` |
-| `experiments_current/` | local output root | consider `outputs/` later |
-| `graphfl_lab/strategies/spectral/` | old strategy imports | `graphfl_lab/strategies/graphfl/` wrappers |
-| `SpectralConflictAwareStrategy` | old class import | `GraphFLDiagnosticStrategy` |
-| `spectral_fl` package root | old imports and pickled module paths | `graphfl_lab` shim until Gate 6 |
-| `spectral_filtered_*` | historical configs/results | `graph_filtered_*` |
-| `spectral_filter_strength` | historical config/result key | `graph_filter_strength` |
-| `ours_spectral_filtered_*` | historical suite tokens | `ours_graph_filtered_*` |
-| `_spectral_only`, `_speconly` | historical variant suffixes | `_graph_filter_only` |
+| `configs/general/...` | path alias in `config_io` | resolves to `configs/vision/...` |
+| `spectral_filter_strength` | JSON key alias in `config_io` | maps to `graph_filter_strength`; not written in new result meta |
+| `spectral_filtered_*` aggregation targets | `canonical_aggregation_target()` in `targets.py` | input alias only; outputs use `graph_filtered_*` |
+| `ours_spectral_filtered_*` in CSV/result tags | `reporting.py` legacy pair prefixes | reporting only; not suite launch tokens |
+| `suite_summary.*`, `suite_rows.json` | `artifacts.py` short names | read-only when canonical `vision_suite_*` absent |
+| `spectral_filter_gain_*` trace fields | diagnostics metrics | operator/math naming, not public rename debt |
+| `experiments_current/` | local output root | gitignored; `outputs/` rename deferred |
 
-## Planned Breaking Migrations
+## Completed Migrations
 
-| Debt | Target | Status |
-|---|---|---|
-| `spectral_filter_strength` | `graph_filter_strength` | canonical implemented; old field retained |
-| `ours_spectral_filtered_*` | `ours_graph_filtered_*` | canonical implemented; aliases retained |
-| `_spectral_only` / `_speconly` | `_graph_filter_only` | canonical implemented; aliases retained |
-| `spectral_filtered_*` operator outputs | `graph_filtered_*` | new outputs use canonical labels; input aliases retained |
-| `spectral_fl` package root | `graphfl_lab` | canonical package implemented; shim retained until Gate 6 |
+| Debt | Status |
+|---|---|
+| `graph_filter_strength` canonical key and CLI | done; Phase 2 stopped mirroring old key in new meta |
+| `ours_graph_filtered_*` suite tokens | done |
+| `_graph_filter_only` suffix | done |
+| `graph_filtered_*` operator output labels | done |
+| `graphfl_lab` package root | done; `spectral_fl` shim removed |
+| `graph_vectors_for_graphfl` | done; old helper module removed |
+| Gate 6 `general_*` / `spectral_*` public surfaces | done |
 
-Recommended order:
+Optional future work (breaking, policy decision required):
 
 ```text
-1. completed: graph_filter_strength
-2. completed: ours_graph_filtered_*
-3. completed: graphfl_lab package alias
-4. completed: real package move
-5. next: spectral_filtered_* lower-level compatibility removal after Gate 6 entry
+- remove configs/general path alias
+- remove spectral_filtered_* and spectral_filter_strength input aliases
+- remove reporting legacy pair prefixes when old result reuse ends
 ```
 
 ## Future Rename Rule
@@ -85,10 +98,11 @@ Rename steps:
 
 ```text
 1. Add canonical name.
-2. Keep old name as wrapper/alias.
+2. Keep old name as wrapper/alias only when historical reuse requires it.
 3. Update active docs/configs.
 4. Run full tests and diagnostic preflight.
 5. Remove old name after internal references and documented run paths move.
+6. Record removal in docs/removed-materials.md.
 ```
 
 Generated cache:

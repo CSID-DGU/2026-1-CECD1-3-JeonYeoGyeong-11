@@ -16,8 +16,8 @@ truth for code; long-term removal notes and tombstones live in
 | owner | codex |
 | started_at | 2026-05-21 |
 | closed_at | 2026-05-22 |
-| last_verified | `docs/maintenance/last_gate_check.json` (5d-prep pass after batch 7) |
-| next_step | none — Gate 6 + post-Gate-6 `general_*` facade removal complete (see `removed-materials.md`) |
+| last_verified | `docs/maintenance/last_gate_check.json` (gate-check 0 and 5d-prep after Phase 2 doc sync) |
+| next_step | none — Gate 6 + post-Gate-6 + Phase 2 complete; framework docs synced 2026-05-22 (see `removed-materials.md`) |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -278,6 +278,7 @@ result-schema contracts.
 | 2026-05-22 | Deleting only `spectral_fl/__init__.py` left an on-disk `spectral_fl/__pycache__` tree; Python 3 still exposed a namespace package and gate-check 3 flagged the tracked path until the directory was removed. | Delete the full `spectral_fl/` directory (not only `__init__.py`); assert `ModuleNotFoundError` after clearing `sys.modules`. |
 | 2026-05-22 | Gate 6 batch 7 pre-check: no `configs/**` files use `ours_spectral_filtered_*` or `spectral_filtered_*`; reporting still pairs legacy result variant tags via `reporting.py` prefixes. | Remove CLI `choices`/dual flags and suite `parse_target_variant` spectral branch; keep `config_io` JSON key alias, lifecycle/strategy input aliases, and report readers. |
 | 2026-05-22 | Gate 6 batch 7: public CLI listed `spectral_filtered_*` choices and dual `--spectral-filter-strength`; suite parser accepted `ours_spectral_filtered_*` launch tokens. | Drop argparse choices/flags and suite launch tokens; keep runtime aggregation aliases and `reporting.py` legacy result-tag pairing for historical artifacts. |
+| 2026-05-22 | Framework docs (`naming-and-compatibility.md`, `cleanup-plan.md`, research notes) still described Gate 6 as pending and listed removed `run_general_*` / `spectral_fl` surfaces as active compatibility. | Sync active docs to post-Gate-6 + Phase 2 policy; point to `removed-materials.md` for tombstones and remaining read-only aliases. |
 | 2026-05-22 | Gate 6 batch 8: hard-removal checklist in `gate-6-prep.md` steps 1–7 complete; batch 8 is documentation closure only. | Mark this file `closed`; record Gate 6 tombstones in `docs/removed-materials.md`; leave `general_*` CLI facades as documented post-Gate-6 debt. |
 | 2026-05-22 | Post-Gate-6: `graphfl_lab/general_*` facades and `result_general_*` / `general_suite_*` readers removed; no tracked configs used legacy suite tokens. | Prefer `vision_*` paths only; gitignore pre-rename artifact globs under local experiment trees. |
 

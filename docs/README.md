@@ -42,14 +42,14 @@ docs/
 
 ## Current Run Path
 
-```powershell
-python -m unittest discover -s tests
-python scripts/checks/diagnostic_suite_preflight.py
-python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
-python scripts/checks/result_evidence_bundle.py experiments_current/default_similarity_knn_smoke/result_vision_ours_seed42_default_similarity_knn_smoke.json --kind single-run
-python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json
-python scripts/dev/run.py gate-check 5d-prep
-```
+| Step | Command |
+|---|---|
+| Unit tests | `python -m unittest discover -s tests` |
+| Suite preflight | `python scripts/checks/diagnostic_suite_preflight.py` |
+| Vision smoke | `python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json` |
+| Result bundle | `python scripts/checks/result_evidence_bundle.py <result.json> --kind single-run` |
+| Cora ablation smoke | `python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
+| Gate check | `python scripts/dev/run.py gate-check 5d-prep` |
 
 ## Document Policy
 

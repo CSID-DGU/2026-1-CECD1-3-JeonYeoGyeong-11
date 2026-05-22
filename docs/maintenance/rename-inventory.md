@@ -4,6 +4,18 @@ This document classifies legacy names and compatibility surfaces before each
 rename or cleanup pass. Update it before changing code when a new dependency or
 legacy surface is discovered.
 
+**Post-Gate-6 (2026-05-22):** Gate 6 and post-Gate-6 cleanup are complete on
+`main`. The tables below retain Gate 0–1 inventory wording for history; current
+policy is in [`docs/removed-materials.md`](../removed-materials.md) and
+[`docs/framework/naming-and-compatibility.md`](../framework/naming-and-compatibility.md).
+
+| Pattern (historical) | Current status on `main` |
+|---|---|
+| `spectral_fl`, `run_general_*`, `general_suite_*`, `result_general_*` readers | **removed** from active code |
+| `spectral_filtered_*` CLI / suite launch | **removed**; JSON/input aliases retained |
+| `graphfl_lab`, `run_vision_*`, `vision_suite_*`, `graph_filter_strength` | **canonical** |
+| `configs/general/...`, `spectral_filter_strength`, `spectral_filtered_*` inputs | **read-only alias** only |
+
 ## Gate 1 Inventory Scope
 
 | Pattern | Category | Current action |

@@ -92,6 +92,6 @@ Default workflow:
 2. Add graph source only for new client state.
 3. Add graph builder only for new relation/topology.
 4. Prefer graph_filtered_* targets.
-5. Keep spectral_filtered_* only for compatibility.
+5. Use graph_filtered_* in new work; spectral_filtered_* remains a read-only input alias only (see naming-and-compatibility.md).
 6. Add controls and diagnostics before interpreting performance.
 ```

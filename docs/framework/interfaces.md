@@ -119,10 +119,10 @@ Directed or signed graph requires topology contract extension.
 | `weight` | local model weight aggregation |
 | `graph_filtered_weight` | graph low-pass on local model weights |
 
-Compatibility aliases:
+Compatibility (read-only input aliases; new outputs use `graph_filtered_*`):
 
 ```text
-spectral_filtered_* -> graph_filtered_*
+spectral_filtered_* -> graph_filtered_*   # via canonical_aggregation_target() and config_io
 ```
 
 New target update points:

@@ -77,13 +77,21 @@ Ownership:
 | suite family | `ours_graph_filtered_*` |
 | filter-only suffix | `_graph_filter_only` |
 
-Compatibility debt:
+Removed public debt (Gate 6 + Phase 2 on `main`):
 
 ```text
-SpectralConflictAwareStrategy
-graphfl_lab.strategies.spectral
-spectral_filtered_*
-spectral_fl package root
+spectral_fl package shim
+graphfl_lab.strategies.spectral facades
+run_general_* / general_* artifact readers
+```
+
+Remaining read-only compatibility (see docs/removed-materials.md):
+
+```text
+spectral_filtered_* input aliases
+spectral_filter_strength JSON key alias
+ours_spectral_filtered_* reporting result tags
+configs/general/ path alias
 ```
 
 ## Experiment Philosophy
@@ -104,7 +112,7 @@ effective clients, entropy, non-dominance
 CLI modules parser-only
 experiment modules orchestration-only
 graph construction independent of Flower strategies
-spectral strategy package remains thin
+graphfl strategy package remains the single runtime surface
 new component tests cover shape, determinism, metadata, compatibility aliases
 ```
 
@@ -117,15 +125,14 @@ python scripts/checks/diagnostic_suite_preflight.py
 
 ## Known Debt
 
+Optional breaking removals only (policy decision). Active code already prefers
+canonical names.
+
 | Debt | Reason |
 |---|---|
-| `spectral_fl` package root | high-risk import/app-entrypoint migration |
-| `spectral_filtered_*` lower-level outputs | historical metadata and tests |
-| `ours_spectral_filtered_*` suite aliases | historical result reuse |
-| `spectral_filter_strength` key | historical readers |
-| `_spectral_only` / `_speconly` suffixes | historical variant parsing |
-| `result_general_*` / `general_suite_summary.*` | old reports/readers |
-| `configs/general/...` alias | old user commands |
+| `spectral_filtered_*` / `spectral_filter_strength` input aliases | old JSON configs |
+| `ours_spectral_filtered_*` reporting pairs | old result tags in CSVs |
+| `configs/general/...` path alias | old user command paths |
 
 Tracking:
 

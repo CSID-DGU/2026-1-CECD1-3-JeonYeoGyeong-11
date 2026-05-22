@@ -1,9 +1,11 @@
 # GraphFL Lab Migration Guide
 
-This guide tracks the staged migration from the historical `spectral_fl`
-identity to the planned `graphfl_lab` identity. The migration is not complete
-yet. Gate 6 hard cleanup is complete; see `docs/removed-materials.md` for
-tombstones and `docs/maintenance/cleanup-status.md` (closed) for the execution log.
+This guide tracks the migration from the historical `spectral_fl` identity to
+`graphfl_lab`. **Public rename and Gate 6 cleanup are complete** on `main`
+(2026-05-22). A small set of read-only JSON/config aliases remains for historical
+artifacts; see `docs/removed-materials.md` and
+`docs/framework/naming-and-compatibility.md`. The execution log is closed in
+`docs/maintenance/cleanup-status.md`.
 
 ## For Users
 

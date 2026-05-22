@@ -2,23 +2,29 @@
 
 ## Rules
 
-Use this file for staged renames that affect public commands, configs, imports, or historical outputs.
+Use this file for staged renames that affect public commands, configs, imports, or
+historical outputs.
 
 ```text
 Use vision/framework/research/archive/graphfl for new names.
-Keep general as compatibility only.
-Keep spectral only for compatibility or actual spectral/Laplacian operators.
+Do not reintroduce removed general_* or spectral_* public surfaces (see removed-materials.md).
+Keep "spectral" only for Laplacian/operator math and diagnostic metric field names.
 Add new graph algorithms through GraphFLDesign/source/builder/target/lifecycle/diagnostics.
-Stage risky renames: canonical name -> alias -> internal migration -> docs/configs -> tests -> removal gate.
 ```
 
-## Resumable Execution
+## Status (2026-05-22)
 
-Gate 6 hard cleanup is complete. The execution log is in
-`docs/maintenance/cleanup-status.md` (**closed**). Removal tombstones and
-post-Gate-6 compatibility debt are in `docs/removed-materials.md`.
+Gate 6 hard cleanup, post-Gate-6 `general_*` removal, and Phase 2 spectral
+alias trim are **complete** on `main`.
 
-Gate checks run through:
+| Reference | Role |
+|---|---|
+| `docs/maintenance/cleanup-status.md` | **closed** execution log |
+| `docs/removed-materials.md` | tombstones + remaining read-only aliases |
+| `docs/framework/naming-and-compatibility.md` | canonical vs compatibility policy |
+| `docs/maintenance/gate-6-prep.md` | Gate 6 checklist (all done) |
+
+Reopen maintenance only with a new finding line in `cleanup-status.md` and:
 
 ```text
 python scripts/dev/run.py gate-check <gate>
@@ -28,207 +34,51 @@ python scripts/dev/run.py gate-check <gate>
 
 | Item | Status |
 |---|---|
-| README rewritten around project philosophy/interfaces/run path/verification | done |
-| `claim.md` rewritten around diagnostic-framework claim | done |
-| `graph_fl_experimental_design.md` added as core experiment guide | done |
-| early spectral/low-pass log archived | done |
-| active configs moved from `configs/general/` to `configs/vision/` | done |
-| `configs/general/...` resolver alias | done |
-| `result_vision_*` and `vision_suite_*` aliases | done |
-| strategy runtime moved to `graphfl_lab/strategies/graphfl/` | done |
-| `graphfl_lab/strategies/spectral/` compatibility wrappers | done |
-| canonical package root moved to `graphfl_lab` with `spectral_fl` shim | done |
+| README around project philosophy/interfaces/run path/verification | done |
+| `claim.md` around diagnostic-framework claim | done |
+| `graph_fl_experimental_design.md` as core experiment guide | done |
+| active configs under `configs/vision/` | done |
+| `result_vision_*` and `vision_suite_*` canonical writers | done |
+| strategy runtime in `graphfl_lab/strategies/graphfl/` | done |
+| canonical package `graphfl_lab`; `spectral_fl` shim removed | done |
 | `GraphFLDiagnosticStrategy` canonical runtime | done |
-| `SpectralConflictAwareStrategy` compatibility alias | done |
-| `graph_filtered_*` aggregation target aliases | done |
-| `--graph-filter-strength` CLI spelling | done |
-| `graph_filter_strength` canonical config/result key | done |
-| `spectral_filter_strength` compatibility key | done |
+| `graph_filtered_*` aggregation targets and outputs | done |
+| `--graph-filter-strength` / `graph_filter_strength` | done |
 | `ours_graph_filtered_*` suite tokens | done |
-| `ours_spectral_filtered_*` suite aliases | done |
-| `graph_filter_only` suite suffix | done |
-| active configs no longer use project-level `spectral` naming | done |
+| Gate 6: `run_general_*`, general experiment trees, spectral strategy facades | done |
+| Gate 6: CLI spectral choices, suite `ours_spectral_filtered_*` launch tokens | done |
+| Post-Gate-6: `graphfl_lab/general_*`, legacy artifact readers | done |
+| Phase 2: `graph_vectors_for_graphfl`; drop spectral trace key mirrors | done |
 
-## Remaining Hard Renames
+## Remaining Optional Debt
 
-| Name | Target | Risk |
+Breaking removals — only after explicit policy to stop loading old JSON/results:
+
+| Surface | Risk | Notes |
 |---|---|---|
-| package `spectral_fl` shim | remove after Gate 6 compatibility window | very high |
-| key `spectral_filter_strength` | remove after reader policy freeze | medium |
-| tokens `ours_spectral_filtered_*` | remove after old result reuse policy freeze | medium |
-| suffix `_spectral_only` / `_speconly` | remove after old result reuse policy freeze | low/medium |
-| targets `spectral_filtered_*` | remove after readers and legacy inputs finish the compatibility window | high |
+| `configs/general/...` path alias | low | convenience for old command lines |
+| `spectral_filter_strength` JSON key alias | medium | `config_io` only |
+| `spectral_filtered_*` input aliases | medium | `targets.py` / lifecycle |
+| `ours_spectral_filtered_*` reporting pairs | low | historical CSV/result tags |
+| `__pycache__` sweep | low | hygiene only |
 
-## Recommended Order
-
-Lower-risk public spellings should stabilize before the package root rename.
-
-```text
-1. done: result/meta key -> graph_filter_strength
-2. done: suite tokens -> ours_graph_filtered_*
-3. done: active configs/docs prefer new key/tokens
-4. done: top-level package rename to graphfl_lab with shim
-5. next: remaining spectral_filtered_* input compatibility removal after Gate 6 entry
-```
-
-## Migration A. Result And Metadata Key
-
-| Field | Value |
-|---|---|
-| goal | canonical `graph_filter_strength` |
-| alias | `spectral_filter_strength` |
-| status | canonical implemented for CLI/config, metadata, diagnostics, summaries, active configs |
-
-Checklist:
-
-```text
-graph_filter_strength in metadata/diagnostics/filter context
-reader fallback: graph_filter_strength -> spectral_filter_strength
-summary writers prefer canonical key
-config spellings resolve: graph_filter_strength, graph-filter-strength, spectral_filter_strength
-tests for output key, fallback, config parsing
-```
-
-Removal gate:
-
-```text
-no active config writes old key
-readers prefer new key
-historical reader behavior frozen or archived
-one full suite generated with graph_filter_strength
-```
-
-## Migration B. Suite Variant Tokens
-
-| Field | Value |
-|---|---|
-| goal | canonical `ours_graph_filtered_*` |
-| alias | `ours_spectral_filtered_*` |
-| status | canonical implemented; active configs use it; old tokens retain historical run labels |
-
-Canonical families:
-
-```text
-ours_graph_filtered_dense
-ours_graph_filtered_uniform
-ours_graph_filtered_knn_kN
-ours_graph_filtered_magnitude...
-ours_graph_filtered_rbf...
-ours_graph_filtered_random_matched_kN
-```
-
-Run tag policy:
-
-```text
-new token -> new run tag
-old token -> old run tag
-reporting groups both semantic families
-```
-
-Removal gate:
-
-```text
-active configs no longer use old tokens
-docs no longer recommend old tokens
-readers load old and new results
-one smoke suite generated with new tokens
-```
-
-## Migration C. Top-Level Package Rename
-
-| Field | Value |
-|---|---|
-| target | `graphfl_lab` |
-| risk | highest |
-| prerequisite | A/B stable |
-| status | canonical package implemented; `spectral_fl` shim retained until Gate 6 |
-
-Stages:
-
-```text
-C0 confirm graphfl_lab (done)
-C1 add graphfl_lab/ alias package (done)
-C2 add Flower entrypoint bridge (done)
-C3 migrate internal imports in batches (done)
-C4 move implementation files (done)
-C5 update docs/commands (complete on `main` via PR #2)
-C6 run full checks (`gate-check 4c` and `5d-prep` pass on `main`; Gate 6 hard removal per `docs/maintenance/gate-6-prep.md`, not blocked on seven calendar days of nightly)
-```
-
-Import migration batches:
-
-```text
-1. designs, graph, diagnostics, lifecycle
-2. strategies
-3. experiments
-4. cli, scripts, tests
-```
-
-Required checks:
+## Verification Commands
 
 ```text
 python -m unittest discover -s tests
+python scripts/dev/run.py gate-check 0
+python scripts/dev/run.py gate-check 5d-prep
 python scripts/checks/diagnostic_suite_preflight.py
 python run_vision_experiment.py --help
 python run_vision_suite.py --help
 python scripts/reports/plot_vision_convergence.py --help
-python run_general_suite.py --help
-tiny --engine print-flwr-run smoke
 ```
-
-Removal gate:
-
-```text
-no active source imports spectral_fl except wrappers
-docs use graphfl_lab
-tests cover canonical and old imports
-historical scripts have compatibility route
-```
-
-## Migration D. Graph Source Helper Name
-
-| Current | Target |
-|---|---|
-| `graphfl_lab/graph/sources/spectral.py` | `graphfl_lab/graph/sources/graphfl.py` or `graphfl_lab/graph/sources/strategy.py` |
-| `graph_vectors_for_spectral` | `graph_vectors_for_graphfl` |
-
-Status: canonical helper/module added; active code uses
-`graph_vectors_for_graphfl`; `graph_vectors_for_spectral` remains as a
-compatibility alias until Gate 6.
-
-Plan:
-
-```text
-done: add canonical helper/module
-done: keep old helper alias
-done: migrate strategy and baseline imports
-done: add alias tests
-remove old helper after package migration stabilizes
-```
-
-## P0/P1 Backlog
-
-| Priority | Task | Risk |
-|---|---|---|
-| Done | `spectral_filter_strength` -> `graph_filter_strength` metadata | medium |
-| Done | `ours_graph_filtered_*` suite tokens | medium |
-| Done | active configs graph naming | low |
-| Done | package alias `graphfl_lab` | high |
-| Done | real package move to `graphfl_lab/` | very high |
-| Done | graph source helper rename | medium |
-| Done | migrate `spectral_filtered_*` internal outputs | high |
-| P1 | decide removal date for `configs/general/...` alias | medium |
-| P1 | decide removal date for `result_general_*` names | medium |
-| P2 | generated cache cleanup | low |
 
 ## Rename Pass Completion Criteria
 
 ```text
-canonical name exists
-old name remains as alias unless intentionally removed
+canonical name exists in active code
 active docs/configs prefer canonical name
-tests cover canonical and alias names
-full tests pass
-diagnostic preflight passes
-remaining compatibility debt recorded in naming-and-compatibility.md
+tests and gate-check pass
+remaining read-only compatibility recorded in naming-and-compatibility.md and removed-materials.md
 ```

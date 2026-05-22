@@ -59,17 +59,14 @@ graphfl_lab/
       strategy.py
       targets.py
       tracing.py
-    spectral/                compatibility wrappers
   experiments/
     vision/
-    general/                 compatibility wrappers
     cora/
     suites/
       vision/
-        artifacts.py         canonical/compatibility filename discovery
+        artifacts.py         result/suite artifact discovery
         reporting.py         suite summaries, dashboard, interpretation
         variant_helpers.py   per-run result path resolution
-      general/               compatibility wrappers
 ```
 
 ## Compatibility Facades
@@ -136,19 +133,16 @@ experiments_current/
 
 ## Suite Output Artifacts
 
-Vision suites write canonical artifacts first and mirror compatibility names:
-
-```text
-vision_suite_summary.json   # canonical
-general_suite_summary.json  # compatibility mirror (Gate 6 removal)
-vision_suite_rows.json
-result_vision_<method>_seed<seed>_<tag>.json
-result_general_<method>_seed<seed>_<tag>.json  # compatibility mirror
-```
+| Artifact | Role |
+|---|---|
+| `vision_suite_summary.json` / `.csv` / `.md` | canonical suite summary |
+| `vision_suite_rows.json` | per-run suite rows |
+| `result_vision_<method>_seed<seed>_<tag>.json` | canonical single-run result |
+| `suite_summary.*`, `suite_rows.json` | short read-only aliases when present |
 
 Use `write_suite_summary_artifacts()` in `reporting.py` for suite-level files.
 Use `resolve_result_path_for_variant()` or `discover_result_json_paths()` when
-reading prior runs. Do not add new logic that reads only `general_*` paths.
+reading prior runs. Do not read `general_*` or `result_general_*` paths.
 
 ## Adding New Code
 
