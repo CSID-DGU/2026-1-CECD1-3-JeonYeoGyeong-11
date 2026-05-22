@@ -25,7 +25,7 @@ python run_experiment.py --track cora ...
 During deprecation, old names remain available where documented:
 
 ```text
-spectral_fl
+spectral_fl (shim; `strategies.spectral` import path removed in Gate 6 batch 5)
 configs/general/...
 result_general_*   (readers only; new runs no longer write mirrors)
 general_suite_*    (readers only; new runs no longer write mirrors)

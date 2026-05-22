@@ -35,7 +35,7 @@ replace with the recommended check above unless you explicitly want a week-long 
 2. [x] Remove compatibility **writers** of duplicate artifacts (`general_suite_*`, `result_general_*` mirrors); readers still accept legacy paths.
 3. [x] Remove `run_general_*` root wrappers and `plot_general_*` / `merge_general_*` / `deep_dive_general` script wrappers.
 4. [x] Remove `graphfl_lab/experiments/general/` and `graphfl_lab/experiments/suites/general/` import facades.
-5. Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).
+5. [x] Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).
 6. Remove `spectral_fl` package shim last, after grep shows no remaining imports outside tests explicitly checking deprecation.
 7. Remove legacy CLI choices (`spectral_filtered_*` inputs) and old suite token spellings only after suite/history policy is frozen.
 8. Update `docs/maintenance/cleanup-status.md` to `closed` and link from `docs/removed-materials.md`.

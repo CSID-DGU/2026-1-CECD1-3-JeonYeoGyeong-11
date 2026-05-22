@@ -93,7 +93,6 @@ graphfl_lab/spectral_diagnostics.py
 graphfl_lab/strategy.py
 graphfl_lab/suite_stats.py
 graphfl_lab/update_graph.py
-graphfl_lab/strategies/spectral/
 graphfl_lab/experiments/suite.py
 graphfl_lab/experiments/stress_grid.py
 graphfl_lab/experiments/client_count_sweep.py
@@ -109,7 +108,6 @@ run_vision_*.py (canonical entrypoints; `run_general_*` removed Gate 6 batch 3)
 | `graphfl_lab/experiments/` | orchestration, subprocesses, metadata, output files | graph math, strategy internals |
 | `graphfl_lab/graph/` | relation graph construction | Flower strategies, experiment runners |
 | `graphfl_lab/strategies/graphfl/` | server-side aggregation behavior | config paths, suite output layouts |
-| `graphfl_lab/strategies/spectral/` | compatibility wrapper | new logic |
 | `graphfl_lab/strategies/baselines/` | baseline strategies, tracing helpers | graph builder internals |
 | `graphfl_lab/designs/` | method composition metadata | experiment execution |
 | `graphfl_lab/lifecycle/` | contracts, traces, state store, side-effect-free diagnostics | runtime graph builders |
