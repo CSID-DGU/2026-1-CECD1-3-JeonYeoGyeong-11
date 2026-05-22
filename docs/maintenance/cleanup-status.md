@@ -1,20 +1,23 @@
 # GraphFL Lab Cleanup Status
 
-This file is the source of truth for the staged cleanup/rename execution state.
-Git is the source of truth for code state; this file records intent,
-checkpoint status, and the next safe action. If Git state and this file
-disagree, rerun the relevant gate check and update this file from the result.
+**Status: closed** (Gate 6 hard cleanup complete on `main`, 2026-05-22).
+
+This file recorded the staged cleanup/rename execution. Git remains the source of
+truth for code; long-term removal notes and tombstones live in
+[`docs/removed-materials.md`](../removed-materials.md). Rerun
+`python scripts/dev/run.py gate-check <gate>` only when reopening maintenance work.
 
 ## Current Status
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 4c complete on `main`; Gate 6 batch 7 in progress on `main` |
-| status | PR #2 merged; nightly 26288800411 green; Gate 6 batches 2–7 landed; batch 8 (close status doc) and `general_*` CLI facades remain |
+| current_gate | Gate 6 complete (batches 2–7 on `main`; batch 8 doc closure) |
+| status | **closed** — PR #2 merged; nightly 26288800411; Gate 6 batches 2–7 landed; CI green on batch 7 (`26290266011`) |
 | owner | codex |
 | started_at | 2026-05-21 |
-| last_verified | see `docs/maintenance/last_gate_check.json` |
-| next_step | Batch 8: mark `cleanup-status.md` closed, extend `removed-materials.md` tombstones; optional: remove root `general_*` CLI facades in a later batch if still listed in compatibility docs |
+| closed_at | 2026-05-22 |
+| last_verified | `docs/maintenance/last_gate_check.json` (5d-prep pass after batch 7) |
+| next_step | none for Gate 6; optional post-Gate-6 debt: `graphfl_lab/general_*` CLI facades (see `removed-materials.md`) |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
 If parallel work is
@@ -275,6 +278,7 @@ result-schema contracts.
 | 2026-05-22 | Deleting only `spectral_fl/__init__.py` left an on-disk `spectral_fl/__pycache__` tree; Python 3 still exposed a namespace package and gate-check 3 flagged the tracked path until the directory was removed. | Delete the full `spectral_fl/` directory (not only `__init__.py`); assert `ModuleNotFoundError` after clearing `sys.modules`. |
 | 2026-05-22 | Gate 6 batch 7 pre-check: no `configs/**` files use `ours_spectral_filtered_*` or `spectral_filtered_*`; reporting still pairs legacy result variant tags via `reporting.py` prefixes. | Remove CLI `choices`/dual flags and suite `parse_target_variant` spectral branch; keep `config_io` JSON key alias, lifecycle/strategy input aliases, and report readers. |
 | 2026-05-22 | Gate 6 batch 7: public CLI listed `spectral_filtered_*` choices and dual `--spectral-filter-strength`; suite parser accepted `ours_spectral_filtered_*` launch tokens. | Drop argparse choices/flags and suite launch tokens; keep runtime aggregation aliases and `reporting.py` legacy result-tag pairing for historical artifacts. |
+| 2026-05-22 | Gate 6 batch 8: hard-removal checklist in `gate-6-prep.md` steps 1–7 complete; batch 8 is documentation closure only. | Mark this file `closed`; record Gate 6 tombstones in `docs/removed-materials.md`; leave `general_*` CLI facades as documented post-Gate-6 debt. |
 
 ## Gate 4c Local Readiness
 
@@ -284,11 +288,11 @@ present: docs/maintenance/last_nightly_run.json (run 26288800411, success)
 present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.md
 local pass: python scripts/dev/run.py gate-check 4c
 local pass: python scripts/dev/run.py gate-check 5d-prep
-Gate 6 entry: pragmatic policy (4c + merge CI green; optional 1 more green before first deletion)
-Gate 6 hard removal: batches 2–7 done; batch 8 (doc closure) remains — see docs/maintenance/gate-6-prep.md
+Gate 6: batches 2–7 complete; batch 8 doc closure complete — see docs/removed-materials.md
 ```
 
 ## Closure Policy
 
-After Gate 6 completes, mark this file `closed`. Keep only a tombstone link from
-`docs/removed-materials.md`.
+This file is **closed**. Gate 6 hard cleanup (batches 2–7) and documentation
+closure (batch 8) are complete. Historical findings above are preserved for
+audit; active removal inventory is in `docs/removed-materials.md`.

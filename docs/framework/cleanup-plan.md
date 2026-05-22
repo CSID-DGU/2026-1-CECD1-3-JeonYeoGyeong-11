@@ -14,9 +14,9 @@ Stage risky renames: canonical name -> alias -> internal migration -> docs/confi
 
 ## Resumable Execution
 
-Long-running cleanup/rename work is tracked in
-`docs/maintenance/cleanup-status.md`. Use that file for current gate state,
-unexpected findings, existing-plan mapping, and the next safe action.
+Gate 6 hard cleanup is complete. The execution log is in
+`docs/maintenance/cleanup-status.md` (**closed**). Removal tombstones and
+post-Gate-6 compatibility debt are in `docs/removed-materials.md`.
 
 Gate checks run through:
 

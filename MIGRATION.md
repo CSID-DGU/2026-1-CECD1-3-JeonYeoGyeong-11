@@ -2,7 +2,8 @@
 
 This guide tracks the staged migration from the historical `spectral_fl`
 identity to the planned `graphfl_lab` identity. The migration is not complete
-yet; follow `docs/maintenance/cleanup-status.md` for current gate status.
+yet. Gate 6 hard cleanup is complete; see `docs/removed-materials.md` for
+tombstones and `docs/maintenance/cleanup-status.md` (closed) for the execution log.
 
 ## For Users
 

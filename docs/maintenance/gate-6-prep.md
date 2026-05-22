@@ -38,7 +38,7 @@ replace with the recommended check above unless you explicitly want a week-long 
 5. [x] Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).
 6. [x] Remove `spectral_fl` package shim last, after grep shows no remaining imports outside tests explicitly checking deprecation.
 7. [x] Remove legacy CLI choices (`spectral_filtered_*` inputs) and old suite token spellings only after suite/history policy is frozen.
-8. Update `docs/maintenance/cleanup-status.md` to `closed` and link from `docs/removed-materials.md`.
+8. [x] Update `docs/maintenance/cleanup-status.md` to `closed` and link from `docs/removed-materials.md`.
 
 ## Verify After Each Batch
 
