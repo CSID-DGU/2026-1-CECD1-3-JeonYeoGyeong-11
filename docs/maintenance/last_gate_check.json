@@ -1,7 +1,7 @@
 {
-  "gate": "3b",
+  "gate": "5d-prep",
   "pass": true,
   "failed_checks": [],
-  "verified_at": "2026-05-22T13:15:55.360258+00:00",
-  "commit_sha": "8e90b0caacc052cfc1eea833fedf122723c38f41"
+  "verified_at": "2026-05-22T13:20:40.596332+00:00",
+  "commit_sha": "ff62dd5850d7320b1b192ec3be9b8b382b75b092"
 }

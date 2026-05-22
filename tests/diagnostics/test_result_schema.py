@@ -32,7 +32,6 @@ class ResultSchemaTest(unittest.TestCase):
         add_config_argument(parser)
         parser.add_argument(
             "--graph-filter-strength",
-            "--spectral-filter-strength",
             dest="graph_filter_strength",
             type=float,
             default=1.0,

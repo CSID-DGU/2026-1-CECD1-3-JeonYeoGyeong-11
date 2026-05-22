@@ -60,12 +60,4 @@ def parse_target_variant(v: str) -> ParsedVariant | None:
     if graph_filtered is not None:
         return graph_filtered
 
-    spectral_filtered = _parse_filtered_target(
-        "spectral_filtered",
-        "graph_filtered_update",
-        v,
-    )
-    if spectral_filtered is not None:
-        return spectral_filtered
-
     return None

@@ -59,7 +59,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--tau-source", type=str, default="h_spec")
     p.add_argument(
         "--graph-filter-strength",
-        "--spectral-filter-strength",
         dest="graph_filter_strength",
         type=float,
         default=1.0,

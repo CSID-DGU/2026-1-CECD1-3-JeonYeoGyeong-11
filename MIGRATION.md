@@ -28,8 +28,7 @@ During deprecation, old names remain available where documented:
 configs/general/...
 result_general_*   (readers only; new runs no longer write mirrors)
 general_suite_*    (readers only; new runs no longer write mirrors)
-spectral_filter_strength
-spectral_filtered_*
+spectral_filter_strength   (JSON config key alias only; CLI uses --graph-filter-strength)
 ```
 
 Root `run_general_*` and `plot_general_*` / `merge_general_*` /

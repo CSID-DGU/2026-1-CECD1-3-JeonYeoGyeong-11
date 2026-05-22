@@ -137,7 +137,6 @@ def parse_args():
     )
     p.add_argument(
         "--graph-filter-strength",
-        "--spectral-filter-strength",
         dest="graph_filter_strength",
         type=float,
         default=1.0,

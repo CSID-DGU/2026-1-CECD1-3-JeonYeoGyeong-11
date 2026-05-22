@@ -18,12 +18,8 @@ class VisionVariantTargetTest(unittest.TestCase):
         self.assertEqual(_last_flag_value(args, "--graph-mode"), "magnitude_knn")
         self.assertEqual(_last_flag_value(args, "--knn-k"), "2")
 
-    def test_parse_target_variant_preserves_legacy_spectral_family(self):
-        _, _, args = parse_target_variant("ours_spectral_filtered_random_matched_k3")
-
-        self.assertEqual(_last_flag_value(args, "--aggregation-target"), "graph_filtered_update")
-        self.assertEqual(_last_flag_value(args, "--graph-mode"), "random")
-        self.assertEqual(_last_flag_value(args, "--knn-k"), "3")
+    def test_parse_target_variant_rejects_legacy_spectral_suite_tokens(self):
+        self.assertIsNone(parse_target_variant("ours_spectral_filtered_random_matched_k3"))
 
     def test_parse_target_variant_handles_weight_agg_and_returns_none_for_sources(self):
         _, label, args = parse_target_variant("ours_weight_agg")

@@ -167,26 +167,6 @@ class GeneralSuiteVariantTest(unittest.TestCase):
                 "--graph-mode",
                 "rbf_knn",
             ),
-            "ours_spectral_filtered_knn_k2": (
-                "--aggregation-target",
-                "graph_filtered_update",
-            ),
-            "ours_spectral_filtered_random_matched_k2": (
-                "--graph-mode",
-                "random",
-            ),
-            "ours_spectral_filtered_uniform": (
-                "--graph-mode",
-                "uniform",
-            ),
-            "ours_spectral_filtered_magnitude_knn_k2": (
-                "--graph-mode",
-                "magnitude_knn",
-            ),
-            "ours_spectral_filtered_rbf_knn_k2": (
-                "--graph-mode",
-                "rbf_knn",
-            ),
         }
         for variant, expected in cases.items():
             with self.subTest(variant=variant):

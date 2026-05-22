@@ -326,7 +326,7 @@ New code uses `vision`, `graphfl`, `graph_filtered_*`.
 
 | Old name | Role |
 |---|---|
-| `spectral_filtered_*`, `spectral_filter_strength` | config/result compatibility alias |
+| `spectral_filter_strength` | JSON config key alias via `config_io` (CLI flag is `--graph-filter-strength`) |
 | `general_suite_*`, `result_general_*` | historical output filenames (readers only; new runs use vision names) |
 
 Do not add new logic to compatibility paths.

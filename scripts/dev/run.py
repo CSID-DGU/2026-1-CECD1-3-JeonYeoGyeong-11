@@ -358,7 +358,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
     "graphfl_lab/experiments/suites/vision/variant_targets.py": (
         "parse_target_variant",
         "graph_filtered_update",
-        '"spectral_filtered"',
+        '"graph_filtered"',
     ),
     "graphfl_lab/experiments/suites/vision/variants.py": (
         "from graphfl_lab.experiments.suites.vision.variant_commands import build_base_cmd",
@@ -406,7 +406,7 @@ GATE5C_PREP_REQUIRED_TEXT = {
     ),
     "tests/experiments/vision/test_variant_targets.py": (
         "test_parse_target_variant_handles_graph_filtered_family",
-        "test_parse_target_variant_preserves_legacy_spectral_family",
+        "test_parse_target_variant_rejects_legacy_spectral_suite_tokens",
     ),
     "docs/maintenance/cleanup-status.md": (
         "Gate 5c-prep",
