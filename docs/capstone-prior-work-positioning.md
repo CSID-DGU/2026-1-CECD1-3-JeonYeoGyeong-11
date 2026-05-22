@@ -25,7 +25,13 @@ optimizer or aggregation-path effect
 correction을 같은 실행 조건에서 비교한다. 여기에 alignment, DI, N_eff,
 graph/spectral diagnostics를 함께 남겨 성능 차이의 원인을 해석한다.
 
-핵심 질문은 네 가지다.
+서로 다른 이름의 Graph-FL 방법도 내부를 보면 client representation, relation
+score, topology construction, edge weight, aggregation target 중 일부를 바꾸는
+경우가 많다. 새 방법이 나올 때마다 실험 체계까지 다시 만들면 구현 비용이 커지고
+비교 기준도 흔들린다. 이 프레임워크는 graph-based intervention을 공통
+구성요소로 올려, 같은 control과 metric으로 기존 variants와 나란히 비교하게 한다.
+
+연구 질문은 성능 원인, 대체 설명, mechanism metric, 확장성으로 모인다.
 
 ```text
 Q1. Graph-FL의 성능 향상은 실제 client relation graph에서 오는가?
@@ -96,7 +102,7 @@ diagnostic attribution이다. 여기서 graph는 federated clients 사이의 rel
 graph다. node는 client이고, edge는 update, model state, history signal에서
 계산한 client 간 관계를 나타낸다.
 
-현재 repo에서 실행 가능한 단위는 다음과 같다.
+현재 repo에서 실행 가능한 단위는 아래처럼 정리된다.
 
 | 구현 단위 | 현재 상태 | 역할 |
 |---|---|---|
@@ -137,7 +143,7 @@ family 교체로 표현된다.
 
 ## 4. Modular Graph Design
 
-조립 가능한 graph design space는 다음과 같다.
+조립 가능한 graph design space는 아래 구성요소로 나뉜다.
 
 | 조립 위치 | 만들 수 있는 것 | 의미 |
 |---|---|---|
@@ -267,7 +273,7 @@ real-control gap은 topology/spectral diagnostics와 함께 읽는다.
 | Core mechanism metrics | alignment, DI, N_eff |
 | Secondary diagnostics | LOO checkpoint, graph density/degree/entropy, smoothness/spectral energy |
 
-초기 dataset과 non-IID setting 후보는 다음과 같다.
+초기 dataset과 non-IID setting 후보는 아래 범위에서 시작한다.
 
 | 항목 | 후보 |
 |---|---|
@@ -285,13 +291,14 @@ Cora와 같은 graph-structured input dataset은 client relation graph와 구분
 
 ## 9. Claim Shape
 
-이 프레임워크의 claim은 controlled empirical attribution의 형태를 가진다.
-직접적인 causal proof와 구분되는 경험적 해석이다. real graph가 matched controls와
-graph-free controls를 모두 넘고, alignment, DI, N_eff에서도 일관된 변화가 보이면
+이 프레임워크가 제공하는 근거는 controlled empirical attribution에 가깝다.
+인과를 단정하기보다, matched controls와 graph-free controls를 통해 어느 설명이
+관찰 결과와 잘 맞는지 좁혀 간다. real graph가 matched controls와 graph-free
+controls를 모두 넘고, alignment, DI, N_eff에서도 일관된 변화가 보이면
 graph-specific explanation의 강도가 높아진다. control과 거의 구분되지 않는
 setting에서는 smoothing, clustering, dominance correction 쪽 설명이 더 강해진다.
 
-주요 표현은 다음과 같다.
+이 관점은 아래 표현으로 요약된다.
 
 ```text
 relation-specific gain
@@ -309,5 +316,5 @@ Graph-FL 성능 향상은 graph relation, smoothing, clustering, dominance corre
 나누고, real graph, relation-destroyed controls, graph-free controls를 같은 조건에서
 비교한다.
 
-그 결과는 새로운 graph를 만들기 위한 설계 공간이면서, 만든 graph가 어떤 조건에서
-의미 있는지 확인하는 검증 구조가 된다.
+이 구조는 새 graph를 설계하는 공간이자, 설계한 graph가 어떤 조건에서 의미 있는지
+확인하는 검증 절차로 이어진다.
