@@ -2603,13 +2603,13 @@
           </button>
           <div class="fold-body">
         <p class="cat-note" style="margin-top:0">aggregation/control 뒤에 줄기 끝에 맞물리는 진단 부품</p>
-        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="loo" data-title="LOO" data-sub="열 단위 LOO">
+        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="loo" data-title="LOO" data-sub="--loo-enabled true">
           <div class="body">LOO</div>
         </div>
-        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="counterfactual" data-title="counterfactual" data-sub="열 반사실">
+        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="counterfactual" data-title="counterfactual" data-sub="control-family 비교">
           <div class="body">counterfactual</div>
         </div>
-        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="evidence" data-title="evidence" data-sub="열 evidence bundle">
+        <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="evidence" data-title="evidence" data-sub="result_evidence_bundle.py">
           <div class="body">evidence</div>
         </div>
           </div>
@@ -2623,7 +2623,7 @@
         </button>
         <div class="fold-body">
         <p class="cat-note">한 번에 여러 축이 채워진 프리셋 · 또는 extend로 레지스트리 확장</p>
-        <div class="scratch-block stack preset palette-track-vision" draggable="true" data-target="life" data-kind="preset" data-value="default_similarity_knn" data-title="default_similarity_knn" data-sub="update·cosine·knn·graph_filtered_update">
+        <div class="scratch-block stack preset palette-track-vision" draggable="true" data-target="life" data-kind="preset" data-value="default_similarity_knn" data-title="default_similarity_knn" data-sub="update·RBF·rbf_knn·graph_filtered_update">
           <div class="body">default_similarity_knn<span class="sub">유사도 kNN 프리셋</span></div>
         </div>
         <div class="scratch-block stack preset palette-track-vision" draggable="true" data-target="life" data-kind="preset" data-value="pfedgraph" data-title="pfedgraph" data-sub="pFedGraph 스타일 조립">
@@ -2776,7 +2776,8 @@
       </div>
       <p class="preview-note" id="verify-help">
         <strong>한 열은 하나의 비교 가능한 개입입니다.</strong> 주황은 트랙·데이터·규모 같은 공통 실행환경이고, 각 열은 같은 조건에서 하나의 graph intervention을 바꾼 비교 단위입니다.
-        baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → graph_mode/relation → aggregation → optional control → diagnostic addon</strong> 순서로 조립됩니다.
+        baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → relation cue → graph_mode → aggregation → optional control → diagnostic addon</strong> 순서로 조립됩니다.
+        relation cue는 발표용 해석 축이고, 실제 config에는 repo가 받는 <strong>graph_mode</strong>만 기록됩니다.
         가능한 한 같은 pipeline을 공유하고, relation 의미·identity 대응·edge 구조·graph-free correction처럼 검증하려는 요인만 바꿉니다.
         Preflight/suite_rows는 공통 진단, LOO/Evidence/counterfactual은 열별 diagnostic addon입니다.
       </p>
@@ -2919,7 +2920,7 @@
     };
     const LIFECYCLE_STAGES = [
       { key: "graph_source", kind: BLOCK_KIND.CLIENT, label: "graph_source", allowedKinds: [BLOCK_KIND.CLIENT], colorClass: "next-client", required: true },
-      { key: "relation_or_graph_mode", kind: BLOCK_KIND.RELATION, label: "relation / graph_mode", allowedKinds: [BLOCK_KIND.RELATION, BLOCK_KIND.TOPOLOGY], colorClass: "next-relation", required: true },
+      { key: "relation_or_graph_mode", kind: BLOCK_KIND.RELATION, label: "relation cue / graph_mode", allowedKinds: [BLOCK_KIND.RELATION, BLOCK_KIND.TOPOLOGY], colorClass: "next-relation", required: true },
       { key: "aggregation_target", kind: BLOCK_KIND.AGGREGATION, label: "aggregation_target", allowedKinds: [BLOCK_KIND.AGGREGATION], colorClass: "next-aggregation", required: true },
       { key: "correction_or_diagnostic", kind: BLOCK_KIND.CORRECTION, label: "correction/control 또는 diagnostic", allowedKinds: [BLOCK_KIND.CORRECTION, BLOCK_KIND.DIAGNOSTIC], colorClass: "next-control", required: false },
       { key: "diagnostic", kind: BLOCK_KIND.DIAGNOSTIC, label: "diagnostic addon", allowedKinds: [BLOCK_KIND.DIAGNOSTIC], colorClass: "next-diagnostic", required: false },
@@ -2950,8 +2951,8 @@
     const PRESET_BUNDLES = {
       default_similarity_knn: [
         { kind: "client", value: "update", title: "update", sub: "graph_source" },
-        { kind: "relation", value: "cosine", title: "cosine", sub: "relation" },
-        { kind: "topology", value: "knn", title: "knn", sub: "graph_mode" },
+        { kind: "relation", value: "rbf", title: "rbf", sub: "relation cue" },
+        { kind: "topology", value: "rbf_knn", title: "rbf_knn", sub: "graph_mode" },
         {
           kind: "aggregation",
           value: "graph_filtered_update",
@@ -2963,7 +2964,7 @@
       ],
       pfedgraph: [
         { kind: "client", value: "update", title: "update", sub: "graph_source" },
-        { kind: "relation", value: "cosine", title: "cosine", sub: "relation" },
+        { kind: "relation", value: "cosine", title: "cosine", sub: "relation cue" },
         { kind: "topology", value: "pfedgraph_qp", title: "pfedgraph_qp", sub: "graph_mode" },
         {
           kind: "aggregation",
@@ -3304,7 +3305,7 @@
     function columnGraphCoreComplete(col) {
       if (!col) return false;
       const hasGraphSource = !!getColumnLife(col, BLOCK_KIND.CLIENT);
-      const hasGraphMode = !!(getColumnLife(col, BLOCK_KIND.TOPOLOGY) || getColumnLife(col, BLOCK_KIND.RELATION));
+      const hasGraphMode = !!getColumnLife(col, BLOCK_KIND.TOPOLOGY);
       const hasAggregation = !!getColumnLife(col, BLOCK_KIND.AGGREGATION);
       return !!(hasGraphSource && hasGraphMode && hasAggregation);
     }
@@ -4882,7 +4883,6 @@
       const p = columnLifecycleParts(col);
       args.method = "ours";
       if (p.graph_source) args.graph_source = p.graph_source;
-      if (p.relation) args.relation = p.relation;
       if (p.graph_mode) args.graph_mode = p.graph_mode;
       if (p.aggregation_target) args.aggregation_target = p.aggregation_target;
       if (p.correction_family) args.correction_family = p.correction_family;
@@ -5752,6 +5752,11 @@
           lines.push("");
           lines.push("# 실행 전 점검 (diagnostic · preflight)");
           lines.push("python scripts/checks/diagnostic_suite_preflight.py");
+        }
+        if (hasDiagnostic("evidence")) {
+          lines.push("");
+          lines.push("# 결과 계약/evidence bundle 점검");
+          lines.push("python scripts/checks/result_evidence_bundle.py <result.json> --kind single-run");
         }
         lines.push("");
         lines.push("# 동일 설정을 플래그로만 실행할 때 (발표 비교용):");
