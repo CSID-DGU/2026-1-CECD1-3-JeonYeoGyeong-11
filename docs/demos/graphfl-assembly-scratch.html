@@ -6256,9 +6256,9 @@
     setupPreviewActions();
     relayoutLifeStackZ();
     [numAlpha, numClients, numRounds].forEach((el) => {
-      el.addEventListener("input", syncUI);
+      el?.addEventListener("input", syncUI);
     });
-    btnRun.addEventListener("click", runExperimentDemo);
+    btnRun?.addEventListener("click", runExperimentDemo);
     document.getElementById("impl-list").innerHTML = IMPL.map((t) => `<li>${t}</li>`).join("");
     document
       .querySelectorAll('#env-base-row .env-h-slot[data-layout="stack"]')
