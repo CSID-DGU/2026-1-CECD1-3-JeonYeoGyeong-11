@@ -159,7 +159,7 @@ Examples:
 
 Therefore, the framework should not treat graph construction as a monolithic step. Prior-work-inspired presets may be core-supported, proxy-supported, interface-target, or out-of-scope, but proxy presets must never be described as exact reproductions.
 
-For prior-work mapping details, see [`docs/research/design-pattern-survey.md`](../../graph_fl_design_pattern_survey.md).
+For prior-work mapping details, see [`docs/research/design-pattern-survey.md`](../../research/design-pattern-survey.md).
 
 ## 강제 불변식
 

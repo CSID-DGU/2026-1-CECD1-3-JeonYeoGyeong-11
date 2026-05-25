@@ -1,4 +1,4 @@
-"""Torchvision datasets + IID / Dirichlet partitioning for general FL."""
+"""Torchvision datasets + IID / Dirichlet partitioning for vision FL."""
 
 from __future__ import annotations
 

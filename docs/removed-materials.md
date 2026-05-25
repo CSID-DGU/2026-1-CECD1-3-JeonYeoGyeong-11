@@ -17,7 +17,7 @@ Execution log (findings and decisions): [`docs/maintenance/cleanup-status.md`](m
 
 | Removed surface | Batch | Replacement / policy |
 |---|---|---|
-| `general_suite_*` / `result_general_*` artifact **writers** | 2 | New runs emit `vision_suite_*` / `result_vision_*` only; readers still resolve legacy paths |
+| `general_suite_*` / `result_general_*` artifact **writers** | 2 | New runs emit `vision_suite_*` / `result_vision_*` only; post-Gate-6 discovery no longer reads legacy filenames |
 | `run_general_*` root entrypoints | 3 | `run_vision_*` |
 | `plot_general_convergence.py`, `merge_general_fedavg_ours.py`, `deep_dive_general.py` | 3 | `plot_vision_convergence.py` and vision-named analysis helpers |
 | `graphfl_lab/experiments/general/`, `graphfl_lab/experiments/suites/general/` | 4 | `graphfl_lab/experiments/vision/`, `suites/vision/` |

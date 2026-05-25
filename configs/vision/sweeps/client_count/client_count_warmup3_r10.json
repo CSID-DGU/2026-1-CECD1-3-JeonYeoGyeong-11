@@ -1,5 +1,5 @@
 {
-  "description": "General FL client-count sweep. Keeps the warmup3/r10/k2 setting fixed while varying the number of FL clients.",
+  "description": "Vision FL client-count sweep. Keeps the warmup3/r10/k2 setting fixed while varying the number of FL clients.",
   "args": {
     "client_counts": [5, 10, 20],
     "dataset": "fashionmnist",
@@ -26,4 +26,3 @@
     "sweep_tag": "client_count_warmup3_r10_k2"
   }
 }
-

@@ -1,4 +1,4 @@
-"""Flower NumPyClient for torchvision-backed general FL."""
+"""Flower NumPyClient for torchvision-backed vision FL."""
 
 from __future__ import annotations
 

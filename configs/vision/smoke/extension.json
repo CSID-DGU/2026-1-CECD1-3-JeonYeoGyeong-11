@@ -1,5 +1,5 @@
 {
-  "description": "General FL extension smoke. Checks graph-source, graph-mode, tau-source, and aggregation-target extension paths.",
+  "description": "Vision FL extension smoke. Checks graph-source, graph-mode, tau-source, and aggregation-target extension paths.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",
@@ -33,4 +33,3 @@
     "suite_tag": "extension_option_smoke"
   }
 }
-

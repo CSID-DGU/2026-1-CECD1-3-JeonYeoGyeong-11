@@ -1,5 +1,5 @@
 {
-  "description": "General FL structure-control suite. Tests sparse, magnitude-aware, RBF, learned-smooth, layerwise, signed/negative graph modes, and graph-filtered aggregation against the same kNN baseline.",
+  "description": "Vision FL structure-control suite. Tests sparse, magnitude-aware, RBF, learned-smooth, layerwise, signed/negative graph modes, and graph-filtered aggregation against the same kNN baseline.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",
@@ -32,4 +32,3 @@
     "suite_tag": "phaseC_structure_controls_warmup3_r10_k2"
   }
 }
-

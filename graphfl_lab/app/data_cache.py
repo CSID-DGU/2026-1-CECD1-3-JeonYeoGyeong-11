@@ -59,11 +59,6 @@ def load_vision(args: Namespace):
     return _VISION_CACHE[key]
 
 
-def load_general(args: Namespace):
-    """Compatibility alias for old app glue imports."""
-    return load_vision(args)
-
-
 def _cora_cache_key(args: Namespace) -> Tuple[Any, ...]:
     return (
         str(Path(args.data_root).resolve()),

@@ -24,6 +24,7 @@ configs/vision/sweeps/
 configs/cora/ablations/
 ```
 
-Suite and single-run outputs under `experiments_current/` prefer `vision_suite_*`
+Suite and single-run outputs under `experiments_current/` use `vision_suite_*`
 and `result_vision_*` filenames. Historical `general_suite_*` and
-`result_general_*` artifacts remain readable until Gate 6. See `MIGRATION.md`.
+`result_general_*` artifact names are tombstoned after Gate 6. See
+`docs/removed-materials.md`.

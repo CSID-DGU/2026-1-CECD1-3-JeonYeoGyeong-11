@@ -444,7 +444,7 @@ def parse_args():
 
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--data-root", type=str, default="./data/torchvision")
-    p.add_argument("--out-dir", type=str, default="./outputs_general")
+    p.add_argument("--out-dir", type=str, default="./outputs_vision")
     p.add_argument("--run-tag", type=str, default="")
     p.add_argument("--partition", type=str, default="iid", choices=["iid", "dirichlet"])
     p.add_argument("--dirichlet-alpha", type=float, default=0.5)

@@ -250,7 +250,7 @@ real-control gap은 topology/spectral diagnostics와 함께 해석된다.
 | 항목 | 후보 |
 |---|---|
 | Vision dataset | FashionMNIST, CIFAR-10 |
-| Optional extension | Cora-level graph-structured input dataset |
+| Optional extension | graph-structured input dataset such as Cora |
 | Non-IID split | Dirichlet label skew |
 | Alpha | 0.03, 0.1, 0.5 |
 | Clients | 5, 10, 20 |

@@ -1,4 +1,4 @@
-"""CLI parser for general client count sweep."""
+"""CLI parser for vision client count sweep."""
 
 from __future__ import annotations
 

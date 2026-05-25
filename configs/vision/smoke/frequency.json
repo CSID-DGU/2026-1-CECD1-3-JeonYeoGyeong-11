@@ -1,5 +1,5 @@
 {
-  "description": "General FL frequency smoke. graph-filter residual aggregation을 켜고 low/mid/high frequency diagnostic 기록.",
+  "description": "Vision FL frequency smoke. graph-filter residual aggregation을 켜고 low/mid/high frequency diagnostic 기록.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",

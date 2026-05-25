@@ -191,7 +191,7 @@ def extract_client_round_trace(
             )
             eval_row = per_client_eval.get(sc)
             if eval_row is not None:
-                # General-FL currently evaluates the global test set only on
+                # Vision FL currently evaluates the global test set only on
                 # client 0. Other clients return num_examples=0 as dummy eval
                 # rows, which must not be treated as per-client accuracy.
                 try:

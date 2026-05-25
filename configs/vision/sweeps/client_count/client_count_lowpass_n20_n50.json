@@ -1,5 +1,5 @@
 {
-  "description": "General FL N=20/N=50 rerun for the corrected low-pass aggregation path. Corrected low-pass uses graph_filtered_update with residual reweighting and min-weight floor disabled; legacy_residual_reweight preserves the older projected-residual alpha-reweight path as an explicit ablation.",
+  "description": "Vision FL N=20/N=50 rerun for the corrected low-pass aggregation path. Corrected low-pass uses graph_filtered_update with residual reweighting and min-weight floor disabled; legacy_residual_reweight preserves the older projected-residual alpha-reweight path as an explicit ablation.",
   "args": {
     "client_counts": [20, 50],
     "dataset": "fashionmnist",
@@ -35,4 +35,3 @@
     "sweep_tag": "client_count_lowpass_a003_le2_r10"
   }
 }
-

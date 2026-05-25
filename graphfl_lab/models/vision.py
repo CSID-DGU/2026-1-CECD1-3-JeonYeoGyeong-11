@@ -1,4 +1,4 @@
-"""Small vision models for general (non-graph) FL benchmarks."""
+"""Small vision models for vision FL benchmarks."""
 
 from __future__ import annotations
 

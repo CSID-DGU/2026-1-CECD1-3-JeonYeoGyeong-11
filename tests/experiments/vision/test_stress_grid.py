@@ -7,7 +7,7 @@ from graphfl_lab.experiments.vision.stress_grid import (
 )
 
 
-class GeneralStressGridTest(unittest.TestCase):
+class VisionStressGridTest(unittest.TestCase):
     def test_expand_variant_templates_deduplicates_fedavg_and_expands_k(self):
         variants = expand_variant_templates(
             [

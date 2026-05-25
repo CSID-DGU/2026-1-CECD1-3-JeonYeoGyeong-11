@@ -1,5 +1,5 @@
 {
-  "description": "General FL frequency suite with no warmup, matched to the warmup3/r10/k2 suite for direct comparison.",
+  "description": "Vision FL frequency suite with no warmup, matched to the warmup3/r10/k2 suite for direct comparison.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",

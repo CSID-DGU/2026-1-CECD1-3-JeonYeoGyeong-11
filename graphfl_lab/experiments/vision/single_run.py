@@ -239,15 +239,6 @@ def build_vision_meta(
     }
 
 
-def build_general_meta(
-    args: argparse.Namespace,
-    class_distribution: List[List[int]],
-    out_path: Path,
-) -> Dict[str, Any]:
-    """Compatibility alias for older imports."""
-    return build_vision_meta(args, class_distribution, out_path)
-
-
 def run(args):
     from graphfl_lab.flower_runner import main_dispatch
 

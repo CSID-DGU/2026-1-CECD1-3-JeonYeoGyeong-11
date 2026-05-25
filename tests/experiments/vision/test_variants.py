@@ -11,7 +11,7 @@ def _last_flag_value(args, flag):
     return args[indexes[-1] + 1]
 
 
-class GeneralSuiteVariantTest(unittest.TestCase):
+class VisionSuiteVariantTest(unittest.TestCase):
     def _args(self):
         return argparse.Namespace(
             knn_k=2,

@@ -55,7 +55,7 @@ def parse_variant(
     if target is not None:
         return target
 
-    raise ValueError(f"Unknown general-FL variant: {variant!r}")
+    raise ValueError(f"Unknown vision-FL suite variant: {variant!r}")
 
 
 def variant_cmd(

@@ -5,7 +5,7 @@ import numpy as np
 from graphfl_lab.data.vision import _dirichlet_partition, _ensure_min_samples_per_client
 
 
-class GeneralDataPartitionTest(unittest.TestCase):
+class VisionDataPartitionTest(unittest.TestCase):
     def test_rebalance_gives_each_client_at_least_one_sample(self):
         rng = np.random.default_rng(123)
         labels = np.repeat(np.arange(10), 20)

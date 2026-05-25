@@ -1,5 +1,5 @@
 {
-  "description": "General FL tau-control suite. Compares legacy h_spec adaptive tau against fixed, normalized-H_spec, and e_std tau under the same warmup3/r10/k2 setup.",
+  "description": "Vision FL tau-control suite. Compares legacy h_spec adaptive tau against fixed, normalized-H_spec, and e_std tau under the same warmup3/r10/k2 setup.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",

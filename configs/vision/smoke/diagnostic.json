@@ -1,5 +1,5 @@
 {
-  "description": "General FL diagnostic-only smoke. aggregation은 FedAvg와 동일하게 두고 graph/spectrum trace만 기록.",
+  "description": "Vision FL diagnostic-only smoke. aggregation은 FedAvg와 동일하게 두고 graph/spectrum trace만 기록.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",

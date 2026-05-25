@@ -34,7 +34,7 @@ from graphfl_lab.experiments.cora.single_run import (
 )
 from graphfl_lab.experiments.vision.single_run import (
     build_vision_meta,
-    make_initial_parameters as make_general_initial_parameters,
+    make_initial_parameters as make_vision_initial_parameters,
 )
 from graphfl_lab.app.config import DEFAULT_RUN_CONFIG, args_from_context
 from graphfl_lab.app.data_cache import client_index, load_cora, load_vision
@@ -107,7 +107,7 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
     in_channels, _, _ = vision_input_shape(args.dataset)
 
     template = build_model(args.model, num_classes=num_classes, in_channels=in_channels)
-    initial_parameters = make_general_initial_parameters(template, args.seed)
+    initial_parameters = make_vision_initial_parameters(template, args.seed)
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -251,7 +251,7 @@ def _make_cora_client(context: Context):
 
 def client_fn(context: Context):
     args = _args_from_context(context)
-    if args.track in {"general-fl", "vision-fl"}:
+    if args.track == "vision-fl":
         return _make_vision_client(context)
     if args.track == "cora-fgl":
         return _make_cora_client(context)
@@ -265,7 +265,7 @@ server_app = ServerApp()
 @server_app.main()
 def server_main(grid: Grid, context: Context) -> None:
     args = _args_from_context(context)
-    if args.track in {"general-fl", "vision-fl"}:
+    if args.track == "vision-fl":
         _run_vision_server(grid, args)
         return
     if args.track == "cora-fgl":

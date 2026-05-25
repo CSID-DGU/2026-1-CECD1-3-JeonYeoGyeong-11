@@ -15,7 +15,7 @@ from graphfl_lab.experiments.vision.suite import (
 )
 
 
-class GeneralSuiteReportTest(unittest.TestCase):
+class VisionSuiteReportTest(unittest.TestCase):
     def test_variant_k_number_accepts_tau_suffix(self):
         self.assertEqual(_variant_k_number("ours_knn_k1_fixed_tau"), 1)
         self.assertEqual(_variant_k_number("ours_knn_k3_norm_tau"), 3)

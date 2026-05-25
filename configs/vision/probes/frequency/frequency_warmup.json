@@ -1,5 +1,5 @@
 {
-  "description": "General FL frequency suite with delayed graph-filter aggregation. Warmup rounds log graph-spectrum diagnostics but keep FedAvg weights and do not update graph EMA state.",
+  "description": "Vision FL frequency suite with delayed graph-filter aggregation. Warmup rounds log graph-spectrum diagnostics but keep FedAvg weights and do not update graph EMA state.",
   "args": {
     "dataset": "fashionmnist",
     "model": "mlp",
