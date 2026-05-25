@@ -61,6 +61,30 @@
     }
     header h1 { margin: 0; font-size: 1.15rem; font-weight: 800; }
     header .sub { margin: 0.2rem 0 0; font-size: 0.8rem; color: var(--muted); line-height: 1.4; max-width: 960px; }
+    .header-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-top: 0.45rem;
+      max-width: 1120px;
+    }
+    .thesis-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.18rem 0.48rem;
+      border-radius: 999px;
+      border: 1px solid #cfd8e5;
+      background: #f7f9fc;
+      color: #34415c;
+      font-size: 0.68rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .thesis-chip b {
+      color: var(--client-dark);
+      font-weight: 900;
+    }
     .main {
       flex: 1;
       display: flex;
@@ -481,7 +505,7 @@
       background: var(--panel);
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 0.5rem 0.6rem;
+      padding: 0.62rem 0.68rem;
       font-size: 0.82rem;
     }
     .preview-note {
@@ -507,10 +531,11 @@
     .hero {
       background: #eef4fc;
       border-left: 4px solid var(--client);
-      padding: 0.5rem 0.55rem;
+      padding: 0.58rem 0.62rem;
       border-radius: 6px;
       line-height: 1.5;
       margin-bottom: 0.5rem;
+      font-weight: 700;
     }
     .axis {
       font-family: Consolas, monospace;
@@ -521,6 +546,49 @@
       margin: 0.35rem 0;
       line-height: 1.5;
     }
+    .story-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.28rem;
+      margin: 0.5rem 0;
+    }
+    .story-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.48rem;
+      border: 1px solid #d9e2ef;
+      background: #f9fbfe;
+      border-radius: 7px;
+      padding: 0.36rem 0.46rem;
+      line-height: 1.35;
+      font-size: 0.68rem;
+      color: #44506a;
+    }
+    .story-card strong {
+      display: block;
+      flex: 0 0 4.1rem;
+      margin-bottom: 0;
+      font-size: 0.7rem;
+      color: var(--text);
+    }
+    .story-card.author { border-left: 4px solid var(--client); }
+    .story-card.control { border-left: 4px solid var(--control); }
+    .story-card.evidence { border-left: 4px solid var(--diagnostic); }
+    .story-card.claim { border-left: 4px solid var(--aggregation); }
+    .evidence-band {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.22rem;
+      margin: 0.45rem 0;
+      padding: 0.45rem 0.52rem;
+      border-radius: 7px;
+      background: #f4faf4;
+      border: 1px solid #cce5cc;
+      color: #2e4d32;
+      font-size: 0.68rem;
+      line-height: 1.35;
+    }
+    .evidence-band b { color: #1f5f28; }
     pre.out {
       margin: 0;
       padding: 0.45rem 0.5rem;
@@ -2263,6 +2331,12 @@
       같은 control과 evidence bundle로 비교 가능한 <strong>CLI + JSON</strong>을 만듭니다.
       새 그래프도 레지스트리에 이름을 등록하면 같은 실험 흐름에 얹을 수 있습니다.
     </p>
+    <div class="header-chips" aria-label="핵심 메시지">
+      <span class="thesis-chip"><b>1</b> 그래프 조립</span>
+      <span class="thesis-chip"><b>2</b> matched controls</span>
+      <span class="thesis-chip"><b>3</b> evidence bundle</span>
+      <span class="thesis-chip"><b>4</b> claim boundary</span>
+    </div>
   </header>
 
   <div class="main" id="main-layout">
@@ -2561,7 +2635,7 @@
     </aside>
 
     <section class="workspace-wrap">
-      <div class="workspace-bar">주황 = 공통 환경 · 줄기 = 비교 열(baseline <em>또는</em> Graph-FL 조립)</div>
+      <div class="workspace-bar">공통 환경은 고정하고, 비교 열만 바꿔 그래프 효과를 분해</div>
       <div class="workspace" id="workspace">
         <p class="workspace-hint" id="hint">
           <strong>주황</strong> = 데이터·실행 설정 · <strong>색</strong> = Graph-FL 부품 · 검증은 진단 블록
@@ -2673,26 +2747,49 @@
       <div class="preview-resizer" id="preview-resizer" title="드래그하여 오른쪽 패널 너비 조절" role="separator" aria-orientation="vertical"></div>
       <aside class="preview" id="preview-panel">
       <div class="hero">
-        <strong>주장:</strong> Graph-FL gain을 단순 정확도 상승으로 묶지 않고,
-        relation/topology 효과와 dominance·smoothing·optimizer confounder를 함께 <em>분해</em>한다.
+        Graph-FL gain을 accuracy 하나로 끝내지 않고,
+        relation/topology, smoothing, dominance, optimizer 효과를 같은 실험에서 <em>분해</em>한다.
       </div>
-      <div class="axis">author graph → matched controls → evidence bundle → claim boundary</div>
+      <div class="axis">assemble graph → matched controls → evidence bundle → claim boundary</div>
+      <div class="story-grid" aria-label="발표 흐름">
+        <div class="story-card author">
+          <strong>조립</strong>
+          representation·relation·topology·aggregation을 블록처럼 고른다.
+        </div>
+        <div class="story-card control">
+          <strong>대조</strong>
+          random·shuffled·uniform·graph-free로 비교 조건을 맞춘다.
+        </div>
+        <div class="story-card evidence">
+          <strong>근거</strong>
+          accuracy/loss와 alignment, DI/N_eff, LOO, gap을 한 결과에 묶는다.
+        </div>
+        <div class="story-card claim">
+          <strong>해석</strong>
+          성능 상승이 relation, topology, smoothing 중 어디에서 오는지 좁힌다.
+        </div>
+      </div>
+      <div class="evidence-band">
+        <span><b>기본 경로:</b> client update → similarity/RBF → kNN graph → graph_filtered_update</span>
+        <span><b>판단 지표:</b> accuracy/loss · real-control gap · graph-free gap</span>
+        <span><b>기전 지표:</b> alignment · DI/N_eff · LOO · smoothness/spectral diagnostics</span>
+      </div>
       <p class="preview-note" id="verify-help">
-        <strong>한 열은 하나의 비교 가능한 개입입니다.</strong> 주황은 트랙·데이터·규모 같은 공통 실행환경이고, 각 run column은 그 아래에 맞물려 자라는 줄기입니다.
+        <strong>한 열은 하나의 비교 가능한 개입입니다.</strong> 주황은 트랙·데이터·규모 같은 공통 실행환경이고, 각 열은 같은 조건에서 하나의 graph intervention을 바꾼 비교 단위입니다.
         baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → graph_mode/relation → aggregation → optional control → diagnostic addon</strong> 순서로 조립됩니다.
         가능한 한 같은 pipeline을 공유하고, relation 의미·identity 대응·edge 구조·graph-free correction처럼 검증하려는 요인만 바꿉니다.
         Preflight/suite_rows는 공통 진단, LOO/Evidence/counterfactual은 열별 diagnostic addon입니다.
       </p>
 
-      <h2>Assembly Summary</h2>
+      <h2>현재 조립</h2>
       <pre class="out out-compact" id="assembly-summary-out">환경·열을 조립하면 요약이 표시됩니다.</pre>
 
-      <h2>Run Command <span class="run-status wait" id="run-status">대기</span></h2>
+      <h2>실행 명령 <span class="run-status wait" id="run-status">대기</span></h2>
       <p class="run-output-hint" id="run-output-hint">Vision: <code>run_vision_experiment.py</code> (열 1) · <code>run_vision_suite.py</code> (열 2+).</p>
       <p class="config-path" id="config-path"></p>
       <pre class="out" id="run-command-out"># 부품 조립 후 생성</pre>
 
-      <h2>Generated Config JSON</h2>
+      <h2>생성되는 Config JSON</h2>
       <p class="preview-warn" id="config-warn" style="display:none;font-size:0.8rem;color:#a63;"></p>
       <pre class="out out-compact" id="config-json-out">{}</pre>
       <h2 class="per-run-title" id="per-run-title" style="display:none;font-size:0.82rem;">Per-run single configs (suite token 불가)</h2>
