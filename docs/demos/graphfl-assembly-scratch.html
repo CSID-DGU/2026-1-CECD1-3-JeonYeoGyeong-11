@@ -281,6 +281,7 @@
     .scratch-block.extend.extend-relation { --c: var(--relation); --d: var(--relation-dark); }
     .scratch-block.extend.extend-topology { --c: var(--topology); --d: var(--topology-dark); }
     .scratch-block.extend.extend-aggregation { --c: var(--aggregation); --d: var(--aggregation-dark); }
+    .scratch-block.extend.extend-control { --c: var(--control); --d: var(--control-dark); }
     .scratch-block.extend.extend-method { --c: var(--baseline); --d: var(--baseline-dark); }
     .scratch-block.env.env-custom-block { --c: var(--env); --d: var(--env-dark); }
     .scratch-block.env.env-custom-block .body.extend-body {
@@ -2255,8 +2256,25 @@
     .env-cases-zone {
       background: transparent !important;
       border: none !important;
-      padding: 0 0 0.35rem !important;
-      margin-top: -2px;
+      padding: 0.45rem 0 0.35rem !important;
+      margin-top: 0.2rem !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      margin-bottom: 0 !important;
+      align-self: center !important;
+    }
+    .env-cases-zone::before {
+      content: "";
+      display: block;
+      width: 3.1rem;
+      height: 0.55rem;
+      margin: -0.45rem auto 0.12rem;
+      background: var(--env);
+      border-left: 3px solid var(--env-dark);
+      border-right: 3px solid var(--env-dark);
+      border-bottom: 3px solid var(--env-dark);
+      border-radius: 0 0 8px 8px;
+      filter: drop-shadow(0 2px 0 var(--shadow));
     }
     .env-cases-zone-label {
       margin: 0 0 0.35rem;
@@ -2379,11 +2397,25 @@
         <div class="scratch-block stack env palette-track-cora palette-block-hidden" draggable="true" data-target="env" data-env-slot="dataset" data-tracks="cora" data-kind="env" data-value="cora" data-title="Cora" data-sub="Planetoid">
           <div class="body">Cora<span class="sub">그래프 데이터</span></div>
         </div>
-        <div class="scratch-block stack env env-custom-block palette-block-hidden" draggable="true" data-target="env" data-env-slot="dataset" data-tracks="vision" data-kind="env" data-value="custom_dataset" data-title="dataset" data-sub="--dataset">
+        <div class="scratch-block stack env env-custom-block palette-block-hidden" draggable="true" data-target="env" data-env-slot="dataset" data-tracks="vision,cora" data-kind="env" data-value="custom_dataset" data-title="dataset" data-sub="--dataset">
           <div class="body extend-body">
             <span class="extend-tag">데이터셋 · 이름</span>
-            <input type="text" class="extend-input" value="my_dataset" placeholder="my_dataset" autocomplete="off" spellcheck="false" />
-            <span class="sub">커스텀 --dataset</span>
+            <input type="text" class="extend-input" placeholder="my_dataset" autocomplete="off" spellcheck="false" />
+            <span class="sub">커스텀 dataset name</span>
+          </div>
+        </div>
+          </div>
+        </div>
+        <div class="cat-sub fold-section" id="fold-palette-config" data-fold-default="collapsed">
+          <button type="button" class="cat-head env fold-head sub" aria-expanded="true">
+            <span class="fold-chevron" aria-hidden="true">▼</span>Config JSON
+          </button>
+          <div class="fold-body">
+        <div class="scratch-block stack env env-custom-block palette-block-hidden" draggable="true" data-target="env" data-env-slot="config_name" data-tracks="vision,cora" data-kind="env" data-value="custom_config" data-title="config JSON" data-sub="--config">
+          <div class="body extend-body">
+            <span class="extend-tag">config JSON · 이름</span>
+            <input type="text" class="extend-input" placeholder="my_config" autocomplete="off" spellcheck="false" />
+            <span class="sub">configs/&lt;track&gt;/smoke/*.json</span>
           </div>
         </div>
           </div>
@@ -2425,7 +2457,7 @@
         <div class="scratch-block stack column env-custom-block palette-track-vision" draggable="true" data-target="env" data-env-slot="partition" data-tracks="vision" data-kind="column" data-value="custom_partition" data-title="partition" data-sub="--partition">
           <div class="body extend-body">
             <span class="extend-tag">파티션 · 이름</span>
-            <input type="text" class="extend-input" value="my_partition" placeholder="my_partition" autocomplete="off" spellcheck="false" />
+            <input type="text" class="extend-input" placeholder="my_partition" autocomplete="off" spellcheck="false" />
             <span class="sub">커스텀 --partition</span>
           </div>
         </div>
@@ -2455,7 +2487,7 @@
         <div class="scratch-block stack baseline env-custom-block palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="custom_variant" data-title="variant" data-sub="repo variant 토큰">
           <div class="body extend-body">
             <span class="extend-tag">custom variant</span>
-            <input type="text" class="extend-input" value="ours_knn_k2" placeholder="ours_knn_k2" autocomplete="off" spellcheck="false" />
+            <input type="text" class="extend-input" placeholder="ours_knn_k2" autocomplete="off" spellcheck="false" />
             <span class="sub">레지스트리 토큰</span>
           </div>
         </div>
@@ -2595,6 +2627,13 @@
         <div class="scratch-block stack correction" draggable="true" data-target="life" data-kind="correction" data-value="graph_free" data-title="graph_free" data-sub="graph-free dominance 등">
           <div class="body">graph_free</div>
         </div>
+        <div class="scratch-block stack extend extend-control name-extend-block" draggable="true" data-target="life" data-kind="extend" data-value="name_correction" data-title="correction_family" data-sub="correction_family registry">
+          <div class="body extend-body">
+            <span class="extend-tag">correction · 새 이름</span>
+            <input type="text" class="extend-input" placeholder="my_correction" autocomplete="off" spellcheck="false" />
+            <span class="sub">correction_family registry</span>
+          </div>
+        </div>
           </div>
         </div>
         <div class="cat-sub fold-section" data-fold-default="collapsed">
@@ -2681,8 +2720,18 @@
                           </div>
                         </div>
                       </div>
+                      <div class="env-chain-piece" data-piece="config_name">
+                        <div class="env-chain-piece-label">③ config JSON</div>
+                        <div class="env-chain-piece-body">
+                          <div class="env-chain-slot-row">
+                            <div class="env-h-slot" data-env-slot="config_name" data-multi="false">
+                              <span class="env-h-ph" id="ph-config-name">← config 이름</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <div class="env-chain-piece env-chain-scale" id="piece-scale" data-piece="scale">
-                        <div class="env-chain-piece-label">③ 규모</div>
+                        <div class="env-chain-piece-label">④ 규모</div>
                         <div class="env-chain-piece-body">
                           <div class="env-chain-slot-row">
                             <div class="scratch-block stack env env-h env-h-fixed">
@@ -2696,7 +2745,7 @@
                         </div>
                       </div>
                       <div class="env-chain-piece env-chain-cases" id="piece-cases" data-piece="cases">
-                        <div class="env-chain-piece-label">④ 비교 열</div>
+                        <div class="env-chain-piece-label">⑤ 비교 열</div>
                         <div class="env-chain-piece-body">
                           <div class="env-chain-slot-row">
                             <div class="scratch-block stack env env-h env-h-fixed">
@@ -2711,7 +2760,7 @@
                         </div>
                       </div>
                       <div class="env-chain-piece env-chain-diagnostics" id="piece-diagnostics" data-piece="diagnostics">
-                        <div class="env-chain-piece-label">⑤ 진단</div>
+                        <div class="env-chain-piece-label">⑥ 진단</div>
                         <div class="env-chain-piece-body">
                           <div class="env-chain-slot-row env-chain-slot-stack">
                             <div class="env-h-slot env-stack-slot" data-env-slot="diagnostics" data-multi="true" data-layout="stack">
@@ -2721,11 +2770,11 @@
                         </div>
                       </div>
                     </div>
+                    </div>
+                    </div>
                     <div class="env-cases-zone is-dimmed" id="env-cases-zone">
                       <p class="env-cases-zone-label">비교 열 줄기</p>
                       <div class="env-cases-chain" id="env-cases-chain"></div>
-                    </div>
-                    </div>
                     </div>
                   </div>
                 </div>
@@ -2864,15 +2913,9 @@
       },
     };
 
-    const ENV_SLOT_IDS = ["track", "dataset"];
-    const ENV_SLOT_ORDER = ["track", "dataset"];
+    const ENV_SLOT_IDS = ["track", "dataset", "config_name"];
+    const ENV_SLOT_ORDER = ["track", "dataset", "config_name"];
     const MAX_ENV_COLUMNS = 12;
-    const SWEEP_DEFAULTS = {
-      partitions: ["dirichlet"],
-      dirichlet_alphas: [0.01, 0.03, 0.1],
-      variants: ["fedavg", "ours_knn_k2"],
-    };
-
     function effectiveRunner(track) {
       if (track === "vision") return "suite";
       if (track === "cora") return "single";
@@ -2882,9 +2925,10 @@
     function usesColumnAssembly() {
       return currentTrack() === "vision" && baseRowReady();
     }
-    const ENV_CUSTOM_VALUES = new Set(["custom_dataset", "custom_partition", "custom_variant"]);
+    const ENV_CUSTOM_VALUES = new Set(["custom_dataset", "custom_config", "custom_partition", "custom_variant"]);
     const ENV_CUSTOM_DEFAULTS = {
       dataset: "my_dataset",
+      config_name: "my_config",
       partition: "my_partition",
       sweep_variants: "ours_knn_k2",
     };
@@ -2981,6 +3025,7 @@
       name_relation: "extend-relation",
       name_graph_mode: "extend-topology",
       name_aggregation: "extend-aggregation",
+      name_correction: "extend-control",
       name_method: "extend-method",
     };
 
@@ -2989,7 +3034,9 @@
     }
 
     function envCustomPlaceholder(slotId) {
+      if (slotId === "config_name") return "custom_config";
       if (slotId === "partition") return "custom_partition";
+      if (slotId === "baseline") return "custom_variant";
       if (slotId === "sweep_variants") return "custom_variant";
       return "custom_dataset";
     }
@@ -3281,6 +3328,7 @@
         if (axis === "relation") return "relation";
         if (axis === "graph_mode") return "topology";
         if (axis === "aggregation_target") return "aggregation";
+        if (axis === "correction_family") return "correction";
         return null;
       }
       if (["client", "relation", "topology", "aggregation", "correction", "diagnostic"].includes(d.kind)) {
@@ -3728,6 +3776,7 @@
           : null) ||
         (d.value === "vision" || d.value === "cora" ? "track" : null) ||
         (d.envSlot === "partition" || d.value === "dirichlet" || d.value === "iid" ? "partition" : null) ||
+        (d.envSlot === "config_name" || d.value === "custom_config" ? "config_name" : null) ||
         (d.envSlot === "dataset" || d.value === "custom_dataset" ? "dataset" : null);
 
       if (envSlot === "track") {
@@ -3746,6 +3795,15 @@
         }
         d.envSlot = "dataset";
         setEnvSlot("dataset", d);
+        return true;
+      }
+      if (envSlot === "config_name") {
+        if (!envSlotUnlocked("config_name") || !envValueAllowed("config_name", d.value, currentTrack(), d)) {
+          flashReject(ctx?.slotEl);
+          return false;
+        }
+        d.envSlot = "config_name";
+        setEnvSlot("config_name", d);
         return true;
       }
       if (isBaselineBlock(d) && !colId) {
@@ -3814,6 +3872,9 @@
       }
       if (d.envSlot === "dataset" || d.value === "custom_dataset") {
         return envSlotUnlocked("dataset") && envValueAllowed("dataset", d.value, currentTrack(), d);
+      }
+      if (d.envSlot === "config_name" || d.value === "custom_config") {
+        return envSlotUnlocked("config_name") && envValueAllowed("config_name", d.value, currentTrack(), d);
       }
       if (d.envSlot === "diagnostics" || (d.kind === "diagnostic" && d.target === "env")) {
         return baseRowReady();
@@ -4444,9 +4505,9 @@
         ),
       ];
       return {
-        partitions: partitions.length ? partitions : ["dirichlet"],
-        dirichlet_alphas: dirichlet_alphas.length ? dirichlet_alphas : [0.03],
-        variants: variants.length ? variants : SWEEP_DEFAULTS.variants,
+        partitions,
+        dirichlet_alphas,
+        variants,
         compare_assemblies,
       };
     }
@@ -4527,6 +4588,7 @@
       const track = currentTrack();
       if (slotId === "track") return true;
       if (slotId === "dataset") return !!envSlots.track;
+      if (slotId === "config_name") return !!envSlots.track;
       if (slotId === "diagnostics") return baseRowReady();
       return false;
     }
@@ -4550,7 +4612,7 @@
       const activeTrack = track || envSlots.track?.value || null;
       if (data && (data.envCustom || ENV_CUSTOM_VALUES.has(data.value))) {
         if (slotId === "partition" && activeTrack === "cora") return false;
-        if (slotId === "dataset" && !activeTrack) return false;
+        if ((slotId === "dataset" || slotId === "config_name") && !activeTrack) return false;
         return true;
       }
       if (slotId === "track") return value === "vision" || value === "cora";
@@ -4567,25 +4629,30 @@
     function normalizeEnvDrop(data) {
       const out = { ...data };
       const slotId =
-        out.envSlot || (out.value === "custom_partition" ? "partition" : "dataset");
+        out.value === "custom_variant"
+          ? "sweep_variants"
+          : out.envSlot ||
+        (out.value === "custom_config"
+          ? "config_name"
+          : out.value === "custom_partition"
+            ? "partition"
+            : "dataset");
 
       if (ENV_CUSTOM_VALUES.has(out.value)) {
         out.envCustom = true;
-        let name = String(out.customName || "").trim();
-        if (!name) name = envCustomDefaultName(slotId);
+        const name = String(out.customName || "").trim();
         out.customName = name;
-        out.value = name;
-        out.title = name;
-        if (!out.sub) out.sub = slotId === "partition" ? "--partition" : "--dataset";
+        out.value = name || envCustomPlaceholder(slotId);
+        out.title = name || out.title || slotId;
+        if (!out.sub) out.sub = slotId === "partition" ? "--partition" : slotId === "config_name" ? "--config" : "--dataset";
         return out;
       }
 
       if (out.envCustom) {
-        let name = String(out.customName || out.value || "").trim();
-        if (!name) name = envCustomDefaultName(slotId);
+        const name = String(out.customName || "").trim();
         out.customName = name;
-        out.value = name;
-        out.title = name;
+        out.value = name || envCustomPlaceholder(slotId);
+        out.title = name || out.title || slotId;
         return out;
       }
 
@@ -4827,12 +4894,12 @@
 
     function buildCommonEnvArgs() {
       const nums = getEnvNums();
-      const ds = resolvedEnvSlotValue(envSlots.dataset) || "fashionmnist";
+      const ds = resolvedEnvSlotValue(envSlots.dataset);
       const firstCol = envColumns[0];
-      const part = firstCol ? resolvedEnvSlotValue(firstCol.partition) : "dirichlet";
+      const part = firstCol ? resolvedEnvSlotValue(firstCol.partition) : null;
       const args = {
         dataset: ds,
-        model: "mlp",
+        model: currentTrack() === "cora" ? "gcn" : "mlp",
         num_clients: nums.num_clients,
         rounds: nums.rounds,
         local_epochs: 1,
@@ -4840,13 +4907,13 @@
         train_subset_size: nums.train_subset_size,
         test_subset_size: nums.test_subset_size,
         seeds: [42],
-        partition: part || "dirichlet",
         knn_k: nums.knn_k,
         graph_filter_strength: nums.graph_filter_strength,
         diagnostics_enable: commonDiagnosticsEnabled() || envColumns.some((c) => getColumnLife(c, "diagnostic")),
         loo_enabled: hasDiagnostic("loo") || envColumns.some((c) => getColumnLife(c, "diagnostic")?.value === "loo"),
         out_dir: nums.out_dir,
       };
+      if (part) args.partition = part;
       if (usesDirichletAlpha(args.partition) && firstCol) {
         args.dirichlet_alpha = firstCol.dirichletAlpha ?? nums.dirichlet_alpha;
       }
@@ -4995,18 +5062,20 @@
       const cmdEl = document.getElementById("run-command-out");
       const jsonEl = document.getElementById("config-json-out");
       const perRunEl = document.getElementById("per-run-configs-out");
-      const singlePath = "configs/generated/graphfl_assembly_single.json";
-      const suitePath = "configs/generated/graphfl_assembly_suite.json";
+      const cfgForPath = buildEnvConfig();
+      const selectedPath = suggestConfigPath(cfgForPath);
+      const singlePath = selectedPath || "";
+      const suitePath = selectedPath || "";
 
       renderAssemblySummary();
 
       let configType = "single";
-      let doc = buildSingleRunConfig();
+      let doc = selectedPath ? buildSingleRunConfig() : null;
       let configPath = singlePath;
-      let warn = "";
+      let warn = selectedPath ? "" : "config JSON 이름 블록을 조립해야 실행 경로가 생성됩니다.";
 
       if (n >= 2) {
-        const suiteDoc = buildSuiteConfig();
+        const suiteDoc = selectedPath ? buildSuiteConfig() : null;
         const tokens = envColumns.slice(0, n).map((c) => buildVariantToken(c));
         const missing = tokens.some((t) => !t);
         if (suiteDoc && !missing) {
@@ -5016,6 +5085,7 @@
         } else {
           configType = "per-column";
           warn =
+            warn ||
             "이 조립은 single-run config로는 표현 가능하지만, 일부 열은 repo suite variant token으로 직접 표현할 수 없습니다. suite config에는 넣지 않고 per-run JSON 목록을 표시합니다.";
           doc = null;
         }
@@ -5031,19 +5101,22 @@
       if (jsonEl) {
         if (doc) {
           jsonEl.textContent = JSON.stringify(doc, null, 2);
-        } else if (configType === "per-column") {
-          const list = buildPerColumnSingleConfigs();
+        } else if (configType === "per-column" && selectedPath) {
+          const list = selectedPath ? buildPerColumnSingleConfigs() : [];
           jsonEl.textContent = JSON.stringify(list, null, 2);
+        } else if (!selectedPath) {
+          jsonEl.textContent = "# config JSON 이름 블록을 조립하면 JSON과 실행 명령이 생성됩니다.";
         } else {
           jsonEl.textContent = "# 아직 생성할 수 없습니다 (환경·열 조립 필요)";
         }
       }
 
       const perRunTitle = document.getElementById("per-run-title");
-      if (perRunTitle) perRunTitle.style.display = configType === "per-column" ? "block" : "none";
+      const showPerRun = configType === "per-column" && !!selectedPath;
+      if (perRunTitle) perRunTitle.style.display = showPerRun ? "block" : "none";
       if (perRunEl) {
-        perRunEl.style.display = configType === "per-column" ? "block" : "none";
-        if (configType === "per-column") {
+        perRunEl.style.display = showPerRun ? "block" : "none";
+        if (showPerRun) {
           perRunEl.textContent = JSON.stringify(buildPerColumnSingleConfigs(), null, 2);
         }
       }
@@ -5066,6 +5139,7 @@
       name_relation: "my_relation",
       name_graph_mode: "my_mode",
       name_aggregation: "my_agg",
+      name_correction: "my_correction",
       name_method: "my_method",
     };
 
@@ -5077,6 +5151,7 @@
       if (value === "name_graph_mode")
         return `@register_graph_builder('${n}')\ndef build_${n}(ctx): ...`;
       if (value === "name_aggregation") return `# register aggregation_target: ${n}`;
+      if (value === "name_correction") return `# register correction_family: ${n}`;
       if (value === "name_method") return `# register method: ${n}`;
       return `# ${value}: ${n}`;
     }
@@ -5095,8 +5170,7 @@
         sub: el.dataset.sub,
       };
       if (!envCustom) return base;
-      let customName = input ? input.value.trim() : "";
-      if (!customName && envSlot) customName = envCustomDefaultName(envSlot);
+      const customName = input ? input.value.trim() : "";
       return { ...base, envCustom: true, customName };
     }
 
@@ -5154,16 +5228,23 @@
 
     function makeEnvCustomNode(data, stackName) {
       const el = document.createElement("div");
-      const slotId = data.envSlot || (data.value === "custom_partition" ? "partition" : "dataset");
+      const slotId =
+        data.envSlot ||
+        (data.value === "custom_config"
+          ? "config_name"
+          : data.value === "custom_partition"
+            ? "partition"
+            : "dataset");
       const ph = envCustomDefaultName(slotId);
       const raw = data.value || envCustomPlaceholder(slotId);
       let name = ENV_CUSTOM_VALUES.has(raw)
         ? String(data.customName || "").trim()
         : String(data.customName || raw).trim();
-      if (!name) name = envCustomDefaultName(slotId);
       const tag =
         slotId === "partition"
           ? "파티션 · 이름"
+          : slotId === "config_name"
+            ? "config JSON · 이름"
           : slotId === "sweep_variants"
             ? "variant · repo"
             : "데이터셋 · 이름";
@@ -5185,7 +5266,7 @@
         envCustom: true,
         customName: name,
         value: name || envCustomPlaceholder(slotId),
-        title: name || (slotId === "partition" ? "partition" : "dataset"),
+        title: name || (slotId === "partition" ? "partition" : slotId === "config_name" ? "config JSON" : "dataset"),
       };
       el.querySelector(".del").onclick = (e) => {
         e.stopPropagation();
@@ -5227,11 +5308,9 @@
           entry.value = name;
           entry.title = name;
         } else {
-          const def = envCustomDefaultName(slotId);
-          entry.value = def;
-          entry.title = def;
-          entry.customName = def;
-          input.value = def;
+          entry.value = envCustomPlaceholder(slotId);
+          entry.title = slotId === "partition" ? "partition" : slotId === "config_name" ? "config JSON" : "dataset";
+          entry.customName = "";
         }
         if (stackName === "env") {
           if (slotId && envSlots[slotId]?.id === entry.id) {
@@ -5502,6 +5581,7 @@
       name_relation: "relation",
       name_graph_mode: "graph_mode",
       name_aggregation: "aggregation_target",
+      name_correction: "correction_family",
       name_method: "method",
     };
     const KIND_AXIS = {
@@ -5607,6 +5687,8 @@
       if (envSlots.track) cfg.track = envSlots.track.value;
       const ds = resolvedEnvSlotValue(envSlots.dataset);
       if (ds) cfg.dataset = ds;
+      const configName = resolvedEnvSlotValue(envSlots.config_name);
+      if (configName) cfg.config_name = configName;
       const track = cfg.track;
       cfg.runner = effectiveRunner(track);
       const parts = partitionValues();
@@ -5651,6 +5733,7 @@
       const missing = [];
       if (!cfg.track) missing.push("트랙");
       if (!cfg.dataset) missing.push("데이터셋");
+      if (!cfg.config_name) missing.push("config JSON 이름");
       if (cfg.track === "vision" && !visionPartitionReady(cfg)) missing.push("각 열 파티션");
       const n = getTargetColumnCount();
       envColumns.slice(0, n).forEach((col, i) => {
@@ -5664,10 +5747,18 @@
 
     function suggestConfigPath(cfg) {
       const tag = cfg.track === "cora" ? "cora" : "vision";
-      const base = "assembled_suite.json";
+      const selected = String(cfg.config_name || "").trim();
+      if (!selected) return "";
+      const base = selected.endsWith(".json") ? selected : `${selected}.json`;
       if (String(base).includes("/")) return base;
       const folder = "smoke";
       return `configs/${tag}/${folder}/${base}`;
+    }
+
+    function compactObject(obj) {
+      return Object.fromEntries(
+        Object.entries(obj).filter(([, value]) => value !== null && value !== undefined && value !== "")
+      );
     }
 
     function buildConfigDocument(cfg, parts) {
@@ -5692,33 +5783,32 @@
         local_epochs: 1,
         batch_size: 64,
         seeds: [42],
-        partition: cfg.partition || (cfg.track === "cora" ? "iid" : null),
+        partition: cfg.partition || null,
         runner: cfg.runner || null,
         method,
         graph_source: parts.graph_source,
         graph_mode: parts.graph_mode,
         aggregation_target: parts.aggregation_target,
-        correction_family: parts.correction_family || "real_graph",
+        correction_family: parts.correction_family,
       };
       if (usesDirichletAlpha(cfg.partition)) baseArgs.dirichlet_alpha = cfg.dirichlet_alpha;
-      if (parts.relation) baseArgs.relation = parts.relation;
       if (diagnostic === "loo") baseArgs.loo_enabled = true;
       if (parts.control_graph_mode) baseArgs.control_graph_mode = parts.control_graph_mode;
 
       const doc = {
         description:
           "조립 스냅샷 (repo에는 configs/vision/smoke/… JSON으로 저장 후 --config 실행)",
-        args: { ...baseArgs },
+        args: compactObject(baseArgs),
       };
 
       const sweep = cfg.sweep;
       if (cfg.track === "vision" && sweep) {
-        const parts = sweep.partitions || [cfg.partition || "dirichlet"];
-        doc.args.partition = parts[0];
+        const parts = sweep.partitions || (cfg.partition ? [cfg.partition] : []);
+        if (parts.length) doc.args.partition = parts[0];
         doc.sweep = {
           partitions: parts,
           dirichlet_alphas: sweep.dirichlet_alphas || [cfg.dirichlet_alpha],
-          variants: sweep.variants || ["fedavg", method === "ours" ? "ours_knn_k2" : method],
+          variants: sweep.variants || [],
           compare_assemblies: sweep.compare_assemblies || [],
         };
         doc.args.variants = doc.sweep.variants;
@@ -5793,8 +5883,9 @@
         statusEl.className = "run-status " + (ready ? "ok" : "wait");
       }
       if (hintEl) {
+        const trackLabel = cfg.track === "cora" ? "Cora" : "Vision";
         hintEl.textContent = ready
-          ? `Vision · 열 ${cfg.column_count || getTargetColumnCount()}개 · repo --config JSON`
+          ? `${trackLabel} · 열 ${cfg.column_count || getTargetColumnCount()}개 · repo --config JSON`
           : `필요: ${missing.join(" · ")}`;
       }
       return ready;
@@ -6048,6 +6139,7 @@
       const slotLabels = {
         track: "트랙",
         dataset: "데이터셋",
+        config_name: "config JSON",
         partition: "파티션",
         nums: "N · R (수치)",
         cases: "비교 열",
@@ -6065,7 +6157,7 @@
         const slot = envSlots[id];
         const filled = Array.isArray(slot) ? slot.length > 0 : !!slot;
         const unlocked = envSlotUnlocked(id);
-        const required = id === "track" || id === "dataset";
+        const required = id === "track" || id === "dataset" || id === "config_name";
         const ok = required && filled && !envSlotPending(slot) && unlocked;
         const li = document.createElement("li");
         if (!unlocked && required) li.className = "";
@@ -6319,27 +6411,22 @@
       });
     }
 
-    function initVisionDefaults() {
-      if (!envSlots.track) {
-        envSlots.track = {
-          id: "init-track",
-          kind: "env",
-          target: "env",
-          envSlot: "track",
-          value: "vision",
-          title: "Vision",
-        };
-      }
-    }
-
     function setupPreviewActions() {
+      const downloadName = () => {
+        const name = String(buildEnvConfig().config_name || "").trim();
+        if (!name) return "";
+        const leaf = name.split(/[\\/]/).filter(Boolean).pop() || name;
+        return leaf.endsWith(".json") ? leaf : `${leaf}.json`;
+      };
       document.getElementById("btn-dl-single")?.addEventListener("click", () => {
         const doc = buildSingleRunConfig();
-        if (doc) downloadJson("graphfl_assembly_single.json", doc);
+        const filename = downloadName();
+        if (doc && filename) downloadJson(filename, doc);
       });
       document.getElementById("btn-dl-suite")?.addEventListener("click", () => {
         const doc = buildSuiteConfig();
-        if (doc) downloadJson("graphfl_assembly_suite.json", doc);
+        const filename = downloadName();
+        if (doc && filename) downloadJson(filename, doc);
       });
       document.getElementById("btn-copy-cmd")?.addEventListener("click", () => {
         const cmd = document.getElementById("run-command-out")?.textContent || "";
@@ -6349,7 +6436,6 @@
       });
     }
 
-    initVisionDefaults();
     setupPalette();
     setupFoldSections();
     setupAlphaNumControls();
