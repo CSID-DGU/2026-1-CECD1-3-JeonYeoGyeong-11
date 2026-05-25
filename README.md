@@ -184,7 +184,9 @@ Guide: [docs/framework/extension-guide.md](docs/framework/extension-guide.md)
 
 | Document | Purpose |
 |---|---|
+| [CHANGELOG.md](CHANGELOG.md) | release notes |
 | [docs/README.md](docs/README.md) | docs index |
+| [docs/demos/graphfl-assembly-scratch.html](docs/demos/graphfl-assembly-scratch.html) | 발표용 조립식 인터랙티브 데모 |
 | [docs/structure.md](docs/structure.md) | edit routing and responsibility boundaries |
 | [docs/framework/claim.md](docs/framework/claim.md) | claim boundary |
 | [docs/framework/graph_fl_experimental_design.md](docs/framework/graph_fl_experimental_design.md) | current experimental design |

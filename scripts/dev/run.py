@@ -643,6 +643,74 @@ GATE5D_PREP_REQUIRED_TEXT = {
     ),
 }
 
+GATE6_REQUIRED_TEXT = {
+    "pyproject.toml": (
+        'version = "1.0.0"',
+        'include = ["graphfl_lab*"]',
+        "graphfl_lab.flower_app:server_app",
+        "graphfl_lab.flower_app:client_app",
+    ),
+    "CHANGELOG.md": (
+        "## 1.0.0 - 2026-05-22",
+        "`graphfl_lab`",
+        "`spectral_fl` package shim",
+        "`run_general_*`",
+    ),
+    "MIGRATION.md": (
+        "released as `1.0.0`",
+        "Gate 6  hard cleanup and 1.0.0",
+        "python scripts/dev/run.py gate-check 6",
+    ),
+    "docs/maintenance/cleanup-status.md": (
+        "**Status: closed**",
+        "Gate 6 hard cleanup complete",
+        "1.0.0",
+    ),
+    "docs/maintenance/gate-6-prep.md": (
+        "python scripts/dev/run.py gate-check 6",
+        "Remove `spectral_fl` package shim",
+        "Remove `run_general_*` root wrappers",
+    ),
+    "docs/removed-materials.md": (
+        "`1.0.0`",
+        "`spectral_fl/` package shim",
+        "`run_general_*` root entrypoints",
+        "`graphfl_lab/general_*`, `graphfl_lab/cli/general_*`",
+    ),
+    "docs/maintenance/last_nightly_run.json": (
+        '"workflow": "nightly"',
+        '"conclusion": "success"',
+        '"ref": "main"',
+    ),
+    "scripts/dev/migrate_serialized_objects.py": (
+        "legacy_marker_hits",
+        "gate6_action",
+    ),
+    "tests/core/test_package_alias.py": (
+        "test_spectral_fl_shim_removed",
+        "ModuleNotFoundError",
+    ),
+}
+
+GATE6_REMOVED_PATHS = (
+    "spectral_fl/",
+    "run_general_experiment.py",
+    "run_general_suite.py",
+    "run_general_stress_grid.py",
+    "run_general_client_count_sweep.py",
+    "graphfl_lab/general_client.py",
+    "graphfl_lab/general_data.py",
+    "graphfl_lab/general_models.py",
+    "graphfl_lab/general_suite_variants.py",
+    "graphfl_lab/cli/general_",
+    "graphfl_lab/experiments/general/",
+    "graphfl_lab/experiments/suites/general/",
+    "graphfl_lab/strategies/spectral/",
+    "scripts/analysis/deep_dive_general.py",
+    "scripts/analysis/merge_general_fedavg_ours.py",
+    "scripts/reports/plot_general_convergence.py",
+)
+
 
 def repo_root(start: Path | None = None) -> Path:
     path = (start or Path.cwd()).resolve()
@@ -775,6 +843,30 @@ def _unexpected_legacy_package_files(root: Path) -> list[str]:
     return failures
 
 
+def _removed_gate6_files(root: Path) -> list[str]:
+    failures: list[str] = []
+    for rel in _tracked_files(root):
+        for removed in GATE6_REMOVED_PATHS:
+            if rel == removed or rel.startswith(removed):
+                failures.append(f"{rel}: removed Gate 6 surface is still tracked")
+                break
+    return failures
+
+
+def _gate6_public_surface_checks(root: Path) -> list[str]:
+    failures: list[str] = []
+    pyproject = _read_text(root / "pyproject.toml")
+    if "spectral-filter-strength =" in pyproject:
+        failures.append("pyproject.toml: old spectral-filter-strength app default remains")
+    app_config = _read_text(root / "graphfl_lab/app/config.py")
+    if '"spectral-filter-strength": 1.0' in app_config:
+        failures.append("graphfl_lab/app/config.py: old spectral-filter-strength default remains")
+    if not _tag_exists(root, "pre-graphfl-rename"):
+        failures.append("missing tag: pre-graphfl-rename")
+    failures.extend(_gate4c_nightly_evidence_checks(root))
+    return failures
+
+
 def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
     root = repo_root(root)
     failed_checks: list[str] = []
@@ -819,6 +911,12 @@ def run_gate_check(gate: str, root: Path | None = None) -> dict[str, object]:
         failed_checks.extend(_missing_text(root, GATE5C_PREP_REQUIRED_TEXT))
     elif gate == "5d-prep":
         failed_checks.extend(_missing_text(root, GATE5D_PREP_REQUIRED_TEXT))
+    elif gate == "6":
+        failed_checks.extend(_missing_text(root, GATE6_REQUIRED_TEXT))
+        failed_checks.extend(_forbidden_identity_imports(root))
+        failed_checks.extend(_unexpected_legacy_package_files(root))
+        failed_checks.extend(_removed_gate6_files(root))
+        failed_checks.extend(_gate6_public_surface_checks(root))
     else:
         failed_checks.append(
             f"Gate {gate} check is not implemented yet; add it during that gate."

@@ -2,8 +2,8 @@
 
 This guide tracks the migration from the historical `spectral_fl` identity to
 `graphfl_lab`. **Public rename and Gate 6 cleanup are complete** on `main`
-(2026-05-22). A small set of read-only JSON/config aliases remains for historical
-artifacts; see `docs/removed-materials.md` and
+(2026-05-22) and are released as `1.0.0`. A small set of read-only
+JSON/config aliases remains for historical artifacts; see `docs/removed-materials.md` and
 `docs/framework/naming-and-compatibility.md`. The execution log is closed in
 `docs/maintenance/cleanup-status.md`.
 
@@ -112,6 +112,7 @@ Migration C5 (public docs/commands) status: complete on `main`. Gate 4c nightly
 evidence is recorded in `docs/maintenance/last_nightly_run.json`. Gate 6
 compatibility removal is documented in `docs/maintenance/gate-6-prep.md`; seven
 consecutive nightly runs are optional strict mode, not a hard prerequisite.
+The machine-readable closure check is `python scripts/dev/run.py gate-check 6`.
 
 ## Rollback
 

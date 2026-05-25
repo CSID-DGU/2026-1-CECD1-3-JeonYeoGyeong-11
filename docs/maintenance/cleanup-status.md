@@ -11,12 +11,12 @@ truth for code; long-term removal notes and tombstones live in
 
 | Field | Value |
 |---|---|
-| current_gate | Gate 6 complete (batches 2–7 on `main`; batch 8 doc closure) |
-| status | **closed** — PR #2 merged; nightly 26288800411; Gate 6 batches 2–7 landed; CI green on batch 7 (`26290266011`) |
+| current_gate | Gate 6 complete (batches 2–7 on `main`; batch 8 doc closure; `1.0.0`) |
+| status | **closed** — PR #2 merged; nightly 26288800411; Gate 6 batches 2–7 landed; CI green on batch 7 (`26290266011`); release metadata aligned to `1.0.0` |
 | owner | codex |
 | started_at | 2026-05-21 |
 | closed_at | 2026-05-22 |
-| last_verified | `docs/maintenance/last_gate_check.json` (gate-check 0 and 5d-prep after Phase 2 doc sync) |
+| last_verified | `docs/maintenance/last_gate_check.json` (`gate-check 6` after release metadata sync) |
 | next_step | none — Gate 6 + post-Gate-6 + Phase 2 complete; framework docs synced 2026-05-22 (see `removed-materials.md`) |
 
 Only one Gate branch should be active at a time. In short: use a single Gate branch.
@@ -289,6 +289,7 @@ present: .github/workflows/nightly.yml on main (schedule + workflow_dispatch)
 present: docs/maintenance/last_nightly_run.json (run 26288800411, success)
 present: scripts/dev/golden.py + tests/dev/test_golden.py + tests/golden/README.md
 local pass: python scripts/dev/run.py gate-check 4c
+local pass: python scripts/dev/run.py gate-check 6
 local pass: python scripts/dev/run.py gate-check 5d-prep
 Gate 6: batches 2–7 complete; batch 8 doc closure complete — see docs/removed-materials.md
 ```

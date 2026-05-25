@@ -67,7 +67,13 @@ docs/
 | Vision smoke | `python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json` |
 | Result bundle | `python scripts/checks/result_evidence_bundle.py <result.json> --kind single-run` |
 | Cora ablation smoke | `python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
-| Gate check | `python scripts/dev/run.py gate-check 5d-prep` |
+| Gate check | `python scripts/dev/run.py gate-check 6` |
+
+## Presentation Demo
+
+| Artifact | Purpose |
+|---|---|
+| [demos/graphfl-assembly-scratch.html](demos/graphfl-assembly-scratch.html) | 발표용 Scratch-style lifecycle 조립 데모 (브라우저에서 열기) |
 
 ## Document Policy
 

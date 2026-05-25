@@ -43,6 +43,7 @@ replace with the recommended check above unless you explicitly want a week-long 
 ## Verify After Each Batch
 
 ```text
+python scripts/dev/run.py gate-check 6
 python scripts/dev/run.py gate-check 5d-prep
 python -m unittest discover -s tests
 python scripts/checks/diagnostic_suite_preflight.py

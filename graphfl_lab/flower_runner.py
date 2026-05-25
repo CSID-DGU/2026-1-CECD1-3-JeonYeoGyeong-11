@@ -55,12 +55,14 @@ def args_to_run_config(args: Namespace, track: str) -> Dict[str, Any]:
     for key, value in public_args_dict(resolved_args).items():
         if key in {"engine", "config"}:
             continue
-        run_key = key.replace("_", "-")
+        run_key = (
+            "graph-filter-strength"
+            if key == "spectral_filter_strength"
+            else key.replace("_", "-")
+        )
         if key not in original_public_keys and run_key not in DEFAULT_RUN_CONFIG:
             continue
         cfg[run_key] = value
-    if "spectral-filter-strength" in cfg:
-        cfg["graph-filter-strength"] = cfg["spectral-filter-strength"]
 
     cfg["data-root"] = _absolute_path(str(cfg["data-root"]))
     cfg["out-dir"] = _absolute_path(str(cfg["out-dir"]))

@@ -63,7 +63,6 @@ DEFAULT_RUN_CONFIG: Dict[str, Any] = {
     "fixed-tau": 1.0,
     "tau-source": "h_spec",
     "graph-filter-strength": 1.0,
-    "spectral-filter-strength": 1.0,
     "client-update-ema-alpha": 0.8,
     "diagnostic-only": False,
     "e-std-threshold": 0.0,
@@ -124,8 +123,6 @@ def merged_run_config(context: Context) -> Dict[str, Any]:
     merged.update(user_cfg)
     if "graph-filter-strength" not in user_cfg and "spectral-filter-strength" in user_cfg:
         merged["graph-filter-strength"] = user_cfg["spectral-filter-strength"]
-    if "graph-filter-strength" in user_cfg and "spectral-filter-strength" not in user_cfg:
-        merged["spectral-filter-strength"] = user_cfg["graph-filter-strength"]
     return merged
 
 
