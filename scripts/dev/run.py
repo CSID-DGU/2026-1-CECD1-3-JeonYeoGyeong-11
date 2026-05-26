@@ -15,6 +15,12 @@ REPORT_PATH = Path("docs/maintenance/last_gate_check.json")
 NIGHTLY_REPORT_PATH = Path("docs/maintenance/last_nightly_run.json")
 
 GATE0_REQUIRED_FILES = (
+    "docs/framework/overview.md",
+    "docs/framework/metrics.md",
+    "docs/framework/components.md",
+    "docs/framework/evidence.md",
+    "docs/maintenance/migration-and-compatibility.md",
+    "docs/archive/README.md",
     "docs/maintenance/cleanup-status.md",
     "docs/maintenance/rename-inventory.md",
     "docs/maintenance/line-budget-allowlist.txt",
@@ -25,52 +31,78 @@ GATE0_REQUIRED_FILES = (
 )
 
 GATE0_REQUIRED_TEXT = {
+    "docs/framework/overview.md": (
+        "핵심 Claim",
+        "Experiment Design",
+        "Graph-FL gain",
+    ),
+    "docs/framework/metrics.md": (
+        "Core Diagnostic",
+        "`DI`",
+        "`N_eff`",
+        "`LOO`",
+    ),
+    "docs/framework/components.md": (
+        "Interface Map",
+        "`graph_source`",
+        "`graph_builder`",
+        "`aggregation_target`",
+    ),
+    "docs/framework/evidence.md": (
+        "Framework-Quality Claim",
+        "graph_parity_summary.csv",
+        "design_space_matrix.csv",
+    ),
+    "docs/maintenance/migration-and-compatibility.md": (
+        "Canonical Surface",
+        "Compatibility Alias",
+        "Gate Check Contract",
+        "Normalized Volatile Field",
+    ),
     "docs/maintenance/cleanup-status.md": (
-        "Existing Unstaged Docs",
-        "Existing Plan Mapping",
-        "scripts/dev/run.py gate-check <gate>",
-        "Gate 4c",
-        "workflow_dispatch",
-        "real move verification",
-        "single Gate branch",
-        "docs/framework/claim.md",
-        "docs/framework/graph_fl_experimental_design.md",
-        "docs/framework/graph_fl_experimental_design_appendix.md",
-        "docs/research/prior-work-review.md",
+        "status | closed",
+        "Gate 6 hard cleanup complete",
+        "migration-and-compatibility.md",
     ),
     "docs/maintenance/rename-inventory.md": (
-        "tests/structure/test_boundaries.py",
-        "pickle/checkpoint",
-        "spectral_fl",
         "graphfl_lab",
+        "run_vision_*",
+        "spectral_fl",
+        "migration-and-compatibility.md",
     ),
     "docs/maintenance/line-budget-allowlist.txt": (
         "git diff --numstat",
-        "added - removed must be <= 0",
+        "added - removed <= 0",
+        "Protected Paths",
     ),
     "MIGRATION.md": (
-        "For Users",
-        "For Maintainers",
-        "pre-graphfl-rename",
+        "Canonical Surface",
+        "Compatibility Alias",
+        "Removed Surface",
+        "migration-and-compatibility.md",
     ),
     "docs/removed-materials.md": (
         "pre-graphfl-rename",
-        "Tombstones",
+        "1.0.0",
+        "e647da931bb3a78cc228ac2ad31103537b5ed640",
     ),
     "tests/golden/README.md": (
-        "Volatile Fields",
+        "Normalized Volatile Field",
         "timestamp",
         "run_id",
-        "Schema comparison is exact",
+        "Schema 비교는 exact match",
     ),
 }
 
 GATE1_REQUIRED_TEXT = {
     "docs/maintenance/rename-inventory.md": (
-        "Gate 1 Pattern Summary",
-        "Serialized Asset Inventory",
+        "Rename Inventory",
+        "migration-and-compatibility.md",
+    ),
+    "docs/maintenance/migration-and-compatibility.md": (
+        "Serialized Asset Policy",
         "data/Cora/processed/data.pt",
-        "tests/structure/test_boundaries.py",
+        "pickle/checkpoint",
         "spectral_fl",
         "result_general_",
         "graph_filter_strength",
@@ -133,8 +165,8 @@ GATE3_REQUIRED_TEXT = {
         "graphfl_lab.flower_app:client_app",
     ),
     "docs/removed-materials.md": (
-        "spectral_fl/__init__.py",
-        "Gate 6 batch 6",
+        "spectral_fl",
+        "1.0.0",
     ),
     "tests/core/test_package_alias.py": (
         "test_graphfl_lab_imports_flower_app",
@@ -213,9 +245,9 @@ GATE4C_REQUIRED_TEXT = {
         "test_compare_fails_on_normalized_value_change",
     ),
     "tests/golden/README.md": (
-        "Gate 4c captures smoke outputs",
-        "Volatile Fields",
-        "Schema comparison is exact",
+        "Golden Baseline Policy",
+        "Normalized Volatile Field",
+        "Schema 비교는 exact match",
     ),
 }
 
@@ -251,9 +283,9 @@ GATE5A_PREP_REQUIRED_TEXT = {
         "test_write_json_uses_indented_payload",
         "test_write_csv_rows_preserves_field_order",
     ),
-    "docs/maintenance/cleanup-status.md": (
+    "docs/maintenance/migration-and-compatibility.md": (
         "Gate 5a-prep",
-        "do not claim full Gate 5a completion",
+        "artifact writer extraction contract",
     ),
 }
 
@@ -308,9 +340,9 @@ GATE5B_PREP_REQUIRED_TEXT = {
         "test_build_suite_meta_documents_full_diagnostic_set",
         "test_record_preloaded_and_timing_metadata",
     ),
-    "docs/maintenance/cleanup-status.md": (
+    "docs/maintenance/migration-and-compatibility.md": (
         "Gate 5b-prep",
-        "do not claim full Gate 5b completion",
+        "suite execution and feature extraction contract",
     ),
 }
 
@@ -408,9 +440,9 @@ GATE5C_PREP_REQUIRED_TEXT = {
         "test_parse_target_variant_handles_graph_filtered_family",
         "test_parse_target_variant_rejects_legacy_spectral_suite_tokens",
     ),
-    "docs/maintenance/cleanup-status.md": (
+    "docs/maintenance/migration-and-compatibility.md": (
         "Gate 5c-prep",
-        "leave `parse_variant` branch order unchanged",
+        "variant parser modularization contract",
     ),
 }
 
@@ -621,25 +653,9 @@ GATE5D_PREP_REQUIRED_TEXT = {
         "test_compute_local_updates_subtracts_global_parameters",
         "test_compute_update_space_arrays_preserves_flat_delta_matrix_and_norms",
     ),
-    "docs/maintenance/cleanup-status.md": (
+    "docs/maintenance/migration-and-compatibility.md": (
         "Gate 5d-prep",
-        "keep CSV/JSONL append calls in `GraphFLDiagnosticStrategy`",
-        "keep CSV append calls in `GraphFLDiagnosticStrategy`",
-        "keep the explicit field list tested",
-        "keep state assignment for H_spec EMA in `GraphFLDiagnosticStrategy`",
-        "keep tau-signal EMA state assignment in `GraphFLDiagnosticStrategy`",
-        "preserve flattened delta matrix used by diagnostics and counterfactuals",
-        "preserve graph seed formula and sample-weight normalization",
-        "keep `build_round_log` and `build_fit_metrics` as the output contract",
-        "preserve existing alpha_mode composition",
-        "preserve stable CID ordering from baselines ordering",
-        "preserve `-1` fallback for missing or mismatched cluster lists",
-        "preserve existing `ema_graph` label when EMA is enabled outside warmup",
-        "preserve default round/run_id/variant/seed insertion",
-        "keep aggregate_fit call sites unchanged apart from function names",
-        "keep `_diagnostic_post_flat_updates` as a wrapper around current strategy state",
-        "keep state assignment in `GraphFLDiagnosticStrategy`",
-        "keep projection matrix storage on `GraphFLDiagnosticStrategy`",
+        "Graph-FL strategy module contract",
     ),
 }
 
@@ -657,25 +673,26 @@ GATE6_REQUIRED_TEXT = {
         "`run_general_*`",
     ),
     "MIGRATION.md": (
-        "released as `1.0.0`",
-        "Gate 6  hard cleanup and 1.0.0",
-        "python scripts/dev/run.py gate-check 6",
+        "release `1.0.0`",
+        "Canonical Surface",
+        "migration-and-compatibility.md",
     ),
     "docs/maintenance/cleanup-status.md": (
-        "**Status: closed**",
+        "status | closed",
         "Gate 6 hard cleanup complete",
         "1.0.0",
     ),
     "docs/maintenance/gate-6-prep.md": (
         "python scripts/dev/run.py gate-check 6",
-        "Remove `spectral_fl` package shim",
-        "Remove `run_general_*` root wrappers",
+        "`spectral_fl` package shim",
+        "`run_general_*` wrappers",
     ),
     "docs/removed-materials.md": (
-        "`1.0.0`",
-        "`spectral_fl/` package shim",
-        "`run_general_*` root entrypoints",
-        "`graphfl_lab/general_*`, `graphfl_lab/cli/general_*`",
+        "pre-graphfl-rename",
+        "1.0.0",
+        "spectral_fl",
+        "run_general_*",
+        "graph_filtered_*",
     ),
     "docs/maintenance/last_nightly_run.json": (
         '"workflow": "nightly"',

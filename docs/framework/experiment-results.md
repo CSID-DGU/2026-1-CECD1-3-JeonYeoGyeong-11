@@ -1,23 +1,14 @@
 # Experiment Results
 
-Current claim docs:
+이 문서는 `docs/framework/overview.md`와 `docs/framework/evidence.md`로 통합되었다.
 
-```text
-claim.md
-graph_fl_experimental_design.md
-diagnostics.md
-```
+핵심 내용:
 
-Archived early low-pass/spectral logs:
+- result table field와 claim 연결 기준을 유지한다.
+- framework-quality 수치 근거는 evidence 문서에서 관리한다.
+- 이전 result history는 archive에서 관리한다.
 
-```text
-docs/archive/previous-direction/early-experiment-results.md
-```
+Canonical:
 
-Rules:
-
-```text
-Do not add single accuracy leaderboards here.
-Do not use archived low-pass results as current claim evidence.
-Use graph_fl_experimental_design.md primary table format for new results.
-```
+- `docs/framework/overview.md`
+- `docs/framework/evidence.md`

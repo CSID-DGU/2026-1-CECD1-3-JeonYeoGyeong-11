@@ -1,148 +1,50 @@
 # Framework Design Notes
 
-Active design note for the Graph-FL Design Lab implementation shape.
-
 ## Core Direction
 
-Graph-FL methods are component compositions:
+Graph-FL method를 component composition으로 표현한다.
 
 ```text
 client state extraction
-relation estimation
-topology construction
-aggregation target
-delivery/personalization semantics
-local objective hooks
-state carried across rounds
-diagnostics and controls
+-> relation estimation
+-> topology construction
+-> aggregation target
+-> delivery / personalization
+-> local objective hook
+-> state store
+-> diagnostics and controls
 ```
 
-## Canonical Paths
+## Canonical Path
 
-| Responsibility | Canonical path |
+| Responsibility | Path |
 |---|---|
-| Method metadata | `graphfl_lab/designs/` |
-| Graph source/signal extraction | `graphfl_lab/graph/sources/`, `graphfl_lab/graph/signals/` |
-| Builders and registry | `graphfl_lab/graph/builders.py`, `graphfl_lab/graph/registry.py` |
-| Controls/clustering | `graphfl_lab/graph/controls.py`, `graphfl_lab/graph/clustering.py` |
+| method metadata | `graphfl_lab/designs/` |
+| graph source/signal | `graphfl_lab/graph/sources/`, `graphfl_lab/graph/signals/` |
+| graph builder/registry | `graphfl_lab/graph/builders.py`, `graphfl_lab/graph/registry.py` |
+| controls/clustering | `graphfl_lab/graph/controls.py`, `graphfl_lab/graph/clustering.py` |
 | Graph-FL runtime | `graphfl_lab/strategies/graphfl/` |
-| Baselines | `graphfl_lab/strategies/baselines/` |
-| Lifecycle/counterfactuals | `graphfl_lab/lifecycle/` |
-| Metrics/writers | `graphfl_lab/diagnostics/` |
-| Vision orchestration | `graphfl_lab/experiments/vision/` |
-| Vision suite/reporting | `graphfl_lab/experiments/suites/vision/` |
-| Configs | `configs/vision/` |
+| baselines | `graphfl_lab/strategies/baselines/` |
+| lifecycle | `graphfl_lab/lifecycle/` |
+| diagnostics | `graphfl_lab/diagnostics/` |
+| vision orchestration | `graphfl_lab/experiments/vision/` |
+| vision suite/reporting | `graphfl_lab/experiments/suites/vision/` |
+| configs | `configs/vision/`, `configs/cora/` |
 
-Read-only compatibility (post-Gate-6; see `docs/removed-materials.md`):
+## Compatibility
 
-```text
-configs/general/...              path alias → configs/vision/...
-spectral_filter_strength       JSON key alias → graph_filter_strength
-spectral_filtered_*            aggregation input alias → graph_filtered_*
-ours_spectral_filtered_*       reporting result-tag pairing only
-```
-
-Removed from active code (use canonical replacements in naming-and-compatibility.md):
-
-```text
-run_general_*, result_general_*, general_suite_* readers
-graphfl_lab/strategies/spectral/ facades, spectral_fl package shim
-```
-
-## Runtime Flow
-
-```mermaid
-flowchart TD
-    CFG[config or CLI args] --> DESIGN[GraphFLDesign or explicit knobs]
-    DESIGN --> SRC[graph_source]
-    SRC --> BUILDER[graph_mode / graph builder]
-    BUILDER --> CORR[correction family]
-    CORR --> TARGET[aggregation_target]
-    TARGET --> STRAT[GraphFLDiagnosticStrategy]
-    STRAT --> DIAG[round/client diagnostics]
-    DIAG --> REPORT[suite rows, summary, plots]
-```
-
-Ownership:
-
-| Logic | Location |
+| Legacy | Current |
 |---|---|
-| relation/topology | `graph/` |
-| aggregation object selection | `strategies/graphfl/targets.py` |
-| artifact fields | `diagnostics/` and suite reporting |
-| orchestration | `experiments/vision/` |
+| `configs/general/...` | `configs/vision/...` |
+| `spectral_filter_strength` | `graph_filter_strength` |
+| `spectral_filtered_*` | `graph_filtered_*` input alias |
+| `ours_spectral_filtered_*` | historical reporting tag |
 
-## Naming Policy
+## Design Rule
 
-| Use | Name |
+| Rule | 기준 |
 |---|---|
-| strategy package | `graphfl_lab.strategies.graphfl` |
-| runtime class | `GraphFLDiagnosticStrategy` |
-| aggregation targets | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight` |
-| filter key | `graph_filter_strength` |
-| suite family | `ours_graph_filtered_*` |
-| filter-only suffix | `_graph_filter_only` |
-
-Removed public debt (Gate 6 + Phase 2 on `main`):
-
-```text
-spectral_fl package shim
-graphfl_lab.strategies.spectral facades
-run_general_* / general_* artifact readers
-```
-
-Remaining read-only compatibility (see docs/removed-materials.md):
-
-```text
-spectral_filtered_* input aliases
-spectral_filter_strength JSON key alias
-ours_spectral_filtered_* reporting result tags
-configs/general/ path alias
-```
-
-## Experiment Philosophy
-
-Mechanism questions:
-
-```text
-real graph vs matched random/shuffled/identity/uniform
-clustering-only sufficiency
-graph-free norm/cap/reweight sufficiency
-measurable update/weight perturbation
-effective clients, entropy, non-dominance
-```
-
-## Engineering Rules
-
-```text
-CLI modules parser-only
-experiment modules orchestration-only
-graph construction independent of Flower strategies
-graphfl strategy package remains the single runtime surface
-new component tests cover shape, determinism, metadata, compatibility aliases
-```
-
-Checks:
-
-```text
-python -m unittest discover -s tests
-python scripts/checks/diagnostic_suite_preflight.py
-```
-
-## Known Debt
-
-Optional breaking removals only (policy decision). Active code already prefers
-canonical names.
-
-| Debt | Reason |
-|---|---|
-| `spectral_filtered_*` / `spectral_filter_strength` input aliases | old JSON configs |
-| `ours_spectral_filtered_*` reporting pairs | old result tags in CSVs |
-| `configs/general/...` path alias | old user command paths |
-
-Tracking:
-
-```text
-docs/framework/cleanup-plan.md
-docs/framework/naming-and-compatibility.md
-```
+| source reuse | client representation이 같으면 기존 `graph_source` 재사용 |
+| builder reuse | relation/topology가 같으면 기존 `graph_mode` 재사용 |
+| target reuse | graph application 위치가 같으면 기존 `aggregation_target` 재사용 |
+| diagnostics | 새 mechanism은 trace와 artifact field를 함께 추가 |

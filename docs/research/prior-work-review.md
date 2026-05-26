@@ -1,40 +1,34 @@
 # Prior Work Review
 
-Lens: what mechanism can the framework diagnose, not what paper is exactly reproduced.
+## 연구 위치
+
+이 repository의 연구 위치는 Graph-FL gain attribution framework다.
+핵심 novelty는 graph-specific explanation을 control과 diagnostic metric으로 검증하는 실행 protocol이다.
 
 ## Topic Judgment
 
 | Question | Judgment |
 |---|---|
-| Topic | diagnostic framework for graph-FL gain attribution |
-| Novelty | graph gain attribution and control design over leaderboard comparison |
-| Research value | converts graph-FL claims into testable mechanisms |
-| Implementation risk | requires explicit proxy/support level |
-| Expansion | privacy, robustness, fairness, scalability diagnostics |
+| topic | Graph-FL gain attribution |
+| novelty | matched control과 graph-free control을 통한 mechanism 분해 |
+| research value | Graph-FL claim을 testable mechanism으로 변환 |
+| implementation risk | exact/proxy/interface level 구분 필요 |
+| expansion | privacy, robustness, fairness, scalability diagnostics |
 
-Novelty wording:
+## Relevant Family
 
-```text
-Semantic relation vs generic smoothing is not claimed as a new phenomenon by itself.
-The project claim is the executable attribution protocol: matched controls,
-graph-free controls, and diagnostics that test whether a graph-specific
-explanation survives.
-```
-
-## Relevant Families
-
-| Family | Contribution | Framework role |
+| Family | Contribution | Framework Role |
 |---|---|---|
 | FedAMP-like | model-distance relation, attentive personalized aggregation | `weight + rbf + graph_filtered_weight` proxy |
 | SFL-like | relation graph + server-side graph model | `weight + learned_smooth + graph_filtered_weight` proxy |
-| pFedGraph-like | QP relation estimator with sample-size prior | `update + pfedgraph_qp + graph_filtered_update` proxy |
+| pFedGraph-like | QP relation estimator, sample-size prior | `update + pfedgraph_qp + graph_filtered_update` proxy |
 | FedAGA-like | accumulated-gradient relation, adaptive graph aggregation | `ema_update + magnitude_knn + graph_filtered_ema_update` proxy |
-| FED-PUB/GPFL-like | functional embedding, client-specific delivery | `interface-target`; needs source and personalized target |
-| Hypergraph/attention/hypernetwork | rich topology and personalized operators | mostly `interface-target` |
+| FED-PUB/GPFL-like | functional embedding, client-specific delivery | interface-target |
+| Hypergraph/attention/hypernetwork | rich topology and personalized operators | interface-target |
 
-## Gap In Prior Work
+## Framework Gap
 
-Questions this repo makes runnable:
+이 repository가 실행 가능하게 만드는 질문:
 
 ```text
 meaningful relation edges vs generic smoothing
@@ -44,54 +38,11 @@ dominance/norm/contribution correction
 source/topology/target attribution
 ```
 
-## Claim Boundary
+## Evidence Vocabulary
 
-Exact reproduction requires matching:
-
-```text
-client state
-relation estimator
-topology operator
-aggregation/delivery target
-local objective hook
-personalization semantics
-state carried across rounds
-diagnostics and evaluation protocol
-```
-
-Partial match:
-
-```text
-proxy-supported
-```
-
-## Required Controls
-
-| Control | Purpose |
+| Term | 의미 |
 |---|---|
-| matched random graph | edge count/weight distribution |
-| shuffled graph | client identity assignment |
-| identity graph | no cross-client mixing |
-| uniform graph | relation-free averaging |
-| clustering-only graph | coarse groups |
-| graph-free norm/cap/reweight | dominance or magnitude correction |
-
-## Implementation Implication
-
-Start from:
-
-```text
-docs/framework/prior-work-mapping.md
-docs/framework/extension-guide.md
-```
-
-Default workflow:
-
-```text
-1. Select or add GraphFLDesign.
-2. Add graph source only for new client state.
-3. Add graph builder only for new relation/topology.
-4. Prefer graph_filtered_* targets.
-5. Use graph_filtered_* in new work; spectral_filtered_* remains a read-only input alias only (see naming-and-compatibility.md).
-6. Add controls and diagnostics before interpreting performance.
-```
+| `exact-reference` | official implementation/version과 직접 비교 |
+| `paper-kernel` | paper 수식/설명 기반 independent kernel |
+| `proxy-reference` | paper mechanism에서 유도한 proxy |
+| `interface-target` | framework slot은 정의, runnable path는 확장 대상 |

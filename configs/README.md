@@ -1,30 +1,35 @@
-# Configs
+# Config
 
-Canonical config tree:
+## Canonical Tree
 
 ```text
 configs/vision/
+configs/cora/
 ```
 
-Compatibility path:
+## Vision Config Group
 
-```text
-configs/general/... -> configs/vision/... via graphfl_lab.config_io.resolve_config_path
-```
+| Folder | 용도 |
+|---|---|
+| `configs/vision/diagnostic/smoke/` | 빠른 diagnostic smoke |
+| `configs/vision/diagnostic/core/` | 핵심 diagnostic suite |
+| `configs/vision/diagnostic/extend/` | 확장 diagnostic 설정 |
+| `configs/vision/probes/` | graph/source/target probe |
+| `configs/vision/stress/` | Non-IID stress 설정 |
+| `configs/vision/sweeps/` | sweep 설정 |
 
-Use the narrowest current track/question folder:
+## Cora Config Group
 
-```text
-configs/vision/diagnostic/smoke/
-configs/vision/diagnostic/core/
-configs/vision/diagnostic/extend/
-configs/vision/probes/
-configs/vision/stress/
-configs/vision/sweeps/
-configs/cora/ablations/
-```
+| Folder | 용도 |
+|---|---|
+| `configs/cora/ablations/` | Cora graph ablation |
 
-Suite and single-run outputs under `experiments_current/` use `vision_suite_*`
-and `result_vision_*` filenames. Historical `general_suite_*` and
-`result_general_*` artifact names are tombstoned after Gate 6. See
-`docs/removed-materials.md`.
+## Compatibility
+
+| Legacy | Current |
+|---|---|
+| `configs/general/...` | `configs/vision/...` path alias |
+| `general_suite_*` | `vision_suite_*` |
+| `result_general_*` | `result_vision_*` |
+
+세부 compatibility 정책은 `docs/removed-materials.md`에 기록한다.

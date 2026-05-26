@@ -516,7 +516,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
                 n_examples_arr=n_examples_arr,
                 client_cluster_ids=client_cluster_ids,
                 flat_updates=update_space.flat_delta_matrix,
-                weights_pre=pre_weights,
+                pre_weights=pre_weights,
                 actual_adjacency=w_ema,
                 aggregation_target=self.aggregation_target,
                 graph_seed=int(self.graph_seed),

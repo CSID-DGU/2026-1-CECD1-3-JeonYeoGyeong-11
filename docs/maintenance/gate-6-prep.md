@@ -1,46 +1,33 @@
-# Gate 6 Prep — Hard Cleanup Checklist
+# Gate 6 Prep
 
-Gate 6 removes compatibility surfaces listed in `docs/framework/naming-and-compatibility.md`.
-Do not start removal until the entry criteria in `docs/maintenance/cleanup-status.md`
-are satisfied.
+## 목적
 
-## Entry Criteria (pragmatic)
+Gate 6 hard cleanup의 entry criteria, removal order, verification command를 기록한다.
 
-Required (already met on `main` as of 2026-05-22):
+## Entry Criteria
 
-```text
-Gate 4c: one nightly green on main (see docs/maintenance/last_nightly_run.json)
-Gate 3–5: graphfl_lab move, modularization, C5 public-surface alignment
-Remote CI green on main after merge
-Tag pre-graphfl-rename on origin
-```
+| Criteria | Status |
+|---|---|
+| `graphfl_lab` package move | met |
+| modularization | met |
+| public surface alignment | met |
+| CI green on main | met |
+| `pre-graphfl-rename` tag | met |
 
-Recommended before deleting shims (pick one, not all seven calendar days):
+## Removal Order
 
-```text
-Re-run nightly or CI after the last Gate 6-prep doc/code change and confirm green
-OR wait for 2–3 scheduled nightly successes on main if the repo is idle
-```
+| Step | Surface | Status |
+|---:|---|---|
+| 1 | serialized asset check | done |
+| 2 | duplicate artifact writers | done |
+| 3 | `run_general_*` wrappers | done |
+| 4 | `experiments/general/` facade | done |
+| 5 | `strategies/spectral/` facade | done |
+| 6 | `spectral_fl` package shim | done |
+| 7 | legacy CLI choices and suite tokens | done |
+| 8 | cleanup status closure | done |
 
-Not required for this project pace:
-
-```text
-Seven consecutive nightly greens — conservative default for long-running teams;
-replace with the recommended check above unless you explicitly want a week-long watch period
-```
-
-## Removal Order (when entry criteria are met)
-
-1. [x] Confirm serialized assets: `python scripts/dev/migrate_serialized_objects.py` (tracked Cora cache `.pt` only; no `spectral_fl` pickle paths).
-2. [x] Remove compatibility **writers** of duplicate artifacts (`general_suite_*`, `result_general_*` mirrors); readers still accept legacy paths.
-3. [x] Remove `run_general_*` root wrappers and `plot_general_*` / `merge_general_*` / `deep_dive_general` script wrappers.
-4. [x] Remove `graphfl_lab/experiments/general/` and `graphfl_lab/experiments/suites/general/` import facades.
-5. [x] Remove `graphfl_lab/strategies/spectral/` wrappers (keep real spectral math names in operators).
-6. [x] Remove `spectral_fl` package shim last, after grep shows no remaining imports outside tests explicitly checking deprecation.
-7. [x] Remove legacy CLI choices (`spectral_filtered_*` inputs) and old suite token spellings only after suite/history policy is frozen.
-8. [x] Update `docs/maintenance/cleanup-status.md` to `closed` and link from `docs/removed-materials.md`.
-
-## Verify After Each Batch
+## 검증
 
 ```text
 python scripts/dev/run.py gate-check 6
@@ -49,8 +36,6 @@ python -m unittest discover -s tests
 python scripts/checks/diagnostic_suite_preflight.py
 ```
 
-Optional remote check:
+Canonical:
 
-```text
-gh workflow run nightly.yml --ref main
-```
+- `docs/maintenance/migration-and-compatibility.md`
