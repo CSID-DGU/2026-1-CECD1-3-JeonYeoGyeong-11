@@ -50,6 +50,12 @@ client representation
 -> shared diagnostics
 ```
 
+이 구조의 장점은 graph를 만드는 과정과 graph를 검증하는 과정을 같은 언어로
+다룬다는 데 있다. 어떤 client signal을 썼는지, relation score가 무엇인지, edge를
+어떻게 남겼는지, graph가 update와 weight 중 어디에 작용했는지가 분리된다. 새
+방법이 나와도 바뀐 부품을 같은 lifecycle에 연결하고, 동일한 controls와 metrics로
+비교할 수 있다.
+
 새로운 graph 후보는 이 흐름의 특정 지점에 들어간다. representation을 바꾸는
 방법, relation score를 바꾸는 방법, topology를 바꾸는 방법, aggregation target을
 바꾸는 방법이 같은 실행 구조 위에서 비교된다.
@@ -117,6 +123,12 @@ client update delta
 -> shared result schema and diagnostics
 ```
 
+현재 구현은 이 pipeline을 최소 실행 경로로 삼고, 그 위에 대체 source, topology,
+aggregation target, correction/control family를 얹는다. 발표용 assembly demo도
+같은 축을 사용한다. 화면의 블록은 `graph_source`, `graph_mode`,
+`aggregation_target`, `correction_family`, diagnostic addon으로 이어지고, 조립된
+구성은 config JSON과 실행 명령의 형태로 내려간다.
+
 조립식 확장은 이 pipeline의 특정 조각을 교체한다. classifier-head relation은
 source 교체, EMA-history relation은 source와 target 교체, RBF-style relation은
 relation score 또는 edge weight 교체, graph-free dominance control은 correction
@@ -130,6 +142,11 @@ family 교체로 표현된다.
 | out-of-scope | aggregation-level framework 밖의 별도 시스템 |
 
 ## 4. Modular Graph Design
+
+이 프레임워크에서 graph를 만든다는 것은 하나의 adjacency matrix 생성보다 넓다.
+client를 표현하는 신호, relation을 계산하는 규칙, edge를 남기는 방식, edge
+weight와 normalization, graph를 적용할 target, control family를 각각 선택할 수
+있다. 이 조립 단위가 선행연구의 차이를 배치하는 기준이 된다.
 
 | 조립 위치 | 만들 수 있는 것 | 의미 |
 |---|---|---|

@@ -3,12 +3,19 @@
 Use `framework/` for current work. Use `research/` for background notes. Use
 `archive/` only for prior direction or migration history.
 
+현재 문서는 세 갈래로 구성된다. `framework/`는 주장의 형태와 실험 설계를
+담고, `structure.md`는 실제 파일과 실행 경로를 찾는 지도 역할을 한다. 발표나
+공유가 필요할 때는 `capstone-prior-work-positioning.md`와
+`demos/graphfl-assembly-scratch.html`이 프로젝트의 의미와 조립식 구조를 가장
+빠르게 보여준다.
+
 | Document | Role |
 |---|---|
 | [README.md](README.md) (this file) | docs index and run-path checklist |
 | [structure.md](structure.md) | **detailed** repo map, scripts, tests, edit routing |
 | [removed-materials.md](removed-materials.md) | Gate 6 removals and read-only aliases |
 | [../README.md](../README.md) | install, quick start, **abbreviated** repo layout |
+| [capstone-prior-work-positioning.md](capstone-prior-work-positioning.md) | 선행연구 흐름에서 프로젝트가 자연스럽게 나오는 이유와 현재 구현 범위 |
 
 Post-Gate-6 rename/cleanup is **complete** on `main` (2026-05-22). Active policy:
 [naming-and-compatibility.md](framework/naming-and-compatibility.md).
@@ -46,6 +53,7 @@ docs/
 
 | Need | Document |
 |---|---|
+| project story / prior work position | [capstone-prior-work-positioning.md](capstone-prior-work-positioning.md) |
 | project direction | [framework/claim.md](framework/claim.md) |
 | experimental design | [framework/graph_fl_experimental_design.md](framework/graph_fl_experimental_design.md) |
 | metric definitions | [framework/graph_fl_experimental_design_appendix.md](framework/graph_fl_experimental_design_appendix.md) |
@@ -60,6 +68,9 @@ docs/
 
 ## Current Run Path
 
+All commands are repository-relative. Use the Python interpreter from the active
+environment; the docs avoid machine-specific paths.
+
 | Step | Command |
 |---|---|
 | Unit tests | `python -m unittest discover -s tests` |
@@ -69,11 +80,30 @@ docs/
 | Cora ablation smoke | `python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
 | Gate check | `python scripts/dev/run.py gate-check 6` |
 
+| Run Type | Role |
+|---|---|
+| single vision run | one graph design, one config, one result JSON |
+| diagnostic suite | multiple variants under one environment, used for real/control/graph-free comparison |
+| Cora ablation | graph-structured input path smoke and summary validation |
+| result evidence check | confirms schema fields needed for attribution are present |
+
+New configs should keep the chosen `track`, `dataset`, `graph_source`,
+`graph_mode`, `aggregation_target`, `correction_family`, controls, and
+diagnostics explicit. This makes the result readable later without relying on
+local notes or unstated defaults.
+
 ## Presentation Demo
 
 | Artifact | Purpose |
 |---|---|
-| [demos/graphfl-assembly-scratch.html](demos/graphfl-assembly-scratch.html) | 발표용 Scratch-style lifecycle 조립 데모 (브라우저에서 열기) |
+| [demos/graphfl-assembly-scratch.html](demos/graphfl-assembly-scratch.html) | graph_source, relation cue, graph_mode, aggregation target, control, diagnostic을 블록처럼 조립해 실제 config JSON 흐름으로 보여주는 발표용 데모 |
+
+이 데모는 repo 실행 축과 맞춘 시각적 조립 화면이다. palette의 주요 블록은 현재
+`graphfl_lab`의 실행 축을 따르며, custom dataset/config/graph component 이름을
+직접 넣어 새 graph 후보를 같은 구조에 얹는 흐름을 보여준다. 비교 열은 같은
+환경에서 real graph, controls, graph-free correction을 나란히 놓는 방식으로
+자라며, 발표에서는 “그래프가 효과가 있었는가”와 “그렇다면 어떤 구성요소 때문인가”를
+한 화면에서 설명할 수 있다.
 
 ## Document Policy
 
