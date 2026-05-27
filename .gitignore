@@ -59,3 +59,6 @@ Thumbs.db
 .vscode/
 .idea/
 .ipynb_checkpoints/
+
+# Local preserved docs and legacy scratch material
+/local_archive/

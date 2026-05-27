@@ -5,3 +5,4 @@
 *.toml text eol=lf
 *.txt text eol=lf
 *.yml text eol=lf
+*.html text eol=lf

@@ -1,17 +1,20 @@
 # Golden Baseline Policy
 
-## 목적
-
-`tests/golden/`은 smoke output의 normalized baseline을 보관한다.
-Refactor 이후 output schema와 주요 값이 유지되는지 비교하는 기준이다.
+`tests/golden/`은 normalized smoke output baseline을 보관한다. Baseline은 refactor 이후 output schema와 중요한 value가 유지되는지 확인하는 contract다.
 
 ## Update Policy
 
-Golden baseline 변경은 별도 PR에서 수행한다. PR에는 변경 이유와 영향 범위를 기록한다.
+| Change Type | Required Record |
+|---|---|
+| schema change | changed field, reason, affected fixture |
+| value expectation change | metric/result reason, affected fixture |
+| volatile-field change | added/removed field and comparison effect |
 
-## Normalized Volatile Field
+Golden baseline 변경은 focused change로 다룬다. 변경 기록에는 baseline이 이동한 이유와 behavior 또는 schema 변화를 함께 남긴다.
 
-Golden 비교에서 아래 field는 run 환경에 따라 달라질 수 있어 제거한다.
+## Normalized Volatile Fields
+
+아래 fields는 runtime environment에 따라 달라질 수 있으므로 value comparison에서 제거한다.
 
 ```text
 timestamp
@@ -42,8 +45,4 @@ cuda_available
 device
 ```
 
-Schema 비교는 exact match를 사용한다. Value 비교만 volatile field 제거 후 수행한다.
-
-Canonical:
-
-- `docs/maintenance/migration-and-compatibility.md`
+Schema comparison은 exact match다. Value comparison은 위 volatile fields만 제외한다. Canonical policy는 `docs/maintenance.md`에서 관리한다.

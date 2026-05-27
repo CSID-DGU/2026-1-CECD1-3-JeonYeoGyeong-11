@@ -1,35 +1,48 @@
 # Config
 
+`configs/`는 tracked experiment preset의 canonical 위치다. Vision track은 `configs/vision/`, Cora graph ablation은 `configs/cora/`를 사용한다.
+
 ## Canonical Tree
 
 ```text
-configs/vision/
-configs/cora/
+configs/
+├── vision/
+│   ├── baselines/
+│   ├── diagnostic/
+│   │   ├── smoke/
+│   │   ├── core/
+│   │   └── extend/
+│   ├── probes/
+│   ├── smoke/
+│   ├── stress/
+│   └── sweeps/
+└── cora/
+    └── ablations/
 ```
 
-## Vision Config Group
+## Vision Config Groups
 
-| Folder | 용도 |
+| Folder | Purpose |
 |---|---|
-| `configs/vision/diagnostic/smoke/` | 빠른 diagnostic smoke |
-| `configs/vision/diagnostic/core/` | 핵심 diagnostic suite |
-| `configs/vision/diagnostic/extend/` | 확장 diagnostic 설정 |
-| `configs/vision/probes/` | graph/source/target probe |
-| `configs/vision/stress/` | Non-IID stress 설정 |
-| `configs/vision/sweeps/` | sweep 설정 |
+| `configs/vision/diagnostic/smoke/` | quick diagnostic smoke |
+| `configs/vision/diagnostic/core/` | core diagnostic suite |
+| `configs/vision/diagnostic/extend/` | extension diagnostic configs |
+| `configs/vision/probes/` | graph/source/target probes |
+| `configs/vision/stress/` | Non-IID stress configs |
+| `configs/vision/sweeps/` | sweep configs |
 
-## Cora Config Group
+## Cora Config Groups
 
-| Folder | 용도 |
+| Folder | Purpose |
 |---|---|
 | `configs/cora/ablations/` | Cora graph ablation |
 
 ## Compatibility
 
-| Legacy | Current |
-|---|---|
-| `configs/general/...` | `configs/vision/...` path alias |
-| `general_suite_*` | `vision_suite_*` |
-| `result_general_*` | `result_vision_*` |
+| Legacy | Current | Role |
+|---|---|---|
+| `configs/general/...` | `configs/vision/...` path alias | old path read support |
+| `general_suite_*` | `vision_suite_*` | old suite artifact parse support |
+| `result_general_*` | `result_vision_*` | old result artifact parse support |
 
-세부 compatibility 정책은 `docs/removed-materials.md`에 기록한다.
+상세 compatibility policy는 `docs/maintenance.md`에서 관리한다.

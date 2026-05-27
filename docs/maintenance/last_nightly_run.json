@@ -1,9 +1,0 @@
-{
-  "workflow": "nightly",
-  "run_id": "26288800411",
-  "conclusion": "success",
-  "ref": "main",
-  "url": "https://github.com/CSID-DGU/2026-1-CECD1-3-JeonYeoGyeong-11/actions/runs/26288800411",
-  "verified_at": "2026-05-22T12:52:30.000000+00:00",
-  "commit_sha": "0e451ca0be84a8691908073d607ec78f67b4cecb"
-}

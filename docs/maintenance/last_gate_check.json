@@ -1,7 +1,0 @@
-{
-  "gate": "6",
-  "pass": true,
-  "failed_checks": [],
-  "verified_at": "2026-05-25T15:35:45.831029+00:00",
-  "commit_sha": "4f4c534386f12929c9f6459b58eeeaa4c833a29e"
-}
