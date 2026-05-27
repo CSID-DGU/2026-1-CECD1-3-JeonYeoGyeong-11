@@ -32,11 +32,3 @@ Repository root 기준 command:
 | Cora ablation smoke | `python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
 | evidence smoke | `python scripts/validation/graph_evidence_report.py --profile smoke --include-external --out-dir <out-dir>` |
 
-## 문서 작성 규칙
-
-| 규칙 | 기준 |
-|---|---|
-| 언어 | 한국어 중심, 핵심 기술 명사만 English |
-| 경로 | repository root 기준 relative path |
-| claim | 주장과 근거 artifact를 함께 기록 |
-| report | row-level CSV/JSON을 primary evidence로 둠 |
