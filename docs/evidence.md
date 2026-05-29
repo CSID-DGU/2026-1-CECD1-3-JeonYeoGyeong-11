@@ -40,6 +40,34 @@
 | Extensibility | custom source, builder, preset, target이 trace와 artifact까지 도달한다 | 4 / 4 extension rows pass | `extension_contract_summary.csv` |
 | Measurement integrity | real diagnostic과 expected-zero control을 구분한다 | real/random/uniform measured nonzero, identity expected-zero control | `real_diagnostic_consistency.csv` |
 
+## Experiment Case Matrix
+
+이 표는 실험 결과를 경우의 수별로 읽기 위한 index다. Historical case는 초기 실험 관찰을 보존하고, validation case는 현재 framework가 같은 claim을 artifact contract로 검증하는 방식이다.
+
+| Case Family | Cases | Main Variables | Result Signal | Current Artifact |
+|---|---|---|---|---|
+| Phase 1 diagnostics | Fashion-MNIST Dirichlet, 5 clients, seeds 42/43/44 | update norm, `DI`, `N_eff`, alignment, `LOO` | client contribution imbalance, seed variation, interaction pathology signal | `round_metrics.csv`, `client_metrics.csv` |
+| Phase 2 graph informativeness | update, random, shuffled, uniform, identity variants | classifier-head update source, control graph family | weak control boundary, update graph sensitivity | `counterfactual_metrics.csv`, `metric_validity_summary.csv` |
+| Phase 2 signed conflict | `signed_conflict_knn`, dense graph, real/update controls | graph_mode, graph density, control family | update graph effect limited, source/mode attribution needed | `graph_parity_summary.csv`, `composability_matrix.csv` |
+| Phase 2 client-count/alpha stress | n20 alpha 0.1, n20 alpha 0.3 | client count, Dirichlet alpha, `signed_conflict_knn` | graph-control separation weak and alpha-sensitive | `design_space_matrix.csv`, stress configs |
+| Phase 2 pFedSim-like | pFedSim-like graph, real/update controls | proxy graph quality, relation mechanism | control gap limited, paper-mechanism alignment needed | `external_mechanism_alignment.csv` |
+| Phase 2 source sanity | `update`, `ema_update`, `classifier_head_update` | graph_source, update/random/identity variants | source별 metric 차이와 artifact 생성 확인 | source contract, artifact contract |
+| Phase 2.5 smoothing | graph smoothing without relation signal | smoothing-only path, random/uniform controls | smoothing-only effect가 metric을 움직임 | `counterfactual_metrics.csv`, `real_diagnostic_consistency.csv` |
+| Phase 3 dominance-aware | dominance-aware baseline | accuracy, loss, update norm, `DI`, `N_eff` | dominance correction signal 확인 | graph-free correction diagnostics |
+| Framework parity | 18 graph modes | lifecycle assembly vs reference builder | max abs diff `2.21e-12`, edge F1 `1.0` | `graph_parity_summary.csv` |
+| Framework design-space | 16 sources x 18 modes x 5 targets x 6 correction profiles | source, mode, target, correction profile | 8,640 / 8,640 calculation checks pass | `design_space_matrix.csv`, `design_space_summary.csv` |
+| Framework extension | custom source, builder, preset, target | extension point, trace, metadata, artifact | 4 / 4 extension rows pass | `extension_contract_summary.csv` |
+
+Case 축은 다음처럼 해석한다.
+
+| Axis | Values Captured |
+|---|---|
+| graph source | update, EMA update, classifier-head update, weight, built-in source family |
+| graph mode | cosine/kNN, magnitude/RBF, learned smoothness, pFedGraph-QP, signed conflict variants |
+| aggregation target | `graph_filtered_update`, `graph_filtered_ema_update`, `graph_filtered_weight`, target variants |
+| control/correction | random, shuffled, uniform, identity, clustering-only, graph-free correction |
+| diagnostic metric | accuracy, loss, update norm, alignment, `DI`, `N_eff`, `LOO`, graph stats |
+
 ## Pass Criteria
 
 | Validation Unit | Pass Condition | Failure Signal |

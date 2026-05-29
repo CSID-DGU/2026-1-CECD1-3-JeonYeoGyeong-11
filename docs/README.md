@@ -7,7 +7,7 @@
 | Document | 답하는 질문 | 핵심 근거 |
 |---|---|---|
 | `framework.md` | Graph-FL gain을 어떤 component와 metric으로 분해하는가 | lifecycle, `GraphFLDesign`, metric formula, artifact fields |
-| `evidence.md` | framework가 왜 정당한가 | 18 graph modes parity, 8,640 design-space checks, 4 / 4 extension checks |
+| `evidence.md` | framework가 왜 정당한가 | experiment case matrix, 18 graph modes parity, 8,640 design-space checks, 4 / 4 extension checks |
 | `research.md` | prior work와 어떤 위치 관계를 갖는가 | FedAMP, SFL, pFedGraph, FedAGA mapping |
 | `repository.md` | code/config/script/test/docs가 어디에 있는가 | repository tree, package layout, change routing |
 | `maintenance.md` | public surface와 compatibility 기준은 무엇인가 | canonical surface, alias table, golden baseline policy |
