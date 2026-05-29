@@ -25,6 +25,16 @@ Graph-FL gain
 + optimizer effect
 ```
 
+## Conclusion Matrix
+
+이 framework의 주장은 “항상 graph가 필요하다”가 아니다. 실험 결론이 어느 쪽으로 나오든 다음 결정을 할 수 있게 만드는 것이 핵심이다.
+
+| 최종 결론 | Evidence pattern | 우리가 할 수 있는 결정 | 남는 framework 가치 |
+|---|---|---|---|
+| graph가 필수적이다 | real graph가 matched controls보다 일관되게 높고, real-control gap이 alignment/`LOO`/graph stats와 함께 움직임 | `graph_source`, `graph_mode`, `aggregation_target`을 method design 축으로 채택하고 Graph-FL mechanism을 강화 | graph gain을 relation-specific effect로 설명하고 prior work mechanism과 연결 |
+| graph가 필수적이지 않다 | graph-free correction, clustering-only, uniform/identity control이 real graph 효과를 대부분 설명 | graph construction을 줄이고 dominance/norm correction 또는 simpler control-based baseline으로 간소화 | Graph-FL gain이 graph 때문이 아니라는 결론을 artifact로 증명 |
+| 결론이 setting-dependent다 | seed, alpha, client count, graph_source, graph_mode에 따라 real-control gap이 달라짐 | 조건별로 Graph-FL 적용 구간을 제한하고 Evidence pattern 기준으로 method selection | 애매한 결과를 실패가 아니라 boundary와 decision rule로 정리 |
+
 ## Repository Contents
 
 | Area | Role | Main Paths |
