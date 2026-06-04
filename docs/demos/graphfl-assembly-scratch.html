@@ -32,7 +32,7 @@
           <span class="fold-chevron" aria-hidden="true">▼</span>① 공통 실험 환경
         </button>
         <div class="fold-body">
-        <p class="cat-note">주황 영역과 동일 · track · dataset · scale(N/R). 진단은 각 Graph-FL 줄기 끝에도 맞물림</p>
+        <p class="cat-note">주황 영역과 동일 · track · dataset · scale(N/R). 비교 열은 baseline 또는 Graph-FL 조립으로 완성</p>
         <div class="cat-sub fold-section" id="fold-palette-track" data-fold-default="open">
           <button type="button" class="cat-head env fold-head sub" aria-expanded="true">
             <span class="fold-chevron" aria-hidden="true">▼</span>트랙
@@ -304,10 +304,10 @@
         </div>
         <div class="cat-sub fold-section" data-fold-default="collapsed">
           <button type="button" class="cat-head diagnostic fold-head sub" aria-expanded="true">
-            <span class="fold-chevron" aria-hidden="true">▼</span>diagnostic addon (열)
+            <span class="fold-chevron" aria-hidden="true">▼</span>검증 옵션 (실행 관제)
           </button>
           <div class="fold-body">
-        <p class="cat-note" style="margin-top:0">aggregation/control 뒤에 줄기 끝에 맞물리는 진단 부품</p>
+        <p class="cat-note" style="margin-top:0">조립 블록이 아니라 실행 옵션 패널에서 켜는 검증 항목</p>
         <div class="scratch-block stack diagnostic" draggable="true" data-target="life" data-kind="diagnostic" data-value="loo" data-title="LOO" data-sub="--loo-enabled true">
           <div class="body">LOO</div>
         </div>
@@ -343,7 +343,7 @@
       <div class="workspace-bar">공통 환경은 고정하고, 비교 열만 바꿔 그래프 효과를 분해</div>
       <div class="workspace" id="workspace">
         <p class="workspace-hint" id="hint">
-          <strong>주황</strong> = 데이터·실행 설정 · <strong>색</strong> = Graph-FL 부품 · 검증은 진단 블록
+          <strong>주황</strong> = 데이터·실행 설정 · <strong>색</strong> = Graph-FL 부품 · 검증은 실행 옵션
         </p>
         <div class="canvas-stack">
           <div class="assembly-script" id="assembly-script">
@@ -355,7 +355,7 @@
               </button>
               <div class="fold-body">
               <div class="env-panel" id="env-panel">
-                <p><strong>주황</strong> = 트랙·데이터·규모·열·진단 · <strong>줄기</strong> = 파티션 → baseline(종료) 또는 Graph-FL lifecycle</p>
+                <p><strong>주황</strong> = 트랙·데이터·규모·열 · <strong>줄기</strong> = 파티션 → baseline(종료) 또는 Graph-FL lifecycle</p>
                 <div class="assembly-column">
                 <div class="env-unified" id="env-unified">
                   <div class="env-chain-assembly">
@@ -364,10 +364,36 @@
                       <div class="body">실험 환경<span class="sub">주황 = 공통 실행</span></div>
                     </div>
                     <div class="env-env-core">
-                    <p class="env-step-banner" id="env-step-banner">① 트랙 — 왼쪽 ① 트랙을 클릭하거나 아래 ① 칸에 놓기</p>
+                    <p class="env-step-banner" id="env-step-banner">① config JSON — 기존 JSON 경로를 쓰거나 새 JSON 이름을 정하기</p>
                     <div class="env-base-row env-chain-row" id="env-base-row">
+                      <div class="env-chain-piece" data-piece="config_name">
+                        <div class="env-chain-piece-label">① config JSON</div>
+                        <div class="env-chain-piece-body">
+                          <div class="env-chain-slot-row">
+                            <div class="env-h-slot" data-env-slot="config_name" data-multi="false">
+                              <span class="env-h-ph" id="ph-config-name">← config 이름</span>
+                            </div>
+                          </div>
+                          <div class="config-direct-row" id="config-direct-row">
+                            <div class="config-mode-toggle" role="group" aria-label="config JSON mode">
+                              <button type="button" id="config-mode-existing">기존 JSON 사용</button>
+                              <button type="button" id="config-mode-generate">새 JSON 저장</button>
+                            </div>
+                            <input id="config-direct-input" type="text" placeholder="configs/vision/smoke/diagnostic.json 또는 새 이름" autocomplete="off" spellcheck="false" />
+                            <span id="config-direct-state">기존 JSON 경로 또는 새 JSON 이름</span>
+                            <div class="config-quick-picks" id="config-quick-picks" aria-label="config JSON quick choices">
+                              <button type="button" data-config-mode="existing" data-config-pick="configs/vision/smoke/default_similarity_knn.json">Vision single</button>
+                              <button type="button" data-config-mode="existing" data-config-pick="configs/vision/smoke/extension.json">Vision suite</button>
+                              <button type="button" data-config-mode="existing" data-config-pick="configs/cora/ablations/graph/graph_ablation_smoke.json">Cora ablation</button>
+                              <button type="button" data-config-mode="existing" data-config-pick="configs/vision/stress/fedavg_collapse/stress_grid_fedavg_collapse.json">Stress grid</button>
+                              <button type="button" data-config-mode="generate" data-config-pick="configs/vision/smoke/my_graphfl_demo.json">New Vision JSON</button>
+                              <button type="button" data-config-mode="generate" data-config-pick="configs/cora/ablations/graph/my_cora_demo.json">New Cora JSON</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <div class="env-chain-piece" data-piece="track">
-                        <div class="env-chain-piece-label">① 트랙</div>
+                        <div class="env-chain-piece-label">② 트랙</div>
                         <div class="env-chain-piece-body">
                           <div class="env-chain-slot-row">
                             <div class="env-h-slot" data-env-slot="track" data-multi="false">
@@ -377,26 +403,12 @@
                         </div>
                       </div>
                       <div class="env-chain-piece" data-piece="dataset">
-                        <div class="env-chain-piece-label">② 데이터</div>
+                        <div class="env-chain-piece-label">③ 데이터</div>
                         <div class="env-chain-piece-body">
                           <div class="env-chain-slot-row">
                             <div class="env-h-slot" data-env-slot="dataset" data-multi="false">
                               <span class="env-h-ph" id="ph-dataset">← 끌어다 놓기</span>
                             </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div class="env-chain-piece" data-piece="config_name">
-                        <div class="env-chain-piece-label">③ config JSON</div>
-                        <div class="env-chain-piece-body">
-                          <div class="env-chain-slot-row">
-                            <div class="env-h-slot" data-env-slot="config_name" data-multi="false">
-                              <span class="env-h-ph" id="ph-config-name">← config 이름</span>
-                            </div>
-                          </div>
-                          <div class="config-direct-row" id="config-direct-row">
-                            <input id="config-direct-input" type="text" placeholder="diagnostic 또는 configs/...json" autocomplete="off" spellcheck="false" />
-                            <span id="config-direct-state">트랙 선택 후 입력</span>
                           </div>
                         </div>
                       </div>
@@ -457,6 +469,14 @@
         </div>
       </div>
       <div class="workspace-run run-bar">
+        <div class="diagnostic-options" id="diagnostic-options" aria-label="diagnostic run options">
+          <span class="run-options-label">검증 옵션</span>
+          <span class="diag-pill is-auto" id="diag-auto-preflight">preflight auto</span>
+          <span class="diag-pill" id="diag-auto-suite">suite_rows auto</span>
+          <label><input type="checkbox" data-diagnostic-option="loo" /> LOO</label>
+          <label><input type="checkbox" data-diagnostic-option="evidence" /> evidence</label>
+          <label><input type="checkbox" data-diagnostic-option="counterfactual" /> counterfactual</label>
+        </div>
         <button type="button" class="btn-run" id="btn-run" disabled>▶ 실험 시작 (데모)</button>
         <span class="run-note" id="run-note">환경 + 부품 조립 후 데모 표 생성. 열 N개면 N행.</span>
       </div>
@@ -495,10 +515,10 @@
       </div>
       <p class="preview-note" id="verify-help">
         <strong>한 열은 하나의 비교 가능한 개입입니다.</strong> 주황은 트랙·데이터·규모 같은 공통 실행환경이고, 각 열은 같은 조건에서 하나의 graph intervention을 바꾼 비교 단위입니다.
-        baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → relation cue → graph_mode → aggregation → optional control → diagnostic addon</strong> 순서로 조립됩니다.
+        baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → relation cue → graph_mode → aggregation → optional control</strong> 순서로 조립됩니다.
         relation cue는 발표용 해석 축이고, 실제 config에는 repo가 받는 <strong>graph_mode</strong>만 기록됩니다.
         가능한 한 같은 pipeline을 공유하고, relation 의미·identity 대응·edge 구조·graph-free correction처럼 검증하려는 요인만 바꿉니다.
-        Preflight/suite_rows는 공통 진단, LOO/Evidence/counterfactual은 열별 diagnostic addon입니다.
+        Preflight/suite_rows/LOO/Evidence/counterfactual은 조립 블록이 아니라 실행 관제 옵션과 결과 아티팩트로 기록됩니다.
       </p>
 
       <h2>현재 조립</h2>

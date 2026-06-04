@@ -204,6 +204,7 @@
     return state.records.flatMap((record) =>
       (record.artifacts || []).map((artifact) => ({
         job_id: record.job_id,
+        config_source: record.config_source || "",
         ...artifact,
       }))
     );
@@ -219,6 +220,8 @@
       status: record.status,
       created_at: record.created_at,
       config_path: record.config_path,
+      config_source: record.config_source,
+      config_saved_path: record.config_saved_path,
     }));
     const jobs = state.records.map((record) => ({
       job_id: record.job_id,
@@ -237,6 +240,7 @@
           { label: "experiment_id", value: (r) => r.experiment_id },
           { label: "track", value: (r) => r.track },
           { label: "status", value: (r) => r.status },
+          { label: "config_source", value: (r) => r.config_source },
           { label: "config_path", value: (r) => r.config_path },
         ],
         experiments
@@ -271,6 +275,7 @@
         "artifacts",
         [
           { label: "job_id", value: (r) => r.job_id },
+          { label: "source", value: (r) => r.config_source },
           { label: "type", value: (r) => r.type },
           { label: "status", value: (r) => r.status },
           { label: "path", value: (r) => r.path },
@@ -354,11 +359,49 @@
     return `mock-db/${track}/${safeDataset}/${submission.configType || "single"}`;
   }
 
+  function configSource(submission) {
+    const configType = String(submission?.configType || "");
+    return submission?.doc?.source || (configType.startsWith("existing") ? "existing_config" : "generated_config");
+  }
+
+  function configArtifacts(submission) {
+    const source = configSource(submission);
+    if (source === "existing_config") {
+      return [
+        {
+          artifact_id: id("artifact"),
+          type: "config_reference",
+          path: submission.configPath || "",
+          status: "linked",
+        },
+      ];
+    }
+    const items = [
+      {
+        artifact_id: id("artifact"),
+        type: "generated_config",
+        path: submission.configPath || "",
+        status: "created",
+      },
+    ];
+    const jobs = Array.isArray(submission.doc?.jobs) ? submission.doc.jobs : [];
+    jobs.forEach((job) => {
+      if (!job?.config_path) return;
+      items.push({
+        artifact_id: id("artifact"),
+        type: "generated_per_run_config",
+        path: job.config_path,
+        status: "created",
+      });
+    });
+    return items;
+  }
+
   function makeArtifacts(submission) {
     const base = artifactBase(submission);
     const cfg = submission.cfg || {};
     const common = [
-      { artifact_id: id("artifact"), type: "config_snapshot", path: `${base}/config.json`, status: "created" },
+      ...configArtifacts(submission),
       { artifact_id: id("artifact"), type: "server_log", path: `${base}/server.log`, status: "created" },
       { artifact_id: id("artifact"), type: "result_rows", path: `${base}/result_rows.json`, status: "created" },
     ];
@@ -391,6 +434,8 @@
       progress: active.progress,
       track: cfg.track || "",
       config_path: submission.configPath || "",
+      config_source: configSource(submission),
+      config_saved_path: configSource(submission) === "generated_config" ? submission.configPath || "" : "",
       command: submission.command || "",
       config_type: submission.configType || "",
       config: submission.doc || null,
@@ -432,7 +477,7 @@
     const rows = enrichRows(submission.rowBundle?.rows || [], submission.cfg);
     const artifacts = (state.active.artifacts || makeArtifacts(submission)).map((artifact) => ({
       ...artifact,
-      status: "saved",
+      status: artifact.status === "linked" ? "linked" : "saved",
     }));
     updateActiveStage("completed", 100, "DB 저장 완료 · latest completed record 조회");
     renderArtifacts(artifacts);
@@ -502,7 +547,7 @@
       renderArtifacts(active.artifacts);
     });
     schedule(token, collectAt + 260, () => {
-      updateActiveStage("saved", 96, "Mock DB 저장 트랜잭션");
+      updateActiveStage("saved", 96, "config/results Mock DB 저장 트랜잭션");
       setField("dbCard", `${STORAGE_KEY} · saving`);
     });
     schedule(token, collectAt + 520, completeActive);
@@ -556,13 +601,6 @@
     head.appendChild(node("h2", "", "실행 관제 (Mock)"));
     head.appendChild(node("span", "mock-badge", "실제 CLI 미실행"));
     root.appendChild(head);
-    root.appendChild(
-      node(
-        "p",
-        "mock-note",
-        `흐름: ${STAGES.join(" → ")}. Mock API, Mock Server queue/progress, Mock DB(localStorage), artifact 생성과 결과 조회를 화면에서만 시뮬레이션합니다.`
-      )
-    );
 
     const grid = node("div", "mock-grid");
     grid.appendChild(makeCard("Mock API", "apiCard", "draft incomplete"));

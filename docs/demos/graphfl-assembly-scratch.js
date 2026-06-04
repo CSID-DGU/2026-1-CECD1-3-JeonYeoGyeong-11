@@ -19,8 +19,8 @@
       },
     };
 
-    const ENV_SLOT_IDS = ["track", "dataset", "config_name"];
-    const ENV_SLOT_ORDER = ["track", "dataset", "config_name"];
+    const ENV_SLOT_IDS = ["config_name", "track", "dataset"];
+    const ENV_SLOT_ORDER = ["config_name", "track", "dataset"];
     const MAX_ENV_COLUMNS = 12;
     function effectiveRunner(track) {
       if (track === "vision") return "suite";
@@ -53,8 +53,6 @@
       "graph_source",
       "graph_mode",
       "aggregation_target",
-      "correction_family",
-      "diagnostic",
     ];
     const CONTROL_GRAPH_MODES = ["random", "shuffled", "uniform", "identity"];
     const BLOCK_KIND = {
@@ -72,8 +70,7 @@
       { key: "graph_source", kind: BLOCK_KIND.CLIENT, label: "graph_source", allowedKinds: [BLOCK_KIND.CLIENT], colorClass: "next-client", required: true },
       { key: "relation_or_graph_mode", kind: BLOCK_KIND.RELATION, label: "relation cue / graph_mode", allowedKinds: [BLOCK_KIND.RELATION, BLOCK_KIND.TOPOLOGY], colorClass: "next-relation", required: true },
       { key: "aggregation_target", kind: BLOCK_KIND.AGGREGATION, label: "aggregation_target", allowedKinds: [BLOCK_KIND.AGGREGATION], colorClass: "next-aggregation", required: true },
-      { key: "correction_or_diagnostic", kind: BLOCK_KIND.CORRECTION, label: "correction/control 또는 diagnostic", allowedKinds: [BLOCK_KIND.CORRECTION, BLOCK_KIND.DIAGNOSTIC], colorClass: "next-control", required: false },
-      { key: "diagnostic", kind: BLOCK_KIND.DIAGNOSTIC, label: "diagnostic addon", allowedKinds: [BLOCK_KIND.DIAGNOSTIC], colorClass: "next-diagnostic", required: false },
+      { key: "correction", kind: BLOCK_KIND.CORRECTION, label: "선택: control/correction", allowedKinds: [BLOCK_KIND.CORRECTION], colorClass: "next-control", required: false },
     ];
     const COLOR_CLASS_BY_STAGE = {
       track: "next-track",
@@ -110,7 +107,6 @@
           sub: "aggregation_target",
         },
         { kind: "correction", value: "real_graph", title: "real_graph", sub: "correction" },
-        { kind: "diagnostic", value: "loo", title: "LOO", sub: "diagnostic addon" },
       ],
       pfedgraph: [
         { kind: "client", value: "update", title: "update", sub: "graph_source" },
@@ -123,7 +119,6 @@
           sub: "aggregation_target",
         },
         { kind: "correction", value: "real_graph", title: "real_graph", sub: "correction" },
-        { kind: "diagnostic", value: "counterfactual", title: "counterfactual", sub: "diagnostic addon" },
       ],
     };
     const EXTEND_AXIS_CLASS = {
@@ -257,6 +252,28 @@
       if (p.graph_mode === "magnitude") return "ours_magnitude";
       if (p.graph_mode === "rbf") return "ours_rbf";
       return null;
+    }
+
+    function comparisonCaseForColumn(col, index) {
+      const token = buildVariantToken(col);
+      const displayLabel = columnVariantToken(col);
+      const part = resolvedEnvSlotValue(col?.partition);
+      const assembly = col?.caseMode === "assembly" ? columnAssembly(col) : null;
+      return {
+        index: index + 1,
+        run_id: `run_${index + 1}`,
+        case_mode: col?.caseMode || "incomplete",
+        label:
+          col?.caseMode === "baseline"
+            ? displayLabel || col?.preset?.title || "baseline"
+            : assembly
+              ? assemblyLabel(assembly)
+              : "incomplete",
+        variant_token: token,
+        partition: part || null,
+        dirichlet_alpha: usesDirichletAlpha(part) ? col?.dirichletAlpha : null,
+        assembly,
+      };
     }
 
     function assemblyToVariantToken(asm) {
@@ -481,12 +498,8 @@
         return { ...LIFECYCLE_STAGES[2] };
       }
       const hasCorrection = !!getColumnLife(col, BLOCK_KIND.CORRECTION);
-      const hasDiagnostic = !!getColumnLife(col, BLOCK_KIND.DIAGNOSTIC);
-      if (!hasCorrection && !hasDiagnostic) {
+      if (!hasCorrection) {
         return { ...LIFECYCLE_STAGES[3] };
-      }
-      if (hasCorrection && !hasDiagnostic) {
-        return { ...LIFECYCLE_STAGES[4] };
       }
       return null;
     }
@@ -514,12 +527,10 @@
       }
       if (kind === BLOCK_KIND.CORRECTION) {
         if (!columnGraphCoreComplete(col)) return { ok: false, reason: "correction/control은 aggregation 이후에 붙일 수 있습니다" };
-        if (getColumnLife(col, BLOCK_KIND.DIAGNOSTIC)) return { ok: false, reason: "diagnostic 뒤에는 correction/control을 추가할 수 없습니다" };
         if (getColumnLife(col, BLOCK_KIND.CORRECTION)) return { ok: false, reason: "correction/control은 이미 있습니다" };
       }
       if (kind === BLOCK_KIND.DIAGNOSTIC) {
-        if (!columnGraphCoreComplete(col)) return { ok: false, reason: "diagnostic addon은 aggregation 이후에 붙일 수 있습니다" };
-        if (getColumnLife(col, BLOCK_KIND.DIAGNOSTIC)) return { ok: false, reason: "diagnostic addon은 이미 있습니다" };
+        return { ok: false, reason: "diagnostic은 조립 블록이 아니라 실행 옵션입니다" };
       }
       return { ok: true };
     }
@@ -584,11 +595,27 @@
     function appendStemLine(host, className, text, optionalText) {
       const line = document.createElement("div");
       line.className = className;
-      line.appendChild(document.createTextNode(text || ""));
-      if (optionalText) {
+      const rawText = String(text || "");
+      const safeText = rawText.includes("correction/control") || rawText.includes("control/correction")
+        ? "선택 단계 · control/correction 또는 바로 실행 가능"
+        : rawText.includes("diagnostic")
+          ? "실행 가능 · 검증은 실행 옵션에서 선택"
+          : text || "";
+      const suppressOptional =
+        rawText.includes("diagnostic") ||
+        rawText.includes("control/correction") ||
+        rawText.includes("correction/control");
+      line.appendChild(document.createTextNode(safeText));
+      if (optionalText && !suppressOptional) {
         const optional = document.createElement("span");
         optional.className = "stem-optional";
-        optional.textContent = optionalText;
+        const rawOptional = String(optionalText);
+        optional.textContent =
+          rawOptional.includes("diagnostic") ||
+          rawOptional.includes("control/correction") ||
+          rawOptional.includes("correction/control")
+            ? " (optional)"
+            : optionalText;
         line.appendChild(optional);
       }
       host.appendChild(line);
@@ -600,7 +627,8 @@
       const trail = columnLifecycleTrail(col);
       const next = getColumnNextStage(col);
       el.classList.toggle("is-baseline-done", col.caseMode === "baseline");
-      applyNextClass(el, col.caseMode === "baseline" ? "baseline" : !col.caseMode ? "baseline" : next?.kind || "diagnostic");
+      el.classList.toggle("is-runnable-assembly", col.caseMode === "assembly" && columnAssemblyRunComplete(col));
+      applyNextClass(el, col.caseMode === "baseline" ? "baseline" : !col.caseMode ? "baseline" : next?.kind || "aggregation");
       el.textContent = "";
       if (col.caseMode === "baseline") {
         appendStemLine(el, "stem-trail", trail || "baseline");
@@ -615,14 +643,14 @@
           appendStemLine(el, "stem-trail", trail);
         }
         if (next) {
-          const optional = next.key === "correction_or_diagnostic"
-            ? " (diagnostic을 바로 붙이거나 control/correction을 먼저 붙일 수 있음)"
+          const optional = next.key === "correction"
+            ? " (control/correction은 선택, 바로 실행 가능)"
             : "";
           appendStemLine(el, "stem-next", `다음 색깔: ${next.label}`, optional);
         } else if (columnAssemblyAnalysisComplete(col)) {
-          appendStemLine(el, "stem-next", "Graph-FL 분석 완료 · diagnostic까지 맞물림");
+          appendStemLine(el, "stem-next", "Graph-FL 분석 완료 · 실행 옵션에서 검증 선택");
         } else if (columnAssemblyRunComplete(col)) {
-          appendStemLine(el, "stem-next", "실행 가능 · diagnostic addon을 붙이면 분석 완료");
+          appendStemLine(el, "stem-next", "실행 가능 · 필요하면 실행 옵션에서 검증 선택");
         }
         if (col.lastStemHint) {
           appendStemLine(el, "stem-warn", col.lastStemHint);
@@ -662,10 +690,29 @@
       return !!(envSlots.track && resolvedEnvSlotValue(envSlots.dataset));
     }
 
+    function existingConfigLocked() {
+      const cfg = buildEnvConfig();
+      const selection = resolveConfigSelection(cfg);
+      const selectedTrack = cfg.track || selection.track;
+      return !!(cfg.config_name && selection.existing && selectedTrack && selection.validation.ok);
+    }
+
+    function configInputReadyForAssembly() {
+      const cfg = buildEnvConfig();
+      const selection = resolveConfigSelection(cfg);
+      return !!(cfg.config_name && selection.validation.ok);
+    }
+
+    function blockAllowedWhileExistingLocked(data) {
+      return data?.envSlot === "config_name" || data?.value === "custom_config";
+    }
+
     function currentAssemblyStep() {
+      const cfg = buildEnvConfig();
+      const configSelection = resolveConfigSelection(cfg);
+      if (!resolvedEnvSlotValue(envSlots.config_name) || !configSelection.validation.ok) return { phase: "config_name" };
+      if (configSelection.existing && (cfg.track || configSelection.track)) return { phase: "done" };
       if (!envSlots.track) return { phase: "track" };
-      if (!resolvedEnvSlotValue(envSlots.config_name)) return { phase: "config_name" };
-      if (resolveConfigSelection(buildEnvConfig()).existing) return { phase: "done" };
       if (!resolvedEnvSlotValue(envSlots.dataset)) return { phase: "dataset" };
       if (!baseRowReady()) return { phase: "dataset" };
       if (currentTrack() === "cora") return { phase: "done" };
@@ -693,13 +740,13 @@
     function stepBannerText(step) {
       const n = step.colIndex != null ? step.colIndex + 1 : 1;
       if (step.phase === "track") {
-        return "① 트랙 — ① 칸에 놓기 · ④ 비교 열 개수는 처음부터 조절 가능 (Vision · 1=단일 run)";
+        return "② 트랙 — 새 JSON 저장 흐름에서 Vision 또는 Cora를 고르기";
       }
       if (step.phase === "dataset") {
-        return "② 데이터 — ② 칸에 놓기 · ① 트랙은 언제든 다시 바꿀 수 있음";
+        return "③ 데이터 — 새 JSON에 저장할 데이터셋을 고르기 · 트랙은 언제든 다시 바꿀 수 있음";
       }
       if (step.phase === "config_name") {
-        return "③ config JSON — 기존 configs/...json을 입력하거나 새 JSON 이름을 입력";
+        return "① config JSON — 기존 configs/...json을 쓰거나 새 JSON 이름을 정하기";
       }
       if (step.phase === "partition") {
         return `비교 열 ${n} — 파티션 블록을 이 열에 붙이기 (Dirichlet이면 블록 안 α)`;
@@ -708,8 +755,8 @@
         return `비교 열 ${n} — baseline 한 블록(완료) 또는 graph_source로 Graph-FL 줄기 시작`;
       }
       if (step.phase === "graph") {
-        const next = step.nextStage?.label || "diagnostic addon";
-        const optional = step.nextStage?.kind === "diagnostic" ? " · 필요하면 control/correction을 먼저 붙일 수 있음" : "";
+        const next = step.nextStage?.label || "Graph-FL block";
+        const optional = step.nextStage?.kind === "correction" ? " · 선택 사항" : "";
         return `비교 열 ${n} — Graph-FL 줄기 · 다음 색깔 블록: ${next}${optional}`;
       }
       return "조립 완료 — 각 단계는 접어서 다시 열고 바꿀 수 있음";
@@ -719,7 +766,7 @@
       if (!data) return false;
       if (data.kind === "method") return false;
       if (data.target === "life" && data.kind !== "env") return true;
-      return ["client", "relation", "topology", "aggregation", "correction", "diagnostic", "extend"].includes(
+      return ["client", "relation", "topology", "aggregation", "correction", "extend"].includes(
         data.kind
       );
     }
@@ -753,6 +800,15 @@
       const colId = ctx.colId || d.envColumn || null;
       const slotId = ctx.slotId || d.envSlot || null;
       const onStack = ctx.slotEl?.classList?.contains("column-life-stack");
+
+      if (existingConfigLocked() && !blockAllowedWhileExistingLocked(d)) {
+        flashReject(ctx?.slotEl);
+        return false;
+      }
+      if (!configInputReadyForAssembly() && !blockAllowedWhileExistingLocked(d)) {
+        flashReject(ctx?.slotEl);
+        return false;
+      }
 
       if (d.kind === "diagnostic" && d.target === "env" && (d.envSlot === "diagnostics" || slotId === "diagnostics") && !colId && !onStack) {
         if (!baseRowReady()) {
@@ -842,6 +898,10 @@
           }
           setColumnBaseline(col.id, d);
           col.lastStemHint = "";
+          return true;
+        }
+        if (d.kind === "preset" && PRESET_BUNDLES[d.value]) {
+          installColumnPreset(col, d.value);
           return true;
         }
       }
@@ -946,13 +1006,15 @@
         d.envSlot !== "column_stem"
           ? d.envSlot
           : null;
-      const envSlot =
-        explicitEnvSlot ||
-        slotId ||
+      const inferredEnvSlot =
         (d.value === "vision" || d.value === "cora" ? "track" : null) ||
         (d.envSlot === "partition" || d.value === "dirichlet" || d.value === "iid" ? "partition" : null) ||
         (d.envSlot === "config_name" || d.value === "custom_config" ? "config_name" : null) ||
         (d.envSlot === "dataset" || d.value === "custom_dataset" ? "dataset" : null);
+      const envSlot =
+        explicitEnvSlot ||
+        inferredEnvSlot ||
+        slotId;
 
       if (envSlot === "track") {
         if (!envValueAllowed("track", d.value, null, d)) {
@@ -1024,6 +1086,8 @@
 
     function blockCanInstall(data, focusCol) {
       const d = normalizeEnvDrop({ ...data, target: data.target || (data.kind === "env" ? "env" : "life") });
+      if (existingConfigLocked() && !blockAllowedWhileExistingLocked(d)) return false;
+      if (!configInputReadyForAssembly() && !blockAllowedWhileExistingLocked(d)) return false;
       const col = focusCol || targetColumnForBlock(d, d.envColumn);
       if (d.kind === "preset" && PRESET_BUNDLES[d.value]) {
         return col && columnPartitionReady(col) && col.caseMode !== "baseline";
@@ -1142,7 +1206,7 @@
     }
 
     function columnAssemblyComplete(col) {
-      return columnAssemblyAnalysisComplete(col);
+      return columnAssemblyRunComplete(col);
     }
 
     function columnHasGraph(col) {
@@ -1192,10 +1256,14 @@
       alphaWrap.className = "env-partition-alpha";
       alphaWrap.innerHTML = `α <input type="number" class="col-alpha-input" min="0.01" max="1" step="0.01" value="${col.dirichletAlpha}" />`;
       body.appendChild(alphaWrap);
-      alphaWrap.querySelector(".col-alpha-input")?.addEventListener("input", (e) => {
-        col.dirichletAlpha = parseFloat(e.target.value) || 0.03;
-        syncUI();
+      const alphaInput = alphaWrap.querySelector(".col-alpha-input");
+      alphaInput?.addEventListener("input", (e) => {
+        const next = parseFloat(e.target.value);
+        if (Number.isFinite(next) && next > 0) col.dirichletAlpha = next;
+        renderPreview();
+        updateRunNote();
       });
+      alphaInput?.addEventListener("change", () => syncUI());
       return el;
     }
 
@@ -1267,7 +1335,7 @@
       });
       if (socket) {
         const next = getColumnNextStage(col);
-        socket.classList.toggle("hidden", columnAssemblyAnalysisComplete(col));
+        socket.classList.toggle("hidden", !next);
         clearNextClasses(socket);
         if (next) {
           applyNextClass(socket, next.kind);
@@ -1275,7 +1343,7 @@
           if (hint) hint.textContent = `다음: ${next.label}`;
         } else {
           const hint = socket.querySelector(".socket-hint");
-          if (hint) hint.textContent = "분석 줄기 완료";
+          if (hint) hint.textContent = "Graph-FL complete";
         }
         stackEl.appendChild(socket);
       }
@@ -1357,8 +1425,8 @@
           lifeWrap.dataset.columnId = col.id;
           lifeWrap.dataset.accept = "life";
           const next = getColumnNextStage(col);
-          const nextKind = next?.kind || (columnAssemblyAnalysisComplete(col) ? "diagnostic" : "client");
-          const hint = next ? `다음: ${next.label}` : "분석 줄기 완료";
+          const nextKind = next?.kind || "aggregation";
+          const hint = next ? `다음: ${next.label}` : "Graph-FL complete";
           lifeWrap.innerHTML = `<div class="column-life-socket scratch-block stack client workspace-block"><div class="body"><span class="socket-hint">${hint}</span></div></div>`;
           const socketNode = lifeWrap.querySelector(".column-life-socket");
           applyNextClass(socketNode, nextKind);
@@ -1495,6 +1563,7 @@
       col.lastStemHint = "";
       renderCasesChain();
       applyEnvChainGating();
+      syncUI();
     }
 
     function setupColumnCountControls() {
@@ -1663,7 +1732,8 @@
     function readSweepFromUI() {
       if (!usesColumnAssembly()) return null;
       const cols = envColumns.slice(0, getTargetColumnCount());
-      const variants = [...new Set(cols.map((c) => columnVariantToken(c)).filter(Boolean))];
+      const comparison_cases = cols.map((c, i) => comparisonCaseForColumn(c, i));
+      const variants = [...new Set(comparison_cases.map((c) => c.variant_token).filter(Boolean))];
       const compare_assemblies = cols
         .map((c) => ({
           label: assemblyLabel(columnAssembly(c)),
@@ -1683,6 +1753,7 @@
         partitions,
         dirichlet_alphas,
         variants,
+        comparison_cases,
         compare_assemblies,
       };
     }
@@ -1751,6 +1822,12 @@
     }
 
     function envSlotUnlocked(slotId, colId) {
+      if (existingConfigLocked()) {
+        return !colId && slotId === "config_name";
+      }
+      if (!configInputReadyForAssembly()) {
+        return !colId && slotId === "config_name";
+      }
       if (colId) {
         if (!baseRowReady()) return false;
         if (slotId === "partition") return currentTrack() === "vision";
@@ -1763,7 +1840,7 @@
       const track = currentTrack();
       if (slotId === "track") return true;
       if (slotId === "dataset") return !!envSlots.track;
-      if (slotId === "config_name") return !!envSlots.track;
+      if (slotId === "config_name") return true;
       if (slotId === "diagnostics") return baseRowReady();
       return false;
     }
@@ -1790,7 +1867,7 @@
       const activeTrack = track || envSlots.track?.value || null;
       if (data && (data.envCustom || ENV_CUSTOM_VALUES.has(data.value))) {
         if (slotId === "partition" && activeTrack === "cora") return false;
-        if ((slotId === "dataset" || slotId === "config_name") && !activeTrack) return false;
+        if (slotId === "dataset" && !activeTrack) return false;
         return true;
       }
       if (slotId === "track") return value === "vision" || value === "cora";
@@ -1884,6 +1961,12 @@
 
     function applyStepHighlights() {
       const step = currentAssemblyStep();
+      const existingLocked = existingConfigLocked();
+      const envPanel = document.getElementById("env-panel");
+      if (envPanel) {
+        envPanel.dataset.stepPhase = step.phase || "";
+        envPanel.dataset.existingLocked = existingLocked ? "true" : "false";
+      }
       const banner = document.getElementById("env-step-banner");
       if (banner) {
         banner.textContent = stepBannerText(step);
@@ -1898,8 +1981,8 @@
           (step.phase === "dataset" && (id === "dataset" || id === "scale")) ||
           (step.phase === "track" && id === "cases");
         const wait =
-          (step.phase === "config_name" && id === "track") ||
-          (step.phase === "dataset" && id === "track") ||
+          (step.phase === "track" && id === "config_name") ||
+          (step.phase === "dataset" && (id === "config_name" || id === "track")) ||
           ((step.phase === "partition" ||
             step.phase === "column_stem" ||
             step.phase === "graph") &&
@@ -1914,10 +1997,8 @@
           slot.classList.toggle("is-locked", !unlocked);
           slot.classList.toggle("step-active", active);
         }
-        piece.classList.toggle(
-          "is-locked",
-          !["scale", "cases", "diagnostics"].includes(id) && !envSlotUnlocked(id)
-        );
+        const lockedByStep = !["scale", "cases", "diagnostics"].includes(id) && !envSlotUnlocked(id);
+        piece.classList.toggle("is-locked", (existingLocked && id !== "config_name") || lockedByStep);
         if (id === "cases" && currentTrack() === "cora") {
           piece.classList.add("is-locked");
         }
@@ -1985,8 +2066,20 @@
     function applyPaletteFolds() {
       const step = currentAssemblyStep();
       const track = currentTrack();
-      if (step.phase === "dataset") expandFoldSection(document.getElementById("fold-palette-dataset"));
+      if (step.phase === "config_name") {
+        expandFoldSection(document.getElementById("fold-palette-env"));
+        expandFoldSection(document.getElementById("fold-palette-config"));
+      }
+      if (step.phase === "track") {
+        expandFoldSection(document.getElementById("fold-palette-env"));
+        expandFoldSection(document.getElementById("fold-palette-track"));
+      }
+      if (step.phase === "dataset") {
+        expandFoldSection(document.getElementById("fold-palette-env"));
+        expandFoldSection(document.getElementById("fold-palette-dataset"));
+      }
       if (step.phase === "partition" && track === "vision") {
+        expandFoldSection(document.getElementById("fold-palette-column"));
         expandFoldSection(document.getElementById("fold-palette-partition"));
       }
       if (step.phase === "column_stem") {
@@ -2013,11 +2106,13 @@
 
     function applyTrackContext() {
       const track = currentTrack();
+      const existingLocked = existingConfigLocked();
+      document.querySelector(".palette")?.classList.toggle("existing-config-locked", existingLocked);
       document.querySelectorAll(".palette [data-tracks]").forEach((el) => {
         const allowed = (el.dataset.tracks || "").split(",").map((s) => s.trim());
         let show;
         if (!track) {
-          show = !el.dataset.tracks || el.dataset.envSlot === "track";
+          show = !el.dataset.tracks || el.dataset.envSlot === "track" || el.dataset.envSlot === "config_name";
         } else {
           show = allowed.includes(track);
         }
@@ -2042,6 +2137,8 @@
     let envColumnCount = 1;
     const envColumns = [];
     let idSeq = 0;
+    let configUseMode = "existing";
+    let configModeTouched = false;
 
     const stackLife = null;
     const workspace = document.getElementById("workspace");
@@ -2049,6 +2146,72 @@
     const numAlpha = document.getElementById("num-alpha");
     const numClients = document.getElementById("num-clients");
     const numRounds = document.getElementById("num-rounds");
+
+    const DIAGNOSTIC_META = {
+      preflight: { title: "preflight", sub: "diagnostic_suite_preflight" },
+      suite_rows: { title: "suite_rows", sub: "vision_suite_*" },
+      loo: { title: "LOO", sub: "--loo-enabled true" },
+      evidence: { title: "evidence", sub: "result_evidence_bundle.py" },
+      counterfactual: { title: "counterfactual", sub: "control-family compare" },
+    };
+
+    function makeDiagnosticEntry(value) {
+      const meta = DIAGNOSTIC_META[value] || { title: value, sub: "diagnostic" };
+      return {
+        id: `diag-${value}`,
+        target: "env",
+        envSlot: "diagnostics",
+        kind: "diagnostic",
+        value,
+        title: meta.title,
+        sub: meta.sub,
+      };
+    }
+
+    function suiteRowsAutoEnabled() {
+      if (currentTrack() !== "vision") return false;
+      return getTargetColumnCount() > 1;
+    }
+
+    function selectedDiagnosticValuesFromControls() {
+      if (existingConfigLocked()) return [];
+      const values = ["preflight"];
+      if (suiteRowsAutoEnabled()) values.push("suite_rows");
+      document.querySelectorAll("[data-diagnostic-option]").forEach((input) => {
+        if (input.checked) values.push(input.dataset.diagnosticOption);
+      });
+      return Array.from(new Set(values.filter(Boolean)));
+    }
+
+    function syncDiagnosticOptionsFromControls() {
+      const values = selectedDiagnosticValuesFromControls();
+      const old = new Map((envSlots.diagnostics || []).map((entry) => [entry.value, entry]));
+      envSlots.diagnostics = values.map((value) => old.get(value) || makeDiagnosticEntry(value));
+    }
+
+    function updateDiagnosticOptionsUI() {
+      const locked = existingConfigLocked();
+      const wrap = document.getElementById("diagnostic-options");
+      if (wrap) wrap.classList.toggle("is-locked", locked);
+      document.querySelectorAll("[data-diagnostic-option]").forEach((input) => {
+        input.disabled = locked;
+      });
+      const suite = document.getElementById("diag-auto-suite");
+      if (suite) suite.classList.toggle("is-active", suiteRowsAutoEnabled() && !locked);
+      const preflight = document.getElementById("diag-auto-preflight");
+      if (preflight) preflight.classList.toggle("is-active", !locked);
+    }
+
+    function setupDiagnosticOptions() {
+      document.querySelectorAll("[data-diagnostic-option]").forEach((input) => {
+        if (input.dataset.diagnosticBound === "1") return;
+        input.dataset.diagnosticBound = "1";
+        input.addEventListener("change", () => {
+          syncDiagnosticOptionsFromControls();
+          syncUI();
+        });
+      });
+    }
 
     function getEnvNums() {
       const stackAlphas = readSweepAlphaNums();
@@ -2104,9 +2267,11 @@
       const args = {
         engine: "app",
         ...envBase,
+        seed: Array.isArray(envBase.seeds) ? envBase.seeds[0] || 42 : 42,
         run_tag: `generated_graphfl_col_${col.id}`,
         out_dir: `${envBase.out_dir}_single`,
       };
+      delete args.seeds;
       const part = resolvedEnvSlotValue(col.partition);
       if (part) {
         args.partition = part;
@@ -2166,7 +2331,9 @@
     function buildCoraGraphAblationConfig(cfg) {
       const nums = getEnvNums();
       const suiteTag = safeRepoToken(cfg?.config_name, "graphfl_cora_demo");
+      const diagnosticValues = (envSlots.diagnostics || []).map((b) => b.value).filter(Boolean);
       return {
+        ...(diagnosticValues.length ? { demo_meta: { diagnostics: diagnosticValues } } : {}),
         description: "Generated by Graph-FL Assembly UI · Cora graph ablation",
         args: {
           num_clients: nums.num_clients,
@@ -2186,15 +2353,24 @@
 
     function buildSuiteConfig() {
       const n = getTargetColumnCount();
-      const cols = envColumns.slice(0, n).filter((c) => columnCaseGraphReady(c));
+      const cols = envColumns.slice(0, n);
+      if (cols.some((c) => !columnCaseGraphReady(c))) return null;
       if (cols.length < 2) return null;
       const partitions = [...new Set(cols.map((c) => resolvedEnvSlotValue(c.partition)).filter(Boolean))];
       if (partitions.length !== 1) return null;
-      const tokens = [...new Set(cols.map((c) => buildVariantToken(c)).filter(Boolean))];
-      if (!tokens.length) return null;
+      if (usesDirichletAlpha(partitions[0])) {
+        const alphas = [...new Set(cols.map((c) => String(c.dirichletAlpha ?? getEnvNums().dirichlet_alpha)))];
+        if (alphas.length !== 1) return null;
+      }
+      const colTokens = cols.map((c) => buildVariantToken(c));
+      if (colTokens.some((token) => !token)) return null;
+      const tokens = [...new Set(colTokens)];
+      if (!tokens.length || tokens.length !== colTokens.length) return null;
       const env = buildCommonEnvArgs();
+      const comparisonCases = cols.map((c, i) => comparisonCaseForColumn(c, i));
       return {
         description: "Generated by Graph-FL Assembly UI",
+        comparison_cases: comparisonCases,
         args: {
           ...env,
           partition: partitions[0],
@@ -2205,6 +2381,32 @@
       };
     }
 
+    function describeVisionBatchFallback() {
+      const n = getTargetColumnCount();
+      const cols = envColumns.slice(0, n);
+      if (cols.some((c) => !columnCaseGraphReady(c))) {
+        return "모든 비교 열이 완성되면 실행 경로가 생성됩니다.";
+      }
+      const partitions = [...new Set(cols.map((c) => resolvedEnvSlotValue(c.partition)).filter(Boolean))];
+      if (partitions.length > 1) {
+        return "partition이 달라 batch로 열마다 별도 job을 제출합니다.";
+      }
+      if (partitions.length === 1 && usesDirichletAlpha(partitions[0])) {
+        const alphas = [...new Set(cols.map((c) => String(c.dirichletAlpha ?? getEnvNums().dirichlet_alpha)))];
+        if (alphas.length > 1) {
+          return "Dirichlet α가 달라 batch로 열마다 별도 job을 제출합니다.";
+        }
+      }
+      const tokens = cols.map((c) => buildVariantToken(c));
+      if (tokens.some((token) => !token)) {
+        return "suite token이 없는 Graph-FL 조합이라 batch로 별도 job을 제출합니다.";
+      }
+      if (new Set(tokens).size !== tokens.length) {
+        return "같은 suite token이 반복되어 batch로 열마다 별도 job을 제출합니다.";
+      }
+      return "이 조합은 batch로 열마다 별도 job을 제출합니다.";
+    }
+
     function columnConfigPath(configPath, index) {
       const path = String(configPath || "configs/vision/smoke/generated.json");
       const dot = path.toLowerCase().endsWith(".json") ? path.length - 5 : path.length;
@@ -2213,13 +2415,13 @@
 
     function buildPerColumnSingleConfigs() {
       const n = getTargetColumnCount();
-      return envColumns
-        .slice(0, n)
-        .filter((c) => columnCaseGraphReady(c))
-        .map((col, i) => ({
-          description: `Generated by Graph-FL Assembly UI · column ${i + 1}`,
-          args: buildSingleRunArgs(col, buildCommonEnvArgs()),
-        }));
+      const cols = envColumns.slice(0, n);
+      if (cols.some((c) => !columnCaseGraphReady(c))) return [];
+      return cols.map((col, i) => ({
+        description: `Generated by Graph-FL Assembly UI · column ${i + 1}`,
+        comparison_case: comparisonCaseForColumn(col, i),
+        args: buildSingleRunArgs(col, buildCommonEnvArgs()),
+      }));
     }
 
     function buildVisionBatchConfig(configPath) {
@@ -2233,6 +2435,7 @@
           entrypoint: "run_vision_experiment.py",
           config_path: columnConfigPath(configPath, i),
           command: `python run_vision_experiment.py --config ${columnConfigPath(configPath, i)}`,
+          comparison_case: config.comparison_case,
           config,
         })),
       };
@@ -2247,13 +2450,19 @@
     }
 
     function buildRunCommand(configType, configPath, track) {
-      if (track === "cora") {
+      if (track === "cora" || configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") {
         return `python run_graph_ablation.py --config ${configPath}`;
       }
-      if (configType === "suite") {
-        return `python run_vision_suite.py --config ${configPath}`;
+      if (configType === "existing-vision-single") {
+        return `python run_vision_experiment.py --config ${configPath}`;
       }
-      if (configType === "existing") {
+      if (configType === "existing-vision-client-count-sweep") {
+        return `python run_vision_client_count_sweep.py --config ${configPath}`;
+      }
+      if (configType === "existing-vision-stress-grid") {
+        return `python run_vision_stress_grid.py --config ${configPath}`;
+      }
+      if (configType === "suite" || configType === "existing-vision-suite") {
         return `python run_vision_suite.py --config ${configPath}`;
       }
       if (configType === "batch") {
@@ -2281,7 +2490,7 @@
         const lines = [
           "기존 config JSON 직접 실행:",
           `  path=${selection.path}`,
-          `  entrypoint=${cfg.track === "cora" ? "run_graph_ablation.py" : "run_vision_suite.py"}`,
+          `  entrypoint=${entrypointForConfigType(selection.configType || inferExistingConfigType(selection.path, cfg.track || selection.track), cfg.track || selection.track)}`,
           "",
           "화면 조립값은 이 파일에 덮어쓰지 않습니다.",
           "새 JSON을 만들려면 configs/...에 없는 새 이름을 입력하고 환경·비교 열을 조립하세요.",
@@ -2316,11 +2525,11 @@
         const token = buildVariantToken(col);
         const status = col.caseMode === "baseline" && col.preset
           ? "baseline-complete"
-          : columnAssemblyAnalysisComplete(col)
-            ? "analysis-complete"
-            : columnAssemblyRunComplete(col)
-              ? "run-complete / analysis-partial"
-              : "incomplete";
+          : columnAssemblyRunComplete(col)
+            ? getColumnLife(col, BLOCK_KIND.CORRECTION)
+              ? "graphfl-complete + correction"
+              : "graphfl-complete"
+            : "incomplete";
         if (col.caseMode === "baseline") {
           lines.push(`  열 ${i + 1}: baseline · method=${col.preset?.value || "?"} · ${status}`);
         } else if (col.caseMode === "assembly") {
@@ -2343,13 +2552,21 @@
       const perRunEl = document.getElementById("per-run-configs-out");
       const cfgForPath = buildEnvConfig();
       const configSelection = resolveConfigSelection(cfgForPath);
-      const selectedPath = configSelection.path;
+      const configPathUsable = !!configSelection.path && (
+        configSelection.existing ? !!(cfgForPath.track || configSelection.track) : !!cfgForPath.track
+      );
+      const selectedPath = configPathUsable ? configSelection.path : "";
+      const previewTrack = cfgForPath.track || configSelection.track;
       const singlePath = selectedPath || "";
       const suitePath = selectedPath || "";
 
       renderAssemblySummary();
 
-      let configType = configSelection.existing ? "existing" : "single";
+      let configType = configSelection.existing
+        ? configSelection.configType || inferExistingConfigType(selectedPath, previewTrack)
+        : cfgForPath.track === "cora"
+          ? "cora-graph-ablation"
+          : "single";
       let doc = selectedPath
         ? configSelection.existing
           ? buildExistingConfigReference(configSelection, cfgForPath)
@@ -2362,6 +2579,9 @@
       if (configSelection.existing) {
         warn =
           "기존 repo config JSON을 그대로 사용합니다. 현재 화면 조립값은 이 파일에 병합하지 않습니다.";
+      } else if (selectedPath) {
+        warn =
+          "새 JSON 저장 모드 · 현재 조립을 config_path에 저장한 뒤 --config로 실행합니다.";
       }
 
       if (!configSelection.existing && cfgForPath.track !== "cora" && n >= 2) {
@@ -2372,15 +2592,17 @@
           configPath = suitePath;
         } else {
           configType = "batch";
-          warn =
-            warn ||
-            "partition이 다르거나 suite variant token으로 직접 표현할 수 없는 열은 run_vision_suite.py 한 번으로 실행하지 않고, Mock API batch가 per-run single config를 각각 queue에 제출합니다.";
+          const fallback = describeVisionBatchFallback();
+          warn = warn ? `${warn}\n${fallback}` : fallback;
           doc = selectedPath ? buildVisionBatchConfig(selectedPath) : null;
         }
       }
+      if (doc && !configSelection.existing) {
+        doc = withGeneratedConfigMeta(doc, configPath, configType);
+      }
 
       const cmd = doc
-        ? buildRunCommand(configType, configPath, cfgForPath.track)
+        ? buildRunCommand(configType, configPath, previewTrack)
         : "# 열 조립을 완료하면 실행 명령이 표시됩니다";
 
       if (cmdEl) cmdEl.textContent = cmd;
@@ -2400,7 +2622,7 @@
       }
 
       const perRunTitle = document.getElementById("per-run-title");
-      const showPerRun = (configType === "batch" || configType === "per-column") && !!selectedPath;
+      const showPerRun = !!doc && (configType === "batch" || configType === "per-column") && !!selectedPath;
       if (perRunTitle) perRunTitle.style.display = showPerRun ? "block" : "none";
       if (perRunEl) {
         perRunEl.style.display = showPerRun ? "block" : "none";
@@ -2428,9 +2650,9 @@
       window.__graphflPreview = { configType, doc, singlePath, suitePath, configPath, cmd };
       const currentDownload = document.getElementById("btn-dl-single");
       if (currentDownload) {
-        currentDownload.disabled = !doc || configType === "existing";
+        currentDownload.disabled = !doc || configSelection.existing;
         currentDownload.title =
-          configType === "existing"
+          configSelection.existing
             ? "기존 repo JSON은 그대로 --config로 사용합니다. 화면에서 파일 본문을 다시 다운로드하지 않습니다."
             : doc
               ? ""
@@ -2439,7 +2661,7 @@
       const perRunDownload = document.getElementById("btn-dl-suite");
       if (perRunDownload) {
         const perRunAvailable =
-          !!doc && configType !== "existing" && cfgForPath.track === "vision" && buildPerColumnSingleConfigs().length > 0;
+          !!doc && !configSelection.existing && cfgForPath.track === "vision" && buildPerColumnSingleConfigs().length > 0;
         perRunDownload.disabled = !perRunAvailable;
         perRunDownload.title = perRunAvailable ? "" : "Vision per-run config 목록이 있을 때 다운로드할 수 있습니다.";
       }
@@ -2459,38 +2681,80 @@
     const PY_IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
     const REPO_TOKEN_RE = /^[A-Za-z0-9_.-]{1,80}$/;
     const CONFIG_PATH_RE = /^[A-Za-z0-9_./\\-]{1,160}$/;
-    const KNOWN_CONFIG_PATHS = new Set([
-      "configs/cora/ablations/graph/graph_ablation_smoke.json",
-      "configs/vision/baselines/fedopt_smoke.json",
-      "configs/vision/diagnostic/core/fashionmnist_n20_alpha003_seeds5.json",
-      "configs/vision/diagnostic/extend/fashionmnist_n50_alpha003_seeds3.json",
-      "configs/vision/diagnostic/smoke/fashionmnist_n5_r3_seed42.json",
-      "configs/vision/probes/frequency/frequency_nowarmup_r10.json",
-      "configs/vision/probes/frequency/frequency_warmup.json",
-      "configs/vision/probes/frequency/frequency_warmup3.json",
-      "configs/vision/probes/graph_source/layer_slice.json",
-      "configs/vision/probes/structure/cosine_usefulness.json",
-      "configs/vision/probes/structure/structure_controls_warmup3_r10.json",
-      "configs/vision/probes/tau/tau_control_warmup3_r10.json",
+
+    function configNameHasPath(rawName) {
+      return /[\\/]/.test(String(rawName || "").trim());
+    }
+
+    function inferTrackFromConfigPath(path) {
+      const normalized = String(path || "").trim().replace(/\\/g, "/").toLowerCase();
+      if (normalized.startsWith("configs/cora/")) return "cora";
+      if (normalized.startsWith("configs/vision/") || normalized.startsWith("configs/general/")) return "vision";
+      return null;
+    }
+
+    function normalizeConfigPath(path) {
+      return String(path || "").trim().replace(/\\/g, "/").toLowerCase();
+    }
+
+    const EXISTING_VISION_SINGLE_CONFIGS = new Set([
       "configs/vision/smoke/default_similarity_knn.json",
-      "configs/vision/smoke/diagnostic.json",
-      "configs/vision/smoke/extension.json",
-      "configs/vision/smoke/frequency.json",
+    ]);
+    const EXISTING_VISION_STRESS_GRID_CONFIGS = new Set([
       "configs/vision/smoke/semantic_ema_weight.json",
-      "configs/vision/stress/client_count/lowpass_graph_filter_only_n20_n50_postfix.json",
-      "configs/vision/stress/client_count/lowpass_n20_n50_full.json",
-      "configs/vision/stress/client_count/lowpass_n20_n50_smoke.json",
-      "configs/vision/stress/fedavg_collapse/stress_grid_fedavg_collapse.json",
-      "configs/vision/sweeps/client_count/client_count_lowpass_n20_n50.json",
-      "configs/vision/sweeps/client_count/client_count_warmup3_r10.json",
     ]);
 
-    function validateConfigPathName(rawName) {
+    function inferExistingConfigType(path, track) {
+      const normalized = normalizeConfigPath(path);
+      const selectedTrack = track || inferTrackFromConfigPath(normalized);
+      if (selectedTrack === "cora" || normalized.startsWith("configs/cora/")) {
+        return "existing-cora-graph-ablation";
+      }
+      if (EXISTING_VISION_SINGLE_CONFIGS.has(normalized)) {
+        return "existing-vision-single";
+      }
+      if (
+        normalized.includes("/sweeps/client_count/") ||
+        normalized.includes("/client_count_sweep/")
+      ) {
+        return "existing-vision-client-count-sweep";
+      }
+      if (
+        EXISTING_VISION_STRESS_GRID_CONFIGS.has(normalized) ||
+        normalized.includes("/stress/")
+      ) {
+        return "existing-vision-stress-grid";
+      }
+      return "existing-vision-suite";
+    }
+
+    function entrypointForConfigType(configType, track) {
+      if (track === "cora" || configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") return "run_graph_ablation.py";
+      if (configType === "existing-vision-single") return "run_vision_experiment.py";
+      if (configType === "existing-vision-client-count-sweep") return "run_vision_client_count_sweep.py";
+      if (configType === "existing-vision-stress-grid") return "run_vision_stress_grid.py";
+      if (configType === "batch") return "run_vision_experiment.py";
+      if (configType === "suite" || configType === "existing-vision-suite") return "run_vision_suite.py";
+      return track === "cora" ? "run_graph_ablation.py" : "run_vision_experiment.py";
+    }
+
+    function configPathForSelection(rawName, track) {
+      const selected = String(rawName || "").trim();
+      if (!selected) return "";
+      const normalized = selected.replace(/\\/g, "/");
+      const base = normalized.endsWith(".json") ? normalized : `${normalized}.json`;
+      if (base.includes("/")) return base;
+      return track === "cora"
+        ? `configs/cora/ablations/graph/${base}`
+        : `configs/vision/smoke/${base}`;
+    }
+
+    function validateConfigPathName(rawName, forcedTrack = null) {
       const raw = String(rawName || "").trim();
       if (!raw) return { ok: true, message: "" };
       const normalized = raw.replace(/\\/g, "/");
       const hasPath = normalized.includes("/");
-      const track = currentTrack();
+      const track = forcedTrack || currentTrack();
       if (
         !CONFIG_PATH_RE.test(raw) ||
         normalized.includes("//") ||
@@ -2503,8 +2767,13 @@
           message: "config JSON은 repo 내부 상대 경로만 가능하며 ../, 절대 경로, 따옴표는 사용할 수 없습니다.",
         };
       }
-      if (hasPath && track === "vision" && !normalized.startsWith("configs/vision/")) {
-        return { ok: false, message: "Vision config 경로는 configs/vision/ 아래여야 합니다." };
+      if (
+        hasPath &&
+        track === "vision" &&
+        !normalized.startsWith("configs/vision/") &&
+        !normalized.startsWith("configs/general/")
+      ) {
+        return { ok: false, message: "Vision config 경로는 configs/vision/ 또는 legacy configs/general/ 아래여야 합니다." };
       }
       if (hasPath && track === "cora" && !normalized.startsWith("configs/cora/")) {
         return { ok: false, message: "Cora config 경로는 configs/cora/ 아래여야 합니다." };
@@ -2539,46 +2808,64 @@
       return { ok: true, message: "" };
     }
 
+    function looksLikeRepoConfigPath(rawName) {
+      const raw = String(rawName || "").trim().replace(/\\/g, "/");
+      return raw.startsWith("configs/") && !raw.endsWith("/");
+    }
+
     function resolveConfigSelection(cfg) {
       const selected = String(cfg?.config_name || "").trim();
       if (!selected) {
         return {
           path: "",
+          track: cfg?.track || null,
           existing: false,
           generated: false,
           validation: { ok: true, message: "" },
         };
       }
-      const validation = validateConfigPathName(selected);
+      const cfgTrack = cfg?.track || null;
+      const validation = validateConfigPathName(selected, cfgTrack);
       if (!validation.ok) {
-        return { path: "", existing: false, generated: false, validation };
+        return { path: "", track: cfgTrack, existing: false, generated: false, validation };
       }
-      const normalized = selected.replace(/\\/g, "/");
-      const base = normalized.endsWith(".json") ? normalized : `${normalized}.json`;
-      const path = base.includes("/")
-        ? base
-        : cfg?.track === "cora"
-          ? `configs/cora/ablations/graph/${base}`
-          : `configs/vision/smoke/${base}`;
-      const existing = KNOWN_CONFIG_PATHS.has(path);
+      const path = configPathForSelection(selected, cfgTrack);
+      const inferredTrack = configNameHasPath(selected) ? inferTrackFromConfigPath(path) : null;
+      const mode = cfg?.config_mode || configUseMode;
+      const existing = mode === "existing";
+      const selectedTrack = cfgTrack || inferredTrack;
       return {
         path,
+        track: selectedTrack,
+        mode,
         existing,
         generated: !existing,
+        configType: existing ? inferExistingConfigType(path, selectedTrack) : null,
         validation,
       };
     }
 
     function buildExistingConfigReference(selection, cfg) {
-      const command = buildRunCommand("existing", selection.path, cfg?.track);
+      const selectedTrack = cfg?.track || selection.track;
+      const configType = selection.configType || inferExistingConfigType(selection.path, selectedTrack);
+      const command = buildRunCommand(configType, selection.path, selectedTrack);
       return {
-        description:
-          "Existing repository config JSON reference. The demo will use this file directly and will not merge the current visual assembly into it.",
         source: "existing_config",
         config_path: selection.path,
-        entrypoint: cfg?.track === "cora" ? "run_graph_ablation.py" : "run_vision_suite.py",
+        config_type: configType,
+        entrypoint: entrypointForConfigType(configType, selectedTrack),
         command,
-        note: "기존 configs/... JSON을 그대로 --config로 넘기는 모드입니다. 화면 조립값은 새 JSON 생성 모드에서만 반영됩니다.",
+      };
+    }
+
+    function withGeneratedConfigMeta(doc, configPath, configType) {
+      if (!doc) return doc;
+      return {
+        source: "generated_config",
+        config_path: configPath,
+        config_type: configType,
+        save_policy: "save current visual assembly as this JSON before mock submit",
+        ...doc,
       };
     }
 
@@ -2604,46 +2891,165 @@
       });
     }
 
+    function makeTrackEntry(track, inferredFromConfig = false) {
+      return normalizeEnvDrop({
+        id: envSlots.track?.value === track ? envSlots.track.id : "e" + ++idSeq,
+        target: "env",
+        envSlot: "track",
+        kind: "env",
+        value: track,
+        title: track === "cora" ? "Cora" : "Vision",
+        sub: inferredFromConfig ? "from config JSON" : track === "cora" ? "run_graph_ablation" : "run_vision_suite",
+        inferredFromConfig,
+      });
+    }
+
+    function setTrackFromExistingConfigPath(path) {
+      const inferredTrack = inferTrackFromConfigPath(path);
+      if (!inferredTrack || currentTrack() === inferredTrack) return;
+      envSlots.track = makeTrackEntry(inferredTrack, true);
+      clearEnvDownstream("track");
+    }
+
+    function clearVisualAssemblyForExistingConfig() {
+      envSlots.dataset = null;
+      envSlots.diagnostics = [];
+      Object.keys(envSweepSlots).forEach((slotId) => {
+        envSweepSlots[slotId] = [];
+      });
+      resetEnvColumns(1);
+      const chain = document.getElementById("env-cases-chain");
+      if (chain) chain.innerHTML = "";
+    }
+
     function setDirectConfigName(rawName) {
       const raw = String(rawName || "").trim();
-      if (!currentTrack()) return;
+      if (!configModeTouched) {
+        configUseMode = looksLikeRepoConfigPath(raw) ? "existing" : "generate";
+      }
       if (!raw) {
         envSlots.config_name = null;
+        if (envSlots.track?.inferredFromConfig) {
+          envSlots.track = null;
+          clearEnvDownstream("track");
+        }
       } else {
         envSlots.config_name = makeConfigNameEntry(raw);
+        if (configNameHasPath(raw)) {
+          setTrackFromExistingConfigPath(configPathForSelection(raw, currentTrack()));
+        }
+        if (configUseMode === "existing" && (currentTrack() || configNameHasPath(raw))) {
+          clearVisualAssemblyForExistingConfig();
+        }
       }
       renderEnvSlots();
       applyEnvChainGating();
       syncUI();
     }
 
+    function setConfigUseMode(mode, touched = true) {
+      configUseMode = mode === "existing" ? "existing" : "generate";
+      if (touched) configModeTouched = true;
+      const raw = String(resolvedEnvSlotValue(envSlots.config_name) || "").trim();
+      if (configUseMode === "existing" && configNameHasPath(raw)) {
+        setTrackFromExistingConfigPath(configPathForSelection(raw, currentTrack()));
+        clearVisualAssemblyForExistingConfig();
+      } else if (configUseMode === "existing" && raw && currentTrack()) {
+        clearVisualAssemblyForExistingConfig();
+      } else if (configUseMode === "generate" && configNameHasPath(raw)) {
+        setTrackFromExistingConfigPath(configPathForSelection(raw, currentTrack()));
+        if (envSlots.track?.inferredFromConfig) {
+          envSlots.track = {
+            ...envSlots.track,
+            inferredFromConfig: false,
+            sub: envSlots.track.value === "cora" ? "run_graph_ablation" : "run_vision_suite",
+          };
+        }
+      } else if (configUseMode === "generate" && envSlots.track?.inferredFromConfig) {
+        envSlots.track = {
+          ...envSlots.track,
+          inferredFromConfig: false,
+          sub: envSlots.track.value === "cora" ? "run_graph_ablation" : "run_vision_suite",
+        };
+      }
+      renderEnvSlots();
+      applyEnvChainGating();
+      syncUI();
+    }
+
+    function chooseConfigQuickPick(path, mode) {
+      configUseMode = mode === "existing" ? "existing" : "generate";
+      configModeTouched = true;
+      const input = document.getElementById("config-direct-input");
+      if (input) input.value = path;
+      setDirectConfigName(path);
+    }
+
+    function existingConfigKindLabel(configType) {
+      if (configType === "existing-cora-graph-ablation") return "Cora ablation";
+      if (configType === "existing-vision-single") return "Vision single";
+      if (configType === "existing-vision-client-count-sweep") return "Client sweep";
+      if (configType === "existing-vision-stress-grid") return "Stress grid";
+      return "Vision suite";
+    }
+
+    function updateConfigQuickPickState(raw) {
+      const selected = String(raw || "").trim().replace(/\\/g, "/").toLowerCase();
+      document.querySelectorAll("[data-config-pick]").forEach((btn) => {
+        const mode = btn.dataset.configMode || "existing";
+        const value = String(btn.dataset.configPick || "").trim().replace(/\\/g, "/").toLowerCase();
+        btn.classList.toggle("is-hidden", mode !== configUseMode);
+        btn.classList.toggle("is-active", mode === configUseMode && value === selected);
+      });
+    }
+
     function updateConfigDirectInputState() {
       const input = document.getElementById("config-direct-input");
       const state = document.getElementById("config-direct-state");
       if (!input || !state) return;
+      const existingBtn = document.getElementById("config-mode-existing");
+      const generateBtn = document.getElementById("config-mode-generate");
 
-      const hasTrack = !!currentTrack();
       const currentValue = String(resolvedEnvSlotValue(envSlots.config_name) || "");
       if (document.activeElement !== input) input.value = currentValue;
-      input.disabled = !hasTrack;
+      input.placeholder =
+        configUseMode === "existing"
+          ? "configs/vision/smoke/extension.json"
+          : "my_graphfl_demo";
+      input.disabled = false;
+      [existingBtn, generateBtn].forEach((btn) => {
+        if (!btn) return;
+        btn.disabled = false;
+        btn.classList.toggle(
+          "is-active",
+          (btn === existingBtn && configUseMode === "existing") ||
+            (btn === generateBtn && configUseMode === "generate")
+        );
+        btn.setAttribute(
+          "aria-pressed",
+          ((btn === existingBtn && configUseMode === "existing") ||
+            (btn === generateBtn && configUseMode === "generate")).toString()
+        );
+      });
 
       const raw = String(input.value || "").trim();
-      const validation = hasTrack
-        ? validateConfigPathName(raw)
-        : raw
-          ? { ok: false, message: "먼저 트랙을 선택하세요." }
-          : { ok: true, message: "" };
+      const cfg = buildEnvConfig();
+      const selection = resolveConfigSelection({ ...cfg, config_name: raw, config_mode: configUseMode });
+      let validation = selection.validation;
+      updateConfigQuickPickState(raw);
+      if (raw && configUseMode === "existing" && !selection.track) {
+        validation = {
+          ok: false,
+          message: "기존 JSON은 configs/vision/... 또는 configs/cora/... 경로로 지정하거나 트랙을 먼저 선택하세요.",
+        };
+      }
       setInputValidation(input, validation);
 
       state.className = "";
-      if (!hasTrack) {
-        state.textContent = "먼저 Vision 또는 Cora 선택";
-        state.classList.add("warn");
-        return;
-      }
       if (!raw) {
-        state.textContent = "기존 configs/...json 또는 새 이름";
+        state.textContent = "1번: 기존 configs/...json 경로 또는 새 JSON 이름";
         state.classList.add("warn");
+        state.textContent = configUseMode === "existing" ? "repo JSON 선택" : "새 JSON 이름";
         return;
       }
       if (!validation.ok) {
@@ -2651,15 +3057,30 @@
         state.classList.add("bad");
         return;
       }
-      const selection = resolveConfigSelection(buildEnvConfig());
-      if (selection.existing) {
-        state.textContent = "기존 repo JSON 직접 사용";
+      if (selection.mode === "existing") {
+        state.textContent = `기존 JSON 확정: ${selection.path}`;
       } else if (raw.includes("/") || raw.includes("\\")) {
-        state.textContent = "새 JSON 경로로 생성";
+        state.textContent = currentTrack()
+          ? `실행 시 현재 조립을 새 JSON으로 저장: ${selection.path}`
+          : "새 JSON 저장: 다음으로 트랙/데이터/비교열 선택";
       } else {
-        state.textContent = `새 JSON 생성: ${selection.path}`;
+        state.textContent = currentTrack()
+          ? `실행 시 현재 조립을 새 JSON으로 저장: ${selection.path}`
+          : "새 JSON 저장: 다음으로 트랙 선택";
       }
-      state.classList.add("ok");
+      if (selection.mode === "existing") {
+        const entry = entrypointForConfigType(selection.configType, selection.track);
+        state.textContent = `${existingConfigKindLabel(selection.configType)} · ${entry} · locked`;
+      } else {
+        state.textContent = currentTrack() ? `save · ${selection.path}` : "save · pick track";
+      }
+      state.textContent =
+        selection.mode === "existing"
+          ? `${existingConfigKindLabel(selection.configType)} | ${entrypointForConfigType(selection.configType, selection.track)} | locked`
+          : currentTrack()
+            ? `save | ${selection.path}`
+            : "save | pick track";
+      state.classList.add(selection.mode === "generate" && !currentTrack() ? "warn" : "ok");
     }
 
     function safePythonIdentifier(name, fallback) {
@@ -2917,6 +3338,20 @@
         if (stackName === "env") {
           if (slotId && envSlots[slotId]?.id === entry.id) {
             envSlots[slotId] = { ...envSlots[slotId], ...entry, envCustom: true };
+            if (slotId === "config_name") {
+              if (!configModeTouched) {
+                configUseMode = looksLikeRepoConfigPath(name) ? "existing" : "generate";
+              }
+              if (name && configUseMode === "existing" && configNameHasPath(name)) {
+                setTrackFromExistingConfigPath(configPathForSelection(name, currentTrack()));
+                clearVisualAssemblyForExistingConfig();
+              } else if (name && configUseMode === "existing" && currentTrack()) {
+                clearVisualAssemblyForExistingConfig();
+              } else if (!name && envSlots.track?.inferredFromConfig) {
+                envSlots.track = null;
+                clearEnvDownstream("track");
+              }
+            }
           }
         }
         syncUI();
@@ -3198,6 +3633,18 @@
       delete entry.move;
       delete entry.from;
       envSlots[slotId] = entry;
+      if (slotId === "config_name") {
+        const configName = resolvedEnvSlotValue(entry);
+        if (!configModeTouched) {
+          configUseMode = looksLikeRepoConfigPath(configName) ? "existing" : "generate";
+        }
+        if (configUseMode === "existing" && configNameHasPath(configName)) {
+          setTrackFromExistingConfigPath(configPathForSelection(configName, currentTrack()));
+          clearVisualAssemblyForExistingConfig();
+        } else if (configUseMode === "existing" && configName && currentTrack()) {
+          clearVisualAssemblyForExistingConfig();
+        }
+      }
       if (slotId === "track" && entry.value !== prevTrack) {
         clearEnvDownstream("track");
       } else if (slotId === "dataset") {
@@ -3331,6 +3778,11 @@
       if (ds) cfg.dataset = ds;
       const configName = resolvedEnvSlotValue(envSlots.config_name);
       if (configName) cfg.config_name = configName;
+      cfg.config_mode = configUseMode;
+      if (!cfg.track && cfg.config_name && configNameHasPath(cfg.config_name)) {
+        const inferredTrack = inferTrackFromConfigPath(configPathForSelection(cfg.config_name, null));
+        if (inferredTrack) cfg.track = inferredTrack;
+      }
       const track = cfg.track;
       cfg.runner = effectiveRunner(track);
       const parts = partitionValues();
@@ -3374,16 +3826,36 @@
       const cfg = buildEnvConfig();
       const configSelection = resolveConfigSelection(cfg);
       const missing = [];
-      if (!cfg.track) missing.push("트랙");
       if (!cfg.config_name) missing.push("config JSON 이름");
       if (cfg.config_name && !configSelection.validation.ok) missing.push(configSelection.validation.message);
-      const directExistingConfig = !!(cfg.track && cfg.config_name && configSelection.existing);
+      const selectedTrack = cfg.track || configSelection.track;
+      const directExistingConfig = !!(
+        cfg.config_name &&
+        configSelection.existing &&
+        selectedTrack &&
+        configSelection.validation.ok
+      );
+      const unresolvedExistingConfig = !!(
+        cfg.config_name &&
+        configSelection.existing &&
+        !selectedTrack &&
+        configSelection.validation.ok
+      );
       if (!directExistingConfig) {
+        if (!cfg.track) missing.push("트랙");
+      } else if (!cfg.track && selectedTrack) {
+        cfg.track = selectedTrack;
+        cfg.runner = effectiveRunner(selectedTrack);
+      }
+      if (unresolvedExistingConfig) {
+        missing.push("기존 JSON 경로(configs/vision 또는 configs/cora)");
+      }
+      if (!directExistingConfig && !unresolvedExistingConfig) {
         if (!cfg.dataset) missing.push("데이터셋");
         if (cfg.track === "vision" && !visionPartitionReady(cfg)) missing.push("각 열 파티션");
       }
       const n = getTargetColumnCount();
-      if (!directExistingConfig && cfg.track !== "cora") {
+      if (!directExistingConfig && !unresolvedExistingConfig && cfg.track && cfg.track !== "cora") {
         envColumns.slice(0, n).forEach((col, i) => {
           if (!columnCaseGraphReady(col)) {
             missing.push(`열 ${i + 1}: fedavg(완성) 또는 Graph-FL 조립`);
@@ -3407,8 +3879,7 @@
 
     function buildConfigDocument(cfg, parts) {
       const method = getMethodPart()?.value || "ours";
-      const diagnostic =
-        (envSlots.diagnostics || []).map((b) => b.value).join(",") || getLife("diagnostic")?.value;
+      const diagnostics = (envSlots.diagnostics || []).map((b) => b.value).filter(Boolean);
       const extensions = envColumns
         .flatMap((c) => c.lifeStack)
         .filter((b) => b.kind === "custom" || b.kind === "extend")
@@ -3436,7 +3907,8 @@
         correction_family: parts.correction_family,
       };
       if (usesDirichletAlpha(cfg.partition)) baseArgs.dirichlet_alpha = cfg.dirichlet_alpha;
-      if (diagnostic === "loo") baseArgs.loo_enabled = true;
+      if (diagnostics.length) baseArgs.diagnostics = diagnostics;
+      if (hasDiagnostic("loo")) baseArgs.loo_enabled = true;
       if (parts.control_graph_mode) baseArgs.control_graph_mode = parts.control_graph_mode;
 
       const doc = {
@@ -3624,7 +4096,9 @@
         return;
       }
       const need = [];
-      if (!envSlots.track) need.push("트랙");
+      if (!resolvedEnvSlotValue(envSlots.config_name)) need.push("config JSON");
+      else if (!configInputReadyForAssembly()) need.push("올바른 config JSON");
+      else if (!envSlots.track) need.push("트랙");
       else if (!resolvedEnvSlotValue(envSlots.dataset)) need.push("데이터");
       else if (currentTrack() === "vision" && !visionPartitionReady(buildEnvConfig())) need.push("열 파티션");
       note.textContent = need.length
@@ -3779,47 +4253,36 @@
 
       if (isSweep && cfg.sweep) {
         const s = cfg.sweep;
-        const parts = s.partitions || [cfg.partition || "dirichlet"];
-        let n = 0;
-        parts.forEach((p) => {
-          const alphas = p === "dirichlet" ? s.dirichlet_alphas || [cfg.dirichlet_alpha] : [null];
-          alphas.forEach((a, ai) => {
-            const compares =
-              s.compare_assemblies?.length > 0
-                ? s.compare_assemblies.map((c) => ({
-                    v: c.variant_token || c.label,
-                    label: c.label || assemblyLabel(c),
-                    isFed: false,
-                  }))
-                : (s.variants || ["fedavg"]).map((v) => ({
-                    v,
-                    label: v,
-                    isFed: String(v).toLowerCase() === "fedavg",
-                  }));
-            if (s.compare_assemblies?.length) {
-              compares.forEach((cmp) => {
-                cmp.isFed =
-                  String(cmp.v || "").toLowerCase() === "fedavg" ||
-                  String(cmp.label || "").toLowerCase() === "fedavg";
-              });
-            }
-            compares.forEach((cmp, vi) => {
-              n += 1;
-              const accOurs = 0.72 + (a != null ? a * 0.8 : 0.1) - vi * 0.02;
-              rows.push({
-                id: `suite_${n}`,
-                setting: `${envPrefix} · ${getMethodPart(envColumns[0])?.value || "ours"} · ${p}${a != null ? ` · α=${a}` : ""} · ${cmp.label}`,
-                acc: cmp.isFed ? 0.68 : accOurs,
-                alignment: cmp.isFed ? 0.42 : 0.55 + (a || 0.03) * 1.2,
-                filter_gain: cmp.isFed ? 0 : 0.08 + (a || 0.03) * 0.15,
-                real_control_gap: cmp.isFed ? 0 : 0.04,
-                interp: cmp.isFed
-                  ? interpretations.fedavg_base
-                  : a != null && a <= 0.03
-                    ? interpretations.alpha_low
-                    : interpretations.alpha_high,
-              });
-            });
+        const cases = s.comparison_cases?.length
+          ? s.comparison_cases
+          : (s.variants || ["fedavg"]).map((v, i) => ({
+              index: i + 1,
+              run_id: `run_${i + 1}`,
+              label: v,
+              variant_token: v,
+              partition: cfg.partition || "dirichlet",
+              dirichlet_alpha: cfg.dirichlet_alpha,
+            }));
+        cases.forEach((cmp, vi) => {
+          const label = cmp.label || cmp.variant_token || `case_${vi + 1}`;
+          const isFed =
+            String(cmp.variant_token || "").toLowerCase() === "fedavg" ||
+            String(label || "").toLowerCase() === "fedavg";
+          const a = cmp.dirichlet_alpha;
+          const p = cmp.partition || cfg.partition || "dirichlet";
+          const accOurs = 0.72 + (a != null ? a * 0.8 : 0.1) - vi * 0.02;
+          rows.push({
+            id: cmp.run_id || `suite_${vi + 1}`,
+            setting: `${envPrefix} · Run ${cmp.index || vi + 1} · ${p}${a != null ? ` · alpha=${a}` : ""} · ${label}`,
+            acc: isFed ? 0.68 : accOurs,
+            alignment: isFed ? 0.42 : 0.55 + (a || 0.03) * 1.2,
+            filter_gain: isFed ? 0 : 0.08 + (a || 0.03) * 0.15,
+            real_control_gap: isFed ? 0 : 0.04,
+            interp: isFed
+              ? interpretations.fedavg_base
+              : a != null && a <= 0.03
+                ? interpretations.alpha_low
+                : interpretations.alpha_high,
           });
         });
       } else {
@@ -3838,10 +4301,15 @@
               : colLifeOk
                 ? assemblyLabel(columnAssembly(col))
                 : "lifecycle …";
-          const baseSetting = `${rowEnvPrefix}${colPart} · ${method}`;
+          const runBit = nCols > 1 ? ` · Run ${ci + 1}` : "";
+          const baseSetting = `${rowEnvPrefix}${runBit}${colPart} · ${method}`;
+          const settingLabel =
+            col.caseMode === "baseline" && String(label).toLowerCase() === String(method).toLowerCase()
+              ? baseSetting
+              : `${baseSetting} · ${label}`;
           rows.push({
             id: `run_${ci + 1}`,
-            setting: `${baseSetting} · ${label}`,
+            setting: settingLabel,
             acc: method === "ours" ? 0.76 - ci * 0.02 : 0.69,
             alignment: method === "ours" ? 0.62 : 0.44,
             filter_gain: method === "ours" ? 0.11 : 0,
@@ -3988,9 +4456,17 @@
       applyTrackContext();
       updatePartitionAlphaUI();
       updateConfigDirectInputState();
+      syncDiagnosticOptionsFromControls();
+      updateDiagnosticOptionsUI();
       const cfg = buildEnvConfig();
       const configSelection = resolveConfigSelection(cfg);
-      const directExistingConfig = !!(cfg.track && cfg.config_name && configSelection.existing);
+      const directExistingConfig = existingConfigLocked();
+      [numAlpha, numClients, numRounds, document.getElementById("input-col-count")].forEach((el) => {
+        if (el) el.disabled = directExistingConfig;
+      });
+      [document.getElementById("btn-col-minus"), document.getElementById("btn-col-plus")].forEach((el) => {
+        if (el) el.disabled = directExistingConfig;
+      });
       const has = envFilled();
       workspace.classList.toggle("has-content", has);
 
@@ -4017,19 +4493,22 @@
         const slot = envSlots[id];
         const filled = Array.isArray(slot) ? slot.length > 0 : !!slot;
         const unlocked = envSlotUnlocked(id);
-        const required =
-          id === "track" || id === "config_name" || (id === "dataset" && !directExistingConfig);
-        const ok = required && filled && !envSlotPending(slot) && unlocked;
+        const existingCovered = directExistingConfig && (id === "track" || id === "dataset");
+        const required = id === "config_name" || (!directExistingConfig && (id === "track" || id === "dataset"));
+        const ok = existingCovered || (required && filled && !envSlotPending(slot) && unlocked);
         const li = document.createElement("li");
-        if (!unlocked && required) li.className = "";
+        if (existingCovered) li.className = "ok";
+        else if (!unlocked && required) li.className = "";
         else if (ok) li.className = "ok";
-        else if (id === "dataset" && directExistingConfig) li.className = "ok";
         else if (filled) li.className = "partial";
         else li.className = "";
         const pending = filled && envSlotPending(slot) ? " (이름 입력)" : "";
-        const lock = !unlocked && required ? " · 잠김" : "";
-        const label =
-          id === "dataset" && directExistingConfig ? "데이터셋 (기존 JSON 내부값)" : slotLabels[id];
+        const lock = !existingCovered && !unlocked && required ? " · 잠김" : "";
+        const label = existingCovered
+          ? id === "track"
+            ? `트랙 (${cfg.track === "cora" ? "Cora" : "Vision"} · 기존 JSON 경로)`
+            : "데이터셋 (기존 JSON 내부값)"
+          : slotLabels[id];
         setChecklistItemText(li, `${label}${pending}${lock}`);
         envChk.appendChild(li);
       });
@@ -4064,15 +4543,15 @@
       }
       {
         const li = document.createElement("li");
-        li.className = baseRowReady() ? "ok" : "";
-        setChecklistItemText(li, slotLabels.nums);
+        li.className = directExistingConfig || baseRowReady() ? "ok" : "";
+        setChecklistItemText(li, directExistingConfig ? "N · R (기존 JSON 내부값)" : slotLabels.nums);
         envChk.appendChild(li);
       }
       {
         const li = document.createElement("li");
         const nDiag = (envSlots.diagnostics || []).length;
         li.className = nDiag ? "ok" : "";
-        setChecklistItemText(li, `진단${nDiag ? ` (${nDiag}개)` : " (선택)"}`);
+        setChecklistItemText(li, `실행 옵션${nDiag ? ` (${nDiag}개)` : " (기본값)"}`);
         envChk.appendChild(li);
       }
 
@@ -4310,6 +4789,64 @@
       });
     }
 
+    function setFoldHeadLabel(head, label) {
+      if (!head || !label) return;
+      const badges = Array.from(head.children).filter((child) => child.classList.contains("cap-badge"));
+      Array.from(head.childNodes).forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) node.remove();
+      });
+      const chevron = head.querySelector(".fold-chevron");
+      if (chevron) {
+        chevron.insertAdjacentText("afterend", ` ${label} `);
+      } else {
+        head.insertBefore(document.createTextNode(`${label} `), head.firstChild);
+      }
+      badges.forEach((badge) => head.appendChild(badge));
+    }
+
+    function sectionCapability(section) {
+      const head = section?.querySelector(":scope > .fold-head");
+      if (!section || !head) return null;
+      if (section.id === "fold-palette-preset") return "preset";
+      if (section.id === "fold-palette-diagnostic" || head.classList.contains("diagnostic")) return "fixed";
+      return section.querySelector(":scope > .fold-body .env-custom-block, :scope > .fold-body .name-extend-block")
+        ? "custom"
+        : "fixed";
+    }
+
+    function addCapabilityBadge(head, capability) {
+      if (!head || !capability) return;
+      let badge = Array.from(head.children).find((child) => child.classList.contains("cap-badge"));
+      if (!badge) {
+        badge = document.createElement("span");
+        head.appendChild(badge);
+      }
+      badge.className = `cap-badge ${capability}`;
+      badge.textContent = capability;
+      badge.title =
+        capability === "custom"
+          ? "custom value can be entered"
+          : capability === "preset"
+            ? "prebuilt shortcut"
+            : "fixed choices only";
+    }
+
+    function setupPaletteCapabilityCues() {
+      setFoldHeadLabel(document.querySelector("#fold-palette-diagnostic > .fold-head"), "run checks");
+      setFoldHeadLabel(document.querySelector("#fold-palette-life .cat-sub > .fold-head.diagnostic"), "evidence addon");
+      document.getElementById("fold-palette-diagnostic")?.classList.add("palette-diagnostic-section");
+      document
+        .querySelector("#fold-palette-life .cat-sub > .fold-head.diagnostic")
+        ?.closest(".cat-sub")
+        ?.classList.add("palette-diagnostic-section");
+      document
+        .querySelectorAll(".palette .cat-sub.fold-section, #fold-palette-baseline, #fold-palette-preset")
+        .forEach((section) => {
+          const head = section.querySelector(":scope > .fold-head");
+          addCapabilityBadge(head, sectionCapability(section));
+        });
+    }
+
     function setupPreviewActions() {
       const downloadName = (suffix = "") => {
         const preview = window.__graphflPreview || {};
@@ -4343,25 +4880,35 @@
 
     function setupConfigDirectInput() {
       const input = document.getElementById("config-direct-input");
-      if (!input) return;
-      input.addEventListener("input", () => {
+      const existingBtn = document.getElementById("config-mode-existing");
+      const generateBtn = document.getElementById("config-mode-generate");
+      input?.addEventListener("input", () => {
         setDirectConfigName(input.value);
       });
-      input.addEventListener("keydown", (e) => {
+      input?.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
           setDirectConfigName(input.value);
           input.blur();
         }
       });
-      input.addEventListener("blur", () => {
+      input?.addEventListener("blur", () => {
         setDirectConfigName(input.value);
+      });
+      existingBtn?.addEventListener("click", () => setConfigUseMode("existing"));
+      generateBtn?.addEventListener("click", () => setConfigUseMode("generate"));
+      document.querySelectorAll("[data-config-pick]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          chooseConfigQuickPick(btn.dataset.configPick || "", btn.dataset.configMode || "existing");
+        });
       });
     }
 
     setupPalette();
     setupFoldSections();
+    setupPaletteCapabilityCues();
     setupConfigDirectInput();
+    setupDiagnosticOptions();
     setupAlphaNumControls();
     setupWorkspaceDropDelegation();
     setupColumnCountControls();
