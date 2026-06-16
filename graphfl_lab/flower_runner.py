@@ -22,7 +22,7 @@ from flwr.supercore.constant import NOOP_FEDERATION
 
 from graphfl_lab.config_io import public_args_dict
 from graphfl_lab.flower_app import DEFAULT_RUN_CONFIG, client_app, server_app
-from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
+from graphfl_lab.extensions.runtime import prepare_graph_extensions
 
 
 def _toml_value(value: Any) -> str:
@@ -43,7 +43,7 @@ def _absolute_path(value: str) -> str:
 
 def _resolved_args_for_run_config(args: Namespace) -> Namespace:
     resolved = Namespace(**vars(args))
-    apply_graph_preset_to_namespace(resolved)
+    prepare_graph_extensions(resolved)
     return resolved
 
 
@@ -62,7 +62,11 @@ def args_to_run_config(args: Namespace, track: str) -> Dict[str, Any]:
         )
         if key not in original_public_keys and run_key not in DEFAULT_RUN_CONFIG:
             continue
-        cfg[run_key] = value
+        cfg[run_key] = (
+            json.dumps(value, sort_keys=True)
+            if key == "aggregation_params" and isinstance(value, dict)
+            else value
+        )
 
     cfg["data-root"] = _absolute_path(str(cfg["data-root"]))
     cfg["out-dir"] = _absolute_path(str(cfg["out-dir"]))

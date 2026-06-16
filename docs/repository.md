@@ -1,14 +1,14 @@
 # Repository Layout
 
-이 문서는 repository를 처음 읽는 사람이 code, config, script, test, docs 위치를 빠르게 찾기 위한 map이다. 기준은 Git에 남아 있는 tracked surface이며, 생성 output과 개인 실행 환경은 layout에 포함하지 않는다.
+이 문서는 code, config, script, test, docs 위치를 빠르게 찾기 위한 map이다. 생성 output과 개인 실행 환경은 포함하지 않는다.
 
 ## Top-Level Map
 
 ```text
 .
-├── README.md                         프로젝트 진입점, claim, Evidence snapshot
-├── MIGRATION.md                      public rename, compatibility summary
-├── CHANGELOG.md                      release-level change log
+├── README.md                         프로젝트 목적, 실행, 검증 요약
+├── MIGRATION.md                      이름 변경과 compatibility 요약
+├── CHANGELOG.md                      변경 기록
 ├── pyproject.toml                    package metadata, Flower app config
 ├── requirements.txt                  runtime/test dependencies
 ├── run_experiment.py                 unified runner: --track vision|cora
@@ -21,7 +21,7 @@
 ├── configs/                          tracked experiment config presets
 ├── scripts/                          validation, checks, reports, smoke helpers
 ├── tests/                            unit and contract tests
-└── docs/                             canonical documentation and HTML demo
+└── docs/                             세부 문서와 보조 demo
 ```
 
 ## Package Layout
@@ -35,9 +35,11 @@ graphfl_lab/
 ├── data/                             dataset loading and partition logic
 ├── designs/                          GraphFLDesign registry and presets
 ├── diagnostics/                      result schema and artifact writers
+├── extensions/                       extension API, runtime preparation, validation
 ├── graph/                            graph source, builder, control, diagnostics
 ├── lifecycle/                        lifecycle contracts, context, traces
 ├── models/                           model definitions
+├── presentation/                     demo에서 쓰는 capability manifest
 ├── strategies/
 │   ├── baselines/                    FedAvg-like and graph-free baselines
 │   └── graphfl/                      Graph-FL runtime strategy modules
@@ -46,7 +48,7 @@ graphfl_lab/
 │   ├── suites/
 │   │   └── vision/                   vision suite features, variants, reporting
 │   └── vision/                       vision single run, suite, stress, sweeps
-└── validation/                       Evidence-pack validation logic
+└── validation/                       검증 report 생성 로직
 ```
 
 ## Graph-FL Strategy Layout
@@ -129,7 +131,7 @@ configs/
 scripts/
 ├── analysis/                         deep dives and result merge helpers
 ├── archive/                          historical analysis scripts
-├── checks/                           preflight, evidence bundle, parity checks
+├── checks/                           preflight, validation bundle, parity checks
 ├── dev/                              golden and serialized-object maintenance
 ├── reports/                          plot and dashboard report helpers
 ├── smoke/                            smoke command wrappers
@@ -139,7 +141,7 @@ scripts/
 
 | Script Area | Main Use |
 |---|---|
-| `scripts/validation/` | Evidence report generation and framework validity checks |
+| `scripts/validation/` | graph/control/diagnostic 검증 report 생성 |
 | `scripts/checks/` | lightweight repository and artifact preflight |
 | `scripts/reports/` | plot/table/report generation from experiment outputs |
 | `scripts/dev/` | golden fixture and serialized asset maintenance |
@@ -156,9 +158,11 @@ tests/
 ├── designs/                          GraphFLDesign registry tests
 ├── diagnostics/                      schema and artifact tests
 ├── experiments/                      vision and Cora orchestration tests
+├── extensions/                       custom aggregation and extension contract tests
 ├── golden/                           normalized baseline policy and fixtures
 ├── graph/                            graph source/builder/control tests
 ├── lifecycle/                        lifecycle context and trace tests
+├── presentation/                     demo manifest drift와 static contract tests
 ├── scripts/                          script-level tests
 ├── strategies/                       baseline and Graph-FL strategy tests
 ├── structure/                        repository structure tests
@@ -171,14 +175,15 @@ tests/
 ```text
 docs/
 ├── README.md                         documentation index
-├── framework.md                      framework claim, lifecycle, metrics
-├── evidence.md                       framework validity experiments
+├── framework.md                      component 구조, lifecycle, metrics
+├── evidence.md                       검증 결과와 한계
 ├── research.md                       prior work and design pattern survey
 ├── repository.md                     repository layout and change routing
 ├── maintenance.md                    compatibility and hygiene policy
 ├── history.md                        legacy experiments and migration phases
 └── demos/
-    └── graphfl-assembly-scratch.html Graph-FL assembly scratch demo
+    ├── graphfl-assembly-scratch.html 보조 HTML demo
+    └── graphfl-authoring-capabilities.js demo capability manifest
 ```
 
 ## Change Routing
@@ -200,5 +205,7 @@ docs/
 | Cora run | `graphfl_lab/experiments/cora/` | `tests/experiments/cora/` |
 | suite reporting | `graphfl_lab/experiments/suites/vision/` | `tests/experiments/suites/vision/` |
 | CLI argument | `graphfl_lab/cli/` | `tests/cli/` |
+| extension authoring/scaffold | `graphfl_lab/extensions/`, `graphfl_lab/cli/authoring.py` | `tests/extensions/`, `tests/cli/` |
+| demo capability manifest | `graphfl_lab/presentation/`, `docs/demos/` | `tests/presentation/` |
 | config | `configs/` | JSON validation |
-| Evidence pack | `graphfl_lab/validation/`, `scripts/validation/` | `tests/validation/` |
+| validation report | `graphfl_lab/validation/`, `scripts/validation/` | `tests/validation/` |

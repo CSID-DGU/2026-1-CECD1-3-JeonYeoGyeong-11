@@ -22,8 +22,7 @@ import torch
 from flwr.common import ndarrays_to_parameters
 
 from graphfl_lab.models.cora import GCN
-from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
-from graphfl_lab.graph.registry import load_graph_plugins
+from graphfl_lab.extensions.runtime import prepare_graph_extensions
 from graphfl_lab.strategies.baselines import (
     TracingDominanceAwareFedAvgM,
     TracingFedAdagrad,
@@ -148,8 +147,7 @@ def compute_client_class_distribution(client_graphs, out_dim: int) -> List[List[
 
 
 def build_strategy(args, method: str, initial_parameters):
-    apply_graph_preset_to_namespace(args)
-    load_graph_plugins(getattr(args, "graph_plugin", ""))
+    prepare_graph_extensions(args)
 
     def weighted_metric_avg(metrics):
         total = float(sum(num_examples for num_examples, _ in metrics))
@@ -261,6 +259,9 @@ def build_strategy(args, method: str, initial_parameters):
             graph_mode=args.graph_mode,
             graph_source=args.graph_source,
             aggregation_target=args.aggregation_target,
+            aggregation_parameters=dict(
+                getattr(args, "aggregation_params", {}) or {}
+            ),
             knn_k=args.knn_k,
             edge_threshold=args.edge_threshold,
             graph_scale_sigma=args.graph_scale_sigma,
@@ -421,6 +422,9 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
 
         "aggregation": {
             "aggregation_target": args.aggregation_target,
+            "aggregation_params": dict(
+                getattr(args, "aggregation_params", {}) or {}
+            ),
             "conflict_mix": float(args.conflict_mix),
             "warmup_rounds": int(args.warmup_rounds),
             "e_std_threshold": float(args.e_std_threshold),
@@ -471,6 +475,7 @@ def build_meta(args, client_class_distribution: List[List[int]], out_path: Path)
         "graph_method": str(getattr(args, "graph_method", "none")),
         "graph_source": args.graph_source,
         "aggregation_target": args.aggregation_target,
+        "aggregation_params": dict(getattr(args, "aggregation_params", {}) or {}),
         "knn_k": int(args.knn_k),
         "edge_threshold": float(args.edge_threshold),
         "graph_scale_sigma": float(args.graph_scale_sigma),

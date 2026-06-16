@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-AGGREGATION_TARGET_CHOICES = (
+BUILTIN_AGGREGATION_TARGETS = (
     "update",
     "weight",
     "graph_filtered_update",
     "graph_filtered_ema_update",
     "graph_filtered_weight",
 )
+AGGREGATION_TARGET_CHOICES = BUILTIN_AGGREGATION_TARGETS
 
 AGGREGATION_TARGET_HELP = (
     "AggregationOperator knob: object averaged with alpha_i to form the next global model. "
@@ -22,6 +23,7 @@ AGGREGATION_TARGET_SUITE_HELP = (
 
 __all__ = [
     "AGGREGATION_TARGET_CHOICES",
+    "BUILTIN_AGGREGATION_TARGETS",
     "AGGREGATION_TARGET_HELP",
     "AGGREGATION_TARGET_SUITE_HELP",
 ]

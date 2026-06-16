@@ -1,58 +1,40 @@
-# Framework Validity Evidence
+# 검증 근거
 
-이 문서는 Graph-FL Design Lab가 단순 실행 코드가 아니라 Graph-FL gain attribution framework로 성립한다는 근거를 정리한다. 핵심은 Graph-FL claim을 같은 measurement vocabulary, matched controls, graph-free controls, diagnostic metrics, artifact contract로 검증 가능하게 만드는 것이다.
+이 문서는 코드 구조와 검증 결과를 정리한다. 여기의 검증은 특정 Graph-FL 방법이 항상 더 좋다는 뜻이 아니다. 이 레포가 graph, control, diagnostics를 같은 기준으로 비교할 수 있는지 확인하는 절차다.
 
-## Validity Claim
+## 검증이 보는 것
 
-| 검증 축 | 주장 | 근거 artifact |
+| 항목 | 확인하는 내용 | 주요 산출물 |
 |---|---|---|
-| graph construction | lifecycle assembly가 기존 reference graph semantics를 보존한다 | `graph_parity_summary.csv` |
-| prior-work mechanism | pFedGraph, FedAMP, SFL, FedAGA의 핵심 mechanism을 component slot으로 표현한다 | `external_mechanism_alignment.csv` |
-| diagnostics | synthetic pathology에서 metric이 expected direction으로 움직인다 | `scenario_manifest.json`, `metric_validity_summary.csv` |
-| composability | source, mode, target, control 조합을 pass/unsupported/needs-review로 명시한다 | `composability_matrix.csv` |
-| design space | built-in Cartesian product 전체가 calculation contract를 통과한다 | `design_space_matrix.csv`, `design_space_summary.csv` |
-| extensibility | custom source, builder, preset, target이 trace와 artifact contract를 보존한다 | `extension_contract_summary.csv` |
-| measurement integrity | real/control diagnostic row가 measured nonzero와 expected-zero control로 구분된다 | `real_diagnostic_consistency.csv` |
+| graph construction | component로 조립한 graph가 reference builder와 같은 결과를 내는가 | `graph_parity_summary.csv` |
+| prior work mapping | pFedGraph, FedAMP, SFL, FedAGA의 핵심 구조를 component로 표현할 수 있는가 | `external_mechanism_alignment.csv` |
+| diagnostics | synthetic case에서 metric이 예상한 방향으로 움직이는가 | `scenario_manifest.json`, `metric_validity_summary.csv` |
+| composability | source, builder, target, control 조합이 명시적으로 통과하거나 제외되는가 | `composability_matrix.csv` |
+| design space | built-in 조합이 같은 계산 조건을 통과하는가 | `design_space_matrix.csv`, `design_space_summary.csv` |
+| extensibility | custom component가 trace와 artifact까지 이어지는가 | `extension_contract_summary.csv` |
 
-이 Evidence는 특정 Graph-FL method가 항상 우월하다는 주장이 아니다. 같은 client artifact를 real graph, matched controls, graph-free corrections, source/mode/target ablations, prior-work proxy mechanisms에 통과시켜 Graph-FL gain의 원인을 분해할 수 있다는 주장이다.
+## 요약 결과
 
-## Experiment Questions
+| 검증 항목 | 결과 |
+|---|---:|
+| graph construction parity | 18 modes pass, max diff `2.21e-12`, edge F1 `1.0` |
+| prior-work mapping | 5 / 5 rows pass |
+| framework diagnostic rows | 60 rows pass |
+| representative composability | 6 supported-pass, 2 unsupported-explicit |
+| full design-space checks | 8,640 / 8,640 pass |
+| extension contract | 4 / 4 rows pass |
 
-| 질문 | 실험 handle | 필요한 Evidence |
-|---|---|---|
-| graph implementation이 faithful한가 | lifecycle-built graph와 reference builder 비교 | construction drift, edge support, edge F1 |
-| paper mechanism이 정직하게 표현되는가 | source, relation, topology, aggregation, directionality, claim scope 매핑 | paper-kernel/proxy-reference rows |
-| diagnostics가 의미 있게 반응하는가 | expected direction이 알려진 synthetic case 실행 | metric validity, pass/fail direction check |
-| framework가 조합 가능한가 | source, mode, target, control, diagnostics 조합 | explicit supported, unsupported, needs-review verdict |
-| design space가 조용히 깨지지 않는가 | built-in Cartesian product enumeration | row-level calculation checks |
-| 사용자가 확장할 수 있는가 | custom source, builder, preset, target 등록 | trace, metadata, diagnostics, artifact preservation |
-| real measurement가 해석 가능한가 | real/control diagnostic movement 분류 | measured nonzero, expected-zero control, needs-review |
+## 해석 기준
 
-## Evidence Summary
+| 결과 | 의미 |
+|---|---|
+| pass | 현재 contract와 계산 조건을 만족한다 |
+| unsupported-explicit | 지원하지 않는 조합을 조용히 fallback하지 않고 명시적으로 제외한다 |
+| needs-review | metric 반응이 약하거나 해석을 보류해야 한다 |
 
-| Evidence Axis | 증명 내용 | Quantitative Verdict | Primary Artifact |
-|---|---|---:|---|
-| Construction drift | assembled lifecycle graph가 reference graph를 재현한다 | 18 graph modes pass, max abs diff `2.21e-12`, edge F1 `1.0` | `graph_parity_summary.csv` |
-| Paper-mechanism alignment | pFedGraph, FedAMP, SFL, FedAGA mechanism이 framework component로 매핑된다 | 5 / 5 rows pass | `external_mechanism_alignment.csv` |
-| Diagnostic sensitivity | diagnostics가 synthetic pathology에서 expected direction으로 움직인다 | 60 framework diagnostic rows pass | `scenario_manifest.json`, `metric_validity_summary.csv` |
-| Composability | component 조합이 pass, explicit unsupported, needs-review로 분류된다 | 6 supported-pass, 2 unsupported-explicit | `composability_matrix.csv` |
-| Design-space coverage | built-in 조합 전체가 calculation contract를 만족한다 | 8,640 / 8,640 checks pass | `design_space_matrix.csv`, `design_space_summary.csv` |
-| Extensibility | custom source, builder, preset, target이 trace와 artifact까지 도달한다 | 4 / 4 extension rows pass | `extension_contract_summary.csv` |
-| Measurement integrity | real diagnostic과 expected-zero control을 구분한다 | real/random/uniform measured nonzero, identity expected-zero control | `real_diagnostic_consistency.csv` |
+`needs-review` row는 실패를 숨기지 않기 위해 남긴다. 예를 들어 sample-prior collaboration의 일부 validation metric은 pass gate가 약해 별도로 표시한다.
 
-## Pass Criteria
-
-| Validation Unit | Pass Condition | Failure Signal |
-|---|---|---|
-| Graph reproduction | 같은 input에서 `max_abs_diff <= 1e-9`, `edge_f1 = 1.0` | weight drift 초과 또는 edge support mismatch |
-| Mechanism alignment | reference type, source, provenance, matched component, claim scope 기록 | provenance 또는 claim scope 누락 |
-| Synthetic sensitivity | scenario manifest의 expected direction과 row verdict 일치 | expected direction mismatch 또는 weak response |
-| Composability | supported 조합이 graph, trace, diagnostics, artifact row를 생성 | silent fallback 또는 artifact 누락 |
-| Design-space coverage | 모든 Cartesian product row가 calculation checks 통과 | source, graph, target, control, diagnostic, metadata check 실패 |
-| Extensibility | custom component가 metadata와 artifact contract를 보존 | trace, metadata, diagnostics, artifact field 누락 |
-| Measurement integrity | row가 measured nonzero, expected-zero control, needs-review 중 하나로 분류 | NaN, missing metric, unexpected zero movement |
-
-## Construction Drift
+## Graph Construction
 
 | Metric | Result |
 |---|---:|
@@ -62,52 +44,23 @@
 | edge F1 | `1.0` |
 | pass gate | `max_abs_diff <= 1e-9`, `edge_f1 = 1.0` |
 
-해석:
+이 check는 lifecycle로 조립한 graph가 기존 graph semantics를 바꾸지 않는지 확인한다. 이후 결과를 graph mechanism의 결과로 해석하려면 먼저 이 조건이 맞아야 한다.
 
-| Result | Meaning |
-|---|---|
-| `2.21e-12` max drift | `1e-9` gate보다 충분히 작아 numeric round-off 수준이다 |
-| `edge_f1 = 1.0` | edge topology가 reference와 동일하다 |
-| 18 graph modes pass | lifecycle assembly가 graph semantics를 바꾸지 않는다 |
+## Prior Work Mapping
 
-Construction drift는 framework 정당성의 첫 조건이다. componentized path가 기존 builder output을 numeric tolerance 안에서 재현하고 edge support를 보존해야 이후 attribution 결과를 graph mechanism의 결과로 해석할 수 있다.
+| Method | 현재 표현 | 범위 |
+|---|---|---|
+| pFedGraph | directed collaboration kernel, symmetric diagnostic projection | paper-kernel |
+| FedAMP | model-distance attentive weighting kernel | paper-kernel |
+| SFL | learned smoothness graph proxy | proxy-reference |
+| FedAGA | EMA/update magnitude-aware relation proxy | proxy-reference |
+| FED-PUB / GPFL | functional embedding, personalized target hook | interface-target |
 
-## Paper-Mechanism Alignment
+이 매핑은 논문 전체를 그대로 재현했다는 뜻이 아니다. 이 레포 안에서 비교 가능한 component slot으로 어느 부분을 표현했는지 남기는 용도다.
 
-| Method | Matched Component | Reference Type | Directionality | Claim Scope |
-|---|---|---|---|---|
-| pFedGraph | directed collaboration kernel | paper-kernel | directed | collaboration matrix kernel |
-| pFedGraph | symmetric diagnostic projection | paper-kernel | symmetric projection | diagnostic projection of collaboration graph |
-| FedAMP | model-distance attentive weighting kernel | paper-kernel | undirected/symmetric | attentive relation kernel |
-| SFL | learned smoothness graph proxy | proxy-reference | undirected | smoothness-driven graph proxy |
-| FedAGA | EMA/update magnitude-aware relation proxy | proxy-reference | undirected | update-magnitude relation proxy |
+## Design-Space Check
 
-Reference type 의미:
-
-| Type | Meaning |
-|---|---|
-| `paper-kernel` | 논문 수식 또는 mechanism 설명을 독립 kernel로 구현한 row |
-| `proxy-reference` | 논문 mechanism을 repository component로 대리 표현한 row |
-| `interface-target` | slot과 hook이 정의되어 method family를 받아들일 수 있는 확장 surface |
-
-## Diagnostic Sensitivity
-
-| Metric Family | Verdict | Count |
-|---|---|---:|
-| framework_diagnostic | pass | 60 |
-| framework_diagnostic | not-applicable | 15 |
-| validation_metric | pass | 235 |
-| validation_metric | needs-review | 15 |
-
-Needs-review row는 숨기지 않고 별도 verdict로 남긴다.
-
-| Scenario | Metric | Family | Min Pass Rate | Min Rho | Verdict |
-|---|---|---|---:|---:|---|
-| sample_prior_collaboration | directed_row_similarity_to_ground_truth | validation_metric | 1.00 | 0.45 | needs-review |
-
-Diagnostic sensitivity는 framework-level diagnostics와 validation metrics로 나뉜다. Framework diagnostics는 measurement vocabulary가 expected direction으로 움직이는지를 확인한다. Validation metrics는 더 넓은 synthetic check를 제공하고, 약한 row를 `needs-review`로 분리해 claim boundary를 명확하게 만든다.
-
-## Design-Space Coverage
+Full validation은 built-in 조합 전체를 계산한다.
 
 ```text
 16 graph sources
@@ -120,78 +73,39 @@ x 6 correction profiles
 | Status | Count |
 |---|---:|
 | supported-pass | 8,640 |
-| calculation_checks_passed | 8,640 |
+| calculation checks passed | 8,640 |
 | needs-review | 0 |
 | unsupported-explicit | 0 |
 
-Row-level checks:
+각 row는 source output, adjacency, target output, control semantics, metadata, artifact row를 확인한다.
 
-| Check Group | Required Fields |
+## 한계
+
+| 항목 | 의미 |
 |---|---|
-| source output | vector count, dimension, finite values, client variation |
-| adjacency | shape, finite values, symmetry, zero diagonal, non-negative weights |
-| graph diagnostics | numeric validity, density, edge count |
-| target output | output shape, finite values, graph-filtered target diagnostics |
-| controls | identity, uniform, random, shuffled semantics |
-| metadata | target metadata, artifact fields, trace identity |
+| 성능 증명 아님 | 이 문서는 Graph-FL이 항상 baseline보다 좋다는 결론을 내리지 않는다 |
+| proxy 범위 | 일부 prior work는 paper mechanism의 일부를 proxy로 표현한다 |
+| real experiment 별도 | 실제 dataset에서의 성능 해석은 run output과 diagnostic artifact를 함께 봐야 한다 |
+| 내부 profile 이름 | full validation CLI 옵션 이름은 현재 `--profile poster`다. 이름은 남아 있지만 의미는 전체 조합 검증이다 |
 
-8,640-row check는 framework가 한 preset에만 맞춰진 구조가 아니라는 근거다. 모든 row가 source output quality, graph construction validity, target output validity, control semantics, metadata를 같은 기준으로 통과한다.
+## 실행
 
-## Extensibility
+빠른 확인:
 
-| Extension Point | Example | Verdict |
-|---|---|---|
-| `graph_source` | `evidence_unit_source` | pass |
-| `graph_builder` | `evidence_unit_builder` | pass |
-| `design_preset` | `evidence_unit_design` | pass |
-| `aggregation_target` | `v1_core_code_extension_point` | pass |
-
-Extensibility Evidence는 custom component가 독립 실행에 그치지 않고 built-in component와 같은 trace, metadata, diagnostic, artifact pipeline을 통과하는지 확인한다.
-
-## Artifact Contract
-
-| Artifact | Required Information |
-|---|---|
-| `round_metrics.csv` | pre/post aggregate, `DI`, `N_eff`, alignment, `LOO` |
-| `client_metrics.csv` | client contribution, update norm, alignment |
-| `graph_stats.csv` | density, degree, entropy, spectral metrics |
-| `counterfactual_metrics.csv` | real graph and control graph gap |
-| `metric_validity_summary.csv` | synthetic expected-direction result |
-| `design_space_matrix.csv` | source/mode/target/control/diagnostic row validity |
-| `extension_contract_summary.csv` | custom component trace and artifact preservation |
-
-CSV/JSON artifact는 reproducible output이다. Repository 문서는 row meaning, pass criteria, quantitative verdict, provenance, reproduction command를 canonical contract로 남긴다.
-
-## Provenance
-
-| Artifact | Role |
-|---|---|
-| `poster_tables.md` | compact poster summary |
-| `claim_boundaries.md` | claim scope table |
-| `scenario_manifest.json` | scenario, seed, expected direction, pass rule |
-| `graph_parity_summary.csv` | construction drift rows |
-| `external_mechanism_alignment.csv` | paper-mechanism alignment rows |
-| `metric_validity_summary.csv` | synthetic diagnostic validity rows |
-| `composability_matrix.csv` | representative composition rows |
-| `design_space_matrix.csv` | built-in design-space rows |
-| `design_space_summary.csv` | design-space aggregate |
-| `design_space_boundaries.csv` | design-space axis boundary |
-| `extension_contract_summary.csv` | custom extension checks |
-| `real_diagnostic_consistency.csv` | real/control measurement status |
-| `validation_verdict.json` | final verdict |
-
-Scenario manifest hash:
-
-```text
-b277f3885562d9074301a0e7f2f4d7afc01814f0afda5f75b5bf878fed345215
+```powershell
+python scripts/validation/graph_evidence_report.py `
+  --profile smoke `
+  --include-external `
+  --out-dir tmp/evidence_smoke
 ```
 
-## Reproduction
+전체 조합 확인:
 
-Repository root에서 실행한다.
-
-```text
-python scripts/validation/graph_evidence_report.py --profile poster --include-external --out-dir <out-dir> --real-suite-dir <real-suite-dir>
+```powershell
+python scripts/validation/graph_evidence_report.py `
+  --profile poster `
+  --include-external `
+  --out-dir tmp/evidence_full
 ```
 
 Primary implementation:

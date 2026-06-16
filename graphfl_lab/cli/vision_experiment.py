@@ -8,7 +8,7 @@ from graphfl_lab.cli.aggregation_targets import (
     AGGREGATION_TARGET_CHOICES,
     AGGREGATION_TARGET_HELP,
 )
-from graphfl_lab.cli.argparse_types import str2bool
+from graphfl_lab.cli.argparse_types import json_object, str2bool
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 from graphfl_lab.experiments.vision import single_run as _experiment
 GRAPH_MODE_HELP = (
@@ -135,9 +135,9 @@ def parse_args():
         "--aggregation-target",
         type=str,
         default="update",
-        choices=AGGREGATION_TARGET_CHOICES,
         help=AGGREGATION_TARGET_HELP,
     )
+    p.add_argument("--aggregation-params", type=json_object, default={})
     p.add_argument("--knn-k", type=int, default=2)
     p.add_argument("--edge-threshold", type=float, default=0.0)
     p.add_argument(

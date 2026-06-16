@@ -35,6 +35,7 @@ Outputs in ``--out-dir``:
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import shlex
 import subprocess
@@ -124,6 +125,10 @@ def variant_command(
         "--ema-alpha", str(args.ema_alpha),
         "--graph-source", str(args.graph_source),
         "--aggregation-target", str(args.aggregation_target),
+        "--aggregation-params",
+        json.dumps(dict(getattr(args, "aggregation_params", {}) or {}), sort_keys=True),
+        "--graph-plugin", str(getattr(args, "graph_plugin", "")),
+        "--graph-preset", str(getattr(args, "graph_preset", "none")),
         "--graph-seed", str(args.graph_seed),
         "--knn-k", str(args.knn_k),
         "--edge-threshold", str(args.edge_threshold),

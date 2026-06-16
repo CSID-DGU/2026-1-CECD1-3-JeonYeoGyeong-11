@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import itertools
+import json
 import re
 import sys
 from pathlib import Path
@@ -168,6 +169,12 @@ def suite_cmd(
         str(args.graph_source),
         "--aggregation-target",
         str(args.aggregation_target),
+        "--aggregation-params",
+        json.dumps(dict(getattr(args, "aggregation_params", {}) or {}), sort_keys=True),
+        "--graph-plugin",
+        str(getattr(args, "graph_plugin", "")),
+        "--graph-preset",
+        str(getattr(args, "graph_preset", "none")),
         "--edge-threshold",
         str(args.edge_threshold),
         "--graph-scale-sigma",

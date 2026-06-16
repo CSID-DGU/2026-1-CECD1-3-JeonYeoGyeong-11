@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from graphfl_lab.cli.argparse_types import json_object
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 import graphfl_lab.experiments.vision.client_count_sweep as _experiment
 
@@ -47,6 +48,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--knn-k", type=int, default=2)
     p.add_argument("--graph-source", type=str, default="update")
     p.add_argument("--aggregation-target", type=str, default="graph_filtered_update")
+    p.add_argument("--aggregation-params", type=json_object, default={})
+    p.add_argument("--graph-plugin", type=str, default="")
+    p.add_argument("--graph-preset", type=str, default="none")
     p.add_argument("--edge-threshold", type=float, default=0.0)
     p.add_argument("--graph-scale-sigma", type=float, default=1.0)
     p.add_argument("--learned-graph-lambda", type=float, default=1.0)

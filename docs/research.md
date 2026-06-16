@@ -146,6 +146,6 @@ Position:
 | design-space coverage | built-in 조합 전체가 calculation contract를 통과하는가 | `design_space_matrix.csv` |
 | extensibility | custom source/builder/preset row가 artifact까지 도달하는가 | `extension_contract_summary.csv` |
 
-Poster claim:
+짧은 요약:
 
-> Graph-FL Design Lab validates Graph-FL gain through graph construction, matched controls, diagnostic metrics, and design-space coverage.
+> Graph-FL Design Lab는 graph construction, matched controls, diagnostic metrics, design-space checks로 Graph-FL 결과를 나눠 볼 수 있게 한다.

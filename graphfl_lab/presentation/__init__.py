@@ -1,0 +1,1 @@
+"""Presentation-facing capability artifacts."""

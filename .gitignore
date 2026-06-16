@@ -26,6 +26,7 @@ htmlcov/
 # Experiment outputs and generated analysis artifacts
 /experiments_current/
 /experiments/
+/tmp/
 # Generated report outputs (plot CSV/MD); keep scripts/reports/ in git
 /reports/
 # Pre-rename artifact filenames (local trees only; current code uses vision_* names)
@@ -45,6 +46,7 @@ htmlcov/
 *.ckpt
 
 # Local raw research notes
+team_project_prep.md
 docs/Spectral Client Update Graph 아이디어.md
 docs/확장 아이디어 모음.md
 

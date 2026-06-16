@@ -52,8 +52,12 @@ from graphfl_lab.lifecycle.relation import estimate_relation_from_vectors
 from graphfl_lab.lifecycle.topology import build_topology_from_relation
 from graphfl_lab.cli.aggregation_targets import AGGREGATION_TARGET_CHOICES
 from graphfl_lab.strategies.graphfl.targets import (
+    AggregationTargetContext,
     AggregationTargetConfig,
+    AggregationTargetResult,
     aggregate_target,
+    register_aggregation_target,
+    unregister_aggregation_target,
 )
 from graphfl_lab.strategies.graphfl.diagnostics import (
     heterogeneity,
@@ -180,8 +184,8 @@ DESIGN_SPACE_BOUNDARIES = (
     {
         "axis": "aggregation_target",
         "designable_range": ", ".join(AGGREGATION_TARGET_CHOICES),
-        "current_boundary": "v1 supports core-code targets only; target plugin extensibility is not claimed",
-        "claim": "core-code-extension-point",
+        "current_boundary": "targets must preserve client/layer shapes and emit finite arrays",
+        "claim": "plugin-extensible",
     },
     {
         "axis": "correction_family",
@@ -1421,19 +1425,7 @@ def extension_contract_rows() -> list[dict[str, Any]]:
     rows.append(_custom_graph_source_contract())
     rows.append(_custom_graph_builder_contract())
     rows.append(_custom_design_contract())
-    rows.append(
-        {
-            "axis": "extensibility",
-            "extension_kind": "aggregation_target",
-            "extension_name": "v1_core_code_extension_point",
-            "status": "not-claimed",
-            "metadata_recorded": True,
-            "trace_recorded": False,
-            "artifact_recorded": False,
-            "verdict": "pass",
-            "claim_boundary": "aggregation target plugin extensibility is not claimed in v1",
-        }
-    )
+    rows.append(_custom_aggregation_target_contract())
     return rows
 
 
@@ -1569,6 +1561,68 @@ def _custom_design_contract() -> dict[str, Any]:
         "verdict": "pass" if ok else "needs-review",
         "claim_boundary": "custom design resolves into current strategy knobs",
     }
+
+
+def _custom_aggregation_target_contract() -> dict[str, Any]:
+    name = "evidence_unit_aggregation"
+    calls = {"count": 0}
+
+    @register_aggregation_target(name, override=True)
+    def _target(context: AggregationTargetContext) -> AggregationTargetResult:
+        calls["count"] += 1
+        scale = float(context.config.parameters.get("scale", 0.5))
+        scaled = [
+            [
+                np.asarray(layer) * scale
+                for layer in client
+            ]
+            for client in context.local_updates
+        ]
+        return AggregationTargetResult(
+            post_local_updates=scaled,
+            target_used=name,
+            metadata={"scale": scale, "contract": "unit"},
+        )
+
+    try:
+        weights, updates, _ = _sample_arrays()
+        current = [
+            np.zeros_like(layer)
+            for layer in weights[0]
+        ]
+        candidate, target_used, metadata = aggregate_target(
+            current_global=current,
+            local_weights=weights,
+            local_updates=updates,
+            alpha_norm=np.full(len(updates), 1.0 / len(updates)),
+            config=AggregationTargetConfig(
+                target=name,
+                parameters={"scale": 0.5},
+            ),
+        )
+        ok = (
+            calls["count"] == 1
+            and target_used == name
+            and all(np.all(np.isfinite(layer)) for layer in candidate)
+            and metadata.get("component_name") == name
+            and metadata.get("parameters") == {"scale": 0.5}
+        )
+        return {
+            "axis": "extensibility",
+            "extension_kind": "aggregation_target",
+            "extension_name": name,
+            "status": "supported-pass" if ok else "needs-review",
+            "metadata_recorded": bool(metadata),
+            "trace_recorded": bool(metadata.get("component_name")),
+            "artifact_recorded": bool(metadata.get("output_shape")),
+            "verdict": "pass" if ok else "needs-review",
+            "claim_boundary": (
+                "custom aggregation preserves shape and shares one transformed "
+                "client-update result with aggregation and diagnostics"
+            ),
+        }
+    finally:
+        unregister_aggregation_target(name)
 
 
 def real_diagnostic_consistency_rows(real_summary_dir: str | Path | None) -> list[dict[str, Any]]:
@@ -1818,7 +1872,7 @@ def write_claim_boundaries(path: Path) -> Path:
         "- Real summaries report constructed graph vs controls only.",
         "- Metric validity is diagnostic sensitivity, not performance proof.",
         "- Performance relevance is future-work.",
-        "- Aggregation target plugin extensibility is not claimed in v1.",
+        "- Aggregation target plugins must preserve client/layer shape and finite values.",
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path

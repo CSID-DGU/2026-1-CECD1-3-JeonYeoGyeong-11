@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from typing import List
 
 
@@ -55,6 +56,13 @@ def build_base_cmd(args: argparse.Namespace) -> List[str]:
         str(args.graph_seed),
         "--graph-plugin",
         str(getattr(args, "graph_plugin", "")),
+        "--graph-preset",
+        str(getattr(args, "graph_preset", "none")),
+        "--aggregation-params",
+        json.dumps(
+            dict(getattr(args, "aggregation_params", {}) or {}),
+            sort_keys=True,
+        ),
         "--use-ema-graph",
         str(args.use_ema_graph),
         "--disable-adaptive-tau",

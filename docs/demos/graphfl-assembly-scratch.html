@@ -12,14 +12,14 @@
     <p class="sub">
       Graph-FL 방법은 client representation, relation/topology, edge weight, aggregation target 중 일부를 바꾸며 발전해왔습니다.
       이 데모는 그 축을 repo의 실제 이름(<strong>graph_source</strong>, <strong>graph_mode</strong>, <strong>aggregation_target</strong>, …)으로 조립하고,
-      같은 control과 evidence bundle로 비교 가능한 <strong>CLI + JSON</strong>을 만듭니다.
+      같은 control과 검증 산출물로 비교 가능한 <strong>CLI + JSON</strong>을 만듭니다.
       새 그래프도 레지스트리에 이름을 등록하면 같은 실험 흐름에 얹을 수 있습니다.
     </p>
     <div class="header-chips" aria-label="핵심 메시지">
       <span class="thesis-chip"><b>1</b> 그래프 조립</span>
       <span class="thesis-chip"><b>2</b> matched controls</span>
-      <span class="thesis-chip"><b>3</b> evidence bundle</span>
-      <span class="thesis-chip"><b>4</b> claim boundary</span>
+      <span class="thesis-chip"><b>3</b> 검증 산출물</span>
+      <span class="thesis-chip"><b>4</b> 해석 범위</span>
     </div>
   </header>
 
@@ -41,7 +41,7 @@
         <div class="scratch-block stack env" draggable="true" data-target="env" data-env-slot="track" data-kind="env" data-value="vision" data-title="Vision" data-sub="run_vision_*">
           <div class="body">Vision<span class="sub">configs/vision/</span></div>
         </div>
-        <div class="scratch-block stack env" draggable="true" data-target="env" data-env-slot="track" data-kind="env" data-value="cora" data-title="Cora" data-sub="run_graph_ablation">
+        <div class="scratch-block stack env" draggable="true" data-target="env" data-env-slot="track" data-kind="env" data-value="cora" data-title="Cora" data-sub="single run / ablation">
           <div class="body">Cora / FGL<span class="sub">configs/cora/</span></div>
         </div>
           </div>
@@ -138,19 +138,19 @@
         </button>
         <div class="fold-body">
         <p class="cat-note">열당 <strong>블록 1개</strong> → 줄기 종료 · CLI <code>--method</code> / variant</p>
-        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="fedavg" data-title="fedavg" data-sub="FedAvg baseline">
+        <div class="scratch-block stack baseline" draggable="true" data-target="env" data-env-slot="baseline" data-tracks="vision,cora" data-kind="baseline" data-value="fedavg" data-title="fedavg" data-sub="FedAvg baseline">
           <div class="body">fedavg</div>
         </div>
-        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="fedavgm" data-title="fedavgm" data-sub="FedAvg + momentum">
+        <div class="scratch-block stack baseline" draggable="true" data-target="env" data-env-slot="baseline" data-tracks="vision,cora" data-kind="baseline" data-value="fedavgm" data-title="fedavgm" data-sub="FedAvg + momentum">
           <div class="body">fedavgm</div>
         </div>
-        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="graph_smooth" data-title="graph_smooth" data-sub="graph smoothing 대조">
+        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-tracks="vision" data-kind="baseline" data-value="graph_smooth" data-title="graph_smooth" data-sub="graph smoothing 대조">
           <div class="body">graph_smooth</div>
         </div>
-        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="dominance_aware" data-title="dominance_aware" data-sub="norm/cap 대조">
+        <div class="scratch-block stack baseline palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-tracks="vision" data-kind="baseline" data-value="dominance_aware" data-title="dominance_aware" data-sub="norm/cap 대조">
           <div class="body">dominance_aware</div>
         </div>
-        <div class="scratch-block stack baseline env-custom-block palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-kind="baseline" data-value="custom_variant" data-title="variant" data-sub="repo variant 토큰">
+        <div class="scratch-block stack baseline env-custom-block palette-track-vision" draggable="true" data-target="env" data-env-slot="baseline" data-tracks="vision" data-kind="baseline" data-value="custom_variant" data-title="variant" data-sub="repo variant 토큰">
           <div class="body extend-body">
             <span class="extend-tag">custom variant</span>
             <input type="text" class="extend-input" placeholder="ours_knn_k2" autocomplete="off" spellcheck="false" />
@@ -275,7 +275,7 @@
         </div>
           </div>
         </div>
-        <div class="cat-sub fold-section" data-fold-default="collapsed">
+        <div class="cat-sub fold-section" data-fold-default="collapsed" data-tracks="vision">
           <button type="button" class="cat-head correction fold-head sub" aria-expanded="true">
             <span class="fold-chevron" aria-hidden="true">▼</span>correction_family
           </button>
@@ -328,10 +328,10 @@
         </button>
         <div class="fold-body">
         <p class="cat-note">한 번에 여러 축이 채워진 프리셋 · 또는 extend로 레지스트리 확장</p>
-        <div class="scratch-block stack preset palette-track-vision" draggable="true" data-target="life" data-kind="preset" data-value="default_similarity_knn" data-title="default_similarity_knn" data-sub="update·RBF·rbf_knn·graph_filtered_update">
+        <div class="scratch-block stack preset" draggable="true" data-target="life" data-tracks="vision,cora" data-kind="preset" data-value="default_similarity_knn" data-title="default_similarity_knn" data-sub="update·RBF·rbf_knn·graph_filtered_update">
           <div class="body">default_similarity_knn<span class="sub">유사도 kNN 프리셋</span></div>
         </div>
-        <div class="scratch-block stack preset palette-track-vision" draggable="true" data-target="life" data-kind="preset" data-value="pfedgraph" data-title="pfedgraph" data-sub="pFedGraph 스타일 조립">
+        <div class="scratch-block stack preset" draggable="true" data-target="life" data-tracks="vision,cora" data-kind="preset" data-value="pfedgraph" data-title="pfedgraph" data-sub="pFedGraph 스타일 조립">
           <div class="body">pfedgraph<span class="sub">QP topology 프리셋</span></div>
         </div>
         </div>
@@ -489,8 +489,8 @@
         Graph-FL gain을 accuracy 하나로 끝내지 않고,
         relation/topology, smoothing, dominance, optimizer 효과를 같은 실험에서 <em>분해</em>한다.
       </div>
-      <div class="axis">assemble graph → matched controls → evidence bundle → claim boundary</div>
-      <div class="story-grid" aria-label="발표 흐름">
+      <div class="axis">graph assembly → matched controls → metrics → interpretation</div>
+      <div class="story-grid" aria-label="해석 흐름">
         <div class="story-card author">
           <strong>조립</strong>
           representation·relation·topology·aggregation을 블록처럼 고른다.
@@ -513,10 +513,44 @@
         <span><b>판단 지표:</b> accuracy/loss · real-control gap · graph-free gap</span>
         <span><b>기전 지표:</b> alignment · DI/N_eff · LOO · smoothness/spectral diagnostics</span>
       </div>
+      <section class="authoring-panel" id="authoring-panel" aria-label="Graph-FL component authoring session">
+        <div class="authoring-head">
+          <div>
+            <h2>Component Authoring Session</h2>
+            <p>사용자가 Source, Builder, Aggregation 중 하나를 고르면 같은 contract로 scaffold, validate, compose합니다.</p>
+          </div>
+          <div class="authoring-badges">
+            <span class="actual-badge">Actual validation</span>
+            <span class="mock-badge">Mock FL execution</span>
+          </div>
+        </div>
+        <div class="authoring-cards" id="authoring-cards"></div>
+        <div class="authoring-controls">
+          <label>session
+            <input id="authoring-session-id" type="text" value="demo_live" autocomplete="off" spellcheck="false" />
+          </label>
+          <label><span id="authoring-param-label">parameter</span>
+            <select id="authoring-param"></select>
+          </label>
+          <button type="button" id="authoring-validate">Actual validation 결과 연결</button>
+          <button type="button" id="authoring-disable">기존 조립만 사용</button>
+        </div>
+        <div class="authoring-grid">
+          <div>
+            <h3>Contract Card</h3>
+            <pre class="out out-compact" id="authoring-contract">component를 선택하세요.</pre>
+          </div>
+          <div>
+            <h3>Scaffold → Validate → Compose</h3>
+            <pre class="out out-compact" id="authoring-commands">component를 선택하세요.</pre>
+          </div>
+        </div>
+        <ul class="authoring-checks" id="authoring-checks"></ul>
+      </section>
       <p class="preview-note" id="verify-help">
         <strong>한 열은 하나의 비교 가능한 개입입니다.</strong> 주황은 트랙·데이터·규모 같은 공통 실행환경이고, 각 열은 같은 조건에서 하나의 graph intervention을 바꾼 비교 단위입니다.
         baseline은 1블록으로 끝나고, Graph-FL은 <strong>graph_source → relation cue → graph_mode → aggregation → optional control</strong> 순서로 조립됩니다.
-        relation cue는 발표용 해석 축이고, 실제 config에는 repo가 받는 <strong>graph_mode</strong>만 기록됩니다.
+        relation cue는 화면에서 이해를 돕는 해석 축이고, 실제 config에는 repo가 받는 <strong>graph_mode</strong>만 기록됩니다.
         가능한 한 같은 pipeline을 공유하고, relation 의미·identity 대응·edge 구조·graph-free correction처럼 검증하려는 요인만 바꿉니다.
         Preflight/suite_rows/LOO/Evidence/counterfactual은 조립 블록이 아니라 실행 관제 옵션과 결과 아티팩트로 기록됩니다.
       </p>
@@ -584,6 +618,7 @@
     </div>
   </div>
 
+  <script src="graphfl-authoring-capabilities.js"></script>
   <script src="graphfl-assembly-scratch.js"></script>
   <script src="graphfl-assembly-mock-system.js"></script>
 </body>

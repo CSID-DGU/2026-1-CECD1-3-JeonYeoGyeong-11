@@ -86,6 +86,7 @@ from graphfl_lab.strategies.baselines import (
 from graphfl_lab.strategies.graphfl.targets import (
     AggregationTargetConfig,
     aggregate_target,
+    evaluate_aggregation_target,
 )
 from graphfl_lab.strategies.graphfl.tracing import matrix_log_if_small
 from graphfl_lab.strategies.graphfl.update_space import (
@@ -112,6 +113,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         graph_mode: str = "dense",
         graph_source: str = "update",
         aggregation_target: str = "update",
+        aggregation_parameters: Optional[Dict[str, Any]] = None,
         knn_k: int = 2,
         edge_threshold: float = 0.0,
         graph_scale_sigma: float = 1.0,
@@ -162,6 +164,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         self.graph_mode = str(graph_mode)
         self.graph_source = str(graph_source)
         self.aggregation_target = str(aggregation_target)
+        self.aggregation_parameters = dict(aggregation_parameters or {})
         self.knn_k = int(knn_k)
         self.edge_threshold = float(edge_threshold)
         self.graph_scale_sigma = float(graph_scale_sigma)
@@ -274,6 +277,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             config=AggregationTargetConfig(
                 target=target_override or self.aggregation_target,
                 filter_strength=self.graph_filter_strength,
+                parameters=self.aggregation_parameters,
             ),
             l_mat=l_mat,
             ema_updates=ema_updates,
@@ -374,6 +378,7 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             project_fn=self._project,
         )
         graph_source_used = graph_space.graph_source_used
+        graph_source_metadata = dict(graph_space.graph_source_metadata)
         graph_source_norms = graph_space.graph_source_norms
         z_mat = graph_space.z_mat
         z_norms = graph_space.z_norms
@@ -405,6 +410,31 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         pre_weights = round_graph.pre_weights
         w_curr = round_graph.current_graph
         graph_meta = round_graph.graph_meta
+        if graph_source_metadata:
+            source_trace = {
+                "schema_version": "lifecycle_trace_v1",
+                "phase": "client_state",
+                "module": str(
+                    graph_source_metadata.get(
+                        "component_kind", "ClientStateExtractor"
+                    )
+                ),
+                "name": str(
+                    graph_source_metadata.get(
+                        "component_name", self.graph_source
+                    )
+                ),
+                "round": int(server_round),
+                "values": graph_source_metadata,
+            }
+            graph_meta = {
+                **graph_meta,
+                "graph_source_metadata": graph_source_metadata,
+                "lifecycle_trace": [
+                    source_trace,
+                    *(graph_meta.get("lifecycle_trace", []) or []),
+                ],
+            }
         client_cluster_ids = round_graph.client_cluster_ids
         graph_diag_current = round_graph.graph_diag_current
         w_ema = round_graph.used_graph
@@ -467,15 +497,46 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
         active_client_mask = weight_selection.active_client_mask
 
         target_override_for_round = "update" if (self.diagnostic_only or in_warmup) else None
-        post_flat_updates, diagnostic_target_used, diagnostic_filter_diag = (
-            self._diagnostic_post_flat_updates(
-                local_weights=local_weights,
-                local_updates=local_updates,
-                ema_updates=ema_updates,
-                l_mat=l_curr,
-                target_override=target_override_for_round,
-            )
+        target_evaluation = evaluate_aggregation_target(
+            current_global=self._current_global,
+            local_weights=local_weights,
+            local_updates=local_updates,
+            ema_updates=ema_updates,
+            alpha_norm=alpha_norm,
+            l_mat=l_curr,
+            config=AggregationTargetConfig(
+                target=target_override_for_round or self.aggregation_target,
+                filter_strength=self.graph_filter_strength,
+                parameters=self.aggregation_parameters,
+            ),
         )
+        post_flat_updates = target_evaluation.post_flat_updates
+        diagnostic_target_used = target_evaluation.target_used
+        diagnostic_filter_diag = dict(target_evaluation.metadata)
+        aggregation_trace = {
+            "schema_version": "lifecycle_trace_v1",
+            "phase": "aggregation",
+            "module": str(
+                diagnostic_filter_diag.get(
+                    "component_kind", "AggregationOperator"
+                )
+            ),
+            "name": str(
+                diagnostic_filter_diag.get(
+                    "component_name", self.aggregation_target
+                )
+            ),
+            "round": int(server_round),
+            "values": diagnostic_filter_diag,
+        }
+        graph_meta = {
+            **graph_meta,
+            "aggregation_target_metadata": diagnostic_filter_diag,
+            "lifecycle_trace": [
+                *(graph_meta.get("lifecycle_trace", []) or []),
+                aggregation_trace,
+            ],
+        }
         pre_post = summarize_pre_post(
             flat_updates=update_space.flat_delta_matrix,
             flat_updates_post=post_flat_updates,
@@ -526,14 +587,9 @@ class GraphFLDiagnosticStrategy(_EvalTracer, fl.server.strategy.FedAvg):
             )
 
         # ----------------- aggregate configured target and apply
-        candidate_global, aggregation_target_used, target_filter_diag = self._aggregate_target(
-            local_weights=local_weights,
-            local_updates=local_updates,
-            alpha_norm=alpha_norm,
-            l_mat=l_curr,
-            target_override=target_override_for_round,
-            ema_updates=ema_updates,
-        )
+        candidate_global = target_evaluation.candidate_global
+        aggregation_target_used = target_evaluation.target_used
+        target_filter_diag = dict(target_evaluation.metadata)
         new_global, server_opt_diag = self._apply_server_optimizer(candidate_global)
 
         if not in_warmup:

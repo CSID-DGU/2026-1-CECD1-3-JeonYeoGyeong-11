@@ -24,8 +24,14 @@ from graphfl_lab.strategies.graphfl.filtering import (
 )
 from graphfl_lab.strategies.graphfl.momentum import apply_server_optimizer
 from graphfl_lab.strategies.graphfl.targets import (
+    AggregationTargetContext,
     AggregationTargetConfig,
+    AggregationTargetResult,
     aggregate_target,
+    aggregation_target_names,
+    evaluate_aggregation_target,
+    register_aggregation_target,
+    unregister_aggregation_target,
 )
 
 
@@ -46,12 +52,15 @@ def __getattr__(name: str):
 
 
 __all__ = [
+    "AggregationTargetContext",
     "AggregationTargetConfig",
+    "AggregationTargetResult",
     "GraphFLDiagnosticStrategy",
     "GraphFLStrategyState",
     "SpectralConflictAwareStrategy",
     "SpectralState",
     "aggregate_target",
+    "aggregation_target_names",
     "apply_min_client_weight",
     "apply_server_optimizer",
     "apply_spectral_filter_with_diagnostics",
@@ -59,10 +68,13 @@ __all__ = [
     "compute_effective_clients",
     "compute_entropy",
     "compute_tau",
+    "evaluate_aggregation_target",
     "heterogeneity",
     "laplacian",
     "normalized_conflicts",
+    "register_aggregation_target",
     "spectral_energy_diagnostics",
     "spectral_filter",
     "weighted_average_by_alpha",
+    "unregister_aggregation_target",
 ]

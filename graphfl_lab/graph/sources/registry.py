@@ -74,9 +74,37 @@ def build_registered_graph_source(
         return None
     result = builder(context)
     if isinstance(result, GraphSourceResult):
-        return result
-    vectors, source_used = result
-    return GraphSourceResult(vectors=vectors, source_used=source_used)
+        resolved = result
+    else:
+        vectors, source_used = result
+        resolved = GraphSourceResult(vectors=vectors, source_used=source_used)
+    vectors = [np.asarray(vector, dtype=np.float64).reshape(-1) for vector in resolved.vectors]
+    if len(vectors) != len(context.local_updates):
+        raise ValueError(
+            f"Graph source {context.config.source!r} returned {len(vectors)} "
+            f"vectors; expected {len(context.local_updates)}"
+        )
+    if vectors:
+        width = int(vectors[0].size)
+        if any(int(vector.size) != width for vector in vectors):
+            raise ValueError(
+                f"Graph source {context.config.source!r} returned inconsistent vector sizes"
+            )
+        if not all(bool(np.all(np.isfinite(vector))) for vector in vectors):
+            raise ValueError(
+                f"Graph source {context.config.source!r} returned non-finite values"
+            )
+    metadata = dict(resolved.metadata or {})
+    metadata.setdefault("component_kind", "ClientStateExtractor")
+    metadata.setdefault("component_name", normalize_key(context.config.source))
+    metadata.setdefault("plugin_module", builder.__module__)
+    metadata.setdefault("num_clients", len(vectors))
+    metadata.setdefault("vector_size", int(vectors[0].size) if vectors else 0)
+    return GraphSourceResult(
+        vectors=vectors,
+        source_used=resolved.source_used,
+        metadata=metadata,
+    )
 
 
 __all__ = [

@@ -11,6 +11,7 @@ from graphfl_lab.cli.aggregation_targets import (
 )
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 import graphfl_lab.experiments.vision.suite as _experiment
+from graphfl_lab.cli.argparse_types import json_object
 
 # Compatibility re-exports for older imports from this CLI module.
 globals().update(
@@ -61,6 +62,12 @@ def parse_args():
         ),
     )
     p.add_argument(
+        "--graph-preset",
+        type=str,
+        default="none",
+        help="GraphFLDesign preset loaded after --graph-plugin.",
+    )
+    p.add_argument(
         "--graph-source",
         type=str,
         default="update",
@@ -75,9 +82,9 @@ def parse_args():
         "--aggregation-target",
         type=str,
         default="update",
-        choices=AGGREGATION_TARGET_CHOICES,
         help=AGGREGATION_TARGET_SUITE_HELP,
     )
+    p.add_argument("--aggregation-params", type=json_object, default={})
 
     p.add_argument(
         "--edge-threshold",

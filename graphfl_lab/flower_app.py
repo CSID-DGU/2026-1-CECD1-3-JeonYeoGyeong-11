@@ -49,7 +49,7 @@ from graphfl_lab.diagnostics.result_schema import (
     unsupported_components_from_args,
     with_result_schema,
 )
-from graphfl_lab.graph.presets import apply_graph_preset_to_namespace
+from graphfl_lab.extensions.runtime import prepare_graph_extensions
 from graphfl_lab.models.vision import build_model
 
 
@@ -97,7 +97,7 @@ def _run_with_strategy(
 
 
 def _run_vision_server(grid: Grid, args: Namespace) -> None:
-    apply_graph_preset_to_namespace(args)
+    prepare_graph_extensions(args)
     server_started_at = datetime.now()
     server_start = time.perf_counter()
     np.random.seed(args.seed)
@@ -151,7 +151,7 @@ def _run_vision_server(grid: Grid, args: Namespace) -> None:
 
 
 def _run_cora_server(grid: Grid, args: Namespace) -> None:
-    apply_graph_preset_to_namespace(args)
+    prepare_graph_extensions(args)
     server_started_at = datetime.now()
     server_start = time.perf_counter()
     np.random.seed(args.seed)

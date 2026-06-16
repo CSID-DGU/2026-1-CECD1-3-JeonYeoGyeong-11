@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 
 
 def str2bool(value):
@@ -18,4 +19,33 @@ def str2bool(value):
     raise argparse.ArgumentTypeError(f"Invalid boolean value: {value!r}")
 
 
-__all__ = ["str2bool"]
+def json_object(value):
+    if isinstance(value, dict):
+        return dict(value)
+    text = str(value).strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        if "=" not in text:
+            raise argparse.ArgumentTypeError(
+                f"Expected a JSON object or key=value pairs: {value!r}"
+            ) from exc
+        parsed = {}
+        for item in text.split(","):
+            key, separator, raw_value = item.partition("=")
+            key = key.strip()
+            if not separator or not key:
+                raise argparse.ArgumentTypeError(
+                    f"Expected key=value pairs: {value!r}"
+                ) from exc
+            raw_value = raw_value.strip()
+            try:
+                parsed[key] = json.loads(raw_value)
+            except json.JSONDecodeError:
+                parsed[key] = raw_value
+    if not isinstance(parsed, dict):
+        raise argparse.ArgumentTypeError("Expected a JSON object")
+    return parsed
+
+
+__all__ = ["json_object", "str2bool"]

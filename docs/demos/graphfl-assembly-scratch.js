@@ -4,9 +4,21 @@
       "graph_mode/control: knn, rbf_knn, random, shuffled, uniform, identity, graph_free, …",
       "aggregation_target: graph_filtered_update, graph_filtered_ema_update, graph_filtered_weight",
       "evidence: accuracy/loss, real-control gap, graph-free gap, alignment, DI/N_eff, LOO",
-      "확장: register_graph_source / graph builder / GraphFLDesign / graph_method",
-      "실행: run_vision_suite, run_graph_ablation, run_experiment --track (config JSON)",
+      "확장: register_graph_source / register_graph_builder / register_aggregation_target / register_design",
+      "실행: graphfl run single|suite|ablation|stress|client-count --config ...",
     ];
+    const AUTHORING_CAPABILITIES = window.GraphFLAuthoringCapabilities || {
+      schema_version: 2,
+      contract_version: "unavailable",
+      validation: { checks: ["Registry", "Shape", "Finite", "Metadata", "Trace/Artifact"] },
+      components: [],
+    };
+    const authoringState = {
+      enabled: false,
+      kind: "builder",
+      validationStatus: "not-selected",
+      parameters: {},
+    };
 
     const TRACK_RULES = {
       vision: {
@@ -29,7 +41,7 @@
     }
 
     function usesColumnAssembly() {
-      return currentTrack() === "vision" && baseRowReady();
+      return !!currentTrack() && baseRowReady();
     }
     const ENV_CUSTOM_VALUES = new Set(["custom_dataset", "custom_config", "custom_partition", "custom_variant"]);
     const ENV_CUSTOM_DEFAULTS = {
@@ -129,6 +141,210 @@
       name_correction: "extend-control",
       name_method: "extend-method",
     };
+
+    function authoringComponent(kind = authoringState.kind) {
+      return AUTHORING_CAPABILITIES.components.find((item) => item.kind === kind) || null;
+    }
+
+    function authoringParameterValue(component = authoringComponent()) {
+      if (!component?.parameter) return null;
+      const raw = authoringState.parameters[component.parameter.key];
+      return raw == null ? component.parameter.default : raw;
+    }
+
+    function authoringSessionId() {
+      const raw = String(document.getElementById("authoring-session-id")?.value || "").trim();
+      return /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw) ? raw : "";
+    }
+
+    function authoringPluginPath() {
+      const session = authoringSessionId() || "invalid_session";
+      return `tmp/demo_sessions/${session}/demo_plugin`;
+    }
+
+    function authoringComposeParts(component = authoringComponent()) {
+      const parts = {
+        source: "update",
+        builder: "knn",
+        aggregation: "graph_filtered_update",
+      };
+      if (component?.kind === "source") parts.source = component.name;
+      if (component?.kind === "builder") parts.builder = component.name;
+      if (component?.kind === "aggregation") parts.aggregation = component.name;
+      return parts;
+    }
+
+    function authoringSnapshot() {
+      const component = authoringComponent();
+      if (!authoringState.enabled || !component) {
+        return {
+          session_id: authoringSessionId() || null,
+          component_kind: null,
+          component_name: null,
+          plugin: null,
+          validation_status: "not-selected",
+          parameters: {},
+          contract_version: AUTHORING_CAPABILITIES.contract_version,
+        };
+      }
+      return {
+        session_id: authoringSessionId() || null,
+        component_kind: component.kind,
+        component_name: component.name,
+        plugin: authoringPluginPath(),
+        validation_status: authoringState.validationStatus,
+        parameters: {
+          [component.parameter.key]: authoringParameterValue(component),
+        },
+        contract_version: AUTHORING_CAPABILITIES.contract_version,
+      };
+    }
+
+    function authoringDesignSnapshot() {
+      const component = authoringComponent();
+      return authoringState.enabled && component
+        ? { name: component.design_name }
+        : { name: null };
+    }
+
+    function applyAuthoringToConfig(doc) {
+      const component = authoringComponent();
+      if (!doc || !authoringState.enabled || !component || doc.source === "existing_config") return doc;
+      if (!doc.args) return doc;
+      const parameterValue = authoringParameterValue(component);
+      const args = {
+        ...doc.args,
+        graph_plugin: authoringPluginPath(),
+        graph_preset: component.design_name,
+      };
+      args[component.config_key] = component.name;
+      if (component.kind === "builder") args.knn_k = Number(parameterValue);
+      if (component.kind === "aggregation") {
+        args.aggregation_params = { beta: Number(parameterValue) };
+      }
+      return {
+        ...doc,
+        schema_version: 2,
+        authoring: authoringSnapshot(),
+        design: authoringDesignSnapshot(),
+        args,
+      };
+    }
+
+    function renderAuthoringPanel() {
+      const cards = document.getElementById("authoring-cards");
+      const component = authoringComponent();
+      if (!cards || !component) return;
+      cards.innerHTML = "";
+      AUTHORING_CAPABILITIES.components.forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `authoring-card${authoringState.enabled && item.kind === authoringState.kind ? " is-active" : ""}`;
+        button.dataset.authoringKind = item.kind;
+        button.innerHTML = `<strong>${item.label}</strong><span>${item.name}</span>`;
+        button.addEventListener("click", () => {
+          authoringState.enabled = true;
+          authoringState.kind = item.kind;
+          authoringState.validationStatus = "pending";
+          authoringState.parameters[item.parameter.key] = item.parameter.default;
+          renderAuthoringPanel();
+          syncUI();
+        });
+        cards.appendChild(button);
+      });
+
+      const paramLabel = document.getElementById("authoring-param-label");
+      const param = document.getElementById("authoring-param");
+      if (paramLabel) paramLabel.textContent = component.parameter.label;
+      if (param) {
+        param.innerHTML = "";
+        component.parameter.choices.forEach((choice) => {
+          const option = document.createElement("option");
+          option.value = String(choice);
+          option.textContent = String(choice);
+          option.selected = Number(choice) === Number(authoringParameterValue(component));
+          param.appendChild(option);
+        });
+      }
+
+      const parts = authoringComposeParts(component);
+      const plugin = authoringPluginPath();
+      const parameterValue = authoringParameterValue(component);
+      const aggregationParams =
+        component.kind === "aggregation"
+          ? ` --aggregation-params beta=${Number(parameterValue)}`
+          : "";
+      const commands = [
+        `graphfl component new ${component.kind} ${component.name} --session-id ${authoringSessionId() || "<session-id>"}`,
+        `graphfl component validate ${plugin} --component ${component.kind}:${component.name}`,
+        `graphfl design compose --plugin ${plugin} --name ${component.design_name} --source ${parts.source} --builder ${parts.builder} --aggregation ${parts.aggregation}${component.kind === "builder" ? ` --knn-k ${Number(parameterValue)}` : ""}${aggregationParams}`,
+      ];
+      const contract = [
+        `${component.register_api}("${component.name}")`,
+        `input:  ${component.contract.input}`,
+        `output: ${component.contract.output}`,
+        `TODO:   ${component.contract.todo}`,
+        `${component.parameter.key}=${parameterValue}`,
+      ];
+      const contractEl = document.getElementById("authoring-contract");
+      const commandEl = document.getElementById("authoring-commands");
+      if (contractEl) contractEl.textContent = contract.join("\n");
+      if (commandEl) commandEl.textContent = commands.join("\n\n");
+
+      const checks = document.getElementById("authoring-checks");
+      if (checks) {
+        checks.innerHTML = "";
+        AUTHORING_CAPABILITIES.validation.checks.forEach((name) => {
+          const li = document.createElement("li");
+          const passed = authoringState.enabled && authoringState.validationStatus === "pass";
+          li.className = passed ? "pass" : "";
+          li.textContent = `${name} · ${passed ? "PASS" : "WAIT"}`;
+          checks.appendChild(li);
+        });
+      }
+    }
+
+    function setupAuthoringPanel() {
+      const param = document.getElementById("authoring-param");
+      const session = document.getElementById("authoring-session-id");
+      const validate = document.getElementById("authoring-validate");
+      const disable = document.getElementById("authoring-disable");
+      param?.addEventListener("change", () => {
+        const component = authoringComponent();
+        if (!component) return;
+        authoringState.parameters[component.parameter.key] = Number(param.value);
+        authoringState.validationStatus = "pending";
+        renderAuthoringPanel();
+        syncUI();
+      });
+      session?.addEventListener("input", () => {
+        if (authoringState.enabled) authoringState.validationStatus = "pending";
+        renderAuthoringPanel();
+        syncUI();
+      });
+      validate?.addEventListener("click", () => {
+        if (!authoringSessionId()) return;
+        if (!authoringState.enabled) authoringState.enabled = true;
+        const component = authoringComponent();
+        if (component?.parameter && authoringState.parameters[component.parameter.key] == null) {
+          authoringState.parameters[component.parameter.key] = component.parameter.default;
+        }
+        authoringState.validationStatus = "pass";
+        renderAuthoringPanel();
+        syncUI();
+      });
+      disable?.addEventListener("click", () => {
+        authoringState.enabled = false;
+        authoringState.validationStatus = "not-selected";
+        renderAuthoringPanel();
+        syncUI();
+      });
+      const initial = authoringComponent();
+      if (initial?.parameter) {
+        authoringState.parameters[initial.parameter.key] = initial.parameter.default;
+      }
+      renderAuthoringPanel();
+    }
 
     function isEnvCustomData(data) {
       return !!(data && (data.envCustom || ENV_CUSTOM_VALUES.has(data.value)));
@@ -465,6 +681,17 @@
       if (col.caseMode === "baseline" && col.preset) {
         return compareEntryVariantToken(col.preset) || col.preset.title || "baseline";
       }
+      const parts = columnLifecycleParts(col);
+      const fullTrail = [
+        parts.graph_source,
+        parts.relation,
+        parts.graph_mode,
+        parts.aggregation_target,
+        parts.correction_family,
+      ]
+        .filter(Boolean)
+        .join(" -> ");
+      if (fullTrail) return fullTrail;
       return LIFECYCLE_STAGES.map((s) => {
         const b = getColumnLife(col, s.kind);
         return b?.title || b?.value;
@@ -497,6 +724,7 @@
       if (!getColumnLife(col, BLOCK_KIND.AGGREGATION)) {
         return { ...LIFECYCLE_STAGES[2] };
       }
+      if (currentTrack() === "cora") return null;
       const hasCorrection = !!getColumnLife(col, BLOCK_KIND.CORRECTION);
       if (!hasCorrection) {
         return { ...LIFECYCLE_STAGES[3] };
@@ -526,6 +754,9 @@
         return { ok: false, reason: `${stageLabel}는 현재 단계(${next.label})에 놓을 수 없습니다` };
       }
       if (kind === BLOCK_KIND.CORRECTION) {
+        if (currentTrack() === "cora") {
+          return { ok: false, reason: "Cora single runner는 graph_source, graph_mode, aggregation_target까지만 사용합니다" };
+        }
         if (!columnGraphCoreComplete(col)) return { ok: false, reason: "correction/control은 aggregation 이후에 붙일 수 있습니다" };
         if (getColumnLife(col, BLOCK_KIND.CORRECTION)) return { ok: false, reason: "correction/control은 이미 있습니다" };
       }
@@ -707,6 +938,15 @@
       return data?.envSlot === "config_name" || data?.value === "custom_config";
     }
 
+    function blockAllowedBeforeConfig(data) {
+      return (
+        blockAllowedWhileExistingLocked(data) ||
+        data?.envSlot === "track" ||
+        data?.value === "vision" ||
+        data?.value === "cora"
+      );
+    }
+
     function currentAssemblyStep() {
       const cfg = buildEnvConfig();
       const configSelection = resolveConfigSelection(cfg);
@@ -715,7 +955,6 @@
       if (!envSlots.track) return { phase: "track" };
       if (!resolvedEnvSlotValue(envSlots.dataset)) return { phase: "dataset" };
       if (!baseRowReady()) return { phase: "dataset" };
-      if (currentTrack() === "cora") return { phase: "done" };
       syncEnvColumnsArray();
       const n = getTargetColumnCount();
       const track = currentTrack();
@@ -805,7 +1044,7 @@
         flashReject(ctx?.slotEl);
         return false;
       }
-      if (!configInputReadyForAssembly() && !blockAllowedWhileExistingLocked(d)) {
+      if (!configInputReadyForAssembly() && !blockAllowedBeforeConfig(d)) {
         flashReject(ctx?.slotEl);
         return false;
       }
@@ -1087,7 +1326,7 @@
     function blockCanInstall(data, focusCol) {
       const d = normalizeEnvDrop({ ...data, target: data.target || (data.kind === "env" ? "env" : "life") });
       if (existingConfigLocked() && !blockAllowedWhileExistingLocked(d)) return false;
-      if (!configInputReadyForAssembly() && !blockAllowedWhileExistingLocked(d)) return false;
+      if (!configInputReadyForAssembly() && !blockAllowedBeforeConfig(d)) return false;
       const col = focusCol || targetColumnForBlock(d, d.envColumn);
       if (d.kind === "preset" && PRESET_BUNDLES[d.value]) {
         return col && columnPartitionReady(col) && col.caseMode !== "baseline";
@@ -1458,11 +1697,12 @@
     }
 
     function applyComparePaletteSections() {
-      const show = baseRowReady() && currentTrack() === "vision";
-      document.getElementById("fold-palette-column")?.classList.toggle("palette-block-hidden", !show);
-      document.getElementById("fold-palette-baseline")?.classList.toggle("palette-block-hidden", !show);
-      document.getElementById("fold-palette-life")?.classList.toggle("palette-block-hidden", !show);
-      document.getElementById("fold-palette-preset")?.classList.toggle("palette-block-hidden", !show);
+      const showAssembly = baseRowReady() && ["vision", "cora"].includes(currentTrack());
+      const showPartition = showAssembly && currentTrack() === "vision";
+      document.getElementById("fold-palette-column")?.classList.toggle("palette-block-hidden", !showPartition);
+      document.getElementById("fold-palette-baseline")?.classList.toggle("palette-block-hidden", !showAssembly);
+      document.getElementById("fold-palette-life")?.classList.toggle("palette-block-hidden", !showAssembly);
+      document.getElementById("fold-palette-preset")?.classList.toggle("palette-block-hidden", !showAssembly);
     }
 
     function applyCasesZoneUI() {
@@ -1477,6 +1717,8 @@
         casesPiece.classList.toggle("is-locked", hideCases);
       }
       if (track === "cora" && envColumnCount !== 1) envColumnCount = 1;
+      const zoneLabel = zone?.querySelector(".env-cases-zone-label");
+      if (zoneLabel) zoneLabel.textContent = track === "cora" ? "Cora 실행 줄기" : "비교 열 줄기";
       const inp = document.getElementById("input-col-count");
       if (inp) inp.value = String(getTargetColumnCount());
       applyComparePaletteSections();
@@ -1552,9 +1794,13 @@
     function installColumnPreset(col, presetId) {
       const bundle = PRESET_BUNDLES[presetId];
       if (!col || !bundle) return;
+      const runnableBundle =
+        currentTrack() === "cora"
+          ? bundle.filter((block) => block.kind !== BLOCK_KIND.CORRECTION)
+          : bundle;
       col.caseMode = "assembly";
       col.preset = null;
-      col.lifeStack = bundle.map((b) => ({
+      col.lifeStack = runnableBundle.map((b) => ({
         ...b,
         id: "b" + ++idSeq,
         target: "life",
@@ -1594,7 +1840,7 @@
     const SWEEP_ROWS = [{ slot: "sweep_variants", label: "baseline" }];
 
     function isPartitionStackMode() {
-      return usesColumnAssembly();
+      return currentTrack() === "vision" && usesColumnAssembly();
     }
 
     function isEnvStackSlot(slotId) {
@@ -1730,7 +1976,7 @@
     }
 
     function readSweepFromUI() {
-      if (!usesColumnAssembly()) return null;
+      if (currentTrack() !== "vision" || !usesColumnAssembly()) return null;
       const cols = envColumns.slice(0, getTargetColumnCount());
       const comparison_cases = cols.map((c, i) => comparisonCaseForColumn(c, i));
       const variants = [...new Set(comparison_cases.map((c) => c.variant_token).filter(Boolean))];
@@ -1815,7 +2061,7 @@
 
     function applySweepStackUI() {
       applyCasesZoneUI();
-      const show = usesColumnAssembly();
+      const show = currentTrack() === "vision" && usesColumnAssembly();
       document.querySelectorAll(".sweep-palette-suite, .palette-vision-compare .scratch-block").forEach((el) => {
         el.classList.toggle("palette-block-hidden", !show);
       });
@@ -1826,7 +2072,7 @@
         return !colId && slotId === "config_name";
       }
       if (!configInputReadyForAssembly()) {
-        return !colId && slotId === "config_name";
+        return !colId && (slotId === "config_name" || slotId === "track");
       }
       if (colId) {
         if (!baseRowReady()) return false;
@@ -2351,6 +2597,41 @@
       };
     }
 
+    function buildCoraSingleRunConfig(cfg) {
+      const col = envColumns[0];
+      if (!col || !columnCaseGraphReady(col)) return null;
+      const nums = getEnvNums();
+      const runTag = safeRepoToken(cfg?.config_name, "graphfl_cora_single");
+      const diagnosticValues = (envSlots.diagnostics || []).map((b) => b.value).filter(Boolean);
+      const args = {
+        engine: "app",
+        method:
+          col.caseMode === "baseline" && col.preset
+            ? col.preset.method || col.preset.value || "fedavg"
+            : "ours",
+        num_clients: nums.num_clients,
+        rounds: nums.rounds,
+        local_epochs: 1,
+        seed: 42,
+        partition: "iid",
+        out_dir: `experiments_current/${runTag}`,
+        run_tag: runTag,
+      };
+      if (col.caseMode === "assembly") {
+        const parts = columnLifecycleParts(col);
+        args.graph_source = parts.graph_source;
+        args.graph_mode = parts.graph_mode;
+        args.aggregation_target = parts.aggregation_target;
+        args.knn_k = nums.knn_k;
+        args.graph_filter_strength = nums.graph_filter_strength;
+      }
+      return {
+        ...(diagnosticValues.length ? { demo_meta: { diagnostics: diagnosticValues } } : {}),
+        description: "Generated by Graph-FL Assembly UI · Cora single run",
+        args,
+      };
+    }
+
     function buildSuiteConfig() {
       const n = getTargetColumnCount();
       const cols = envColumns.slice(0, n);
@@ -2417,11 +2698,13 @@
       const n = getTargetColumnCount();
       const cols = envColumns.slice(0, n);
       if (cols.some((c) => !columnCaseGraphReady(c))) return [];
-      return cols.map((col, i) => ({
-        description: `Generated by Graph-FL Assembly UI · column ${i + 1}`,
-        comparison_case: comparisonCaseForColumn(col, i),
-        args: buildSingleRunArgs(col, buildCommonEnvArgs()),
-      }));
+      return cols.map((col, i) =>
+        applyAuthoringToConfig({
+          description: `Generated by Graph-FL Assembly UI · column ${i + 1}`,
+          comparison_case: comparisonCaseForColumn(col, i),
+          args: buildSingleRunArgs(col, buildCommonEnvArgs()),
+        })
+      );
     }
 
     function buildVisionBatchConfig(configPath) {
@@ -2434,7 +2717,7 @@
           job_index: i + 1,
           entrypoint: "run_vision_experiment.py",
           config_path: columnConfigPath(configPath, i),
-          command: `python run_vision_experiment.py --config ${columnConfigPath(configPath, i)}`,
+          command: `graphfl run single --track vision --config ${columnConfigPath(configPath, i)}`,
           comparison_case: config.comparison_case,
           config,
         })),
@@ -2445,30 +2728,33 @@
       const configs = buildPerColumnSingleConfigs();
       if (!configs.length) return "# 열 조립을 완료하면 실행 명령이 표시됩니다";
       return configs
-        .map((_, i) => `python run_vision_experiment.py --config ${columnConfigPath(configPath, i)}`)
+        .map((_, i) => `graphfl run single --track vision --config ${columnConfigPath(configPath, i)}`)
         .join("\n");
     }
 
     function buildRunCommand(configType, configPath, track) {
-      if (track === "cora" || configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") {
-        return `python run_graph_ablation.py --config ${configPath}`;
+      if (configType === "cora-single") {
+        return `graphfl run single --track cora --config ${configPath}`;
+      }
+      if (configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") {
+        return `graphfl run ablation --config ${configPath}`;
       }
       if (configType === "existing-vision-single") {
-        return `python run_vision_experiment.py --config ${configPath}`;
+        return `graphfl run single --track vision --config ${configPath}`;
       }
       if (configType === "existing-vision-client-count-sweep") {
-        return `python run_vision_client_count_sweep.py --config ${configPath}`;
+        return `graphfl run client-count --config ${configPath}`;
       }
       if (configType === "existing-vision-stress-grid") {
-        return `python run_vision_stress_grid.py --config ${configPath}`;
+        return `graphfl run stress --config ${configPath}`;
       }
       if (configType === "suite" || configType === "existing-vision-suite") {
-        return `python run_vision_suite.py --config ${configPath}`;
+        return `graphfl run suite --config ${configPath}`;
       }
       if (configType === "batch") {
         return buildBatchRunCommand(configPath);
       }
-      return `python run_vision_experiment.py --config ${configPath}`;
+      return `graphfl run single --track ${track === "cora" ? "cora" : "vision"} --config ${configPath}`;
     }
 
     function downloadJson(filename, object) {
@@ -2500,14 +2786,19 @@
         return;
       }
       if (currentTrack() === "cora") {
+        const col = envColumns[0];
+        const parts = columnLifecycleParts(col);
         const lines = [
-          "공통 실행환경:",
-          `  dataset=${env.dataset} model=${env.model} N=${env.num_clients} R=${env.rounds}`,
+          "Cora single run:",
+          `  N=${env.num_clients} R=${env.rounds} partition=iid`,
           "",
-          "Cora graph ablation:",
-          "  variants=fedavg, ours_knn, ours_random",
-          `  partition=iid knn_k=${env.knn_k} diagnostic_only=true`,
-          "  결과: suite summary, result rows, graph ablation artifacts",
+          col?.caseMode === "baseline"
+            ? `  method=${col.preset?.method || col.preset?.value || "fedavg"}`
+            : col?.caseMode === "assembly"
+              ? `  graph_source=${parts.graph_source || "?"} graph_mode=${parts.graph_mode || "?"} aggregation_target=${parts.aggregation_target || "?"}`
+              : "  baseline 또는 graph_source로 실행 줄기를 시작하세요",
+          "",
+          "  runner=run_experiment.py --track cora",
         ];
         const el = document.getElementById("assembly-summary-out");
         if (el) el.textContent = lines.join("\n");
@@ -2565,13 +2856,13 @@
       let configType = configSelection.existing
         ? configSelection.configType || inferExistingConfigType(selectedPath, previewTrack)
         : cfgForPath.track === "cora"
-          ? "cora-graph-ablation"
+          ? "cora-single"
           : "single";
       let doc = selectedPath
         ? configSelection.existing
           ? buildExistingConfigReference(configSelection, cfgForPath)
           : cfgForPath.track === "cora"
-            ? buildCoraGraphAblationConfig(cfgForPath)
+            ? buildCoraSingleRunConfig(cfgForPath)
             : buildSingleRunConfig()
         : null;
       let configPath = singlePath;
@@ -2599,6 +2890,7 @@
       }
       if (doc && !configSelection.existing) {
         doc = withGeneratedConfigMeta(doc, configPath, configType);
+        doc = applyAuthoringToConfig(doc);
       }
 
       const cmd = doc
@@ -2630,7 +2922,7 @@
           perRunEl.textContent = JSON.stringify(
             buildPerColumnSingleConfigs().map((config, i) => ({
               config_path: columnConfigPath(selectedPath, i),
-              command: `python run_vision_experiment.py --config ${columnConfigPath(selectedPath, i)}`,
+              command: `graphfl run single --track vision --config ${columnConfigPath(selectedPath, i)}`,
               config,
             })),
             null,
@@ -2729,13 +3021,14 @@
     }
 
     function entrypointForConfigType(configType, track) {
-      if (track === "cora" || configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") return "run_graph_ablation.py";
-      if (configType === "existing-vision-single") return "run_vision_experiment.py";
-      if (configType === "existing-vision-client-count-sweep") return "run_vision_client_count_sweep.py";
-      if (configType === "existing-vision-stress-grid") return "run_vision_stress_grid.py";
-      if (configType === "batch") return "run_vision_experiment.py";
-      if (configType === "suite" || configType === "existing-vision-suite") return "run_vision_suite.py";
-      return track === "cora" ? "run_graph_ablation.py" : "run_vision_experiment.py";
+      if (configType === "cora-single") return "graphfl run single --track cora";
+      if (configType === "cora-graph-ablation" || configType === "existing-cora-graph-ablation") return "graphfl run ablation";
+      if (configType === "existing-vision-single") return "graphfl run single --track vision";
+      if (configType === "existing-vision-client-count-sweep") return "graphfl run client-count";
+      if (configType === "existing-vision-stress-grid") return "graphfl run stress";
+      if (configType === "batch") return "graphfl run single --track vision";
+      if (configType === "suite" || configType === "existing-vision-suite") return "graphfl run suite";
+      return track === "cora" ? "graphfl run single --track cora" : "graphfl run single --track vision";
     }
 
     function configPathForSelection(rawName, track) {
@@ -2904,11 +3197,43 @@
       });
     }
 
+    function makeCoraDatasetEntry() {
+      return normalizeEnvDrop({
+        id: envSlots.dataset?.value === "cora" ? envSlots.dataset.id : "e" + ++idSeq,
+        target: "env",
+        envSlot: "dataset",
+        kind: "env",
+        value: "cora",
+        title: "Cora",
+        sub: "Planetoid",
+      });
+    }
+
+    function retargetGeneratedConfigName(track) {
+      if (configUseMode !== "generate" || !envSlots.config_name) return;
+      const raw = String(resolvedEnvSlotValue(envSlots.config_name) || "").trim().replace(/\\/g, "/");
+      if (!configNameHasPath(raw)) return;
+      const pathTrack = inferTrackFromConfigPath(raw);
+      if (!pathTrack || pathTrack === track) return;
+      const leaf = raw.split("/").filter(Boolean).pop() || "my_graphfl_demo.json";
+      const nextPath =
+        track === "cora"
+          ? `configs/cora/ablations/graph/${leaf}`
+          : `configs/vision/smoke/${leaf}`;
+      envSlots.config_name = makeConfigNameEntry(nextPath);
+    }
+
     function setTrackFromExistingConfigPath(path) {
       const inferredTrack = inferTrackFromConfigPath(path);
-      if (!inferredTrack || currentTrack() === inferredTrack) return;
-      envSlots.track = makeTrackEntry(inferredTrack, true);
-      clearEnvDownstream("track");
+      if (!inferredTrack) return;
+      if (currentTrack() !== inferredTrack) {
+        envSlots.track = makeTrackEntry(inferredTrack, true);
+        clearEnvDownstream("track");
+      }
+      if (configUseMode === "generate" && inferredTrack === "cora") {
+        envSlots.dataset = makeCoraDatasetEntry();
+        envColumnCount = 1;
+      }
     }
 
     function clearVisualAssemblyForExistingConfig() {
@@ -3647,6 +3972,7 @@
       }
       if (slotId === "track" && entry.value !== prevTrack) {
         clearEnvDownstream("track");
+        retargetGeneratedConfigName(entry.value);
       } else if (slotId === "dataset") {
         const nextDs = resolvedEnvSlotValue(entry);
         if (nextDs !== prevDataset) clearEnvDownstream("dataset");
@@ -3855,7 +4181,7 @@
         if (cfg.track === "vision" && !visionPartitionReady(cfg)) missing.push("각 열 파티션");
       }
       const n = getTargetColumnCount();
-      if (!directExistingConfig && !unresolvedExistingConfig && cfg.track && cfg.track !== "cora") {
+      if (!directExistingConfig && !unresolvedExistingConfig && cfg.track) {
         envColumns.slice(0, n).forEach((col, i) => {
           if (!columnCaseGraphReady(col)) {
             missing.push(`열 ${i + 1}: fedavg(완성) 또는 Graph-FL 조립`);
@@ -3863,6 +4189,12 @@
         });
       }
       collectCustomValidationIssues().forEach((issue) => missing.push(issue));
+      if (authoringState.enabled && !directExistingConfig) {
+        if (!authoringSessionId()) missing.push("authoring session Python identifier");
+        if (authoringState.validationStatus !== "pass") {
+          missing.push("Actual component validation 5 PASS");
+        }
+      }
       const parts = lifecycleParts(envColumns[0]);
       return { ready: missing.length === 0, missing, cfg, parts };
     }
@@ -3961,11 +4293,11 @@
         }
         if (hasDiagnostic("evidence")) {
           lines.push("");
-          lines.push("# 결과 계약/evidence bundle 점검");
+          lines.push("# 결과 계약/검증 산출물 점검");
           lines.push("python scripts/checks/result_evidence_bundle.py <result.json> --kind single-run");
         }
         lines.push("");
-        lines.push("# 동일 설정을 플래그로만 실행할 때 (발표 비교용):");
+        lines.push("# 동일 설정을 플래그로만 실행할 때 (참고용):");
       }
 
       const flagLines = [];
@@ -4002,7 +4334,9 @@
         const selection = resolveConfigSelection(cfg);
         const trackLabel = cfg.track === "cora" ? "Cora" : "Vision";
         const modeLabel = cfg.track === "cora"
-          ? "graph ablation"
+          ? window.__graphflPreview?.configType === "cora-single"
+            ? "single run"
+            : "graph ablation"
           : selection.existing
             ? "기존 config JSON"
             : `열 ${cfg.column_count || getTargetColumnCount()}개`;
@@ -4058,6 +4392,22 @@
       const readiness = runReadiness();
       const preview = window.__graphflPreview || {};
       const ready = !!(readiness.ready && preview.doc);
+      const authoring =
+        preview.doc?.source === "existing_config"
+          ? {
+              session_id: null,
+              component_kind: null,
+              component_name: null,
+              plugin: null,
+              validation_status: "not-selected",
+              parameters: {},
+              contract_version: AUTHORING_CAPABILITIES.contract_version,
+            }
+          : authoringSnapshot();
+      const design =
+        preview.doc?.source === "existing_config"
+          ? { name: null }
+          : authoringDesignSnapshot();
       let rowBundle = null;
       if (ready) {
         rowBundle = buildDemoRows();
@@ -4067,8 +4417,11 @@
         command: preview.cmd || "",
         configPath: preview.configPath || "",
         configType: preview.configType || "",
+        authoring,
+        design,
       });
       return {
+        schema_version: 2,
         ready,
         readiness,
         cfg: readiness.cfg,
@@ -4078,6 +4431,8 @@
         command: preview.cmd || "",
         configPath: preview.configPath || "",
         configType: preview.configType || "",
+        authoring,
+        design,
         rowBundle,
         signature,
       };
@@ -4092,7 +4447,10 @@
       if (!note) return;
       const { missing } = runReadiness();
       if (canRunExperiment()) {
-        note.textContent = "Mock API 제출 가능 · 실제 CLI는 실행하지 않음.";
+        note.textContent =
+          authoringState.enabled
+            ? "Actual validation 5 PASS · Mock FL 실행 가능."
+            : "Mock API 제출 가능 · 실제 CLI는 실행하지 않음.";
         return;
       }
       const need = [];
@@ -4110,7 +4468,11 @@
 
     function caseModeLabel(cfg) {
       const n = cfg.column_count || getTargetColumnCount();
-      if (cfg.track === "cora") return "Cora graph ablation";
+      if (cfg.track === "cora") {
+        return window.__graphflPreview?.configType === "cora-single"
+          ? "Cora single run"
+          : "Cora graph ablation";
+      }
       return n <= 1 ? "열 1개 (= 단일 run)" : `열 ${n}개 (다변량)`;
     }
 
@@ -4125,6 +4487,7 @@
       const alphaBit = usesDirichletAlpha(cfg.partition) ? ` · Dirichletα=${cfg.dirichlet_alpha}` : "";
       const envPrefix = `${cfg.track || "?"} · ${ds}${alphaBit} · N=${cfg.num_clients} · R=${cfg.rounds}`;
       const previewType = window.__graphflPreview?.configType || "";
+      const isExistingConfigPreview = previewType.startsWith("existing");
 
       const interpretations = {
         ours_main:
@@ -4138,10 +4501,10 @@
         shuffled:
           "real≈shuffled·gap≈0이면 관측된 이득이 topology가 아니라 dominance/스케일 confounder일 가능성.",
         suite_note:
-          "suite 한 번 실행 → run_id별 행과 evidence bundle이 함께 남음. 정확도, gap, mechanism metric을 한 결과 묶음에서 비교.",
+          "suite 한 번 실행 → run_id별 행과 검증 산출물이 함께 남음. 정확도, gap, mechanism metric을 한 결과 묶음에서 비교.",
       };
 
-      if (previewType === "existing") {
+      if (isExistingConfigPreview) {
         const path = window.__graphflPreview?.configPath || cfg.config_name || "configs/...";
         const isCora = cfg.track === "cora";
         const rows = isCora
@@ -4200,7 +4563,7 @@
                 alignment: 0.47,
                 filter_gain: 0.02,
                 real_control_gap: 0.008,
-                interp: "기존 JSON이 가진 대조군 결과까지 같은 결과 묶음에서 비교한다는 발표용 행.",
+                interp: "기존 JSON이 가진 대조군 결과까지 같은 결과 묶음에서 비교한다는 데모용 행.",
               },
             ];
         return {
@@ -4212,6 +4575,33 @@
       }
 
       if (cfg.track === "cora") {
+        if (previewType === "cora-single") {
+          const col = envColumns[0];
+          const method = getMethodPart(col)?.value || "ours";
+          const label =
+            col?.caseMode === "baseline"
+              ? method
+              : assemblyLabel(columnAssembly(col));
+          return {
+            rows: [
+              {
+                id: "cora_single",
+                setting: `${envPrefix} · ${label}`,
+                acc: method === "ours" ? 0.731 : 0.684,
+                alignment: method === "ours" ? 0.57 : 0.38,
+                filter_gain: method === "ours" ? 0.09 : 0,
+                real_control_gap: 0,
+                interp:
+                  method === "ours"
+                    ? "조립한 Cora graph_source, graph_mode, aggregation_target의 단일 실행 결과 예시."
+                    : "Cora baseline 단일 실행 결과 예시.",
+              },
+            ],
+            isSuite: false,
+            cfg,
+            caseMode: "Cora single run",
+          };
+        }
         return {
           rows: [
             {
@@ -4294,7 +4684,7 @@
           const rowEnvPrefix = `${cfg.track || "?"} · ${ds}${rowAlphaBit} · N=${cfg.num_clients} · R=${cfg.rounds}`;
           const colPart = part ? ` · ${part}` : "";
           const colLifeOk = col.caseMode === "baseline" || columnAssemblyComplete(col);
-          const partialNote = colLifeOk ? "" : " (lifecycle 미완성 — 발표용 단일 행만 표시)";
+          const partialNote = colLifeOk ? "" : " (lifecycle 미완성 — 데모용 단일 행만 표시)";
           const label =
             col.caseMode === "baseline"
               ? columnVariantToken(col) || method
@@ -4395,7 +4785,7 @@
       if (cap) {
         cap.textContent = record
           ? `[${caseMode}] · ${rows.length}행 · Mock DB latest completed run에서 조회.`
-          : `[${caseMode}] · ${rows.length}행 (데모). 해석 열은 발표용 예시 문장.`;
+          : `[${caseMode}] · ${rows.length}행 (데모). 해석 열은 데모용 예시 문장.`;
       }
 
       const wrap = document.getElementById("results-wrap");
@@ -4516,7 +4906,7 @@
         const n = getTargetColumnCount();
         const isCoraTrack = currentTrack() === "cora";
         const allCols =
-          directExistingConfig || isCoraTrack || envColumns.slice(0, n).every((c) => columnCaseGraphReady(c));
+          directExistingConfig || envColumns.slice(0, n).every((c) => columnCaseGraphReady(c));
         const li = document.createElement("li");
         li.className = allCols && (baseRowReady() || directExistingConfig) ? "ok" : "";
         setChecklistItemText(
@@ -4524,7 +4914,7 @@
           directExistingConfig
             ? "비교 열 (기존 JSON 내부값)"
             : isCoraTrack
-              ? "Cora graph ablation"
+              ? "Cora 실행 줄기"
               : "비교 열 (baseline 또는 Graph-FL)"
         );
         envChk.appendChild(li);
@@ -4603,9 +4993,11 @@
       window.dispatchEvent(new CustomEvent("graphfl:assembly-changed", { detail: submission }));
       if (!submission.ready) {
         const wrap = document.getElementById("results-wrap");
-        wrap?.classList.remove("show", "is-stale");
-        const staleNote = document.getElementById("results-stale-note");
-        if (staleNote) staleNote.hidden = true;
+        if (!wrap?.dataset.resultSignature) {
+          wrap?.classList.remove("show", "is-stale");
+          const staleNote = document.getElementById("results-stale-note");
+          if (staleNote) staleNote.hidden = true;
+        }
       }
 
       const extensions = envColumns
@@ -4909,6 +5301,7 @@
     setupPaletteCapabilityCues();
     setupConfigDirectInput();
     setupDiagnosticOptions();
+    setupAuthoringPanel();
     setupAlphaNumControls();
     setupWorkspaceDropDelegation();
     setupColumnCountControls();

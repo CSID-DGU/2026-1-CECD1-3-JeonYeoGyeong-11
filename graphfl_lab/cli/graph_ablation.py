@@ -11,6 +11,7 @@ from graphfl_lab.cli.aggregation_targets import (
 )
 from graphfl_lab.config_io import add_config_argument, parse_args_with_config
 import graphfl_lab.experiments.cora.graph_ablation as _experiment
+from graphfl_lab.cli.argparse_types import json_object
 
 # Compatibility re-exports for older imports from this CLI module.
 globals().update(
@@ -123,16 +124,17 @@ def parse_args():
         "--graph-source",
         type=str,
         default="update",
-        choices=["update", "normalized_update", "weight"],
         help="Default graph source forwarded to run_experiment.",
     )
     p.add_argument(
         "--aggregation-target",
         type=str,
         default="update",
-        choices=AGGREGATION_TARGET_CHOICES,
         help=AGGREGATION_TARGET_SUITE_HELP,
     )
+    p.add_argument("--aggregation-params", type=json_object, default={})
+    p.add_argument("--graph-plugin", type=str, default="")
+    p.add_argument("--graph-preset", type=str, default="none")
     p.add_argument("--edge-threshold", type=float, default=0.0)
     p.add_argument("--fixed-tau", type=float, default=1.0)
     p.add_argument(

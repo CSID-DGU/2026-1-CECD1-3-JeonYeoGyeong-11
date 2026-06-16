@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
+import sys
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable, Mapping, Optional, Sequence
 
 import numpy as np
@@ -156,7 +159,43 @@ def build_registered_graph(context: GraphBuildContext) -> GraphBuildResult | Non
     builder = _GRAPH_BUILDERS.get(mode_key)
     if builder is None:
         return None
-    return _coerce_result(builder(context), context=context, mode_key=mode_key)
+    result = _coerce_result(builder(context), context=context, mode_key=mode_key)
+    metadata = dict(result.metadata)
+    metadata.setdefault("component_kind", "TopologyOperator")
+    metadata.setdefault("component_name", mode_key)
+    metadata.setdefault("plugin_module", builder.__module__)
+    metadata.setdefault(
+        "parameters",
+        {
+            "knn_k": int(context.knn_k),
+            "edge_threshold": float(context.edge_threshold),
+            "graph_scale_sigma": float(context.graph_scale_sigma),
+            "learned_graph_lambda": float(context.learned_graph_lambda),
+        },
+    )
+    metadata.setdefault("input_shape", list(context.z_mat.shape))
+    metadata.setdefault("output_shape", list(result.adjacency.shape))
+    metadata.setdefault("source_used", str(context.graph_source))
+    metadata.setdefault("target_used", str(context.aggregation_target))
+    trace_values = {
+        key: value
+        for key, value in metadata.items()
+        if key != "lifecycle_trace"
+    }
+    metadata.setdefault(
+        "lifecycle_trace",
+        [
+            {
+                "schema_version": "lifecycle_trace_v1",
+                "phase": "topology",
+                "module": "TopologyOperator",
+                "name": mode_key,
+                "round": None,
+                "values": trace_values,
+            }
+        ],
+    )
+    return GraphBuildResult(adjacency=result.adjacency, metadata=metadata)
 
 
 def _split_plugin_spec(spec: str | Sequence[str] | None) -> list[str]:
@@ -172,11 +211,46 @@ def _split_plugin_spec(spec: str | Sequence[str] | None) -> list[str]:
 
 
 def load_graph_plugins(spec: str | Sequence[str] | None) -> list[str]:
-    """Import graph plugin modules so their builders can register themselves."""
+    """Import graph plugin modules or filesystem packages."""
     loaded: list[str] = []
-    for module_name in _split_plugin_spec(spec):
-        importlib.import_module(module_name)
-        loaded.append(module_name)
+    for item in _split_plugin_spec(spec):
+        path = Path(item).expanduser()
+        if path.exists():
+            resolved = path.resolve()
+            if resolved.is_dir():
+                init_path = resolved / "__init__.py"
+                if not init_path.is_file():
+                    raise ValueError(
+                        f"Graph plugin directory must contain __init__.py: {resolved}"
+                    )
+                source_path = init_path
+                submodule_locations = [str(resolved)]
+            elif resolved.suffix.lower() == ".py":
+                source_path = resolved
+                submodule_locations = None
+            else:
+                raise ValueError(
+                    f"Graph plugin path must be a Python file or package: {resolved}"
+                )
+            module_key = abs(hash(str(resolved)))
+            module_name = f"graphfl_user_plugin_{module_key:x}"
+            if module_name in sys.modules:
+                loaded.append(str(resolved))
+                continue
+            module_spec = importlib.util.spec_from_file_location(
+                module_name,
+                source_path,
+                submodule_search_locations=submodule_locations,
+            )
+            if module_spec is None or module_spec.loader is None:
+                raise ImportError(f"Unable to load graph plugin: {resolved}")
+            module = importlib.util.module_from_spec(module_spec)
+            sys.modules[module_name] = module
+            module_spec.loader.exec_module(module)
+            loaded.append(str(resolved))
+            continue
+        importlib.import_module(item)
+        loaded.append(item)
     return loaded
 
 

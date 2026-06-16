@@ -392,6 +392,22 @@ def build_relation_graph(
         "control_graph_mode": str(control_graph_mode),
     }
     meta.update(base_meta)
+    common_meta = {
+        "component_kind": "TopologyOperator",
+        "component_name": str(mode).strip().lower().replace("-", "_"),
+        "plugin_module": "graphfl_lab.graph.builders",
+        "parameters": {
+            "knn_k": int(knn_k),
+            "edge_threshold": float(edge_threshold),
+            "graph_scale_sigma": float(graph_scale_sigma),
+            "learned_graph_lambda": float(learned_graph_lambda),
+        },
+        "input_shape": list(np.asarray(z_mat).shape),
+        "source_used": str(graph_source),
+        "target_used": str(aggregation_target),
+    }
+    for key, value in common_meta.items():
+        meta.setdefault(key, value)
     if fam == "control_graph":
         adj = build_control_graph(
             reference_adj=base_graph,
@@ -399,6 +415,7 @@ def build_relation_graph(
             rng=rng,
         )
         meta["graph_kind"] = f"control:{str(control_graph_mode).strip().lower()}"
+        meta["output_shape"] = list(adj.shape)
         return adj.astype(np.float64, copy=False), meta
 
     if fam == "clustering_only":
@@ -417,9 +434,11 @@ def build_relation_graph(
         meta["cluster_method"] = str(cluster_method)
         meta["cluster_k"] = int(len(np.unique(cluster_ids)))
         meta["cluster_ids"] = [int(x) for x in cluster_ids.tolist()]
+        meta["output_shape"] = list(adj.shape)
         return adj.astype(np.float64, copy=False), meta
 
     meta["graph_kind"] = "real_graph"
+    meta["output_shape"] = list(base_graph.shape)
     return base_graph.astype(np.float64, copy=False), meta
 
 

@@ -7,11 +7,11 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from flwr.common import NDArrays
 
-from graphfl_lab.graph.sources import normalize_key
-from graphfl_lab.strategies.graphfl.targets import canonical_aggregation_target
-from graphfl_lab.projection import flatten_weights
-from graphfl_lab.strategies.graphfl.filtering import (
-    apply_spectral_filter_with_diagnostics,
+from graphfl_lab.strategies.graphfl.targets import (
+    AggregationTargetConfig,
+    aggregation_target_names,
+    canonical_aggregation_target,
+    evaluate_aggregation_target,
 )
 
 
@@ -26,67 +26,62 @@ def flatten_diagnostic_post_updates(
     filter_strength: float,
     target_override: Optional[str] = None,
 ) -> Tuple[np.ndarray, str, Dict[str, Any]]:
-    target = canonical_aggregation_target(target_override or aggregation_target)
-    global_flat = flatten_weights(current_global).astype(np.float64, copy=False)
-
-    if target in {"update", "delta", "update_delta"}:
-        mat = _flat_matrix(local_updates)
-        return mat, "update_delta", {}
-
-    if target in {
-        "filtered_update",
-        "graph_filtered_update",
-        "lowpass_update",
-        "low_pass_update",
-    }:
-        mat = _flat_matrix(local_updates)
-        filtered, diag = apply_spectral_filter_with_diagnostics(
-            z_mat=mat,
-            l_mat=l_mat,
-            filter_strength=filter_strength,
-        )
-        return filtered, "graph_filtered_update_delta", diag
-
-    if target in {
-        "filtered_ema_update",
-        "graph_filtered_ema_update",
-        "lowpass_ema_update",
-        "low_pass_ema_update",
-    }:
-        mat = _flat_matrix(ema_updates)
-        filtered, diag = apply_spectral_filter_with_diagnostics(
-            z_mat=mat,
-            l_mat=l_mat,
-            filter_strength=filter_strength,
-        )
-        return filtered, "graph_filtered_client_ema_update_delta", diag
-
-    if target in {"weight", "weights", "model_weight", "model_weights", "state"}:
-        mat = _flat_matrix(local_weights) - global_flat[None, :]
-        return mat, "local_weight_delta", {}
-
-    if target in {
-        "filtered_weight",
-        "graph_filtered_weight",
-        "lowpass_weight",
-        "low_pass_weight",
-    }:
-        mat = _flat_matrix(local_weights)
-        filtered, diag = apply_spectral_filter_with_diagnostics(
-            z_mat=mat,
-            l_mat=l_mat,
-            filter_strength=filter_strength,
-        )
-        return filtered - global_flat[None, :], "graph_filtered_local_weight_delta", diag
-
-    raise ValueError(f"Unknown diagnostic aggregation_target {target!r}")
-
-
-def _flat_matrix(arrays: List[NDArrays]) -> np.ndarray:
-    return np.stack(
-        [flatten_weights(arr).astype(np.float64, copy=False) for arr in arrays],
-        axis=0,
+    num_clients = len(local_updates)
+    alpha = np.full(
+        num_clients,
+        1.0 / max(float(num_clients), 1.0),
+        dtype=np.float64,
     )
+    requested = target_override or aggregation_target
+    canonical = canonical_aggregation_target(requested)
+    try:
+        evaluation = evaluate_aggregation_target(
+            current_global=current_global,
+            local_weights=local_weights,
+            local_updates=local_updates,
+            ema_updates=ema_updates,
+            alpha_norm=alpha,
+            l_mat=l_mat,
+            config=AggregationTargetConfig(
+                target=requested,
+                filter_strength=filter_strength,
+            ),
+        )
+    except ValueError as exc:
+        if str(exc).startswith("Unknown aggregation_target"):
+            raise ValueError(
+                f"Unknown diagnostic aggregation_target {requested!r}"
+            ) from exc
+        raise
+
+    metadata = dict(evaluation.metadata)
+    if canonical not in set(aggregation_target_names()):
+        for key in (
+            "component_kind",
+            "component_name",
+            "plugin_module",
+            "parameters",
+            "target_used",
+            "output_kind",
+            "num_clients",
+            "input_shape",
+            "output_shape",
+            "output_shapes",
+        ):
+            metadata.pop(key, None)
+        if canonical in {"update", "delta", "update_delta"}:
+            return evaluation.post_flat_updates, "update_delta", {}
+        if canonical in {"weight", "weights", "model_weight", "model_weights", "state"}:
+            return evaluation.post_flat_updates, "local_weight_delta", {}
+        prefixes = ("update_", "ema_update_", "weight_")
+        for prefix in prefixes:
+            if any(key.startswith(prefix) for key in metadata):
+                metadata = {
+                    key[len(prefix):] if key.startswith(prefix) else key: value
+                    for key, value in metadata.items()
+                }
+                break
+    return evaluation.post_flat_updates, evaluation.target_used, metadata
 
 
 __all__ = ["flatten_diagnostic_post_updates"]

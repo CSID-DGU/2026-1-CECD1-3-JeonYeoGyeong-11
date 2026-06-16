@@ -187,6 +187,7 @@ def build_vision_meta(
         "graph_source": args.graph_source,
         "graph_variant": getattr(args, "graph_variant", "update"),
         "aggregation_target": args.aggregation_target,
+        "aggregation_params": dict(getattr(args, "aggregation_params", {}) or {}),
         "knn_k": int(args.knn_k),
         "edge_threshold": float(args.edge_threshold),
         "graph_scale_sigma": float(args.graph_scale_sigma),

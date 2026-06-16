@@ -9,6 +9,9 @@ def build_config_context(strategy: Any) -> Dict[str, Any]:
     return {
         "adaptive_tau": strategy.adaptive_tau,
         "aggregation_target": strategy.aggregation_target,
+        "aggregation_params": dict(
+            getattr(strategy, "aggregation_parameters", {}) or {}
+        ),
         "client_update_ema_alpha": strategy.client_update_ema_alpha,
         "conflict_mix": strategy.conflict_mix,
         "diagnostic_only": strategy.diagnostic_only,

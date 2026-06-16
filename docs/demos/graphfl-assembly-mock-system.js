@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "graphfl-demo-runs-v1";
+  const STORAGE_KEY = "graphfl-demo-runs-v2";
   const MAX_RECORDS = 20;
   const STAGES = ["draft", "submitted", "queued", "running", "collecting", "saved", "completed"];
   const state = {
@@ -217,6 +217,7 @@
     const experiments = state.records.map((record) => ({
       experiment_id: record.experiment_id,
       track: record.track,
+      component: record.authoring?.component_name || "",
       status: record.status,
       created_at: record.created_at,
       config_path: record.config_path,
@@ -239,6 +240,7 @@
         [
           { label: "experiment_id", value: (r) => r.experiment_id },
           { label: "track", value: (r) => r.track },
+          { label: "component", value: (r) => r.component },
           { label: "status", value: (r) => r.status },
           { label: "config_source", value: (r) => r.config_source },
           { label: "config_path", value: (r) => r.config_path },
@@ -319,12 +321,14 @@
       setResultStale(false);
       return;
     }
-    if (!submission?.ready) {
-      setResultStale(false);
-      return;
-    }
     const renderedSignature = wrap.dataset.resultSignature || latestCompleted()?.signature || "";
-    setResultStale(!!(renderedSignature && submission.signature !== renderedSignature));
+    setResultStale(
+      !!(
+        renderedSignature &&
+        submission?.signature &&
+        submission.signature !== renderedSignature
+      )
+    );
   }
 
   function revealMockPanel() {
@@ -404,8 +408,24 @@
       ...configArtifacts(submission),
       { artifact_id: id("artifact"), type: "server_log", path: `${base}/server.log`, status: "created" },
       { artifact_id: id("artifact"), type: "result_rows", path: `${base}/result_rows.json`, status: "created" },
+      { artifact_id: id("artifact"), type: "module_traces", path: `${base}/module_traces.jsonl`, status: "created" },
     ];
+    if (submission.authoring?.component_name) {
+      common.push({
+        artifact_id: id("artifact"),
+        type: "component_validation_report",
+        path: `${base}/component_validation_report.json`,
+        status: "linked",
+      });
+    }
     if (cfg.track === "cora") {
+      if (submission.configType === "cora-single") {
+        return [
+          ...common,
+          { artifact_id: id("artifact"), type: "cora_single_result", path: `${base}/result_cora_single.json`, status: "created" },
+          { artifact_id: id("artifact"), type: "round_metrics", path: `${base}/round_metrics.csv`, status: "created" },
+        ];
+      }
       return [
         ...common,
         { artifact_id: id("artifact"), type: "graph_ablation", path: `${base}/run_graph_ablation_result.json`, status: "created" },
@@ -424,6 +444,7 @@
     const now = isoNow();
     const cfg = submission.cfg || {};
     return {
+      schema_version: 2,
       experiment_id: active.experiment_id,
       job_id: active.job_id,
       created_at: active.created_at,
@@ -439,6 +460,8 @@
       command: submission.command || "",
       config_type: submission.configType || "",
       config: submission.doc || null,
+      authoring: submission.authoring || null,
+      design: submission.design || null,
       caseMode: submission.rowBundle?.caseMode || "",
       signature: submission.signature || "",
       rows,
@@ -598,8 +621,8 @@
     clear(root);
 
     const head = node("div", "mock-head");
-    head.appendChild(node("h2", "", "실행 관제 (Mock)"));
-    head.appendChild(node("span", "mock-badge", "실제 CLI 미실행"));
+    head.appendChild(node("h2", "", "Mock FL execution"));
+    head.appendChild(node("span", "mock-badge", "Actual validation과 분리"));
     root.appendChild(head);
 
     const grid = node("div", "mock-grid");

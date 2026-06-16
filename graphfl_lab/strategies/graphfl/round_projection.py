@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Mapping, Optional, Tuple
 
 import numpy as np
 from flwr.common import NDArrays
@@ -11,6 +11,7 @@ from flwr.common import NDArrays
 from graphfl_lab.graph.sources import (
     GraphSourceConfig,
     graph_vectors_for_graphfl,
+    resolve_graph_source_result,
 )
 
 
@@ -21,6 +22,7 @@ class ProjectedGraphSpace:
     graph_source_norms: np.ndarray
     z_mat: np.ndarray
     z_norms: np.ndarray
+    graph_source_metadata: Mapping[str, Any]
 
 
 def select_graph_source_vectors(
@@ -54,14 +56,18 @@ def build_projected_graph_space(
     graph_layer_end: int,
     project_fn: Callable[[np.ndarray], np.ndarray],
 ) -> ProjectedGraphSpace:
-    graph_vectors, graph_source_used = select_graph_source_vectors(
+    source_result = resolve_graph_source_result(
         local_weights=local_weights,
         local_updates=local_updates,
         ema_updates=ema_updates,
-        graph_source=graph_source,
-        graph_layer_start=graph_layer_start,
-        graph_layer_end=graph_layer_end,
+        config=GraphSourceConfig(
+            source=graph_source,
+            layer_start=graph_layer_start,
+            layer_end=graph_layer_end,
+        ),
     )
+    graph_vectors = source_result.vectors
+    graph_source_used = source_result.source_used
     graph_source_norms = np.array(
         [float(np.linalg.norm(vector)) for vector in graph_vectors]
     )
@@ -74,6 +80,7 @@ def build_projected_graph_space(
         graph_source_norms=graph_source_norms,
         z_mat=z_mat,
         z_norms=z_norms,
+        graph_source_metadata=dict(source_result.metadata or {}),
     )
 
 

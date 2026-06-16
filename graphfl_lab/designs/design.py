@@ -8,6 +8,7 @@ from typing import Any, Mapping
 
 _LEGACY_ARG_KEYS = {
     "aggregation_target",
+    "aggregation_params",
     "client_update_ema_alpha",
     "correction_family",
     "graph_free_mode",

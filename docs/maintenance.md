@@ -1,6 +1,6 @@
 # Maintenance And Compatibility
 
-이 문서는 repository의 public surface, compatibility alias, removed surface, golden baseline, serialized asset policy를 한곳에서 관리한다. 기준은 현재 package 이름 `graphfl_lab`, current runner, tracked config/test/docs surface다.
+이 문서는 현재 이름, 호환 alias, 제거된 경로, golden baseline, 생성 asset 기준을 정리한다. 기준 package는 `graphfl_lab`이다.
 
 ## Current Status
 
@@ -8,7 +8,7 @@
 |---|---|
 | release | `1.0.0` |
 | package | `graphfl_lab` |
-| canonical runner | `run_vision_*`, `run_experiment.py --track vision|cora` |
+| canonical runner | `graphfl run single|suite|ablation|stress|client-count` |
 | canonical output naming | `result_vision_*`, `vision_suite_*` |
 | framework surface | lifecycle + graph + diagnostics + designs + validation |
 
@@ -18,25 +18,28 @@
 |---|---|
 | package | `graphfl_lab` |
 | Flower app | `graphfl_lab.flower_app:server_app`, `graphfl_lab.flower_app:client_app` |
+| authoring API | `graphfl_lab.extensions` |
+| authoring CLI | `graphfl component`, `graphfl design`, `graphfl run` |
+| module fallback | `python -m graphfl_lab.cli.main` |
 | vision runner | `run_vision_*` |
-| unified runner | `run_experiment.py --track vision|cora` |
+| compatibility wrappers | `run_experiment.py`, `run_vision_*`, `run_graph_ablation.py` |
 | vision result | `result_vision_*` |
 | vision suite | `vision_suite_*` |
 | Graph-FL runtime | `graphfl_lab/strategies/graphfl/` |
 | aggregation target | `graph_filtered_*` |
 | filter strength | `graph_filter_strength` |
 
-Public docs and examples should use canonical names. Alias handling stays in code where it protects old config/result readers.
+문서와 새 예시는 canonical 이름을 사용한다. 예전 이름은 old config/result를 읽기 위한 compatibility path로만 남긴다.
 
 ## Compatibility Alias
 
 | Legacy | Current | Compatibility Role |
 |---|---|---|
-| `configs/general/...` | `configs/vision/...` path alias | old config path read support |
-| `spectral_filter_strength` | JSON read alias for `graph_filter_strength` | old config key read support |
-| `spectral_filtered_*` | aggregation input alias | old target naming read support |
-| `ours_spectral_filtered_*` | historical reporting tag | old artifact/report parse support |
-| diagnostic trace key `spectral_filter_gain_*` | metric field name | old diagnostic field parse support |
+| `configs/general/...` | `configs/vision/...` path alias | 예전 config path 읽기 |
+| `spectral_filter_strength` | JSON read alias for `graph_filter_strength` | 예전 config key 읽기 |
+| `spectral_filtered_*` | aggregation input alias | 예전 target 이름 읽기 |
+| `ours_spectral_filtered_*` | historical reporting tag | 예전 artifact/report 읽기 |
+| diagnostic trace key `spectral_filter_gain_*` | metric field name | 예전 diagnostic field 읽기 |
 
 ## Removed Surface
 
@@ -72,9 +75,9 @@ configs/
 
 | Folder | Purpose |
 |---|---|
-| `configs/vision/diagnostic/smoke/` | quick diagnostic smoke |
-| `configs/vision/diagnostic/core/` | core diagnostic suite |
-| `configs/vision/diagnostic/extend/` | extension diagnostic configs |
+| `configs/vision/diagnostic/smoke/` | 짧은 diagnostic 확인 |
+| `configs/vision/diagnostic/core/` | 기본 diagnostic suite |
+| `configs/vision/diagnostic/extend/` | 확장 diagnostic config |
 | `configs/vision/probes/` | graph/source/target probes |
 | `configs/vision/stress/` | Non-IID stress configs |
 | `configs/vision/sweeps/` | sweep configs |
@@ -178,4 +181,4 @@ Current active exception: none.
 | 7 | legacy CLI choices and suite tokens | canonical CLI/config/result names adopted |
 | 8 | cleanup status closure | release surface recorded |
 
-Current validation 기준은 unit tests, CLI help/import checks, Evidence report command다.
+Current validation 기준은 unit tests, CLI help/import checks, validation report command다.

@@ -1,178 +1,156 @@
 # Graph-FL Design Lab
 
-Graph-FL Design Lab는 Graph-FL gain이 실제 client relation graph에서 오는지 검증하기 위한 실험 framework다. 이 repository는 federated learning 실험, graph construction, matched controls, graph-free controls, diagnostics, Evidence artifact를 한 구조로 묶어 Graph-FL claim을 재현 가능한 표와 수치로 설명한다.
+Graph-FL Design Lab는 Graph-FL에서 보이는 성능 변화가 실제 client relation graph 때문인지, 아니면 smoothing, control, dominance correction, optimizer 같은 다른 효과 때문인지 나눠 보기 위한 실험 코드다.
 
-## Project Overview
+이 레포는 새 방법 하나를 강하게 주장하기보다, Graph-FL 계열 실험을 같은 구조로 실행하고 비교할 수 있게 만드는 데 초점을 둔다.
 
-Graph-FL 계열 방법은 client 사이의 relation graph를 이용해 aggregation 또는 personalization을 바꾼다. 그러나 성능 향상은 relation graph 자체가 아니라 smoothing, dominance correction, clustering, optimizer 차이에서도 생길 수 있다. 이 repository의 목적은 그 효과를 분리해서 측정하는 것이다.
+## 무엇을 보나
 
-| 질문 | Repository 기준 답 |
+| 질문 | 레포에서 확인하는 방식 |
 |---|---|
-| Graph-FL gain은 어디서 오는가 | `graph_source`, `graph_mode`, `aggregation_target`, `correction_family`를 분리해 비교 |
-| real graph가 control보다 의미 있는가 | random, shuffled, uniform, identity, graph-free controls와 같은 artifact row에서 비교 |
-| prior work mechanism을 설명할 수 있는가 | FedAMP, SFL, pFedGraph, FedAGA mechanism을 component slot으로 매핑 |
-| metric이 해석 가능한가 | `DI`, `N_eff`, alignment, `LOO`, graph stats를 round/client/counterfactual artifact로 기록 |
-| framework로 확장 가능한가 | custom source, builder, preset, target이 trace와 artifact contract를 통과하는지 검증 |
+| client 사이 관계가 의미 있는가 | real graph와 random, shuffled, uniform, identity control 비교 |
+| graph 없이도 비슷한 효과가 나는가 | graph-free correction, clustering-only, dominance correction 비교 |
+| 어떤 부분이 결과를 움직이는가 | `graph_source`, `graph_builder`, `aggregation_target`을 나눠 기록 |
+| 결과를 어떻게 해석할 수 있는가 | `DI`, `N_eff`, alignment, `LOO`, graph statistics 저장 |
 
-핵심 claim:
-
-```text
-Graph-FL gain
-= relation-specific effect
-+ generic smoothing effect
-+ clustering effect
-+ dominance/norm correction effect
-+ optimizer effect
-```
-
-## Conclusion Matrix
-
-이 framework의 주장은 “항상 graph가 필요하다”가 아니다. 실험 결론이 어느 쪽으로 나오든 다음 결정을 할 수 있게 만드는 것이 핵심이다.
-
-| 최종 결론 | Evidence pattern | 우리가 할 수 있는 결정 | 연구적으로 남는 가치 |
-|---|---|---|---|
-| graph가 필수적이다 | real graph가 matched controls보다 일관되게 높고, real-control gap이 alignment/`LOO`/graph stats와 함께 움직임 | `graph_source`, `graph_mode`, `aggregation_target`을 method design 축으로 채택하고 Graph-FL mechanism을 강화 | 선행 Graph-FL 연구의 핵심 가정을 지지하고, 이후 연구를 relation estimation, topology, graph-filtered aggregation에 집중시킬 수 있다 |
-| graph가 필수적이지 않다 | graph-free correction, clustering-only, uniform/identity control이 real graph 효과를 대부분 설명 | graph construction을 줄이고 dominance/norm correction 또는 simpler control-based baseline으로 간소화 | 복잡한 graph module이 필요하지 않은 조건을 밝히고, 더 단순한 baseline과 correction 중심 연구로 비용을 줄일 수 있다 |
-| 결론이 setting-dependent다 | seed, alpha, client count, graph_source, graph_mode에 따라 real-control gap이 달라짐 | 조건별로 Graph-FL 적용 구간을 제한하고 Evidence pattern 기준으로 method selection | Graph-FL의 적용 boundary를 정의하고, 어떤 data heterogeneity와 client regime에서 graph가 의미 있는지 후속 실험을 좁힐 수 있다 |
-
-## Repository Contents
-
-| Area | Role | Main Paths |
-|---|---|---|
-| Graph-FL runtime | graph-aware aggregation과 diagnostics 실행 | `graphfl_lab/strategies/graphfl/`, `graphfl_lab/lifecycle/` |
-| graph construction | client state를 relation graph로 변환 | `graphfl_lab/graph/`, `graphfl_lab/designs/` |
-| diagnostics/artifacts | metric schema와 CSV/JSON row 작성 | `graphfl_lab/diagnostics/` |
-| experiment tracks | vision Non-IID, Cora graph ablation 실행 | `graphfl_lab/experiments/`, `run_experiment.py` |
-| Evidence pack | framework validity 검증 | `graphfl_lab/validation/`, `scripts/validation/` |
-| configs | tracked experiment presets | `configs/vision/`, `configs/cora/` |
-| tests | component, strategy, experiment, validation contract | `tests/` |
-| docs/demo | framework 설명, Evidence, repository layout, HTML demo | `docs/`, `docs/demos/graphfl-assembly-scratch.html` |
-
-## Framework Flow
+기본 흐름은 다음과 같다.
 
 ```text
 client local training
-├── graph_source              client state -> representation z_i
-├── graph_mode                relation score + topology -> adjacency A
-├── aggregation_target        graph filtering -> update / EMA update / weight
-├── correction_family         real graph vs matched controls
-├── diagnostics               DI, N_eff, alignment, LOO, graph stats
-└── artifact contract         round/client/graph/counterfactual/Evidence rows
+-> graph_source
+-> graph_builder
+-> aggregation_target
+-> diagnostics / artifacts
 ```
 
-| Layer | 역할 |
+## 설치
+
+Python 3.11 이상을 사용한다.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m pip install -e . --no-deps
+graphfl --help
+```
+
+`graphfl` 명령을 바로 쓸 수 없으면 module 명령을 사용한다.
+
+```powershell
+python -m graphfl_lab.cli.main --help
+```
+
+## 실행
+
+먼저 `--dry-run`으로 config와 component가 의도대로 연결되는지 확인한다.
+
+```powershell
+graphfl run single --track vision --config configs/vision/smoke/default_similarity_knn.json --dry-run
+```
+
+`--dry-run`을 빼면 실제 실험을 실행한다.
+
+| 목적 | 명령 |
 |---|---|
-| `graph_source` | client를 update, weight, EMA update, classifier-head update로 표현 |
-| `graph_mode` | relation score와 topology를 adjacency로 구성 |
-| `aggregation_target` | graph filtering을 update, EMA update, weight에 적용 |
-| `correction_family` | real graph를 random, shuffled, uniform, identity, clustering-only, graph-free control과 비교 |
-| `diagnostics` | alignment, `DI`, `N_eff`, `LOO`, graph metric 기록 |
+| Vision single | `graphfl run single --track vision --config configs/vision/smoke/default_similarity_knn.json` |
+| Vision suite | `graphfl run suite --config configs/vision/smoke/extension.json` |
+| Cora ablation | `graphfl run ablation --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
+| Stress grid | `graphfl run stress --config configs/vision/stress/fedavg_collapse/stress_grid_fedavg_collapse.json` |
+| Client-count sweep | `graphfl run client-count --config configs/vision/sweeps/client_count/client_count_warmup3_r10.json` |
 
-## Evidence Snapshot
+기존 entrypoint도 유지한다.
 
-| Evidence Axis | Verdict | Primary Artifact |
-|---|---|---|
-| construction drift | 18 graph modes pass, max abs diff `2.21e-12`, edge F1 `1.0` | `graph_parity_summary.csv` |
-| paper-mechanism alignment | pFedGraph, FedAMP, SFL, FedAGA mapping 5 / 5 rows pass | `external_mechanism_alignment.csv` |
-| diagnostic sensitivity | 60 framework diagnostic rows pass | `scenario_manifest.json`, `metric_validity_summary.csv` |
-| design-space coverage | 16 sources x 18 modes x 5 targets x 6 correction profiles = 8,640 / 8,640 checks pass | `design_space_matrix.csv`, `design_space_summary.csv` |
-| extensibility | custom source, builder, preset, target 4 / 4 contract checks pass | `extension_contract_summary.csv` |
-| measurement integrity | real/random/uniform measured nonzero, identity expected-zero control | `real_diagnostic_consistency.csv` |
+```powershell
+python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json
+python run_vision_suite.py --config configs/vision/smoke/extension.json
+python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json
+```
 
-Evidence의 의미:
+Config 위치와 용도는 [configs/README.md](configs/README.md)에 정리되어 있다.
 
-| Claim | Repository Evidence |
+## 확장
+
+새로운 graph source, graph builder, aggregation target은 같은 등록 API로 붙인다.
+
+```python
+register_graph_source
+register_graph_builder
+register_aggregation_target
+register_design
+```
+
+CLI 흐름은 다음 정도만 알면 된다. 자세한 contract는 [docs/framework.md](docs/framework.md)에 있다.
+
+```powershell
+graphfl component new <source|builder|aggregation> <name>
+graphfl component validate <plugin-path>
+graphfl design compose ...
+graphfl run single --track vision --config <config.json> --dry-run
+```
+
+## 산출물
+
+| 파일 | 내용 |
 |---|---|
-| graph semantics 보존 | lifecycle assembly와 reference builder drift 비교 |
-| paper mechanism 대응 | prior work mechanism을 component slot으로 매핑 |
-| metric 해석 가능성 | synthetic expected-direction check와 real/control consistency |
-| framework 조합성 | built-in design space 전체 row-level calculation check |
-| 확장 가능성 | custom component가 trace, metadata, diagnostics, artifact contract를 보존 |
+| `round_metrics.csv` | round별 loss, accuracy, aggregate metric |
+| `client_metrics.csv` | client별 contribution, update norm, alignment |
+| `graph_stats.csv` | graph density, degree, entropy, spectral metric |
+| `counterfactual_metrics.csv` | real graph와 control graph 비교 |
+| `module_traces.jsonl` | 사용된 component, parameter, shape, metadata |
+| `design_space_matrix.csv` | component 조합별 계산 check |
+| `extension_contract_summary.csv` | custom component contract check |
 
-## Primary Artifacts
+## 검증
 
-| Artifact | 내용 |
+검증은 특정 방법의 성능이 항상 좋다는 뜻이 아니다. 코드 구조가 의도대로 이어지고, graph/control/diagnostic을 같은 기준으로 비교할 수 있는지 확인하는 절차다.
+
+```powershell
+python -m unittest discover -s tests
+python scripts/checks/diagnostic_suite_preflight.py
+python scripts/validation/graph_evidence_report.py `
+  --profile smoke `
+  --include-external `
+  --out-dir tmp/evidence_smoke
+```
+
+최근 확인 기준:
+
+| Check | Result |
 |---|---|
-| `round_metrics.csv` | round-level pre/post aggregate, `DI`, `N_eff`, alignment, `LOO` |
-| `client_metrics.csv` | client contribution, update norm, alignment |
-| `graph_stats.csv` | density, degree, entropy, spectral graph metrics |
-| `counterfactual_metrics.csv` | real graph와 control graph gap |
-| `metric_validity_summary.csv` | synthetic expected-direction result |
-| `design_space_matrix.csv` | source/mode/target/control/diagnostic row validity |
-| `extension_contract_summary.csv` | custom component trace와 artifact preservation |
+| unit tests | 306 / 306 pass |
+| component contract | Registry, Shape, Finite, Metadata, Trace/Artifact pass |
+| CLI dry-run | 대표 5개 실행 경로 pass |
 
-## Main Run Paths
+더 자세한 검증 수치와 한계는 [docs/evidence.md](docs/evidence.md)에 있다.
 
-| 목적 | Command |
-|---|---|
-| unified runner help | `python run_experiment.py --help` |
-| vision single run | `python run_vision_experiment.py --config configs/vision/smoke/default_similarity_knn.json` |
-| vision suite | `python run_vision_suite.py --config configs/vision/diagnostic/smoke/default.json` |
-| vision stress grid | `python run_vision_stress_grid.py --help` |
-| vision client-count sweep | `python run_vision_client_count_sweep.py --help` |
-| Cora graph ablation | `python run_graph_ablation.py --config configs/cora/ablations/graph/graph_ablation_smoke.json` |
-| Evidence report | `python scripts/validation/graph_evidence_report.py --profile smoke --include-external --out-dir <out-dir>` |
-
-## Install
-
-Repository root에서 실행한다.
-
-| Step | Command |
-|---|---|
-| dependency 설치 | `python -m pip install -r requirements.txt` |
-| editable install | `python -m pip install -e .` |
-
-## Verification
-
-| Check | Command |
-|---|---|
-| unit tests | `python -m unittest discover -s tests` |
-| vision CLI | `python run_vision_experiment.py --help` |
-| suite CLI | `python run_vision_suite.py --help` |
-| Evidence report | `python scripts/validation/graph_evidence_report.py --profile smoke --include-external --out-dir <out-dir>` |
-
-## Documentation
-
-| Document | 내용 |
-|---|---|
-| `docs/README.md` | 문서 index |
-| `docs/framework.md` | framework claim, lifecycle, components, metric |
-| `docs/evidence.md` | framework 정당성 실험, pass criteria, verdict, provenance |
-| `docs/research.md` | prior work positioning, design pattern survey |
-| `docs/repository.md` | repository tree, package/script/test layout, change routing |
-| `docs/maintenance.md` | migration, compatibility, removed surface, golden/asset policy |
-| `docs/history.md` | legacy experiment observation, migration phase 기록 |
-| `docs/demos/graphfl-assembly-scratch.html` | Graph-FL assembly scratch demo |
-
-## Repository Layout
+## 저장소 구조
 
 ```text
-.
-├── graphfl_lab/
-│   ├── designs/              GraphFLDesign registry and presets
-│   ├── graph/                graph source, builder, control, diagnostics
-│   ├── lifecycle/            lifecycle contracts and traces
-│   ├── strategies/
-│   │   ├── baselines/        graph-free and baseline strategies
-│   │   └── graphfl/          Graph-FL runtime strategy modules
-│   ├── diagnostics/          result schema and artifact writers
-│   ├── experiments/
-│   │   ├── vision/           vision single run, suite, stress, sweeps
-│   │   ├── cora/             Cora single run and graph ablation
-│   │   └── suites/vision/    suite features, variants, reporting
-│   └── validation/           Evidence pack validation logic
-├── configs/
-│   ├── vision/               baseline, diagnostic, probe, smoke, stress, sweep configs
-│   └── cora/                 graph ablation configs
-├── scripts/
-│   ├── checks/               preflight, evidence bundle, parity checks
-│   ├── validation/           Evidence pack entry points
-│   ├── reports/              plot and dashboard helpers
-│   └── smoke/                smoke command wrappers
-├── tests/                    CLI, graph, lifecycle, strategy, experiment, validation tests
-└── docs/
-    ├── *.md                  canonical project documentation
-    └── demos/                HTML demo artifacts
+graphfl_lab/
+├── cli/              graphfl 명령과 기존 wrapper 연결
+├── designs/          GraphFLDesign preset과 component 조합
+├── extensions/       custom component 등록과 검증
+├── graph/            graph source, builder, control graph
+├── lifecycle/        실행 중 component contract와 trace
+├── strategies/       baseline과 Graph-FL strategy
+├── diagnostics/      metric schema와 artifact writer
+├── experiments/      Vision, Cora 실행 경로
+└── validation/       검증 report 생성
+
+configs/              실험 config preset
+scripts/              check, report, validation script
+tests/                unit / contract test
+docs/                 세부 설명과 코드 위치 안내
 ```
 
-상세 layout과 change routing은 `docs/repository.md`에서 관리한다.
+## 문서
+
+| 보고 싶은 내용 | 문서 |
+|---|---|
+| component 구조와 metric | [docs/framework.md](docs/framework.md) |
+| 검증 결과와 한계 | [docs/evidence.md](docs/evidence.md) |
+| prior work 대응 | [docs/research.md](docs/research.md) |
+| 코드 위치 | [docs/repository.md](docs/repository.md) |
+| compatibility | [docs/maintenance.md](docs/maintenance.md) |
+| 변경 이력 | [CHANGELOG.md](CHANGELOG.md) |

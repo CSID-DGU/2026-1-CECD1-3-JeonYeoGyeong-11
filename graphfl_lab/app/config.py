@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from argparse import Namespace
 from typing import Any, Dict
 
@@ -34,6 +35,7 @@ DEFAULT_RUN_CONFIG: Dict[str, Any] = {
     "graph-method": "none",
     "graph-source": "update",
     "aggregation-target": "graph_filtered_update",
+    "aggregation-params": "{}",
     "knn-k": 2,
     "edge-threshold": 0.0,
     "graph-scale-sigma": 1.0,
@@ -160,6 +162,11 @@ def args_from_context(context: Context) -> Namespace:
         graph_method=str(cfg.get("graph-method", "none")),
         graph_source=str(cfg["graph-source"]),
         aggregation_target=str(cfg["aggregation-target"]),
+        aggregation_params=(
+            dict(cfg["aggregation-params"])
+            if isinstance(cfg["aggregation-params"], dict)
+            else json.loads(str(cfg["aggregation-params"] or "{}"))
+        ),
         knn_k=int(cfg["knn-k"]),
         edge_threshold=float(cfg["edge-threshold"]),
         graph_scale_sigma=float(cfg["graph-scale-sigma"]),

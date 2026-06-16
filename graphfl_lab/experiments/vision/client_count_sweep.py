@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import sys
 from pathlib import Path
@@ -74,6 +75,12 @@ def suite_cmd(args: argparse.Namespace, num_clients: int, out_dir: Path, tag: st
         str(args.graph_source),
         "--aggregation-target",
         str(args.aggregation_target),
+        "--aggregation-params",
+        json.dumps(dict(getattr(args, "aggregation_params", {}) or {}), sort_keys=True),
+        "--graph-plugin",
+        str(getattr(args, "graph_plugin", "")),
+        "--graph-preset",
+        str(getattr(args, "graph_preset", "none")),
         "--edge-threshold",
         str(args.edge_threshold),
         "--graph-scale-sigma",
