@@ -4,6 +4,7 @@
 
 Rules that must hold are enforced mechanically by the gates in `commerce/tools/` and by CI, not by prose alone, precisely because agent capabilities differ. Run the gates; do not rely on having read this correctly.
 
+- **Before anything else in a session, clear the reviews assigned to you**: `gh pr list --search "review-requested:@me" --state open`. Nothing wakes a peer agent when GitHub requests its review, so a pull request waiting on you stays stuck until you happen to look. Approving is a check that the contracts and behaviour you consume still hold, not a full code review.
 - Start with `docs/team/start.md`, your A/B/C card under `docs/team/tasks/`, and the relevant package README. `docs/README.md` is the current document index. No private document bundle is required.
 - Read `docs/team/working-agreement.md` for ownership and `docs/team/git-workflow.md` for branches/review. Preserve unrelated user changes and existing history. Cross-owner work is allowed when the user assigns that scope; coordinate shared contract changes with affected consumers.
 - Use `commerce.packages.*` imports. Local APIs/types/errors live in `commerce/packages/contracts/ports.py`, `types.py`, and `errors.py`. Wire fields/types are defined by JSON schemas and the validator; behavior is specified in `docs/design/interfaces.md` and `model.md`. Resolve conflicts together instead of silently choosing a different contract.
