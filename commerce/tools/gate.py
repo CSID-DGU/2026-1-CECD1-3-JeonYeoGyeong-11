@@ -8,9 +8,16 @@
 작업 디렉터리는 저장소 루트다. 종료 코드 0이 통과, 그 밖은 실패다.
 게이트 목록과 실제 구현 여부는 이 파일과 docs/contracts.md에 함께 기록한다.
 
-판정은 종료 코드 0과 기대 출력 마지막 줄의 동시 충족이다. `contracts` 게이트의
-마지막 줄은 `CONTRACTS OK: schemas=<n> fixtures=<n> failures=0` 한 줄이며,
-감싸 호출하는 `contracts.validate`가 같은 프로세스 stdout으로 낸다. 게이트가
+판정은 종료 코드 0과 기대 출력 마지막 줄의 동시 충족이다. 구현된 게이트의
+마지막 줄은 각각 다음 하나다.
+
+    CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
+    SCAFFOLD OK: tests=<n>; business gates remain NOT_IMPLEMENTED
+    DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> failures=0
+    POLICY OK: fl=<n> gates=<n> contracts=<n> failures=0
+
+실패하면 그 줄을 내지 않는다. 있는 그대로의 실패를 요약 문자열로 덮지 않기
+위해서다. 각 줄은 감싸 호출하는 러너가 같은 프로세스 stdout으로 내며 게이트가
 같은 줄을 다시 내지 않는다(중복 출력이면 마지막 줄 판정이 흐려진다).
 한국어 요약 줄은 그 앞에 남는다.
 """
