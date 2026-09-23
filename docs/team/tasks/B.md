@@ -1,11 +1,11 @@
 # B 작업 카드 — 데이터·NLP·추천
-담당 이름: WORKING_AGREEMENT에서 배정 · 실행 기준 D0017~D0019
+담당 이름: [작업 규칙](../working-agreement.md)에서 배정 · 실행 기준 D0017~D0019
 
 ## 목표와 소유
 두 과거 데이터와 live 구매를 로컬 추천에 연결하고 신규 판매자/신상품을 점수화한다.
 소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/.
-읽기: START_HERE → DATA → MODEL_BOUNDARY → CONTRACTS §2~5 → EVALUATION.
-지속 작업: GIT_WORKFLOW에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 A의 입력 이벤트와 C의 모델 제출/설치 계약 변경을 확인한다.
+읽기: [팀 시작 안내](../start.md) → [데이터](../../design/data.md) → [모델 경계](../../design/model.md) → [인터페이스 계약](../../design/interfaces.md) §2~5 → [평가](../../design/evaluation.md).
+지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 A의 입력 이벤트와 C의 모델 제출/설치 계약 변경을 확인한다.
 
 별도 학습/서비스 인계는 ../../design/model-lab.md와 D0018을 따른다. 화면 없이 같은 모델 core로 학습·평가·checkpoint 재개·export를 제공한다. 시간 관계는 개별 간격의 MLP 뒤 pooling을 유지하고 이웃/시간쌍 예산을 feature fixture와 E-G0에서 확정한다.
 
@@ -43,7 +43,7 @@ G4 전에는 실데이터 로컬 분석/학습까지 가능하다. 중앙 FL 평
 신규 판매자 A-0와 이력조차 없는 fallback을 구분한다. 신상품 C-new와 관계만 가리는 C0도 구분한다.
 
 ## 개인화와 비교
-COMPARISON/EVALUATION/MODEL_BOUNDARY §8을 따른다. text_only와 text_relation을 같은 split·시퀀스·후보·학습 예산으로 각각 학습한다. 관계 모델의 입력을 나중에 0으로 가린 결과는 텍스트 기준선을 대신하지 않는다.
+[모델 비교](../../design/comparison.md)/[평가](../../design/evaluation.md)/[모델 경계](../../design/model.md) §8을 따른다. text_only와 text_relation을 같은 split·시퀀스·후보·학습 예산으로 각각 학습한다. 관계 모델의 입력을 나중에 0으로 가린 결과는 텍스트 기준선을 대신하지 않는다.
 전체 추천 가중치 FL 후 각 base의 복사본에서 query_proj/scorer만 개인화한다. lr/최대 step/최소 데이터/검증 규칙은 E-G0와 validation으로 정해 양쪽에 적용한다. 기존 학습 작업 큐에서 FL와 개인화를 직렬 처리한다.
 개인화 전후 공통 base 해시 불변, 두 그룹만 gradient 허용, 새 base에 옛 개인화 부착 거부, 데이터 부족/검증 실패 반환을 b2에서 확인한다. global과 personal 저장 경로·식별자를 분리한다.
 화면 없이 T-G/R-G/T-P/R-P의 오프라인 성능·가용률·계산 비용을 평가하고, 같은 checkpoint 쌍을 서비스에 인계한다. FL 효과 주장에는 같은 variant의 local_only 비교를 별도로 둔다.

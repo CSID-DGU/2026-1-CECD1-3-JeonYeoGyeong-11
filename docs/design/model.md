@@ -21,7 +21,7 @@
 
 | 순서 | 산출물 | 완료 조건 |
 | --- | --- | --- |
-| 1 | Dunnhumby·Instacart·live 텍스트 builder | DATA §3 입력 규칙, 한국어·약어·규격·결측 fixture |
+| 1 | Dunnhumby·Instacart·live 텍스트 builder | [데이터](data.md) §3 입력 규칙, 한국어·약어·규격·결측 fixture |
 | 2 | 인코더 선정 기록 | 정확한 model ID, 고정 revision, 라이선스, tokenizer, pooling, 차원·길이 |
 | 3 | frozen wrapper | padding 제외 mean pooling 등 모델 고유 규칙, eval 모드·gradient 차단, 유한 벡터 |
 | 4 | z 캐시와 설치본 | 모델·설정 해시, 동일 입력 재현, 원문 변경 시 재계산 |
@@ -48,7 +48,7 @@ text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revis
 | shared.query_proj | 고객 query |
 | shared.scorer | 로컬 후보 상품 공통 점수 |
 
-위 9개는 text_relation의 그룹이다. text_only는 time_mlp/relation_mlp/relation_pool을 제외한 6개를 사용하며 l=0인 Fusion을 처음부터 학습한다(COMPARISON §2). 이름은 그룹이며 실제 export는 shared.relation_mlp_l0_w처럼 평탄한 층별 키다. 텐서 key·shape·dtype은 variant별 B manifest로 고정하고 C는 해당 목록만 검증한다. 기본 shared dtype은 float32, 정규화는 LayerNorm. 고정 상품 ID별 출력행·공유 상품 ID embedding table은 쓰지 않는다.
+위 9개는 text_relation의 그룹이다. text_only는 time_mlp/relation_mlp/relation_pool을 제외한 6개를 사용하며 l=0인 Fusion을 처음부터 학습한다([모델 비교](comparison.md) §2). 이름은 그룹이며 실제 export는 shared.relation_mlp_l0_w처럼 평탄한 층별 키다. 텐서 key·shape·dtype은 variant별 B manifest로 고정하고 C는 해당 목록만 검증한다. 기본 shared dtype은 float32, 정규화는 LayerNorm. 고정 상품 ID별 출력행·공유 상품 ID embedding table은 쓰지 않는다.
 
     z[c] = frozen_text(build_product_text(c))
     R[c,j] = local_relations(c,j, snapshot)
@@ -61,7 +61,7 @@ text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revis
 
 X[u,c]와 B[b,c]는 구매 여부의 이진 행렬이다. 공동구매 강도는 R_ij/sqrt(R_ii R_jj), support는 log1p로 분리한다. 분모 0이면 관측 없음. 수량은 초기 모델 입력에서 제외한다.
 
-시간 관계는 채택한 설계대로 q[c→j]=mean_d(time_mlp(log1p(min(d,30)), 관측/검열 비트))다. 반대 방향을 별도로 만든다. 같은 basket의 동시 구매는 이 시간쌍에서 제외하고 basket 관계로 표현한다. 간격을 먼저 평균/중앙값 하나로 줄여 MLP에 넣는 방식은 동일하지 않으며 기본안으로 묵시 대체하지 않는다. Instacart의 실제 경과일 하한이라는 DATA의 제한도 유지한다.
+시간 관계는 채택한 설계대로 q[c→j]=mean_d(time_mlp(log1p(min(d,30)), 관측/검열 비트))다. 반대 방향을 별도로 만든다. 같은 basket의 동시 구매는 이 시간쌍에서 제외하고 basket 관계로 표현한다. 간격을 먼저 평균/중앙값 하나로 줄여 MLP에 넣는 방식은 동일하지 않으며 기본안으로 묵시 대체하지 않는다. Instacart의 실제 경과일 하한이라는 [데이터](data.md)의 제한도 유지한다.
 
 기존 sim_bask 단독 top-K는 동시구매가 적은 고객/시간 관계를 잘라낼 위험이 있어 최종 고정값에서 해제한다(D0018). B는 고객·바스켓·시간 각각의 후보를 합치는 제한 이웃 방식과 시간쌍 추출/샘플링 규칙을 세 관계가 서로 다른 이웃을 선택하는 작은 합성 예제로 확인한 뒤 E-G0에서 예산을 확정한다. 최근접 후속 방문/전 조합 등의 시간쌍 정의를 서로 다른 코드에서 임의로 선택하지 않는다. 확정 규칙·seed·K는 preprocessing_version에 반영한다.
 
@@ -87,13 +87,13 @@ runtime.compare_local(request: dict) -> ComparisonResult
 
 ingest 정상 반환은 영속 반영 완료를 뜻한다. 이미 같은 event ID·본문이면 성공으로 반환하고, 다른 본문이면 DUPLICATE_EVENT다. B는 이벤트 기록·반영 ID·feature_epoch를 같은 특징 DB 트랜잭션으로 갱신한다. catalog의 source_seq는 A의 로컬 outbox 순번이며 같은 상품의 오래된 갱신이 새 값을 덮지 않도록 저장한다. source_seq는 catalog JSON에 임의 추가하지 않는다.
 
-A는 DB 커밋 후 전달을 시도하고 실패하면 pending을 유지한다(CONTRACTS §2). B의 저장소 생성·DDL은 B만 수정하며 A DB에 캐시 테이블을 추가하지 않는다.
+A는 DB 커밋 후 전달을 시도하고 실패하면 pending을 유지한다([인터페이스 계약](interfaces.md) §2). B의 저장소 생성·DDL은 B만 수정하며 A DB에 캐시 테이블을 추가하지 않는다.
 
 local_data_ref는 seller와 특징 스냅샷을 식별하는 opaque 값이다. C는 파싱하거나 경로로 사용하지 않는다.
 
 model_variant는 text_only/text_relation, mode는 global/personalized/auto다. 이들은 판매자 내부 함수 인자이며 기존 recommendation_request JSON에 추가하지 않는다. mode=global은 공통 base만, personalized는 그 base에 대응하는 승인된 tail만 사용한다. 명시 personalized가 없으면 NOT_FOUND에 해당하는 로컬 오류로 거부한다. auto는 현재 base의 승인된 개인화가 있으면 사용하고 없으면 base를 쓴다. 이 선택 자체를 no_customer_history fallback으로 표시하지 않는다.
 
-한 seller runtime이 두 variant를 관리하되 A 이벤트는 B 특징 저장소에 한 번만 반영한다. 두 variant가 동일한 원장/feature_epoch를 읽고 모델·파생 cache는 분리한다. compare_local은 snapshot과 각 모델 핸들을 한 번에 고정한다. 반환 객체와 unavailable 표시는 CONTRACTS §4, COMPARISON §5를 따른다.
+한 seller runtime이 두 variant를 관리하되 A 이벤트는 B 특징 저장소에 한 번만 반영한다. 두 variant가 동일한 원장/feature_epoch를 읽고 모델·파생 cache는 분리한다. compare_local은 snapshot과 각 모델 핸들을 한 번에 고정한다. 반환 객체와 unavailable 표시는 [인터페이스 계약](interfaces.md) §4, [모델 비교](comparison.md) §5를 따른다.
 
 TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), completed(bool)를 가진 B의 로컬 반환 객체다. C의 판매자 FL client가 completed를 delta_manifest에 옮긴다. 수행할 학습 예제가 없으면 같은 manifest shape의 0 delta와 completed=false를 반환하며 집계하지 않는다. 이는 HTTP JSON 계약을 새로 늘리는 것이 아니다.
 

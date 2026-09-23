@@ -89,7 +89,7 @@ CPU와 GPU는 실행 장치 선택이며 모델 의미·입력 규격을 바꾸�
 ## 7. 서비스 시작과 시연
 앱 시작은 release load → 로컬 특징 준비 → 추천 가능 상태다. 학습 시작을 기다리지 않는다.
 구매 완료는 로컬 event/feature_epoch를 갱신한다. 추천 표현은 바뀔 수 있지만 이것만으로 FL가 실행된 것은 아니다.
-개인화는 별도 로컬 작업으로 실행한다. 준비 전에는 공통 모델로 서비스하고, 검증을 통과한 현재 base의 개인화 결과만 원자적으로 적용한다. 정상 서비스의 auto와 비교 화면의 명시적 personalized 모드는 MODEL_BOUNDARY를 따른다.
+개인화는 별도 로컬 작업으로 실행한다. 준비 전에는 공통 모델로 서비스하고, 검증을 통과한 현재 base의 개인화 결과만 원자적으로 적용한다. 정상 서비스의 auto와 비교 화면의 명시적 personalized 모드는 [모델 경계](model.md)를 따른다.
 정해진 시점의 FL 라운드가 새 shared weights를 배포하면 base_model_version이 바뀐다. 옛 개인화 후반부는 새 base에 붙이지 않고 새 버전에서 다시 학습한다. 시연에서는 준비한 release로 시작하고 짧은 추가 라운드로 이 차이를 보여준다.
 실제 추천의 model_version은 공통 release 또는 로컬 개인화 식별자다. 구매에 따른 feature_epoch, FL의 base_model_version, 개인화의 personalization_revision을 구분한다.
 두 variant는 같은 판매자 특징 원장을 읽고 이벤트는 한 번만 반영한다. 서비스의 네 결과 비교는 B compare_local이 동일 snapshot을 고정하는 절차를 따른다.

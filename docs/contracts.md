@@ -42,6 +42,7 @@ python -m commerce.tools.gate contracts
 | --- | --- | --- |
 | contracts | 계약 스키마·예제·의미 검증 | 실행 가능 |
 | scaffold | 공통 import·runtime 연결·기동 뼈대 | 실행 가능 (업무 검증 제외) |
+| docs | 문서 대 코드 대조: 링크·환경변수 표·게이트명·문서의 import | 실행 가능 |
 | a1 | 주문·권한·복구 경계 | 미구현 |
 | b1 | 데이터 어댑터·텍스트 입력 | 미구현 |
 | b2 | NLP·공유 모델·개인화 경계 | 미구현 |

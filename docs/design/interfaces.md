@@ -3,7 +3,7 @@
 
 ## 1. 공통 기준과 계약 목록
 
-JSON 필드·타입은 commerce/packages/contracts/schemas/의 같은 이름 파일이 기준이다. 동작은 이 문서와 MODEL_BOUNDARY가 기준이다. 문서와 schema가 다르면 함께 수정한다. 아래는 구현할 계약이며 서버 구현 완료를 뜻하지 않는다.
+JSON 필드·타입은 commerce/packages/contracts/schemas/의 같은 이름 파일이 기준이다. 동작은 이 문서와 [모델 경계](model.md)가 기준이다. 문서와 schema가 다르면 함께 수정한다. 아래는 구현할 계약이며 서버 구현 완료를 뜻하지 않는다.
 
 | 계약 | 경계 | 저장·전송 범위 |
 | --- | --- | --- |
@@ -71,13 +71,13 @@ A는 catalog_item을 상품 생성/수정과 함께 outbox에 기록한다. B의
 
 ## 4. 추천 호출
 
-A가 로그인 세션의 seller/customer, 현재 UTC as_of로 runtime.predict_local을 호출한다. B의 API와 DB 위치는 MODEL_BOUNDARY §4를 따른다.
+A가 로그인 세션의 seller/customer, 현재 UTC as_of로 runtime.predict_local을 호출한다. B의 API와 DB 위치는 [모델 경계](model.md) §4를 따른다.
 
 - candidate_item_ids=null: as_of에 사용 가능한 활성 로컬 카탈로그. []: 빈 후보.
 - 명시 후보 중 다른 판매자/미등록 ID는 NOT_FOUND, 비활성 상품은 제거한다.
 - top_n=null: 기본 10. 후보가 적으면 있는 만큼만 반환한다.
 - 라이브 history는 completed_at < as_of. 같은 시각의 이벤트는 다음 요청에서 포함될 수 있다.
-- 오프라인 평가는 상품 동시 구매 누출을 막는 이벤트 순서 키를 사용한다(EVALUATION §2). 상대시간 Instacart에 가짜 UTC를 붙여 이 HTTP 요청으로 처리하지 않는다.
+- 오프라인 평가는 상품 동시 구매 누출을 막는 이벤트 순서 키를 사용한다([평가](evaluation.md) §2). 상대시간 Instacart에 가짜 UTC를 붙여 이 HTTP 요청으로 처리하지 않는다.
 - 응답은 seller/customer/as_of를 반향하며 score 내림차순, 동점 item_id_local 사전순. 중복 상품 금지.
 - 현재 score_semantics=next_purchase, horizon_days=null. 점수를 확률이라고 표시하지 않는다.
 - 모델 없음 → no_shared_model, 판매자 이력 없음 → no_seller_history, 고객 이력 없음 → no_customer_history 순서로 fallback_reason을 결정한다. fallback이면 is_cold_start=true. 공통/개인화 가중치로 정상 시퀀스 추론을 하면 false/null.
@@ -88,7 +88,7 @@ B는 contract_error에 대응하는 코드·field_path를 가진 예외를 제�
 
 ### 4.1 모델 선택·개인화·비교의 로컬 경계
 
-MODEL_BOUNDARY §4의 model_variant/mode는 A·B·C의 판매자 내부 함수 인자다. recommendation_request.v1에 variant, mode, feature_snapshot_id를 추가하지 않는다. 첫 비교 화면은 판매자 서버에서 렌더하여 별도 브라우저 JSON 응답 계약을 만들지 않는다.
+[모델 경계](model.md) §4의 model_variant/mode는 A·B·C의 판매자 내부 함수 인자다. recommendation_request.v1에 variant, mode, feature_snapshot_id를 추가하지 않는다. 첫 비교 화면은 판매자 서버에서 렌더하여 별도 브라우저 JSON 응답 계약을 만들지 않는다.
 
 recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B의 로컬 ps- ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
 
@@ -107,13 +107,13 @@ compare_local(request)는 다음 **로컬 Python 객체** ComparisonResult를 �
 
 unavailable_reason은 model_not_ready / personalization_not_ready / insufficient_data / validation_rejected / base_mismatch 중 하나다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
 
-B의 seller runtime이 원장·catalog snapshot과 후보를 한 번 고정한다. A가 별도 요청 4개를 호출하거나 비교 중 구매를 arm별로 따로 반영하지 않는다. 준비된 comparison 설정은 variant별 base checkpoint를 지정하고 요청 중 latest를 따라가지 않는다. 상세 시나리오와 판정은 COMPARISON을 따른다.
+B의 seller runtime이 원장·catalog snapshot과 후보를 한 번 고정한다. A가 별도 요청 4개를 호출하거나 비교 중 구매를 arm별로 따로 반영하지 않는다. 준비된 comparison 설정은 variant별 base checkpoint를 지정하고 요청 중 latest를 따라가지 않는다. 상세 시나리오와 판정은 [모델 비교](comparison.md)을 따른다.
 
 ## 5. B ↔ C 모델과 파일
 
 shared_model_manifest는 architecture_version, task_kind, preprocessing_version, text_artifact_hash, tensors와 manifest_hash를 고정한다. B가 생성하고 C가 전송·배포를 검증한다. 현재 프로젝트의 shared tensor는 모두 float32다. schema에 더 넓은 dtype이 있어도 이 구현 경로는 float32만 허용한다.
 
-round_config.model_version은 **라운드 시작 기준 모델**이다. 집계 성공 후 새 model_version을 발급한다. 같은 버전의 가중치를 나중에 바꾸지 않는다. round_config/manifest의 architecture/hash가 다르면 학습을 시작하지 않는다. 스텝·배치 의미는 MODEL_BOUNDARY §6을 따른다.
+round_config.model_version은 **라운드 시작 기준 모델**이다. 집계 성공 후 새 model_version을 발급한다. 같은 버전의 가중치를 나중에 바꾸지 않는다. round_config/manifest의 architecture/hash가 다르면 학습을 시작하지 않는다. 스텝·배치 의미는 [모델 경계](model.md) §6을 따른다.
 
 D0019의 variant는 불변 architecture config에 기록하고 manifest의 기존 architecture_version으로 식별한다. manifest에 model_variant 필드를 새로 추가한다는 뜻이 아니다. coordinator 한 실행은 하나의 model_variant만 집계하며 별도 registry/round/auth 설정을 사용한다. 첫 구현은 두 실험을 순차 실행하여 두 공통 release를 준비한다. 하나의 latest 포인터를 두 variant가 공유하지 않는다. 중앙 JSON에 임의 experiment 필드를 덧붙이지 않는다. C는 실행 설정의 variant를 B의 로컬 함수 인자로 전달하고 manifest 일치를 검증한다.
 

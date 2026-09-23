@@ -28,7 +28,7 @@ Dunnhumby 순서: product_category 유효 → quantity>0 → sales_value>=0 → 
 파일 SHA-256: bb1d8e9c503b966be93a915b2d4d0c031ea4e7bbec34d8de0d1c9abe339965a5
 이번 정리에서 파일 존재와 해시는 확인했다. 내용 생성의 원자료 재현은 b1 작업이다.
 
-기존 Instacart 배정 파일의 로컬 경로: `fedcommerce/out/instacart/client_assignment_matched.csv`(비공개 인계 자료이며 clone에 포함되지 않는다). B가 재현 가능한 분할 생성 절차를 구현하기 전에는 실제 데이터 재현이 미완료다. 원자료 없이 공통 코드·합성 검사는 시작할 수 있다.
+기존 Instacart 배정을 만든 스크립트는 [fedcommerce/](../../fedcommerce/README.md)의 `src/instacart_clients.py`·`src/instacart_match.py`이며 저장소에 있다. 그 출력 `fedcommerce/out/instacart/client_assignment_matched.csv`는 고객별 파생물이라 clone에 포함되지 않는다. B가 재현 가능한 분할 생성 절차를 구현하기 전에는 실제 데이터 재현이 미완료다. 원자료 없이 공통 코드·합성 검사는 시작할 수 있다.
 client_id는 0~99가 아니라 기존 점포 ID를 가져온 정수값이다. 숫자로 정렬하고 이를 고객/상품의 교차 출처 동일성으로 해석하지 않는다. B는 파일 해시와 배정 seed/알고리즘을 실행 기록에 남긴다. 고객 한 명의 주문은 한 client에만 둔다.
 
 | 출처 | seller_id | customer_id_local | item_id_local | basket_id_local |
@@ -58,7 +58,7 @@ Instacart 첫 주문의 누적 상대일은 0, 이후 days_since_prior_order를 
 - null을 문자열 "nan"/"None"으로 만들지 않는다.
 - 원문·정규화 후·token truncation 후의 중복률, 결측률, 한국어 보존을 측정한다.
 - 마커는 기본 tokenizer의 일반 문자열로 처리한다. 새 special token을 frozen 모델에 임의 추가하지 않는다.
-- 정확한 checkpoint/revision, tokenizer, pooling, 길이·차원은 MODEL_BOUNDARY §2의 B 산출물이다.
+- 정확한 checkpoint/revision, tokenizer, pooling, 길이·차원은 [모델 경계](model.md) §2의 B 산출물이다.
 - 규격만 다른 상품, 한국어 유기농 우유/일반 우유, 무가당/가당 등 fixture를 포함한다.
 
 구매 데이터로 fit하는 사전·통계가 생기면 training split 안에서만 만들고 로컬 상태로 보관한다. 공통 preprocessing artifact에 고객 통계를 넣지 않는다.
@@ -69,7 +69,7 @@ Instacart 첫 주문의 누적 상대일은 0, 이후 days_since_prior_order를 
 
 B 내부 학습 레코드는 seller/customer/basket, item 집합, 관측 시간·순서·검열 정보와 source를 가진다. 실제 모델은 수량 대신 구매 여부를 쓴다. 상대시간·절대시간 원본 차이는 내부 메타데이터에 남기고 다른 고객의 가상 날짜를 만들지 않는다.
 
-A 완료 이벤트의 durable outbox와 B 멱등 처리는 CONTRACTS §2. 완료 전/취소 주문은 학습 입력이 아니다. 이벤트 재생과 상품 수정은 feature_epoch와 캐시 무효화를 동반한다.
+A 완료 이벤트의 durable outbox와 B 멱등 처리는 [인터페이스 계약](interfaces.md) §2. 완료 전/취소 주문은 학습 입력이 아니다. 이벤트 재생과 상품 수정은 feature_epoch와 캐시 무효화를 동반한다.
 
 ## 5. 원자료 없이 시작하는 fixture
 

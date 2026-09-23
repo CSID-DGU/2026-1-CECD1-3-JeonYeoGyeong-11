@@ -11,6 +11,7 @@ python -m venv .venv
 .venv\Scripts\python -m pip install -r commerce/requirements-lock.txt
 .venv\Scripts\python -m commerce.tools.gate contracts
 .venv\Scripts\python -m commerce.tools.gate scaffold
+.venv\Scripts\python -m commerce.tools.gate docs
 .venv\Scripts\python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 
@@ -29,6 +30,24 @@ Linux/macOS에서는 `.venv/bin/python`을 사용한다. Python 3.11 기준이�
 | C FL·통합 | `commerce/packages/contracts/`, `commerce/packages/fl_client/`, `commerce/services/fl_coordinator/`, `commerce/deploy/`, `commerce/tools/`, `commerce/tests/e2e/` | [FL client README](../commerce/packages/fl_client/README.md), `lifecycle.py` | 합성 FL 경로와 보호 방식의 작은 검증 |
 
 각자 구현 전 상대 모듈의 완성을 기다릴 필요는 없다. 호출자 테스트에서 의존성을 주입해 대체한다. 대체 구현의 결과를 실제 모델/보호 검증으로 보고하지 않는다. 공통 API 변경은 영향받는 생산자·소비자와 함께 검토한다.
+
+### 상대 모듈을 대체하는 방법
+
+`open_runtime`이 돌려주는 `UnimplementedRuntime`은 **모든 업무 메서드가 `FeatureNotImplemented`를 낸다.** 성공 경로를 만들려면 호출자가 자기 test double을 주입한다. 저장소에 공용 fake는 없다.
+
+```python
+# A의 예: 성공 경로용 double을 자기 소유 경로에 두고 주입한다.
+from commerce.services.merchant_api.context import MerchantSettings, build_context
+
+context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRuntime(sid))
+```
+
+`build_context`의 `runtime_factory`와 `client_factory`가 그 주입점이다. C도 c1의 stub trainer를 같은 방식으로 주입한다.
+
+- double은 **자기 소유 경로**에 둔다. A는 `commerce/services/merchant_api/` 또는 자기 테스트 아래, C는 `commerce/tests/e2e/` 아래다.
+- `commerce/packages/recommender/runtime.py`를 고쳐서 성공을 만들지 않는다. B 소유이며 `gate scaffold`가 모든 메서드의 예외 발생을 검사한다.
+- `FeatureNotImplemented`를 잡아 delivered·학습 완료·정상 추천으로 바꾸지 않는다.
+- double은 `ports.py`의 시그니처와 `types.py`의 반환 타입을 지킨다. 계약과 다른 모양을 돌려주면 실제 연결에서 다시 깨진다.
 
 ## 고정한 import와 타입
 

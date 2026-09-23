@@ -51,6 +51,7 @@ Python 3.11 가상환경에서 개발 의존성을 준비한 뒤 프로젝트 �
 python -m pip install -r commerce/requirements-lock.txt
 python -m commerce.tools.gate contracts
 python -m commerce.tools.gate scaffold
+python -m commerce.tools.gate docs
 python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 

@@ -34,7 +34,7 @@ flowchart LR
   Registry -->|검증 후 B 설치| Serving
 ~~~
 
-A는 플랫폼·주문, B는 특징·모델, C는 FL·배포를 소유한다. 실제 컴포넌트 경로·포트·환경변수는 WORKING_AGREEMENT §3을 따른다.
+A는 플랫폼·주문, B는 특징·모델, C는 FL·배포를 소유한다. 실제 컴포넌트 경로·포트·환경변수는 [작업 규칙](../team/working-agreement.md) §3을 따른다.
 
 위 그림은 서비스 실행 구조다. 사전 모델 학습은 화면과 별도의 [실험 경로](model-lab.md)로 수행하고 검증한 release를 초기 모델로 설치한다(D0018). 서비스 startup에 처음부터의 모델 학습을 넣지 않는다.
 

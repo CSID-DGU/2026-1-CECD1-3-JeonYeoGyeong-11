@@ -3,7 +3,7 @@
 
 ## 1. 확인할 질문
 주 질문: 같은 FL·구매 시퀀스·추천·개인화 조건에서, 상품 텍스트에 판매자 로컬 구매 관계를 추가하면 어떤 차이가 나는가?
-정량 판단은 EVALUATION의 오프라인 평가, 시연은 동일 상태에서의 추천 비교다. 서비스에서 목록이 달라졌다는 사실만으로 성능 우위를 주장하지 않는다.
+정량 판단은 [평가](evaluation.md)의 오프라인 평가, 시연은 동일 상태에서의 추천 비교다. 서비스에서 목록이 달라졌다는 사실만으로 성능 우위를 주장하지 않는다.
 
 ## 2. 두 모델과 네 결과
 
@@ -13,7 +13,7 @@
 | text_relation | e = Fusion(z_text, l_relation) | 고객·basket·방향별 시간 관계를 추가 |
 
 text_only의 zero_l은 학습 시작부터 고정된 0이다. 관계 MLP/Time MLP/pool은 실행·학습·전송하지 않으며 해당 manifest에서 제외한다. Fusion의 관계 입력 폭은 맞추지만 미사용 열을 학습된 관계라고 세지 않는다. 초기화/weight decay로 값이 존재해도 입력이 0이면 관계 정보를 쓰는 것은 아니다.
-text_relation의 manifest는 MODEL_BOUNDARY의 9개 공유 그룹을 포함한다. text_only는 관계 전용 3개 그룹을 제외한 6개 그룹이다. seq_time_pos는 구매 시퀀스 입력이므로 둘 다 유지한다.
+text_relation의 manifest는 [모델 경계](model.md)의 9개 공유 그룹을 포함한다. text_only는 관계 전용 3개 그룹을 제외한 6개 그룹이다. seq_time_pos는 구매 시퀀스 입력이므로 둘 다 유지한다.
 서로 다른 variant/architecture의 업데이트는 섞어 집계하지 않는다. 같은 tensor shape만으로 같은 실험이라고 판정하지 않는다.
 
 | 결과 ID | 상품 표현 | 파인튜닝 | 표시 이름 |
@@ -60,7 +60,7 @@ B가 as_of, feature_snapshot_id, 후보 집합, top_n을 고정하고 각 모델
 두 global 모델은 사전에 짝지은 comparison 설정의 checkpoint를 사용한다. 요청 중 latest로 바꾸지 않는다. P는 같은 표의 G를 base로 사용한 개인화 결과여야 한다.
 추천 순위와 상품을 나란히 보여주고 공통/개인화 상태, 기준 모델 버전, 비교 시점을 표시한다. 서로 다른 모델의 raw score를 확률이나 직접 비교 가능한 척도로 표시하지 않는다.
 
-비교 결과는 판매자 내부 ComparisonResult로 A에 전달하여 서버에서 HTML로 렌더한다(CONTRACTS §4).
+비교 결과는 판매자 내부 ComparisonResult로 A에 전달하여 서버에서 HTML로 렌더한다([인터페이스 계약](interfaces.md) §4).
 개인화 데이터 부족/검증 실패/아직 미실행이면 해당 P칸에 이유를 표시한다. G를 복사해 P라고 표시하지 않는다.
 고객 이력 자체가 없는 경우의 일반 추천 fallback은 각 recommendation의 기존 표시를 유지한다. fallback 결과를 모델 품질 평가에 몰래 합치지 않는다.
 

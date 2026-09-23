@@ -22,4 +22,5 @@ jobs:
       - run: python -m pip install -r commerce/requirements-lock.txt
       - run: python -m commerce.tools.gate contracts
       - run: python -m commerce.tools.gate scaffold
+      - run: python -m commerce.tools.gate docs
       - run: python -m commerce.deploy.run_local --smoke --merchants 2

@@ -10,7 +10,9 @@
 | B 데이터·모델 | 미배정 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
 | C FL·통합 | 미배정 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS·CLAUDE / 공동: docs/README | 변경 소비자가 리뷰. COMPARISON 화면 절은 A 리뷰 |
+| 문서 | A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS·CLAUDE / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
+
+**역할 선점:** 담당자는 미리 배정하지 않는다. 각 에이전트가 시작할 때 자기 첫 PR에 위 표의 담당자 칸을 자기 Git 작성자 정보로 채우는 diff를 포함한다. 병합 순서가 선점 순서이며, 이미 채워진 역할은 팀 합의 없이 가져가지 않는다. 소유권·검토 라우팅·브랜치 이름은 모두 역할 문자(A/B/C) 기준이라 이름이 비어 있어도 규칙은 그대로 작동한다. 계정 수집 뒤 브랜치 보호와 CODEOWNERS는 [Git 협업](git-workflow.md)에 따라 별도로 설정한다.
 
 하위 이름은 밑줄을 사용한다. 다른 패키지 파일은 읽을 수 있으나 임의 수정하지 않는다. 공통 계약 변경은 생산자·소비자 영향과 fixture를 함께 제안하고 C가 통합을 조정한다. 작성자 본인의 변경은 해당 소비자의 동료 검토를 거친다.
 
@@ -36,13 +38,18 @@ D0019에 따라 전체 추천 가중치를 공유한 뒤 query_proj/scorer만 �
 
 ## 3. 런타임과 배치 계약
 
-Python 3.11, FastAPI/Jinja2, SQLite, PyTorch. 첫 CPU 실행을 기준으로 의존성을 검증한다. CPU 전용 여부와 속도 수치를 추정해 확정하지 않는다.
+목표 스택은 Python 3.11, FastAPI/Jinja2, SQLite, PyTorch다. 첫 CPU 실행을 기준으로 의존성을 검증한다. CPU 전용 여부와 속도 수치를 추정해 확정하지 않는다.
+현재 `commerce/requirements-lock.txt`에는 뼈대 실행에 필요한 것만 있다(jsonschema, numpy, fastapi, uvicorn, httpx). **Jinja2는 A가 화면을, PyTorch는 B가 모델을 구현할 때 각자 requirements에 추가하고 C가 호환을 검증한다.** 목표 스택에 적혀 있다는 이유로 이미 설치돼 있다고 가정하지 않는다.
 
-| 프로세스 | 모듈 | 기본 주소 | 필수 설정 |
-| --- | --- | --- | --- |
-| 중앙 공개 앱 | commerce.services.central_api.main:app | central.localhost:8000 | CENTRAL_DB_PATH |
-| 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | MERCHANT_ID, MERCHANT_DB_PATH, FEATURE_DB_PATH, MERCHANT_SECRET, COORDINATOR_URL, FL_CLIENT_TOKEN |
-| coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | REGISTRY_DIR, AUTH_FILE, ROUND_STATE_DIR, FL_MODE, FL_MODEL_VARIANT |
+아래 표의 **현재 값**은 코드가 실제로 읽는 키이며 `docs` 게이트가 코드와 대조한다. **구현 시 추가**는 해당 기능을 만드는 담당이 도입할 예정 값이고 아직 아무도 읽지 않는다.
+
+| 프로세스 | 모듈 | 기본 주소 | 현재 코드가 읽는 값 | 구현 시 추가 |
+| --- | --- | --- | --- | --- |
+| 중앙 공개 앱 | commerce.services.central_api.main:app | central.localhost:8000 | (없음) | CENTRAL_DB_PATH |
+| 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | MERCHANT_ID, FEATURE_DB_PATH, MODEL_DIR, FL_ENABLED, FL_MODE, FL_MODEL_VARIANT | MERCHANT_DB_PATH, MERCHANT_SECRET, COORDINATOR_URL, FL_CLIENT_TOKEN |
+| coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | (없음) | REGISTRY_DIR, AUTH_FILE, ROUND_STATE_DIR, FL_MODE, FL_MODEL_VARIANT |
+
+**필수 환경변수를 새로 도입하면 소유자가 C에게 알리고 C가 같은 변경에서 `commerce/deploy/run_local.py`를 갱신한다.** 런처가 값을 넘기지 않으면 기동이 실패하므로 A가 `MERCHANT_DB_PATH`를 필수로 만드는 변경은 런처 갱신과 함께 병합한다.
 
 모든 호스트명은 로컬 loopback으로 해석되도록 C가 실행 환경에서 확인한다. 안 되면 hosts 또는 로컬 DNS 설정 절차를 제공한다. 같은 localhost의 포트만으로 쿠키를 분리하지 않는다. 쿠키는 Domain을 지정하지 않는 host-only, HttpOnly, SameSite 설정과 CSRF 검사를 사용한다. HTTPS 배포에서는 Secure를 켠다.
 
@@ -64,6 +71,15 @@ REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 
 
 각 패키지는 의존성 선언을 소유한다. C가 호환 버전을 검증한 개발 환경 제약 파일을 관리한다. 각자 requirements에 서로 다른 torch 버전을 임의 고정하지 않는다.
 
+### 머신이 세 대라는 전제
+
+A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐이다. 자기 머신에서만 되는 상태를 만들지 않는다.
+
+- 작업을 시작하거나 integration을 반영할 때 **자기 머신에서 lock을 다시 설치하고 게이트를 직접 실행한다.** 상대가 통과시켰다는 기록만 보고 자기 환경이 같다고 보지 않는다.
+- **의존성을 추가하면 같은 PR에서 `commerce/requirements-dev.txt`와 `commerce/requirements-lock.txt`를 함께 갱신한다.** 자기 머신에만 설치하고 lock을 두지 않으면 다른 두 머신은 재현할 수 없고 아무도 알아채지 못한다. lock을 바꾼 PR은 C가 검토한다.
+- PR에 **실행한 OS와 Python 버전**을 남긴다. `run_local.py`에는 Windows 분기가 있고 CI는 Linux다. "내 머신에서 통과"는 OS를 밝히지 않으면 재현 근거가 아니다.
+- 로컬에만 있는 파일(`commerce/deploy/var/`, `.team/`, 내려받은 원자료)은 다른 머신에 없다. 그 존재를 전제로 한 지시나 검사를 만들지 않는다.
+
 ## 4. 완료 게이트
 
 명령: python -m commerce.tools.gate <이름>. 구현 전 게이트는 NOT_IMPLEMENTED와 비영 종료 코드를 유지한다. 출력 문자열만 만들어 통과시키지 않는다.
@@ -71,6 +87,7 @@ REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 
 | 이름 | 확인 | 주 담당 |
 | --- | --- | --- |
 | scaffold | 초기 import·runtime 연결·health 뼈대 (업무 완료 제외) | C, A/B 각자 실행 |
+| docs | 문서 대 코드 대조. 문서를 고치거나 환경변수·게이트·공개 import를 바꾸면 실행 | 변경한 사람 |
 | contracts (G1) | 모든 스키마·fixture·의미 검증. 현재 개수는 러너가 출력 | C, A/B 각자 실행 |
 | a1 | 주문·상태 전이·타 판매자 권한 거부·중앙 비잔류·쿠키 범위 | A |
 | b1 | 두 어댑터·합성 live 이벤트·텍스트 생성·식별자·결측 보존 | B |
@@ -82,7 +99,7 @@ REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 
 
 G3의 신상품 검사는 관계를 만드는 통제된 구매 예제를 사용한다. 구매 한 건이면 반드시 점수가 바뀐다고 가정하지 않는다. 캐시·feature_epoch 갱신과 관계 변화가 있을 때 표현 갱신을 확인한다. 보호 집계는 G3의 부가 표기가 아니라 별도 G4다.
 
-각 패키지가 selfcheck.py에 검증 함수를 제공하고 C가 gate에 연결한다. 합성/원자료 실행 모드를 결과에 명시한다. 원자료 없는 합성 통과를 데이터 전수 검증으로 보고하지 않는다.
+각 패키지가 `selfcheck.py`에 검증 함수를 제공하고 C가 `commerce/tools/gate.py`의 `GATES`에 연결한다. **이 `selfcheck.py`들은 아직 하나도 없다.** 해당 게이트를 구현하는 담당이 자기 소유 경로에 만든다(예: a1은 `commerce/services/merchant_api/selfcheck.py`). 합성/원자료 실행 모드를 결과에 명시한다. 원자료 없는 합성 통과를 데이터 전수 검증으로 보고하지 않는다.
 g2는 먼저 기본 주문/추천 경로를 연결하고 이후 네 결과 비교 검사를 추가한다. 중간 단계 성공은 부분 완료로 보고하며 비교가 없는 상태를 D0019의 최종 g2 완료로 표시하지 않는다. 두 variant가 실제 학습되기 전에는 A가 계약 stub으로 화면을 개발할 수 있다.
 
 ## 5. 첫 통합에 필요한 기능
@@ -109,7 +126,7 @@ A의 g2 연결 작업이 끝난 시점과 C의 c1 시점에 B의 NLP·어댑터 
 - 작은 단위로 commit하고 자기 작업 브랜치에 push해 Draft PR로 공유한다. 진행·의존성·검사 SHA는 PR에서 관리한다.
 - 작성자 외 검토와 관련 소비자 확인 후 PR로 병합한다. 기본 병합 방식은 merge commit이며, 공개 이력 재작성·통합 브랜치 직접 push를 하지 않는다.
 - 계약 변경은 schema/fixture/동작 문서/소비자 영향을 함께 검토한다. 정상 실행 경로를 유지할 호환 전환 또는 공동 변경을 준비한다.
-- 실제 데이터·산출물·비밀을 제외하고 자기 변경 경로만 stage한다. 승인된 작업의 Git 수행 범위는 GIT_WORKFLOW §9 요청문을 따른다.
+- 실제 데이터·산출물·비밀을 제외하고 자기 변경 경로만 stage한다. 승인된 작업의 Git 수행 범위는 [Git 협업](git-workflow.md) §9 요청문을 따른다.
 
 초기 PR #3에 CI와 작업 브랜치를 준비했다. 실제 담당자 배정·브랜치 보호·required check 활성화는 별도 준비 사항이다.
 

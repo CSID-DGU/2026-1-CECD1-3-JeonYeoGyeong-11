@@ -1,16 +1,16 @@
 # C 작업 카드 — 계약·FL·통합
-담당 이름: WORKING_AGREEMENT에서 배정 · 실행 기준 D0017~D0019
+담당 이름: [작업 규칙](../working-agreement.md)에서 배정 · 실행 기준 D0017~D0019
 
 ## 목표와 소유
 A/B가 독립 구현해도 연결되는 계약과 실행 환경을 제공하고 최종 개별 업데이트 보호 집계를 완성한다.
 소유: commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/.
-읽기: START_HERE → WORKING_AGREEMENT → CONTRACTS → MODEL_BOUNDARY §4~8 → ARCHITECTURE.
-지속 작업: GIT_WORKFLOW에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 저장소 준비를 맡으면 통합 브랜치·보호 설정·계약 CI를 별도 산출물로 기록한다.
+읽기: [팀 시작 안내](../start.md) → [작업 규칙](../working-agreement.md) → [인터페이스 계약](../../design/interfaces.md) → [모델 경계](../../design/model.md) §4~8 → [아키텍처](../../design/architecture.md).
+지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 저장소 준비를 맡으면 통합 브랜치·보호 설정·계약 CI를 별도 산출물로 기록한다.
 
 ## 첫 작업 두 갈래
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 [팀 시작 안내](../start.md)의 C 첫 작업을 확인하고, 전체 coordinator와 보호 집계를 한 번에 구현하지 않는다.
 
-1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다.
+1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다. stub trainer는 자기 소유 경로에 두고 주입한다([개발 안내 §상대 모듈을 대체하는 방법](../../development.md#상대-모듈을-대체하는-방법)). 더미 tensor는 `shared_model_manifest.v1/valid/dummy_tensors_for_round_bringup.json` fixture를 기준으로 만든다.
 2. 동시에 최종 보호 집계 구현의 타당성을 먼저 확인한다. 기존 검증된 구현·정확한 버전·환경 호환·위협 가정·참여/이탈 하한·메시지·양자화·실패 조건을 작은 예제로 검토한다.
 
 보호 방식 선정 기록은 C 첫 산출물이다. G3까지 다 만든 뒤 처음 검토하지 않는다. 선정 전에도 합성 평문 c1과 A/B 계약 작업은 진행 가능하다.
@@ -33,7 +33,7 @@ A는 lifespan hook, B는 runtime API를 제공한다. C가 다른 소유자의 D
 ../../design/model-lab.md/D0018에 따라 집계 모듈을 HTTP 앱과 분리하고 B의 실험 실행기에서도 재사용한다. 초기 학습 release의 로컬 import/검증/registry 등록을 제공한다. G4 보호 모듈 테스트는 A 화면 없이 합성 입력으로 실행할 수 있으며, 서비스 전체 비잔류는 A 연결 후 추가 검사한다.
 
 ## 공통 모델과 개인화 분리
-D0019/COMPARISON을 따른다. FL_MODEL_VARIANT는 한 실행 동안 고정하고 text_only/text_relation의 registry·라운드·인증 설정을 분리한다. 먼저 순차 실행하고 두 공통 release를 판매자에 미리 설치한다. shape가 같더라도 architecture/variant가 다른 제출은 c1에서 거부한다.
+D0019/[모델 비교](../../design/comparison.md)을 따른다. FL_MODEL_VARIANT는 한 실행 동안 고정하고 text_only/text_relation의 registry·라운드·인증 설정을 분리한다. 먼저 순차 실행하고 두 공통 release를 판매자에 미리 설치한다. shape가 같더라도 architecture/variant가 다른 제출은 c1에서 거부한다.
 B train_round는 round_config의 공통 base에서 시작해야 한다. C는 B의 서빙 state_dict나 개인화 경로를 읽어 제출물을 만들지 않는다. 개인화 결과·개별 검증 결과·로컬 식별자는 중앙 등록/집계 대상이 아니다.
 새 공통 버전 설치 후 옛 개인화 사용 중단과 새 base에서의 재개를 g3에서 B와 확인한다. A 비교 화면에 필요한 metadata는 판매자 내부 반환 객체이며 중앙 수집 API를 추가하지 않는다.
 
