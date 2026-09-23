@@ -12,6 +12,7 @@ python -m venv .venv
 .venv\Scripts\python -m commerce.tools.gate contracts
 .venv\Scripts\python -m commerce.tools.gate scaffold
 .venv\Scripts\python -m commerce.tools.gate docs
+.venv\Scripts\python -m commerce.tools.gate policy
 .venv\Scripts\python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 

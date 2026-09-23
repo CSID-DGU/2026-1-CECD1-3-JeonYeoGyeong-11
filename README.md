@@ -52,6 +52,7 @@ python -m pip install -r commerce/requirements-lock.txt
 python -m commerce.tools.gate contracts
 python -m commerce.tools.gate scaffold
 python -m commerce.tools.gate docs
+python -m commerce.tools.gate policy
 python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 

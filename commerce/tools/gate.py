@@ -55,6 +55,19 @@ def _run_docs(verbose: bool) -> int:
     return doccheck.run(verbose=verbose)
 
 
+def _run_policy(verbose: bool) -> int:
+    """경로 규칙으로 잡히지 않는 위험 신호 검사."""
+    try:
+        from commerce.tools import policycheck
+    except ImportError as exc:
+        sys.stderr.write(
+            "policy 러너를 import하지 못했다: %s\n"
+            "확인: %s 가 존재해야 한다.\n"
+            % (exc, os.path.join(HERE, "policycheck.py")))
+        return 2
+    return policycheck.run(verbose=verbose)
+
+
 def _run_scaffold(verbose: bool) -> int:
     suite = unittest.defaultTestLoader.discover(
         os.path.join(COMMERCE_DIR, "tests", "e2e"), pattern="test_scaffold.py", top_level_dir=REPO_ROOT)
@@ -70,6 +83,8 @@ def _not_implemented(gate: str, need: str) -> Callable[[bool], int]:
         print("NOT_IMPLEMENTED %s" % gate)
         print("필요: %s" % need)
         return 3
+    # policy 게이트가 '실행 가능'이라는 문서 주장과 대조할 때 쓰는 표식이다.
+    _run.not_implemented = True
     return _run
 
 
@@ -77,7 +92,8 @@ def _not_implemented(gate: str, need: str) -> Callable[[bool], int]:
 GATES: Dict[str, Tuple[str, Callable[[bool], int]]] = {
     "contracts": ("모든 스키마와 fixture 검증(G1)", _run_contracts),
     "scaffold": ("공통 import·runtime 연결·기동 뼈대 검사", _run_scaffold),
-    "docs": ("문서 대 코드 대조(링크·환경변수·게이트명·import)", _run_docs),
+    "docs": ("문서 대 코드 대조(링크·환경변수·게이트명·import·도구 지시 파일)", _run_docs),
+    "policy": ("자동 병합 전 위험 신호 검사(FL 기본값·게이트 상태 주장·계약 집합)", _run_policy),
     "a1": ("A 주문·권한·중앙 비잔류", _not_implemented("a1", "A 주문 API와 합성 상태 전이·권한·쿠키 검증")),
     "b1": ("B 데이터·텍스트 입력", _not_implemented("b1", "B data_adapters의 두 출처/live fixture와 텍스트 정규화 검증")),
     "b2": ("B NLP·공유·개인화 경계", _not_implemented("b2", "NLP artifact·freeze·variant별 export·gradient, 개인화 두 그룹 제한·base 불변·옛 tail 거부")),

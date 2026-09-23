@@ -35,6 +35,14 @@ LEGACY_EXEMPT = {"docs/README.md", "docs/contracts.md"}
 # 게이트가 출력하는 판정 문자열이며 문서명이 아니다.
 LEGACY_ALLOWED_PHRASE = "CONTRACTS OK"
 
+# 도구마다 읽는 지시 파일이 다르다. AGENTS.md만 본문이고 나머지는 포인터여야
+# 에이전트마다 다른 버전의 규칙을 읽는 일이 생기지 않는다.
+VENDOR_INSTRUCTION_FILES = (
+    "CLAUDE.md", "GEMINI.md", "GROK.md", ".cursorrules", ".windsurfrules",
+    ".github/copilot-instructions.md", ".aider.conf.yml", ".junie/guidelines.md",
+)
+VENDOR_POINTER_MAX_LINES = 12
+
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+?)(?:#[^)]*)?\)")
 ENV_TOKEN_RE = re.compile(r"\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b")
 MODULE_CELL_RE = re.compile(r"commerce\.services\.([a-z_]+)\.main:app")
@@ -208,6 +216,29 @@ def _check_imports(fail) -> int:
 
 # --- 5. 옛 비공개 문서명이 본문에 남아 있는가 ---------------------------------
 
+def _check_vendor_pointers(fail) -> int:
+    """도구별 지시 파일은 AGENTS.md를 가리키는 짧은 포인터여야 한다."""
+    checked = 0
+    if not (REPO_ROOT / "AGENTS.md").is_file():
+        fail("AGENTS.md", "공통 지시 파일이 없음", "모든 에이전트의 기준 문서다")
+        return checked
+    for name in VENDOR_INSTRUCTION_FILES:
+        path = REPO_ROOT / name
+        if not path.is_file():
+            continue
+        checked += 1
+        text = path.read_text(encoding="utf-8")
+        lines = [line for line in text.splitlines() if line.strip()]
+        if "AGENTS.md" not in text:
+            fail(name, "AGENTS.md를 가리키지 않음",
+                 "도구별 파일만 읽는 에이전트가 규칙을 못 본다")
+        if len(lines) > VENDOR_POINTER_MAX_LINES:
+            fail(name, "포인터가 아니라 규칙을 담고 있음",
+                 "본문 %d줄. AGENTS.md로 옮기고 %d줄 이하로 유지하라"
+                 % (len(lines), VENDOR_POINTER_MAX_LINES))
+    return checked
+
+
 def _check_legacy_names(fail) -> None:
     pattern = re.compile(r"(?<![A-Za-z0-9_])(" + "|".join(LEGACY_NAMES) + r")(?![A-Za-z0-9_])")
     for doc in _docs():
@@ -233,10 +264,11 @@ def run(verbose: bool = False) -> int:
     env = _check_env(fail)
     gates = _check_gates(fail)
     imports = _check_imports(fail)
+    vendor = _check_vendor_pointers(fail)
     _check_legacy_names(fail)
 
-    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d, 실패 %d건."
-          % (links, env, gates, imports, len(failures)))
+    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d·도구지시 %d, 실패 %d건."
+          % (links, env, gates, imports, vendor, len(failures)))
     if failures:
         # contracts 러너와 같은 규약: 실패 시 OK 줄을 내지 않는다.
         for where, kind, detail in failures:
@@ -244,8 +276,8 @@ def run(verbose: bool = False) -> int:
         return 1
     if verbose:
         print("문서 %d개를 읽었다." % len(_docs()))
-    print("DOCS OK: links=%d env=%d gates=%d imports=%d failures=0"
-          % (links, env, gates, imports))
+    print("DOCS OK: links=%d env=%d gates=%d imports=%d vendor=%d failures=0"
+          % (links, env, gates, imports, vendor))
     return 0
 
 

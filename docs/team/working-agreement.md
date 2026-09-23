@@ -10,7 +10,7 @@
 | B 데이터·모델 | 미배정 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
 | C FL·통합 | 미배정 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS·CLAUDE / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
+| 문서 | A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
 
 **역할 선점:** 담당자는 미리 배정하지 않는다. 각 에이전트가 시작할 때 자기 첫 PR에 위 표의 담당자 칸을 자기 Git 작성자 정보로 채우는 diff를 포함한다. 병합 순서가 선점 순서이며, 이미 채워진 역할은 팀 합의 없이 가져가지 않는다. 소유권·검토 라우팅·브랜치 이름은 모두 역할 문자(A/B/C) 기준이라 이름이 비어 있어도 규칙은 그대로 작동한다. 계정 수집 뒤 브랜치 보호와 CODEOWNERS는 [Git 협업](git-workflow.md)에 따라 별도로 설정한다.
 
@@ -88,6 +88,7 @@ A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐�
 | --- | --- | --- |
 | scaffold | 초기 import·runtime 연결·health 뼈대 (업무 완료 제외) | C, A/B 각자 실행 |
 | docs | 문서 대 코드 대조. 문서를 고치거나 환경변수·게이트·공개 import를 바꾸면 실행 | 변경한 사람 |
+| policy | 자동 병합 전 위험 신호. CI 필수 검사이며 실패하면 사람이 확인한다 | 변경한 사람 |
 | contracts (G1) | 모든 스키마·fixture·의미 검증. 현재 개수는 러너가 출력 | C, A/B 각자 실행 |
 | a1 | 주문·상태 전이·타 판매자 권한 거부·중앙 비잔류·쿠키 범위 | A |
 | b1 | 두 어댑터·합성 live 이벤트·텍스트 생성·식별자·결측 보존 | B |
