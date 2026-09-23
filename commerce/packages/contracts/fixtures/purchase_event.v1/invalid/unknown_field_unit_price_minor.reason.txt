@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+가격 필드는 purchase_event.v1에 존재하지 않는다. R12와 §4가 가격 전달을 금지한다.

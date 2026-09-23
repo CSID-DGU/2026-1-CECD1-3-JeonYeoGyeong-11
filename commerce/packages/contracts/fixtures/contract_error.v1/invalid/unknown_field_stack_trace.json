@@ -1,0 +1,9 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "INVALID_ENUM_VALUE",
+  "field_path": "/time/kind",
+  "expected": "absolute | relative_day",
+  "received": "epoch_seconds",
+  "message": "time.kind가 허용 enum이 아니다.",
+  "stack_trace": "Traceback (most recent call last)"
+}

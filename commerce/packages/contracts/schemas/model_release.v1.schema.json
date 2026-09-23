@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/model_release.v1.schema.json",
+  "title": "model_release.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "model_version",
+    "manifest_hash",
+    "weights_sha256",
+    "weights_size_bytes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "model_release.v1"
+    },
+    "model_version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "manifest_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "weights_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "weights_size_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8388608
+    }
+  }
+}

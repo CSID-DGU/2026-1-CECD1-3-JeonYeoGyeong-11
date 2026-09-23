@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+fallback_reason이 enum [no_customer_history, no_seller_history, no_shared_model] 밖의 no_text다.

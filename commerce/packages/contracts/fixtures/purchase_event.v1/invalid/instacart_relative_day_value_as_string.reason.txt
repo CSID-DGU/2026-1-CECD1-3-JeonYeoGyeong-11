@@ -1,0 +1,2 @@
+INVALID_TYPE
+time.kind=relative_day인데 value가 문자열이다. relative_day의 value는 number(단위 일)여야 한다.

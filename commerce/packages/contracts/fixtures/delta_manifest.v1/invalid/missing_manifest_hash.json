@@ -1,0 +1,18 @@
+{
+  "schema_version": "delta_manifest.v1",
+  "seller_id": "dh-store-367",
+  "round_id": "round-0001",
+  "model_version": "model-0001",
+  "architecture_version": 1,
+  "completed": true,
+  "tensors": [
+    {
+      "name": "shared.time_mlp",
+      "shape": [
+        3,
+        64
+      ],
+      "dtype": "float32"
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+round_id는 RoundConfig에 속한다. B가 채울 수 없는 필드를 manifest에 넣지 않는다(MODEL_BOUNDARY.md §4.2).

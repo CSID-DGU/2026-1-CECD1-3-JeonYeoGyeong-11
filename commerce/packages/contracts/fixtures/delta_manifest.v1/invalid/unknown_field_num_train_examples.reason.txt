@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+판매자별 표본 수는 delta_manifest에 싣지 않는다. D0010이 금지한 필드다.

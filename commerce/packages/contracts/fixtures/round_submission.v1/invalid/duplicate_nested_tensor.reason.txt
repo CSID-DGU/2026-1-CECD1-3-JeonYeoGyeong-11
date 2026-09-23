@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+Nested manifest must run tensor uniqueness semantics.

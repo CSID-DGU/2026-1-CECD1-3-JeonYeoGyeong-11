@@ -1,0 +1,2 @@
+VERSION_MISMATCH
+schema_version의 major가 소비자가 아는 v1과 다르다. R4에 따라 부분 처리 없이 즉시 거부한다.

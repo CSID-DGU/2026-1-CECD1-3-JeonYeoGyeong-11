@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+items가 score 내림차순이 아니다. SC3의 정렬 규칙 위반이다.

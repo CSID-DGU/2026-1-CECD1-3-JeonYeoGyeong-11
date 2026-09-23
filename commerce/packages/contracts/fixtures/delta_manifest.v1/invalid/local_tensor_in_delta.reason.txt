@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+local.* 텐서를 delta에 실었다. MODEL_BOUNDARY.md §4.7의 전송 금지 목록 위반이다.

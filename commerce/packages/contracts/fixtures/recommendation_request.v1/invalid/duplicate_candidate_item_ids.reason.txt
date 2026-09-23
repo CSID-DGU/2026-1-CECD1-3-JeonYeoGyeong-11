@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+candidate_item_ids에 같은 값이 두 번 있다. §7.1이 중복을 금지한다.

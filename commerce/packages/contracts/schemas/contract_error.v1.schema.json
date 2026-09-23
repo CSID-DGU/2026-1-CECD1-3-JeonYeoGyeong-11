@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/contract_error.v1.schema.json",
+  "title": "contract_error.v1",
+  "description": "모든 방향의 거부 응답 형식. 기준: CONTRACTS.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "code",
+    "field_path",
+    "expected",
+    "received",
+    "message"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "contract_error.v1"
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "SCHEMA_INVALID",
+        "UNKNOWN_FIELD",
+        "MISSING_REQUIRED_FIELD",
+        "INVALID_TYPE",
+        "INVALID_ENUM_VALUE",
+        "VERSION_MISMATCH",
+        "DUPLICATE_EVENT",
+        "DUPLICATE_IDEMPOTENCY_KEY",
+        "ILLEGAL_STATE_TRANSITION",
+        "STALE_STATUS_VERSION",
+        "FORBIDDEN",
+        "NOT_FOUND",
+        "MANIFEST_MISMATCH",
+        "TENSOR_SET_MISMATCH",
+        "DUPLICATE_ROUND_SUBMIT",
+        "ROUND_DISCARDED"
+      ],
+      "description": "CONTRACTS.md"
+    },
+    "field_path": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^(/(([^/~])|(~[01]))*)*$",
+      "default": null,
+      "description": "RFC 6901 JSON Pointer. 필드 단위가 아니면 null"
+    },
+    "expected": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 0,
+      "maxLength": 200,
+      "default": null
+    },
+    "received": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 0,
+      "maxLength": 200,
+      "default": null,
+      "description": "고객·상품 식별자 원문을 넣지 않는다"
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "MISSING_REQUIRED_FIELD",
+  "field_path": "/currency",
+  "expected": "ISO 4217 대문자 3글자",
+  "received": null,
+  "message": "필수 필드 currency가 없다."
+}

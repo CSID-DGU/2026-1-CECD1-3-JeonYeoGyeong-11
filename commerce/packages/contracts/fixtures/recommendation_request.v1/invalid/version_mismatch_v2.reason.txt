@@ -1,0 +1,2 @@
+VERSION_MISMATCH
+schema_version의 major가 소비자가 아는 v1과 다르다(R4). 이 계약에는 enum 필드가 없어 X3의 INVALID_ENUM_VALUE 사례를 이 파일로 대체한다.

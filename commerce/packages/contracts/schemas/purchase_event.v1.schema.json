@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/purchase_event.v1.schema.json",
+  "title": "purchase_event.v1",
+  "description": "판매자 로컬 학습 입력으로 투영하는 최소 구매 기록. 기준: CONTRACTS.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "seller_id",
+    "source",
+    "seller_partition",
+    "customer_id_local",
+    "basket_id_local",
+    "purchase_event_id",
+    "time",
+    "order_rank",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "purchase_event.v1"
+    },
+    "seller_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "CONTRACTS.md R6"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "live",
+        "dunnhumby",
+        "instacart"
+      ],
+      "description": "CONTRACTS.md"
+    },
+    "seller_partition": {
+      "type": "string",
+      "enum": [
+        "platform_seller",
+        "simulated_independent_store",
+        "synthetic_partition"
+      ],
+      "description": "CONTRACTS.md"
+    },
+    "customer_id_local": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "CONTRACTS.md R6, R10"
+    },
+    "basket_id_local": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "live=order_id, dunnhumby=basket_id, instacart=order_id"
+    },
+    "purchase_event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$",
+      "description": "소문자 hex 32자. CONTRACTS.md"
+    },
+    "time": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value"
+      ],
+      "description": "CONTRACTS.md",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "absolute",
+            "relative_day"
+          ]
+        },
+        "value": {
+          "type": [
+            "string",
+            "number"
+          ]
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "absolute"
+            },
+            "value": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ]
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "relative_day"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ]
+        }
+      ]
+    },
+    "order_rank": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "default": null,
+      "description": "live·dunnhumby는 null, instacart는 원본 order_number"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id_local",
+          "quantity_observed"
+        ],
+        "properties": {
+          "item_id_local": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "description": "CONTRACTS.md R6"
+          },
+          "quantity_observed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "description": "CONTRACTS.md Q1~Q3. null은 수량 미관측이며 0이 아니다"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+score 동률인데 item_id_local 사전순이 아니다. SC3의 tie-break 규칙 위반이다.

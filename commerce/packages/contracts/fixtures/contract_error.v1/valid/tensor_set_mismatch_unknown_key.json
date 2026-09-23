@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "TENSOR_SET_MISMATCH",
+  "field_path": "/tensors",
+  "expected": "manifest에 선언된 9개 키 집합과 동일한 shape·dtype",
+  "received": "manifest에 없는 키 1개가 추가됨",
+  "message": "제출 state의 키 집합이 manifest와 다르다."
+}

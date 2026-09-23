@@ -1,0 +1,2 @@
+MISSING_REQUIRED_FIELD
+필수 필드 max_local_epochs가 없다. tau_i 상한이 정해지지 않으면 로컬 스텝 정규화 기준이 사라진다(§4.3.1).

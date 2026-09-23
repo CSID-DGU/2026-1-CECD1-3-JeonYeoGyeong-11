@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+category_path가 9단계다. 최대 8단계까지만 허용한다.

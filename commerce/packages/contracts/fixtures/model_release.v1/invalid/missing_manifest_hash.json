@@ -1,0 +1,6 @@
+{
+  "schema_version": "model_release.v1",
+  "model_version": "model-0001",
+  "weights_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "weights_size_bytes": 304
+}

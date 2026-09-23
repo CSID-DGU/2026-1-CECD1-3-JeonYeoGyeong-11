@@ -1,0 +1,9 @@
+{
+  "schema_version": "round_submit_ack.v1",
+  "round_id": "round-0004",
+  "seller_id": "ic-client-017233",
+  "disposition": "accepted_late",
+  "arrival_t_s": 20.04,
+  "staleness_rounds": 6,
+  "aggregated_in_round_id": null
+}

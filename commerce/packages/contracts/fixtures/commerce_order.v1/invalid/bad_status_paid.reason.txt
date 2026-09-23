@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+status가 enum [requested, accepted, completed, cancelled] 밖의 paid다.

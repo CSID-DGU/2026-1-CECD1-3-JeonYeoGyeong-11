@@ -1,0 +1,2 @@
+MISSING_REQUIRED_FIELD
+필수 필드 disposition이 없다. 클라이언트가 자기 delta를 파기할지 보관할지 판단할 근거가 사라진다.

@@ -1,0 +1,82 @@
+{
+  "schema_version": "shared_model_manifest.v1",
+  "architecture_version": 1,
+  "task_kind": "next_purchase",
+  "preprocessing_version": "prep-2026-09-22-a",
+  "text_artifact_hash": "3f8c1b2d4e6a7c9b0d1e2f3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e",
+  "tensors": [
+    {
+      "name": "shared.time_mlp",
+      "shape": [
+        3,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.relation_mlp",
+      "shape": [
+        192,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.relation_pool",
+      "shape": [
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.fusion",
+      "shape": [
+        128,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.basket_encoder",
+      "shape": [
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.sequence",
+      "shape": [
+        64,
+        256
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.seq_time_pos",
+      "shape": [
+        10,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.query_proj",
+      "shape": [
+        64,
+        64
+      ],
+      "dtype": "float32"
+    },
+    {
+      "name": "shared.scorer",
+      "shape": [
+        64,
+        64
+      ],
+      "dtype": "float32"
+    }
+  ],
+  "manifest_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f903f8c1b2d4e6a7c9b0d1e2f3a4b5c6d7e"
+}

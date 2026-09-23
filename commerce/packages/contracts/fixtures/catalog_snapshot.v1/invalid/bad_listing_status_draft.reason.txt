@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+items[].listing_status가 enum [active, inactive] 밖의 draft다.

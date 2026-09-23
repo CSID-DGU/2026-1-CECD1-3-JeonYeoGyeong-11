@@ -1,0 +1,8 @@
+{
+  "schema_version": "model_release.v1",
+  "model_version": "model-0001",
+  "manifest_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "weights_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "weights_size_bytes": 304,
+  "download_url": "https://untrusted.example/weights"
+}

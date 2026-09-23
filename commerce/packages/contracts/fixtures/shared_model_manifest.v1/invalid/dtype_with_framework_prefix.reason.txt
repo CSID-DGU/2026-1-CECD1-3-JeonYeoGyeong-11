@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+dtype에 프레임워크 접두사가 붙었다. numpy 소문자 이름 float32·float16·int64만 허용한다(§4.4).

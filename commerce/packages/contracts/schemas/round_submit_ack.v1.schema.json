@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/round_submit_ack.v1.schema.json",
+  "title": "round_submit_ack.v1",
+  "description": "C가 판매자(B의 FL client)에게 돌려주는 제출 접수·처분 응답. C -> B 방향의 유일한 성공 응답 계약이다. 기준: docs/decisions/0016, CONTRACTS.md E6. 지각 제출은 거부가 아니라 수용이며 처분은 disposition이 표현한다. LATE_SUBMIT 오류 코드를 만들지 않는다.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "round_id",
+    "seller_id",
+    "disposition",
+    "arrival_t_s",
+    "staleness_rounds",
+    "aggregated_in_round_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "round_submit_ack.v1"
+    },
+    "round_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "제출이 향한 라운드. C가 부여한다"
+    },
+    "seller_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "CONTRACTS.md R6 패턴. R7에 따라 URL 경로·쿼리에 넣지 않고 이 본문과 Authorization 헤더로만 오간다"
+    },
+    "disposition": {
+      "type": "string",
+      "enum": [
+        "accepted_on_time",
+        "accepted_late",
+        "aggregated_on_time",
+        "aggregated_carried",
+        "carried_pending",
+        "dropped_by_cap",
+        "dropped_by_tau_cap",
+        "dropped_incomplete",
+        "round_discarded"
+      ],
+      "description": "현행 동기 경로는 accepted_on_time, aggregated_on_time, dropped_incomplete, round_discarded. 나머지는 과거 확장 값."
+    },
+    "arrival_t_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "서버의 라운드 시작 후 단조시계 경과 초. 가상 지연은 선택 확장."
+    },
+    "staleness_rounds": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "현행 동기 경로: 접수 대기 null, 정상 집계 0. 나머지는 과거 확장 값."
+    },
+    "aggregated_in_round_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "이 delta가 실제로 평균에 들어간 라운드. 아직 집계되지 않았거나 폐기됐으면 null. 이월분은 제출 라운드와 다른 값이 된다"
+    }
+  }
+}

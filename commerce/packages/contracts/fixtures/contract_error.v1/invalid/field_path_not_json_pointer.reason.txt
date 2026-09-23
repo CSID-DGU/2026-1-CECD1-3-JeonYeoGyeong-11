@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+field_path가 RFC 6901 JSON Pointer가 아니다. 점 표기 대신 /time/kind로 적는다.

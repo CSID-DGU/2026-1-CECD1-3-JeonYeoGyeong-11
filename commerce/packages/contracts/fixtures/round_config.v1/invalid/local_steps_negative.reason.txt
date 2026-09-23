@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+local_steps가 음수다. 허용 범위는 integer >= 0이며 A-0은 0이다(§6).

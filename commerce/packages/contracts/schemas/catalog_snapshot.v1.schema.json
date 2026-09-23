@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/catalog_snapshot.v1.schema.json",
+  "title": "catalog_snapshot.v1",
+  "description": "판매자 → 중앙 공개 카탈로그. 주문면에서 중앙으로 흐르는 유일한 경로. 기준: CONTRACTS.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "seller_id",
+    "snapshot_at",
+    "items"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "catalog_snapshot.v1"
+    },
+    "seller_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "CONTRACTS.md R6"
+    },
+    "snapshot_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "description": "스냅샷 생성 시각"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 0,
+      "description": "빈 카탈로그를 허용한다",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "item_id_local",
+          "title_text",
+          "description_text",
+          "listing_status"
+        ],
+        "properties": {
+          "item_id_local": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+            "description": "CONTRACTS.md R6"
+          },
+          "title_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "description_text": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 0,
+            "maxLength": 2000
+          },
+          "listing_status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

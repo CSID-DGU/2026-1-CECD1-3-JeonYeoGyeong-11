@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+score가 NaN이다. SC1은 유한 실수만 허용하며 RFC 8259에 NaN 리터럴이 없다.

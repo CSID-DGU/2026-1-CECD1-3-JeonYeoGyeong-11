@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+message가 빈 문자열이다. 허용 길이는 1~500자다.

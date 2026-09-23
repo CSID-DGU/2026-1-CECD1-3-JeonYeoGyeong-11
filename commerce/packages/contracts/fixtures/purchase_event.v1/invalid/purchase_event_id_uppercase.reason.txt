@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+purchase_event_id가 대문자 hex다. 소문자 hex 32자만 허용한다(§4.3).

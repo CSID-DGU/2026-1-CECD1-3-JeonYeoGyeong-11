@@ -1,12 +1,124 @@
-# Virtual environments
-.venv/
-.venv*/
-venv/
-ENV/
+# 원자료·로컬 작업 자료·런타임 산출물 제외
+# 실물 근거: order_products__prior.csv 577MB / archive.zip 207MB / orders.csv 109MB.
+# 셋 다 GitHub 100MB 하드 제한에 걸린다.
 
-# Python
+# ── 1. 원자료 ────────────────────────────────────────────────
+# fedcommerce/data/ 이하 전부를 제외하고 합성 fixture만 부정 패턴으로 되살린다.
+fedcommerce/data/**
+!fedcommerce/data/synthetic/
+!fedcommerce/data/synthetic/**
+
+# 기존 대형 합성 거래 파일도 제외한다. 신규 fixture에는 원자료를 포함하지 않는다.
+fedcommerce/data/synthetic/transaction_data.csv
+
+# 확장자 기준 원자료. 어느 디렉터리에 있든 제외한다.
+*.rds
+*.rda
+*.zip
+
+# ── 2. 중복 트리와 채택하지 않은 탐색 자료 ───────────────────
+# 기존 중복·탐색 자료는 새 플랫폼 배포 대상에서 제외한다.
+fedcommerce/fedcommerce/
+fedcommerce/amz/
+fedcommerce/papers/
+
+# ── 3. 문서가 아닌 수집물 ────────────────────────────────────
+# 루트 직하와 fedcommerce/ 직하의 PDF·HTML만 제외한다. 하위 디렉터리는 대상이 아니다.
+/*.pdf
+/*.html
+/fedcommerce/*.pdf
+/fedcommerce/*.html
+/fedcommerce/*.txt
+
+# ── 4. 런타임 산출물 ─────────────────────────────────────────
 __pycache__/
 *.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ── 5. 판매자 로컬 DB와 비밀 ─────────────────────────────────
+# 판매자별 SQLite 파일과 자격증명은 커밋하지 않는다.
+*.sqlite
+*.sqlite3
+*.db
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ── 6. 커밋 허용 경로(부정 패턴) ─────────────────────────────
+# 직접 만든 합성 fixture와 계약 fixture는 원자료 없는 개발 입력이다.
+!commerce/packages/contracts/fixtures/
+!commerce/packages/contracts/fixtures/**
+# 과거 분석 출력에는 고객별 배정표가 있어 기본 공개 대상이 아니다.
+fedcommerce/out/
+!fedcommerce/src/
+!fedcommerce/src/**
+
+# ── 7. 편집기·OS ─────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# 새 플랫폼의 런타임·전처리·모델 산출물
+commerce/deploy/var/
+commerce/evaluation/data/
+commerce/evaluation/cache/
+commerce/evaluation/runs/
+commerce/evaluation/outputs/
+var/
+tmp/pdfs/
+*.npz
+*.npy
+*.pt
+*.pth
+*.safetensors
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.db-wal
+*.db-shm
+
+# 팀 내부 문서와 로컬 도구 지침: 별도 공유, 저장소 반영 제외
+/.team/
+/AGENTS.md
+/CLAUDE.md
+/tmp/
+/fedcommerce/DESIGN.md
+
+# 이전 배치의 내부 문서를 다시 복사해도 포함하지 않음
+/START_HERE.md
+/TEAM_ONBOARDING.md
+/GIT_WORKFLOW.md
+/WORKING_AGREEMENT.md
+/ARCHITECTURE.md
+/MODEL_BOUNDARY.md
+/CONTRACTS.md
+/DATA.md
+/EVALUATION.md
+/LAB_WORKFLOW.md
+/COMPARISON.md
+/DATA_FILES_REVIEW.md
+/ORDER_DATA_FLOW.md
+/PARALLEL_WORK_PLAN.md
+/PLANNING_DECISIONS.md
+/PROJECT_CONTEXT.md
+/TEAM_KICKOFF.md
+/TECH_CONTRACT_REVIEW.md
+/docs/archive/
+/docs/decisions/
+/docs/reviews/
+/docs/tasks/
+
+# Existing repository exclusions retained during connection
+.venv*/
+ENV/
 *$py.class
 *.egg-info/
 .eggs/
@@ -14,22 +126,14 @@ dist/
 build/
 .flwr/
 *.fab
-.pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .coverage
 htmlcov/
-
-# Local datasets & caches (torchvision download; Cora copies)
 /data/
-
-# Experiment outputs and generated analysis artifacts
 /experiments_current/
 /experiments/
-/tmp/
-# Generated report outputs (plot CSV/MD); keep scripts/reports/ in git
 /reports/
-# Pre-rename artifact filenames (local trees only; current code uses vision_* names)
 **/result_general_*.json
 **/general_suite_summary.*
 **/general_suite_rows.json
@@ -41,26 +145,8 @@ htmlcov/
 /mlruns/
 /checkpoints/
 *.log
-*.pt
-*.pth
 *.ckpt
-
-# Local raw research notes
 team_project_prep.md
 docs/Spectral Client Update Graph 아이디어.md
 docs/확장 아이디어 모음.md
-
-# Secrets / local env
-.env
-.env.*
-!.env.example
-
-# OS / editor / local workspace
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-.ipynb_checkpoints/
-
-# Local preserved docs and legacy scratch material
 /local_archive/

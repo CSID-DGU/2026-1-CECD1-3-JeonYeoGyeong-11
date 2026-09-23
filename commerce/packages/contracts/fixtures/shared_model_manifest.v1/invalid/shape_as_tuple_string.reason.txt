@@ -1,0 +1,2 @@
+INVALID_TYPE
+shape가 문자열이다. JSON 정수 배열로 적는다(§4.4).

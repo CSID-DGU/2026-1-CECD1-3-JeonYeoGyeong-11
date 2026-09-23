@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "ROUND_DISCARDED",
+  "field_path": null,
+  "expected": "min_clients 이상의 제출",
+  "received": "제출 수가 min_clients 미만",
+  "message": "제출 수가 min_clients에 미달해 부분 집계 없이 라운드를 폐기했다."
+}

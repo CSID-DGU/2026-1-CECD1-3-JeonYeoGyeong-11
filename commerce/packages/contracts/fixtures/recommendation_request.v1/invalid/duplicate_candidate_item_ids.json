@@ -1,0 +1,11 @@
+{
+  "schema_version": "recommendation_request.v1",
+  "seller_id": "seller-a",
+  "customer_id_local": "buyer-17",
+  "as_of": "2026-09-22T03:10:00Z",
+  "candidate_item_ids": [
+    "item-07",
+    "item-07"
+  ],
+  "top_n": 20
+}

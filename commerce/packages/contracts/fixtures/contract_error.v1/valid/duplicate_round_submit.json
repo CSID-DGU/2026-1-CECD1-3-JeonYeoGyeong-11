@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "DUPLICATE_ROUND_SUBMIT",
+  "field_path": "/round_id",
+  "expected": "판매자당 라운드 1회 제출",
+  "received": "같은 round_id에 두 번째 제출",
+  "message": "같은 판매자가 같은 round_id에 두 번 제출했다."
+}

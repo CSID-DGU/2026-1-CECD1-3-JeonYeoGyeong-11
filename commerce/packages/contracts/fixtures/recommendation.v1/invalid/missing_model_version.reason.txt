@@ -1,0 +1,2 @@
+MISSING_REQUIRED_FIELD
+필수 필드 model_version이 없다. G3 판정이 이 값의 변화를 본다.

@@ -1,0 +1,20 @@
+{
+  "schema_version": "catalog_snapshot.v1",
+  "seller_id": "seller-a",
+  "snapshot_at": "2026-09-22T03:20:00Z",
+  "items": [
+    {
+      "item_id_local": "item-42",
+      "title_text": "유기농 통밀 식빵 450g",
+      "description_text": "국산 통밀 100%로 구운 식빵이다.",
+      "listing_status": "active",
+      "first_listed_at": "2026-09-22T02:00:00Z"
+    },
+    {
+      "item_id_local": "item-07",
+      "title_text": "아라비카 원두 200g",
+      "description_text": null,
+      "listing_status": "inactive"
+    }
+  ]
+}
