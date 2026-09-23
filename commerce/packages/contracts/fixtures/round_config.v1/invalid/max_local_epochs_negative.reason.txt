@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+max_local_epochs가 음수다. 허용 범위는 integer >= 0이며 0은 상한 없음이다(§4.3).

@@ -1,0 +1,20 @@
+{
+  "schema_version": "purchase_event.v1",
+  "seller_id": "seller-a",
+  "source": "live",
+  "seller_partition": "platform_seller",
+  "customer_id_local": "buyer-17",
+  "basket_id_local": "order-001",
+  "purchase_event_id": "9f2c1ab4d7e05386bb1c4a77e2d0f513",
+  "time": {
+    "kind": "epoch_seconds",
+    "value": 1758510300
+  },
+  "order_rank": null,
+  "items": [
+    {
+      "item_id_local": "item-42",
+      "quantity_observed": 2
+    }
+  ]
+}

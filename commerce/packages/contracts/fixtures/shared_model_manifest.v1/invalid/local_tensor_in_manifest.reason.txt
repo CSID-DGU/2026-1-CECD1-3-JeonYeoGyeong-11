@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+local.* 텐서를 manifest에 선언했다. §4.7의 전송 금지 목록 위반이며 shared 텐서만 선언한다.

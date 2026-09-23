@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+task_kind가 const next_purchase가 아니다. within_horizon은 이번 학기 범위 밖이다(D0003, D0011).

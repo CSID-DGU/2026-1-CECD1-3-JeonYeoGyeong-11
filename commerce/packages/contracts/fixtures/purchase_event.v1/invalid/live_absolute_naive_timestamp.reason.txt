@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+live 절대시간에 타임존이 없다. R9는 UTC 'Z' 정규형만 허용한다.

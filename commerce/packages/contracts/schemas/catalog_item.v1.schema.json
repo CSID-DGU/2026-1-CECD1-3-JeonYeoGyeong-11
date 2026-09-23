@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fedcommerce.local/schemas/catalog_item.v1.schema.json",
+  "title": "catalog_item.v1",
+  "description": "판매자 로컬 상품 카탈로그. A가 소유하고 B가 소비한다. 기준: CONTRACTS.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "seller_id",
+    "item_id_local",
+    "source",
+    "title_text",
+    "description_text",
+    "category_path",
+    "listing_status",
+    "first_listed_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "catalog_item.v1"
+    },
+    "seller_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "CONTRACTS.md R6"
+    },
+    "item_id_local": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$",
+      "description": "(seller_id, item_id_local)이 유일 키"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "live",
+        "dunnhumby",
+        "instacart"
+      ]
+    },
+    "title_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description_text": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 0,
+      "maxLength": 2000,
+      "default": null
+    },
+    "category_path": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "maxItems": 8,
+      "default": null,
+      "description": "상위→하위 순서. 최대 8단계",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 100
+      }
+    },
+    "listing_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "CONTRACTS.md K1, K2"
+    },
+    "first_listed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$",
+      "description": "등록 시각. 신상품 판정 기준 시점. 중앙으로 보내지 않는다(§6.2)",
+      "default": null
+    }
+  }
+}

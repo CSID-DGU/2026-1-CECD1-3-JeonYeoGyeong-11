@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+top_n이 0이다. 허용 범위는 1 <= top_n <= 1000 또는 null이다.

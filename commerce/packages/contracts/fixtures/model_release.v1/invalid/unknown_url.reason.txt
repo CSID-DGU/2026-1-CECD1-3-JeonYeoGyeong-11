@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+Only coordinator-owned fixed endpoints may supply weights.

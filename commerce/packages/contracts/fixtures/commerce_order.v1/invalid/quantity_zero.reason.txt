@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+items[].quantity가 0이다. 허용 범위는 integer >= 1이다.

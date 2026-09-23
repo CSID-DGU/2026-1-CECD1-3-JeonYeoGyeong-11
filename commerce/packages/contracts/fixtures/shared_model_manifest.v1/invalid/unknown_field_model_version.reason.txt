@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+model_version은 C가 부여하며 RoundConfig에 속한다(MODEL_BOUNDARY.md §4.2).

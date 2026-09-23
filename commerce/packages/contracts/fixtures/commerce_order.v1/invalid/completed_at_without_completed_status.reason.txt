@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+status=requested인데 completed_at이 non-null이다. CONTRACTS.md §3.1 조건부 제약 위반이다.

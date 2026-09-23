@@ -1,0 +1,2 @@
+VERSION_MISMATCH
+Nested contract versions must report a version mismatch just like top-level versions.

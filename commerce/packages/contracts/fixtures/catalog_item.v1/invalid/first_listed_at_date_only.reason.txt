@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+first_listed_at이 날짜만 있는 문자열이다. R9의 RFC 3339 UTC 'Z' 정규형이 아니다.

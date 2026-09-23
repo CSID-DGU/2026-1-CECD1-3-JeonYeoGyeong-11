@@ -1,0 +1,2 @@
+MISSING_REQUIRED_FIELD
+필수 필드 manifest_hash가 없다. C가 MANIFEST_MISMATCH 판정에 이 값을 비교한다(MODEL_BOUNDARY.md §4.9).

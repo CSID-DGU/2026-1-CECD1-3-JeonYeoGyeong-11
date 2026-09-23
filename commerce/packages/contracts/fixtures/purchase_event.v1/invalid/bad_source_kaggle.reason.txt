@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+source가 enum [live, dunnhumby, instacart] 밖의 kaggle이다.

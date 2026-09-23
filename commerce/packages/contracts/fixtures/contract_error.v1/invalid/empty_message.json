@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "INVALID_ENUM_VALUE",
+  "field_path": "/time/kind",
+  "expected": "absolute | relative_day",
+  "received": "epoch_seconds",
+  "message": ""
+}

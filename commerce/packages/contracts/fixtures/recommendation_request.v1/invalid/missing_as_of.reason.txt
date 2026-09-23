@@ -1,0 +1,2 @@
+MISSING_REQUIRED_FIELD
+as_of는 필수다. A1이 생략과 null을 금지한다.

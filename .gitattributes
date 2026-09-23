@@ -6,3 +6,4 @@
 *.txt text eol=lf
 *.yml text eol=lf
 *.html text eol=lf
+commerce/packages/data_adapters/rosters/*.csv text eol=lf

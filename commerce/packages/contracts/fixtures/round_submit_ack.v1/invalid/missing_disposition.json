@@ -1,0 +1,8 @@
+{
+  "schema_version": "round_submit_ack.v1",
+  "round_id": "round-0003",
+  "seller_id": "dh-store-0518",
+  "arrival_t_s": 14.16,
+  "staleness_rounds": 4,
+  "aggregated_in_round_id": null
+}

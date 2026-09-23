@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+dtype에 프레임워크 접두사가 붙었다. delta의 dtype은 float32 하나로 고정한다(MODEL_BOUNDARY.md §4.4).

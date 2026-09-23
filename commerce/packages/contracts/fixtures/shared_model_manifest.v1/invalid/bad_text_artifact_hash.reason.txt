@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+text_artifact_hash가 sha256 hex 64자가 아니다.

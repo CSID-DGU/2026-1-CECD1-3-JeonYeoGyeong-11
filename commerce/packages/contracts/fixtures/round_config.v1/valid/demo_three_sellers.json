@@ -1,0 +1,15 @@
+{
+  "schema_version": "round_config.v1",
+  "round_id": "round-demo-0001",
+  "model_version": "model-demo-0001",
+  "manifest_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f903f8c1b2d4e6a7c9b0d1e2f3a4b5c6d7e",
+  "architecture_version": 1,
+  "min_clients": 3,
+  "deadline": "2026-09-22T09:00:00Z",
+  "local_steps": 1,
+  "max_local_epochs": 6,
+  "n_neg": 200,
+  "batch_size": 8,
+  "learning_rate": 0.001,
+  "seed": 0
+}

@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+code가 §9.2 표 밖의 RATE_LIMITED다. E1은 임의 문자열 코드를 금지한다.

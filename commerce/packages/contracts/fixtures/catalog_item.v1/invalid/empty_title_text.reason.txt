@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+title_text가 빈 문자열이다. 허용 길이는 1~200자다.

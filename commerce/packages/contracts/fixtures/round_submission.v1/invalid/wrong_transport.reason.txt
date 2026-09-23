@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+Plaintext envelope cannot claim protected mode.

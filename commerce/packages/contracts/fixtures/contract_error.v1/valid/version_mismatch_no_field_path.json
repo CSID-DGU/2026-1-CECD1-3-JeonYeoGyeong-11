@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "VERSION_MISMATCH",
+  "field_path": null,
+  "expected": null,
+  "received": null,
+  "message": "schema_version의 major가 소비자가 아는 값과 다르다."
+}

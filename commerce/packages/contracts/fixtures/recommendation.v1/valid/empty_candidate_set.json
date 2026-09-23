@@ -1,0 +1,12 @@
+{
+  "schema_version": "recommendation.v1",
+  "seller_id": "seller-new",
+  "customer_id_local": "buyer-02",
+  "as_of": "2026-09-22T03:12:00Z",
+  "model_version": "model-0002",
+  "score_semantics": "next_purchase",
+  "horizon_days": null,
+  "is_cold_start": true,
+  "fallback_reason": "no_shared_model",
+  "items": []
+}

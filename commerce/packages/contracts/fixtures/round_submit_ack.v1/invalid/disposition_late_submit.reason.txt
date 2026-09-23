@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+disposition이 enum 9값 밖의 late_submit이다. 지각은 처분이 아니라 도착 상태이며 tau 초과 폐기는 dropped_by_tau_cap이다(§9.2 E6).

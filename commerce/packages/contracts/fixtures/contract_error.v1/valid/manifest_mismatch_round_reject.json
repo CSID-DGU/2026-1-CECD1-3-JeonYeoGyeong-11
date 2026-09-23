@@ -1,0 +1,8 @@
+{
+  "schema_version": "contract_error.v1",
+  "code": "MANIFEST_MISMATCH",
+  "field_path": "/manifest_hash",
+  "expected": "라운드 배포 manifest_hash",
+  "received": "다른 sha256 hex 64자",
+  "message": "제출 manifest_hash가 라운드 배포값과 다르다."
+}

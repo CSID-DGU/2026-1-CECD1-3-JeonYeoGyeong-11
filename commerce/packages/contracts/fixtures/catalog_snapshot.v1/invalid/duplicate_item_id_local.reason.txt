@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+items 안에서 item_id_local이 중복됐다.

@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+Loss must be nonnegative or null.

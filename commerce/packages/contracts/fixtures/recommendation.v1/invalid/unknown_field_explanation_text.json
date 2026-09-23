@@ -1,0 +1,22 @@
+{
+  "schema_version": "recommendation.v1",
+  "seller_id": "seller-a",
+  "customer_id_local": "buyer-17",
+  "as_of": "2026-09-22T03:10:00Z",
+  "model_version": "model-0001",
+  "score_semantics": "next_purchase",
+  "horizon_days": null,
+  "is_cold_start": false,
+  "fallback_reason": null,
+  "items": [
+    {
+      "item_id_local": "item-42",
+      "score": 0.73
+    },
+    {
+      "item_id_local": "item-07",
+      "score": 0.41
+    }
+  ],
+  "explanation_text": "최근 구매 상품과 유사하다"
+}

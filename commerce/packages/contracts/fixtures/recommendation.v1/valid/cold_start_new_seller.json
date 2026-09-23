@@ -1,0 +1,25 @@
+{
+  "schema_version": "recommendation.v1",
+  "seller_id": "seller-new",
+  "customer_id_local": "buyer-01",
+  "as_of": "2026-09-22T03:11:00Z",
+  "model_version": "model-0002",
+  "score_semantics": "next_purchase",
+  "horizon_days": null,
+  "is_cold_start": true,
+  "fallback_reason": "no_seller_history",
+  "items": [
+    {
+      "item_id_local": "item-aa",
+      "score": 0.12
+    },
+    {
+      "item_id_local": "item-ab",
+      "score": 0.12
+    },
+    {
+      "item_id_local": "item-zz",
+      "score": -0.04
+    }
+  ]
+}

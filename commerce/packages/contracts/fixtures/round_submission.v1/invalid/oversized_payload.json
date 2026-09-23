@@ -1,0 +1,93 @@
+{
+  "schema_version": "round_submission.v1",
+  "transport_mode": "synthetic_plaintext",
+  "delta_manifest": {
+    "schema_version": "delta_manifest.v1",
+    "seller_id": "dh-store-367",
+    "round_id": "round-0001",
+    "model_version": "model-0001",
+    "manifest_hash": "3f8c1b2d4e6a7c9b0d1e2f3a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e",
+    "architecture_version": 1,
+    "completed": true,
+    "tensors": [
+      {
+        "name": "shared.time_mlp",
+        "shape": [
+          3,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.relation_mlp",
+        "shape": [
+          192,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.relation_pool",
+        "shape": [
+          64,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.fusion",
+        "shape": [
+          128,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.basket_encoder",
+        "shape": [
+          64,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.sequence",
+        "shape": [
+          64,
+          256
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.seq_time_pos",
+        "shape": [
+          10,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.query_proj",
+        "shape": [
+          64,
+          64
+        ],
+        "dtype": "float32"
+      },
+      {
+        "name": "shared.scorer",
+        "shape": [
+          64,
+          64
+        ],
+        "dtype": "float32"
+      }
+    ]
+  },
+  "aggregate_metrics": {
+    "loss_mean": 0.7,
+    "grad_norm_mean": 0.12
+  },
+  "payload_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "payload_nbytes": 8388609
+}

@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+quantity_observed가 0이다. Q1에 따라 0과 음수는 거부하며 미관측은 null로 적는다.

@@ -1,0 +1,2 @@
+UNKNOWN_FIELD
+가격 필드는 catalog_item.v1에 존재하지 않는다(R12).

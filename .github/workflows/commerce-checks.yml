@@ -1,0 +1,27 @@
+name: Commerce checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'commerce/a/**', 'commerce/b/**', 'commerce/c/**']
+
+permissions:
+  contents: read
+
+jobs:
+  scaffold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: commerce/requirements-lock.txt
+      - run: python -m pip install -r commerce/requirements-lock.txt
+      - run: python -m commerce.tools.gate contracts
+      - run: python -m commerce.tools.gate scaffold
+      - run: python -m commerce.tools.gate docs
+      - run: python -m commerce.tools.gate policy
+      - run: python -m commerce.deploy.run_local --smoke --merchants 2

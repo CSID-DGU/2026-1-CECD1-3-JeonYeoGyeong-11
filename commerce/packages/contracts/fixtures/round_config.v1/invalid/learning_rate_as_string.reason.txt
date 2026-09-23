@@ -1,0 +1,2 @@
+INVALID_TYPE
+learning_rate가 문자열이다. number여야 한다.

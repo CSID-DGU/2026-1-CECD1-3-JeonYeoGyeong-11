@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+listing_status가 enum [active, inactive] 밖의 archived다.

@@ -1,0 +1,6 @@
+# C maintains this initial environment; model dependencies will be added by B.
+jsonschema>=4.18,<5
+numpy>=1.26,<3
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+httpx>=0.27,<1

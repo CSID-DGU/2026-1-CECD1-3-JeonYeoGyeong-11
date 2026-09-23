@@ -1,0 +1,2 @@
+INVALID_TYPE
+candidate_item_ids가 문자열이다. array[string] 또는 null이어야 한다.

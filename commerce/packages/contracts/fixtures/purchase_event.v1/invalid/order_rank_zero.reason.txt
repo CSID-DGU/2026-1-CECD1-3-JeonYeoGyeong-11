@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+instacart order_rank가 0이다. 허용 범위는 integer >= 1 또는 null이다.

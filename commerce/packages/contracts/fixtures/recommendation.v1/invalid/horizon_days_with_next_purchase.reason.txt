@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+score_semantics=next_purchase인데 horizon_days가 non-null이다. §8.2 위반이다.

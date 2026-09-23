@@ -1,0 +1,2 @@
+INVALID_ENUM_VALUE
+time.kind가 enum [absolute, relative_day] 밖의 epoch_seconds다. CONTRACTS.md §9.1의 예시와 같은 사례다.

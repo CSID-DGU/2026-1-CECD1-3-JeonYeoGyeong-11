@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+A syntactically valid JSON exponent may overflow to infinity and must be rejected.

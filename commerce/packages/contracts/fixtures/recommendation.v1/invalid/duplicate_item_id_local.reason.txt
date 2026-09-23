@@ -1,0 +1,2 @@
+DUPLICATE_EVENT
+응답 안에서 item_id_local이 중복됐다. SC4가 DUPLICATE_EVENT로 거부하라고 정한다.
