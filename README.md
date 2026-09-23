@@ -68,12 +68,41 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 
 ## 구성
 
-| 경로 | 내용 |
-| --- | --- |
-| [commerce/packages/contracts](commerce/packages/contracts/README.md) | 스키마·정상/오류 예제·검증기 |
-| [commerce/tools/gate.py](commerce/tools/gate.py) | 검증 진입점 |
-| [docs/contracts.md](docs/contracts.md) | 계약 범위와 검증 상태 |
-| [fedcommerce/](fedcommerce/README.md) | 이전 탐색 분석 스크립트 (참고용, 구현 코드 아님) |
+```text
+├── AGENTS.md                    에이전트 공통 규칙 · 기준 문서
+├── CLAUDE.md                    AGENTS.md 포인터
+├── README.md                    프로젝트 소개 · 시작 안내
+│
+├── docs/                        설계 · 협업 문서
+│   ├── README.md                문서 목차
+│   ├── contracts.md             계약 목록 · 게이트 상태
+│   ├── development.md           설치 · 호출 규격 · 모듈 대체 방법
+│   ├── design/                  아키텍처 · 인터페이스 · 모델 · 데이터 · 평가
+│   └── team/                    시작 안내 · 작업 규칙 · Git 규약
+│       └── tasks/               역할 카드 A · B · C
+│
+├── commerce/                    프로젝트 코드
+│   ├── apps/                A   구매자 · 판매자 화면
+│   ├── services/
+│   │   ├── central_api/     A   중앙 공개 카탈로그
+│   │   ├── merchant_api/    A   판매자 서비스
+│   │   └── fl_coordinator/  C   라운드 집계 · 모델 배포
+│   ├── packages/
+│   │   ├── data_adapters/   B   두 출처 · live 입력 변환
+│   │   ├── recommender/     B   NLP · 관계 · 추천 runtime
+│   │   ├── contracts/       C*  스키마 13 · 픽스처 121 · 검증기
+│   │   └── fl_client/       C   판매자 FL client
+│   ├── evaluation/          B   화면 없는 학습 · 평가 실행기
+│   ├── deploy/              C   로컬 실행 런처
+│   ├── tools/               C*  게이트 진입점
+│   └── tests/e2e/           C   통합 검사
+│
+└── fedcommerce/                 이전 탐색 분석 · 참고용
+```
+
+`A` `B` `C`는 그 경로를 **작성하는** 담당입니다. `*`는 세 역할이 모두 소비하는 것이라 작성자 외 **다른 한 명의 승인이 있어야 병합**되는 경로입니다. 예를 들어 계약은 C가 쓰지만 A·B가 그대로 쓰기 때문에 C 혼자 바꿀 수 없습니다.
+
+소유 경로의 기준은 [작업 규칙](docs/team/working-agreement.md) §1입니다. **공동 검토**로 표시한 곳과 requirements·CI·동작 명세는 바꿀 때 다른 담당자의 승인이 필요하고, 그 목록은 [.github/CODEOWNERS](.github/CODEOWNERS)에 있습니다.
 
 기존 Graph-FL 연구는 Git 이력에 보존합니다. [fedcommerce/](fedcommerce/README.md)의 이전 탐색 분석 스크립트는 B의 출발점으로만 공개한 참고 자료이며 현행 계약을 따르지 않고 게이트 대상도 아닙니다.
 
