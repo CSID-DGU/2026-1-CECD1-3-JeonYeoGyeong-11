@@ -4,9 +4,9 @@
 
 ## 처음 읽을 것
 
-1. [개발 안내](development.md): 설치·검사·공통 import·현재 구현 범위.
-2. [팀 시작 안내](team/start.md): 담당별 첫 작업과 독립 진행 방법.
-3. 자신의 [A 플랫폼](team/tasks/A.md) / [B 데이터·모델](team/tasks/B.md) / [C FL·통합](team/tasks/C.md) 카드.
+1. [공통 에이전트 지침](../AGENTS.md) → [팀 시작 안내](team/start.md)의 필요한 만큼 읽기 절차.
+2. 자신의 [A 플랫폼](team/tasks/A.md) / [B 데이터·모델](team/tasks/B.md) / [C FL·통합](team/tasks/C.md) 카드 하나.
+3. 이번 작은 작업의 코드·계약·설계 절. 설치·검사 시 [개발 안내](development.md)를 참조한다.
 
 처음부터 아래 모든 문서를 읽을 필요는 없다. 담당 작업에 필요한 계약·설계 절을 찾아 읽고, 이어가기에서는 변경 diff와 남은 작업을 확인한다.
 

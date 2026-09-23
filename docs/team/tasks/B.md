@@ -4,7 +4,7 @@
 ## 목표와 소유
 두 과거 데이터와 live 구매를 로컬 추천에 연결하고 신규 판매자/신상품을 점수화한다.
 소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/.
-읽기: [팀 시작 안내](../start.md) → [데이터](../../design/data.md) → [모델 경계](../../design/model.md) → [인터페이스 계약](../../design/interfaces.md) §2~5 → [평가](../../design/evaluation.md).
+첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 입력은 [데이터](../../design/data.md), NLP·학습·개인화는 [모델 경계](../../design/model.md), 연결은 [인터페이스 계약](../../design/interfaces.md) §2~5, 학습/평가 데이터 분할과 측정은 [평가](../../design/evaluation.md).
 지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 A의 입력 이벤트와 C의 모델 제출/설치 계약 변경을 확인한다.
 
 별도 학습/서비스 인계는 ../../design/model-lab.md와 D0018을 따른다. 화면 없이 같은 모델 core로 학습·평가·checkpoint 재개·export를 제공한다. 시간 관계는 개별 간격의 MLP 뒤 pooling을 유지하고 이웃/시간쌍 예산을 feature fixture와 E-G0에서 확정한다.
