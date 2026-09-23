@@ -1,5 +1,5 @@
 # 데이터와 전처리
-갱신: 2026-09-23 · D0017 · 소유: B
+갱신: 2026-09-24 · D0017 · 소유: B
 
 ## 1. 데이터가 대표하는 상황
 
@@ -18,6 +18,22 @@
 | 한계 | 동일 유통계열의 점포를 독립 주체로 시뮬레이션 | 실제 서로 다른 소매업체의 자료로 주장할 수 없음 |
 
 Instacart는 prior만 사용한다. 공식 train/test를 이 프로젝트의 시간 분할과 혼동하지 않는다. 이전 가상 표본은 전체 206,209 고객 중 약 3.96%다. 전수 실험으로 표현하지 않는다.
+
+### 출처와 로컬 준비
+
+데이터셋의 원출처, 배포판, 실제로 받은 파일을 구분한다. 아래 출처 안내는 2026-09-24에 확인했으며 과거 로컬 파일의 다운로드 날짜·정확한 revision까지 복원한 것은 아니다.
+
+| 구분 | 출처·취득 안내 | 이 프로젝트에서의 취급 |
+| --- | --- | --- |
+| The Complete Journey 원출처 안내 | [dunnhumby Source Files](https://www.dunnhumby.com/source-files/) | 2년·2,500가구로 소개하는 원자료 안내. 아래 R 배포판과 동일 파일·기간이라고 가정하지 않는다 |
+| 현재 Dunnhumby 분석의 배포판 | [completejourney 공식 문서](https://bradleyboehmke.github.io/completejourney/)·[관리자 저장소](https://github.com/bradleyboehmke/completejourney) | 기존 분석 기록은 이 R 배포판을 사용했다고 명시한다. 배포판은 출처를 84.51°로 밝히며 1년·2,469가구를 설명한다 |
+| Instacart 2017 | [기존 공식 대회 주소](https://www.kaggle.com/c/instacart-market-basket-analysis/data)·[현재 Kaggle Market Basket Analysis 데이터 페이지](https://www.kaggle.com/competitions/basket-analysis/data) | 기존 기록에는 미러 검증이 있으나 정확한 취득 미러 URL·버전은 미확인이다. 이번 확인에서 기존 주소의 본문을 읽지 못했고 현재 페이지의 다운로드 가능 여부·이용 조건도 확인하지 못했다. B가 계정으로 접근해 실제 취득 경로를 기록한다 |
+
+Complete Journey는 `transactions_sample`을 전체 데이터 대신 사용하지 않는다. 관리자 문서의 [get_transactions()](https://bradleyboehmke.github.io/completejourney/reference/get_transactions.html)와 [products](https://bradleyboehmke.github.io/completejourney/reference/products.html)를 기준으로 준비하고, 사용한 패키지 버전·저장소 commit 또는 실제 다운로드 URL을 고정한다. 공식 CSV 원본을 받았다면 기존 R 파일과의 변환·기간 차이를 확인하고 이전 분석 수치를 그대로 재사용하지 않는다.
+
+이전 탐색 스크립트용 경로는 `fedcommerce/data/transactions.rds`, `fedcommerce/data/products.rda` 및 `fedcommerce/data/instacart/`다. Instacart에서 사용하는 파일은 `orders.csv`, `order_products__prior.csv`, `products.csv`, `aisles.csv`, `departments.csv`이며 `order_products__train.csv`는 현행 학습 입력에 쓰지 않는다. 스크립트의 상대 경로 기준 작업 디렉터리는 `fedcommerce/`다. 새 어댑터·실험 산출물의 경로는 §6을 따른다.
+
+B는 실제 사용 파일별로 `출처 URL / 배포판·revision / 취득일 / 파일명·크기·SHA-256 / 스키마·행 수 / 이용 조건 확인 근거`를 Git 제외 실행 기록에 남긴다. 미확인 값은 미확인으로 표시하고 행 수가 같다는 이유만으로 같은 파일이라고 판정하지 않는다. 출처 인용과 원자료 재배포 허용은 별개이며, 이 안내는 원자료의 Git 업로드 허가가 아니다. 조원 간 파일 해시·전처리 설정을 맞춘 후 재현 완료를 보고한다.
 
 ## 2. 정제와 판매자 배정
 
