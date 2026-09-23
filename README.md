@@ -69,34 +69,38 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 ## 구성
 
 ```text
-AGENTS.md              모든 에이전트의 공통 규칙. 여기가 기준이다
-CLAUDE.md              AGENTS.md를 가리키는 포인터
-
-docs/                  설계와 협업 문서
-  README.md              문서 목차
-  contracts.md           계약 목록과 게이트 상태
-  development.md         설치·호출 규격·상대 모듈 대체 방법
-  design/                architecture interfaces model data evaluation
-                         comparison model-lab decisions open-questions
-  team/                  start working-agreement git-workflow
-    tasks/               A.md B.md C.md  ← 역할 카드
-
-commerce/              프로젝트 코드
-  apps/                  buyer seller                      A
-  services/              central_api merchant_api          A
-                         fl_coordinator                    C
-  packages/
-    data_adapters/       두 출처와 live 입력 변환           B
-    recommender/         NLP·관계·추천 runtime             B
-    contracts/           스키마 13종·픽스처 121건·검증기    C (공동 검토)
-    fl_client/           판매자 FL client                  C
-  evaluation/            화면 없는 학습·평가 실행기         B
-  deploy/                로컬 실행 런처                    C
-  tools/                 게이트 진입점                     C (공동 검토)
-  tests/e2e/             통합 검사                         C
-
-fedcommerce/           이전 탐색 분석. 참고용이며 구현 코드가 아니다
+├── AGENTS.md                    에이전트 공통 규칙 · 기준 문서
+├── CLAUDE.md                    AGENTS.md 포인터
+├── README.md                    프로젝트 소개 · 시작 안내
+│
+├── docs/                        설계 · 협업 문서
+│   ├── README.md                문서 목차
+│   ├── contracts.md             계약 목록 · 게이트 상태
+│   ├── development.md           설치 · 호출 규격 · 모듈 대체 방법
+│   ├── design/                  아키텍처 · 인터페이스 · 모델 · 데이터 · 평가
+│   └── team/                    시작 안내 · 작업 규칙 · Git 규약
+│       └── tasks/               역할 카드 A · B · C
+│
+├── commerce/                    프로젝트 코드
+│   ├── apps/                A   구매자 · 판매자 화면
+│   ├── services/
+│   │   ├── central_api/     A   중앙 공개 카탈로그
+│   │   ├── merchant_api/    A   판매자 서비스
+│   │   └── fl_coordinator/  C   라운드 집계 · 모델 배포
+│   ├── packages/
+│   │   ├── data_adapters/   B   두 출처 · live 입력 변환
+│   │   ├── recommender/     B   NLP · 관계 · 추천 runtime
+│   │   ├── contracts/       C*  스키마 13 · 픽스처 121 · 검증기
+│   │   └── fl_client/       C   판매자 FL client
+│   ├── evaluation/          B   화면 없는 학습 · 평가 실행기
+│   ├── deploy/              C   로컬 실행 런처
+│   ├── tools/               C*  게이트 진입점
+│   └── tests/e2e/           C   통합 검사
+│
+└── fedcommerce/                 이전 탐색 분석 · 참고용
 ```
+
+`A` `B` `C`는 담당 역할, `*`는 바꿀 때 다른 담당자 승인이 필요한 공동 경로입니다.
 
 소유 경로의 기준은 [작업 규칙](docs/team/working-agreement.md) §1입니다. **공동 검토**로 표시한 곳과 requirements·CI·동작 명세는 바꿀 때 다른 담당자의 승인이 필요하고, 그 목록은 [.github/CODEOWNERS](.github/CODEOWNERS)에 있습니다.
 
