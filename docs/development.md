@@ -111,7 +111,7 @@ flowchart LR
 
 ## 검토와 인계
 
-업무는 `commerce/a|b|c/<작업명>`에서 진행하고 공동 기준은 `commerce/integration`이다. 초기 뼈대 PR이 병합되기 전에는 해당 PR 브랜치를 명시적으로 확인해야 한다. 브랜치 이름만 보고 integration에 이 코드가 이미 있다고 가정하지 않는다.
+업무는 `commerce/a|b|c/<작업명>`에서 진행하고 공동 기준은 `main`이다. 작업 시작 전에 `git fetch`로 최신 `main`을 확인한다.
 
 PR에는 변경 동작·호출 예제·검사 명령/결과·미구현/의존성을 남긴다. 공통 계약을 바꿀 때 ports/types 또는 schema와 fixture·소비자·설명을 같은 변경으로 맞춘다. 원자료·개인정보·DB·가중치·비밀은 반영하지 않는다. 다음 담당자는 마지막 PR과 자기 파트 README에서 이어간다.
 

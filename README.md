@@ -36,7 +36,7 @@ Dunnhumby와 Instacart를 판매자 단위로 분할한 시뮬레이션을 사�
 
 **[문서 목차](docs/README.md)**에서 현재 설계와 역할별 읽기 순서를 확인할 수 있습니다.
 
-- 처음 참여: [팀 시작 안내](docs/team/start.md) → 자기 역할 카드.
+- 처음 참여: [팀 시작 안내](docs/team/start.md) → 자기 역할 카드. 이 저장소의 `main`이 공동 기준이며 작업은 `commerce/a|b|c/<작업명>` 브랜치에서 하고 PR의 base는 `main`입니다.
 - 설치·호출 규격: [개발 안내](docs/development.md).
 - 설계 그림: [아키텍처](docs/design/architecture.md).
 - 미확정 내용: [열린 구현 항목](docs/design/open-questions.md).
@@ -70,7 +70,8 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 | [commerce/packages/contracts](commerce/packages/contracts/README.md) | 스키마·정상/오류 예제·검증기 |
 | [commerce/tools/gate.py](commerce/tools/gate.py) | 검증 진입점 |
 | [docs/contracts.md](docs/contracts.md) | 계약 범위와 검증 상태 |
+| [fedcommerce/](fedcommerce/README.md) | 이전 탐색 분석 스크립트 (참고용, 구현 코드 아님) |
 
-기존 연구 이력은 Git 이력에 보존하며 이번 초기 코드에는 로컬 탐색 자료를 포함하지 않습니다.
+기존 Graph-FL 연구는 Git 이력에 보존합니다. [fedcommerce/](fedcommerce/README.md)의 이전 탐색 분석 스크립트는 B의 출발점으로만 공개한 참고 자료이며 현행 계약을 따르지 않고 게이트 대상도 아닙니다.
 
 원자료·개인별 파생 데이터·DB·모델 파일·인증 정보는 저장소에 포함하지 않습니다. 구현이 진행되면 재현 방법과 측정 결과를 해당 변경과 함께 갱신합니다.

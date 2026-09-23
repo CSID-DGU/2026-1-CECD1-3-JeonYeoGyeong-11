@@ -17,7 +17,7 @@ assignees: ''
 
 ## 기준과 연결
 
-- 기준 문서 / integration SHA:
+- 기준 문서 / `main` SHA:
 - 생산자·소비자 / 관련 계약:
 - 의존 Issue·PR:
 - 상대 구현 전 사용할 stub:

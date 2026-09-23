@@ -2,16 +2,15 @@
 
 ## 1. 같은 코드 준비
 
-초기 코드는 [PR #3](https://github.com/CSID-DGU/2026-1-CECD1-3-JeonYeoGyeong-11/pull/3)의 `commerce/c/project-scaffold` 브랜치에 있다. 병합 전에는 이 브랜치를 사용하고, 병합 후에는 `commerce/integration`에서 시작한다. main에 초기 코드가 들어갔다고 가정하지 않는다.
-
-각자 별도 clone을 사용한다. 초기 PR 검토 중 작업을 시작한다면 다음과 같이 코드 기준을 명시한다.
+초기 코드는 `main`에 있다. 각 에이전트는 자기 머신에 별도 clone을 만들고 자기 역할의 작업 브랜치에서 시작한다.
 
 ```text
-git clone --branch commerce/c/project-scaffold https://github.com/CSID-DGU/2026-1-CECD1-3-JeonYeoGyeong-11.git
+git clone https://github.com/CSID-DGU/2026-1-CECD1-3-JeonYeoGyeong-11.git
+cd 2026-1-CECD1-3-JeonYeoGyeong-11
 git switch -c commerce/a/first-order
 ```
 
-마지막 브랜치는 자신의 역할/작업명으로 바꾼다. 초기 PR에 의존하는 후속 PR은 `Depends on: #3`으로 표시하고 먼저 병합하지 않는다. 기존 작업 폴더를 쓰는 경우 미커밋 변경을 먼저 확인한다.
+마지막 브랜치는 자신의 역할/작업명으로 바꾼다. PR의 base는 항상 `main`이다. 기존 작업 폴더를 쓰는 경우 미커밋 변경을 먼저 확인한다.
 
 설치·최초 검사는 [개발 안내](../development.md)를 따른다. Git 작성자 이름·이메일은 각자 본인 것으로 설정한다. 별도 ZIP이나 비공개 문서는 필요 없다.
 

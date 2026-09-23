@@ -2,9 +2,9 @@ name: Commerce checks
 
 on:
   pull_request:
-    branches: [commerce/integration]
+    branches: [main]
   push:
-    branches: [commerce/integration, 'commerce/a/**', 'commerce/b/**', 'commerce/c/**']
+    branches: [main, 'commerce/a/**', 'commerce/b/**', 'commerce/c/**']
 
 permissions:
   contents: read
