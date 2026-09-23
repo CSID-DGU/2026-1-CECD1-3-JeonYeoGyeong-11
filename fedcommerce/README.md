@@ -12,6 +12,8 @@
 
 스크립트가 읽는 `data/transactions.rds`, `data/products.rda`, `data/instacart/*.csv`와 `out/` 결과물은 모두 `.gitignore` 대상이라 clone에 포함되지 않는다. 각자 원자료를 직접 취득해 같은 경로에 두어야 실행된다. 공개하는 것은 스크립트와 합성 fixture 두 개(`data/synthetic/product.csv`, `data/synthetic/_ground_truth.csv`)뿐이다.
 
+출처 링크·배포판 구분·필요 파일·취득 기록은 [데이터 설계 §1 출처와 로컬 준비](../docs/design/data.md#출처와-로컬-준비)를 따른다. 기존 Dunnhumby 분석은 `completejourney` R 배포판 기준이며, 원출처의 CSV를 그대로 같은 파일로 취급하지 않는다. 탐색 스크립트는 `fedcommerce/`를 작업 디렉터리로 실행한다. 기존 Instacart 파일의 정확한 미러 주소는 아직 확인되지 않았다.
+
 ## B의 1번 작업에 가까운 순서
 
 | 파일 | 하는 일 |
