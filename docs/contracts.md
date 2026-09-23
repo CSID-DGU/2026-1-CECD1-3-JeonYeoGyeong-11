@@ -54,6 +54,6 @@ python -m commerce.tools.gate contracts
 
 ## 기존 설계 참조
 
-일부 스키마 설명과 코드 주석의 `CONTRACTS.md`, `MODEL_BOUNDARY.md`, ADR 번호는 초기 설계의 규칙 식별자입니다. 공개 배포 파일 링크가 아니며, 실행 가능한 현재 검사는 스키마·검증기·fixture에서 확인합니다. 서비스 동작이 구현될 때 해당 동작의 기술 설명도 함께 공개 문서로 정리합니다.
+일부 스키마 설명과 코드 주석의 `CONTRACTS.md`는 [인터페이스 계약](design/interfaces.md), `MODEL_BOUNDARY.md`는 [모델 경계](design/model.md)를 가리킨다. 이전 R/SC 규칙 번호 등은 역사적 식별자이며 현재 필드·의미 검증은 schema/validator/fixture가 수행한다. 현행 설계 선택은 [결정 요약](design/decisions.md)에 있다.
 
 Python 로컬 함수·반환 타입·객체 수명은 [개발 안내](development.md)와 `commerce/packages/contracts/ports.py`, `types.py`를 따른다. JSON 스키마는 이번 뼈대 추가로 변경하지 않았다.

@@ -34,7 +34,14 @@ Dunnhumby와 Instacart를 판매자 단위로 분할한 시뮬레이션을 사�
 
 ## 개발 시작
 
-파트별 시작 파일과 호출 규격은 **[개발 안내](docs/development.md)**에 있습니다. 담당 폴더 README에서 다음 작업을 확인할 수 있습니다.
+**[문서 목차](docs/README.md)**에서 현재 설계와 역할별 읽기 순서를 확인할 수 있습니다.
+
+- 처음 참여: [팀 시작 안내](docs/team/start.md) → 자기 역할 카드.
+- 설치·호출 규격: [개발 안내](docs/development.md).
+- 설계 그림: [아키텍처](docs/design/architecture.md).
+- 미확정 내용: [열린 구현 항목](docs/design/open-questions.md).
+
+팀원과 개발 도구는 같은 공개 문서를 사용합니다. 별도 내부 ZIP은 필요 없습니다.
 
 ## 계약·뼈대 검사
 

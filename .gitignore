@@ -85,14 +85,12 @@ tmp/pdfs/
 *.db-wal
 *.db-shm
 
-# 팀 내부 문서와 로컬 도구 지침: 별도 공유, 저장소 반영 제외
+# 과거 내부 자료·공유 ZIP·로컬 임시 파일 제외
 /.team/
-/AGENTS.md
-/CLAUDE.md
 /tmp/
 /fedcommerce/DESIGN.md
 
-# 이전 배치의 내부 문서를 다시 복사해도 포함하지 않음
+# 이전 파일 배치의 초안은 제외. 현행 문서는 docs/design/ 및 docs/team/에 공개한다.
 /START_HERE.md
 /TEAM_ONBOARDING.md
 /GIT_WORKFLOW.md

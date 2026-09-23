@@ -1,0 +1,13 @@
+# Repository work guide
+
+- Start with `docs/team/start.md`, your A/B/C card under `docs/team/tasks/`, and the relevant package README. `docs/README.md` is the current document index. No private document bundle is required.
+- Read `docs/team/working-agreement.md` for ownership and `docs/team/git-workflow.md` for branches/review. Preserve unrelated user changes and existing history. Cross-owner work is allowed when the user assigns that scope; coordinate shared contract changes with affected consumers.
+- Use `commerce.packages.*` imports. Local APIs/types/errors live in `commerce/packages/contracts/ports.py`, `types.py`, and `errors.py`. Wire fields/types are defined by JSON schemas and the validator; behavior is specified in `docs/design/interfaces.md` and `model.md`. Resolve conflicts together instead of silently choosing a different contract.
+- Inspect actual code and gate output. Current service/model/FL business functions are stubs; do not turn FeatureNotImplemented or NOT_IMPLEMENTED into false success.
+- Keep raw transactions, customer data, local features, individual model updates, DBs, weights and secrets out of Git and central logs. Real-data-derived FL requires the protected path. Synthetic plaintext is only for generated synthetic input.
+- Keep shared base, FL training copies and personalized serving copies separate. Personalization is query_proj/scorer only; never export it for FL. Train text_only and text_relation independently.
+- Run `python -m commerce.tools.gate contracts` for contract changes and `python -m commerce.tools.gate scaffold` for interface/lifecycle changes. Run relevant package checks; reserve wider integration checks for a concrete integration risk. Use the project virtual environment.
+- Work in a scoped branch and your own checkout. Stage explicit paths, inspect staged files, and follow the user's authorization for commit/push. No force push or unreviewed integration merge. An agent's own tests are not a teammate approval.
+- Continue independent work using contract-compatible test doubles when peers are unavailable. Do not treat silence as agreement. Open decisions are tracked in `docs/design/open-questions.md`.
+- Report implemented behavior, exact checks, remaining stubs, affected interfaces and the next small task. Read relevant diffs on continuation; avoid repeatedly summarizing all documents.
+- `.team/`, `tmp/`, old archives and local data are historical/private material, not prerequisites or current implementation authority. Do not publish them through force-add.

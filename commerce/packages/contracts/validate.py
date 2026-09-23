@@ -8,7 +8,7 @@
     python -m commerce.tools.gate contracts
 
 이 파일은 그 게이트가 감싸 호출하는 contracts 패키지 내부 명령이며 단독 실행도 같은 판정을 낸다.
-    cd D:/jongseol2/commerce/packages && python -m contracts.validate
+    python -m commerce.packages.contracts.validate
 """
 
 from __future__ import annotations
