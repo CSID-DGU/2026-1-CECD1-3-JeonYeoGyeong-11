@@ -4,7 +4,7 @@
 ## 목표와 소유
 구매자/판매자 화면과 판매자 로컬 주문을 만들고 B의 실제 추천을 화면에 연결한다.
 소유: commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/.
-읽기: [팀 시작 안내](../start.md) → [작업 규칙](../working-agreement.md) → [아키텍처](../../design/architecture.md) → [인터페이스 계약](../../design/interfaces.md) §1~4.
+첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 소유권·환경은 [작업 규칙](../working-agreement.md), 배치·데이터 경계는 [아키텍처](../../design/architecture.md), 주문·추천 연결은 [인터페이스 계약](../../design/interfaces.md) §1~4.
 지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 이벤트/추천 계약 변경과 C의 실행 훅 변경을 확인한다.
 
 ## 첫 작업
