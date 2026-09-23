@@ -1,30 +1,34 @@
-# 자동 병합과 사람 검토를 가르는 기준.
+# 자동 병합과 사람 확인을 가르는 기준.
 #
-# 기본은 소유자 없음이다. 아래에 걸리지 않는 PR은 CI가 통과하면 자동 병합된다.
+# 기본은 소유자 없음이다. 아래에 걸리지 않는 PR은 검사가 통과하면 자동 병합된다.
 # 각 역할이 자기 소유 경로에서 하는 구현은 여기에 걸리지 않는다.
 #
-# 아래 경로는 세 역할 전부에 영향을 주거나, 검사 장치 자체를 바꾸거나,
-# 규칙의 출처를 바꾼다. 사람이 확인한다.
-# 경로로 잡히지 않는 위험 신호(FL 활성화, 게이트 상태 주장, 계약 삭제)는
-# `python -m commerce.tools.gate policy`가 검사한다.
+# 아래 경로는 세 역할 전부에 영향을 주거나 검사 장치 자체를 바꾼다.
+# 팀원 전원을 소유자로 두어 "작성자가 아닌 다른 사람"이 승인하게 한다.
+# 작성자는 자기 PR을 승인할 수 없으므로 자동으로 교차 검토가 된다.
+#
+# 승인은 전체 코드 검토가 아니라 "내 쪽이 깨지는가" 확인이다.
+# `gh pr merge <번호> --auto --merge`로 예약해두면 승인 시점에 알아서 병합되므로
+# 올린 사람은 기다리지 않는다.
+#
+# 경로로 잡히지 않는 위험 신호(FL 활성화, 게이트 통과 허위 주장, 계약 삭제,
+# 도구 지시 파일에 규칙 복사)는 `commerce.tools.gate policy`와 `docs`가 잡는다.
 
 # 계약 — A·B·C가 모두 소비한다
-/commerce/packages/contracts/   @2-mean
+/commerce/packages/contracts/   @2-mean @DGUCSE-geonlee22 @zzziwoo0120
 
 # 환경 — 세 머신의 재현성을 결정한다
-/commerce/requirements-dev.txt  @2-mean
-/commerce/requirements-lock.txt @2-mean
+/commerce/requirements-dev.txt  @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/commerce/requirements-lock.txt @2-mean @DGUCSE-geonlee22 @zzziwoo0120
 
-# 검사 장치 자체 — 게이트 정의와 통과 주장
-/commerce/tools/                @2-mean
+# 검사 장치 자체 — 게이트 정의와 통과 판정
+/commerce/tools/                @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/.github/workflows/             @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/.github/CODEOWNERS             @2-mean @DGUCSE-geonlee22 @zzziwoo0120
 
-# 동작 명세와 팀 규칙의 출처
-/docs/design/interfaces.md      @2-mean
-/docs/design/model.md           @2-mean
-/docs/team/working-agreement.md @2-mean
-/docs/team/git-workflow.md      @2-mean
-/AGENTS.md                      @2-mean
-/CLAUDE.md                      @2-mean
-
-# CI·정책·소유권 규칙
-/.github/                       @2-mean
+# 게이트가 검사할 수 없는 동작 의미와 팀 규칙
+/docs/design/interfaces.md      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/docs/design/model.md           @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/docs/team/working-agreement.md @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/docs/team/git-workflow.md      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/AGENTS.md                      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
