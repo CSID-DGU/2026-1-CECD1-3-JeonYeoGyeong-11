@@ -34,9 +34,11 @@ Dunnhumby와 Instacart를 판매자 단위로 분할한 시뮬레이션을 사�
 
 ## 개발 시작
 
-**[문서 목차](docs/README.md)**에서 현재 설계와 역할별 읽기 순서를 확인할 수 있습니다.
+**사람과 에이전트 모두 [AGENTS.md](AGENTS.md)를 먼저 읽습니다.** 공통 규칙·소유권·검사 기준이 거기 있고, 도구별 지시 파일(`CLAUDE.md` 등)은 그 문서를 가리키는 포인터일 뿐입니다. 이후 순서는 [팀 시작 안내](docs/team/start.md) → 자기 역할 카드이며, 설계 문서를 미리 다 읽을 필요는 없습니다.
 
-- 처음 참여: [팀 시작 안내](docs/team/start.md) → 자기 역할 카드. 이 저장소의 `main`이 공동 기준이며 작업은 `commerce/a|b|c/<작업명>` 브랜치에서 하고 PR의 base는 `main`입니다.
+전체 목록은 **[문서 목차](docs/README.md)**에 있습니다.
+
+- 처음 참여: [AGENTS.md](AGENTS.md) → [팀 시작 안내](docs/team/start.md) → 자기 역할 카드. 이 저장소의 `main`이 공동 기준이며 작업은 `commerce/a|b|c/<작업명>` 브랜치에서 하고 PR의 base는 `main`입니다.
 - 설치·호출 규격: [개발 안내](docs/development.md).
 - 설계 그림: [아키텍처](docs/design/architecture.md).
 - 미확정 내용: [열린 구현 항목](docs/design/open-questions.md).
