@@ -6,8 +6,8 @@
 
 | 패키지 | 담당 계정 | 소유 경로 |
 | --- | --- | --- |
-| A 플랫폼 | [A 카드](tasks/A.md) 2행 | commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/ |
-| B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
+| A 플랫폼 | [A 카드](tasks/A.md) 2행 | commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/, commerce/evaluation/metrics/ |
+| B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ (metrics/ 제외) |
 | C FL·통합 | [C 카드](tasks/C.md) 2행 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
 | 문서 | 각 역할: 자기 카드 tasks/A·B·C.md, 자기가 새로 만든 `docs/design/` 문서 / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts(각 업무 게이트의 상태 칸은 그 게이트 담당)·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 검토는 [Git 협업](git-workflow.md) 첫 표 |
@@ -101,7 +101,7 @@ A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐�
 | policy | 일부 위험 신호 검사. 실패는 담당자가 수정하고 정책 변경이 필요한 경우만 사람이 결정한다 | 변경한 사람 |
 | contracts (G1) | 모든 스키마·fixture·의미 검증. 현재 개수는 러너가 출력 | C, A/B 각자 실행 |
 | business | 아래 업무 게이트를 모두 실행. 실패(1·2)가 없으면 통과, 미구현·부분 구현(3)은 허용. CI가 실행 | C |
-| a1 | 주문·상태 전이·타 판매자 권한 거부·중앙 비잔류·쿠키 범위 | A |
+| a1 | 주문·상태 전이·타 판매자 권한 거부·중앙 비잔류·쿠키 범위, 평가 지표·기준선의 손계산 예제 | A |
 | b1 | 두 어댑터·합성 live 이벤트·텍스트 생성·식별자·결측 보존 | B |
 | b2 | NLP artifact/freeze, variant별 공유 export, gradient/고정 검증 분할, 개인화 두 그룹 제한·base 불변·옛 tail 거부 | B |
 | c1 | 합성 텐서 검증·균등 집계·배포·미달 폐기·신규 판매자 설치, variant 혼합 거부 | C |
@@ -126,7 +126,7 @@ C: 모델 manifest·release → 합성 동기 FL → variant 분리·개인화 �
 
 ## 6. 작업량 재배분
 
-A의 g2 연결 작업이 끝난 시점과 C의 c1 시점에 B의 NLP·어댑터 진행을 확인한다. B가 막히면 합성 시드/입력 품질 fixture는 A, 재현 실행·결과 저장 도구는 C가 받을 수 있다. 데이터 어댑터 이관은 원자료 접근·라이선스를 먼저 확인하고 소유 경로를 변경한다.
+B의 부담이 가장 크므로 평가 지표와 모델이 아닌 기준선은 처음부터 A가 맡는다(§1, [A 카드](tasks/A.md)). §8의 D3·D7 점검에서 B의 어댑터·NLP 진행을 확인한다. B가 늦으면 두 출처 어댑터(원자료 → purchase_event·catalog_item 변환)를 A가 받을 수 있다. A는 이미 live 쪽에서 같은 계약을 만든다. 합성 시드·입력 품질 fixture는 A, 재현 실행·결과 저장 도구는 C가 받을 수 있다. 데이터 어댑터 이관은 원자료 접근·라이선스를 먼저 확인하고 소유 경로를 변경한다.
 보호 집계가 막히면 C의 게이트 시나리오 구현은 A가 받을 수 있다. 모델 의미·평가 해석은 B, 보호 가정·프로토콜은 C가 계속 책임진다.
 
 ## 7. Git과 변경 절차

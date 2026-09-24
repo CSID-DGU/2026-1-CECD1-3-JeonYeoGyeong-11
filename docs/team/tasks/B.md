@@ -3,7 +3,7 @@
 
 ## 목표와 소유
 두 과거 데이터와 live 구매를 로컬 추천에 연결하고 신규 판매자/신상품을 점수화한다.
-소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/.
+소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ (metrics/ 제외). 평가 지표와 모델이 아닌 기준선은 A가 구현하고, B는 평가 정의와 실행기를 맡는다.
 첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 입력은 [데이터](../../design/data.md), NLP·학습·개인화는 [모델 경계](../../design/model.md), 연결은 [인터페이스 계약](../../design/interfaces.md) §2~5, 학습/평가 데이터 분할과 측정은 [평가](../../design/evaluation.md).
 지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 A의 입력 이벤트와 C의 모델 제출/설치 계약 변경을 확인한다.
 
@@ -11,6 +11,8 @@
 
 ## 첫 작업
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 팀 시작 안내의 B 첫 작업부터 확인하고 맡은 범위 안에서 이어간다.
+
+1차 대비가 Instacart이므로([평가](../../design/evaluation.md) §4) IC 경로(어댑터 → text builder → E-G0)를 먼저 끝까지 연결하고 DH는 뒤에 붙인다. 판매자 배정은 train 구간만으로 만든다([데이터](../../design/data.md) §2).
 
 1. 소형 두 출처 fixture와 live catalog/purchase fixture를 공통 로컬 표현으로 변환한다. 시간 종류와 미관측 수량을 보존한다.
 2. 한국어·영어·규격·결측을 보존하는 text builder를 만든다. 기존 NLP 완성 모듈은 없다.
