@@ -183,11 +183,24 @@ def _documented_env() -> Dict[str, Set[str]]:
     return documented
 
 
+def _service_env_reads(service_dir: pathlib.Path) -> Tuple[Set[str], Set[str], Dict[str, str]]:
+    """서비스 디렉터리의 모든 .py가 읽는 키. main.py만 보면 다른 모듈에서 읽는 키를 놓친다."""
+    required: Set[str] = set()
+    optional: Set[str] = set()
+    where: Dict[str, str] = {}
+    for source in sorted(service_dir.rglob("*.py")):
+        req, opt = _env_reads(source)
+        required |= req
+        optional |= opt
+        for key in req | opt:
+            where.setdefault(key, _rel(source))
+    return required, optional, where
+
+
 def _check_env(fail) -> int:
     services = {
-        "central_api": REPO_ROOT / "commerce/services/central_api/main.py",
-        "merchant_api": REPO_ROOT / "commerce/services/merchant_api/main.py",
-        "fl_coordinator": REPO_ROOT / "commerce/services/fl_coordinator/main.py",
+        name: REPO_ROOT / "commerce/services" / name
+        for name in ("central_api", "merchant_api", "fl_coordinator")
     }
     try:
         documented = _documented_env()
@@ -196,21 +209,20 @@ def _check_env(fail) -> int:
         return 0
 
     checked = 0
-    for service, source in services.items():
-        required, optional = _env_reads(source)
+    for service, service_dir in services.items():
+        required, optional, where = _service_env_reads(service_dir)
         actual = required | optional
         listed = documented.get(service, set())
         checked += len(actual | listed)
         for key in sorted(actual - listed):
-            fail(_rel(WORKING_AGREEMENT), "코드가 읽는데 표에 없음",
-                 "%s (%s)" % (key, _rel(source)))
+            fail(_rel(WORKING_AGREEMENT), "코드가 읽는데 표에 없음", "%s (%s)" % (key, where[key]))
         for key in sorted(listed - actual):
             fail(_rel(WORKING_AGREEMENT), "표의 '현재' 값인데 코드가 읽지 않음",
-                 "%s (%s)" % (key, _rel(source)))
+                 "%s (%s)" % (key, _rel(service_dir)))
 
     # 런처가 값을 넘기지 않으면 필수 키를 새로 만든 순간 기동이 깨진다.
     launcher_keys = _env_written_by_launcher()
-    merchant_required, _ = _env_reads(services["merchant_api"])
+    merchant_required, _, _ = _service_env_reads(services["merchant_api"])
     for key in sorted(merchant_required - launcher_keys):
         fail("commerce/deploy/run_local.py", "필수 환경변수를 런처가 넘기지 않음", key)
     return checked

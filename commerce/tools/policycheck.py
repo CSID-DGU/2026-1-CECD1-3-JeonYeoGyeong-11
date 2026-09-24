@@ -130,7 +130,7 @@ def run(verbose: bool = False) -> int:
     if failures:
         for where, detail in failures:
             print("  %-44s %s" % (where, detail))
-        print("이 변경은 자동 병합하지 않는다. 사람이 확인해야 한다.")
+        print("이 변경은 자동 병합하지 않는다. 담당자가 위 항목을 고친다. 정책 자체를 바꿔야 할 때만 사람이 결정한다.")
         return 1
     print("POLICY OK: fl=%d gates=%d contracts=%d failures=0" % (fl, gates, contracts))
     return 0

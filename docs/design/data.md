@@ -101,7 +101,7 @@ A/C는 합성 상품·계정·주문으로 시작한다. B는 소형 두 출처 
 
 원자료, 고객별 배정표, 전처리 구매 이벤트, 관계·캐시·개별 업데이트·실데이터 모델은 기본 Git 제외다. 공개할 수 있는 schema·직접 만든 합성 fixture·집계 보고서만 별도 검토한다. 라이선스 확인과 공개 범위 기록은 B가 맡는다. 이런 파일을 추가하거나 바꾸는 PR의 검토는 [Git 협업](../team/git-workflow.md) 첫 표를 따른다.
 
-새 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 둔다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
+직접 만든 합성 fixture는 커밋 대상이므로 자기 소유 경로의 `tests/fixtures/` 아래 둔다. 실행 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 두며 이들은 Git 제외다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
 
 b1 완료: 소형 입력으로 정제 순서·ID·수량 null·시간 종류·중복·한국어 보존 검사. 별도로 로컬 원자료 재현 보고(행 수/제외 사유/roster/해시)를 만든다. 합성 fixture 통과와 원자료 재현 완료를 따로 보고한다.
 
