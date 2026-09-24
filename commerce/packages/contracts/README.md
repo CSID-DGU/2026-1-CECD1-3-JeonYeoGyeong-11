@@ -12,7 +12,7 @@ python -m commerce.tools.gate contracts
 
 JSON Schema 2020-12가 필드·타입 기준이며 검증기의 의미 검사도 적용합니다. 미지 필드를 거부하므로 optional 필드 추가도 자동 호환으로 취급하지 않습니다. 변경 시 생산자·소비자, 스키마·예제·공개 동작 설명을 함께 맞춥니다.
 
-정상 예제는 `fixtures/<계약>/valid`, 오류 예제는 `invalid`에 둡니다. 오류 예제와 이름이 같은 `.reason.txt` 첫 줄은 기대 오류 코드이며 다음 줄은 설명입니다.
+정상 예제는 `fixtures/<계약>/valid`, 오류 예제는 `invalid`에 둡니다. 예제의 ID는 원자료의 실제 값을 쓰지 않습니다. `dh-p-…`, `ic-o-…`처럼 출처 형식을 흉내 낼 때는 실제 범위 밖의 값을 씁니다(예: `ic-p-990001`). 이미 공개한 기준 roster의 점포 ID는 예외입니다. 오류 예제와 이름이 같은 `.reason.txt` 첫 줄은 기대 오류 코드이며 다음 줄은 설명입니다.
 
 `round_submission.v1`은 생성 합성 데이터의 평문 연결 검사 전용입니다. 중첩 `delta_manifest` 사본은 원본 스키마와 일치하는지 검사합니다. `model_release.v1`은 버전·manifest/weights 해시·길이를 기술합니다. 보호 프로토콜 메시지는 구현 선정 뒤 별도 계약으로 추가할 예정입니다.
 
