@@ -51,7 +51,7 @@ A는 구매자의 입력을 서버에서 검증하고 가격·상태·완료시�
 
 구매 성공은 A commit 기준이다. B 전달 대기는 주문 실패로 바꾸지 않고 로컬 상태로 표시한다. 시작 시와 주기적으로 pending을 재생한다. A와 B의 DB를 직접 교차 쓰지 않는다.
 
-purchase_event_id = SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리. 이벤트는 immutable이며 한 완료 주문에 하나다. basket_id_local=live order_id. 상품 중복은 주문 단계에서 수량을 합친다. 기존 이벤트를 원장으로 재생할 때도 같은 ID를 쓴다.
+purchase_event_id = SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리. A와 B 모두 `commerce.packages.contracts.ids.purchase_event_id`로 계산하고 검증기가 fixture를 이 식과 대조한다. 이벤트는 immutable이며 한 완료 주문에 하나다. basket_id_local=live order_id. 상품 중복은 주문 단계에서 수량을 합친다. 기존 이벤트를 원장으로 재생할 때도 같은 ID를 쓴다.
 
 | 출처 | seller_partition | time / order_rank | 수량 |
 | --- | --- | --- | --- |

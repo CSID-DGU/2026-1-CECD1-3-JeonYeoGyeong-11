@@ -5,7 +5,7 @@
   "seller_partition": "synthetic_partition",
   "customer_id_local": "ic-user-112",
   "basket_id_local": "ic-o-2539329",
-  "purchase_event_id": "a6fa13e9502b8c386dac7ba14fb20a12",
+  "purchase_event_id": "54424ecf4b3c58dfb6eb217be857fcb1",
   "time": {
     "kind": "relative_day",
     "value": "41.0"

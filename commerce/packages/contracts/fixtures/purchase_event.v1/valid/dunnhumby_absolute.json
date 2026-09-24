@@ -5,7 +5,7 @@
   "seller_partition": "simulated_independent_store",
   "customer_id_local": "dh-hh-1024",
   "basket_id_local": "dh-b-31198644013",
-  "purchase_event_id": "6bc3e1ac97f68c9a0d9d6c0fb8693910",
+  "purchase_event_id": "5b0ff4786065df09eac8cb19ee7cd4e9",
   "time": {
     "kind": "absolute",
     "value": "2017-03-14T19:22:00Z"

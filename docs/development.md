@@ -66,11 +66,12 @@ context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRunt
 from commerce.packages.contracts.ports import RecommenderRuntime
 from commerce.packages.contracts.types import TrainingResult, PersonalizationResult, ComparisonResult
 from commerce.packages.contracts.errors import ContractError, FeatureNotImplemented, JobBusyError
+from commerce.packages.contracts.ids import canonical_json, purchase_event_id, manifest_hash
 from commerce.packages.recommender.runtime import open_runtime
 from commerce.packages.fl_client.lifecycle import create_client, FLClientConfig
 ```
 
-[ports.py](../commerce/packages/contracts/ports.py)가 로컬 함수의 인자·반환 타입 기준이다. [types.py](../commerce/packages/contracts/types.py)의 dataclass는 로컬 반환 객체이며 wire JSON schema가 아니다. 타입 표기 자체가 유효성 검사를 대신하지는 않는다. 기존 JSON 13종은 [계약 목록](contracts.md)과 schema/validator/fixture를 따른다. `sys.path`를 수정하거나 `from contracts ...` 형태를 섞지 않는다.
+[ports.py](../commerce/packages/contracts/ports.py)가 로컬 함수의 인자·반환 타입 기준이다. [types.py](../commerce/packages/contracts/types.py)의 dataclass는 로컬 반환 객체이며 wire JSON schema가 아니다. 타입 표기 자체가 유효성 검사를 대신하지는 않는다. 기존 JSON 13종은 [계약 목록](contracts.md)과 schema/validator/fixture를 따른다. `sys.path`를 수정하거나 `from contracts ...` 형태를 섞지 않는다. 두 역할이 따로 계산해 같아야 하는 값(정규 JSON, `purchase_event_id`, `manifest_hash`)은 [ids.py](../commerce/packages/contracts/ids.py)를 호출하고 각자 다시 구현하지 않는다.
 
 | 호출자 → 제공자 | 인터페이스 | 의미 |
 | --- | --- | --- |

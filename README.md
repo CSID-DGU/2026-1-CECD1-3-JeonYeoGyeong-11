@@ -91,7 +91,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 │   ├── packages/
 │   │   ├── data_adapters/   B   두 출처 · live 입력 변환
 │   │   ├── recommender/     B   NLP · 관계 · 추천 runtime
-│   │   ├── contracts/       C*  스키마 13 · 픽스처 121 · 검증기
+│   │   ├── contracts/       C*  스키마 · 픽스처 · 검증기 · 공용 ID
 │   │   └── fl_client/       C   판매자 FL client
 │   ├── evaluation/          B   화면 없는 학습 · 평가 실행기
 │   ├── deploy/              C   로컬 실행 런처

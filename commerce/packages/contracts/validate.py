@@ -26,6 +26,8 @@ except ImportError:  # pragma: no cover
     sys.stderr.write("jsonschema가 필요하다. `pip install jsonschema` 후 다시 실행한다.\n")
     raise SystemExit(2)
 
+from commerce.packages.contracts.ids import purchase_event_id
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCHEMA_DIR = os.path.join(HERE, "schemas")
 FIXTURE_DIR = os.path.join(HERE, "fixtures")
@@ -131,6 +133,14 @@ def _semantic_errors(contract: str, payload: Any) -> List[Tuple[str, str, str]]:
         for code, path, detail in _semantic_errors(
                 "delta_manifest.v1", payload.get("delta_manifest")):
             out.append((code, "/delta_manifest" + path, detail))
+
+    if contract == "purchase_event.v1":
+        # interfaces.md §2. A(live)와 B(과거 출처)가 따로 계산하는 중복 제거 키라서
+        # 형태만 맞는 예시 값으로는 두 구현이 어긋나도 아무도 모른다.
+        parts = [payload.get(k) for k in ("seller_id", "source", "basket_id_local")]
+        if all(isinstance(v, str) for v in parts) and payload.get("purchase_event_id") != purchase_event_id(*parts):
+            out.append(("SCHEMA_INVALID", "/purchase_event_id",
+                        "purchase_event_id가 SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리가 아니다"))
 
     if contract in ("commerce_order.v1", "purchase_event.v1"):
         items = payload.get("items") or []

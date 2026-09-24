@@ -5,7 +5,7 @@
   "seller_partition": "platform_seller",
   "customer_id_local": "buyer-17",
   "basket_id_local": "order-001",
-  "purchase_event_id": "9f2c1ab4d7e05386bb1c4a77e2d0f513",
+  "purchase_event_id": "957265089c1b532a0e9fcc8b4a5399e3",
   "time": {
     "kind": "absolute",
     "value": "2026-09-22T03:05:00Z"
