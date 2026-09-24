@@ -51,13 +51,13 @@ D0019에 따라 전체 추천 가중치를 공유한 뒤 query_proj/scorer만 �
 목표 스택은 Python 3.11, FastAPI/Jinja2, SQLite, PyTorch다. 첫 CPU 실행을 기준으로 의존성을 검증한다. CPU 전용 여부와 속도 수치를 추정해 확정하지 않는다.
 현재 `commerce/requirements-lock.txt`에는 뼈대 실행에 필요한 것만 있다(jsonschema, numpy, fastapi, uvicorn, httpx). **Jinja2는 A가 화면을, PyTorch는 B가 모델을 구현하는 PR에서 공용 `commerce/requirements-dev.txt`와 lock에 추가하고 C가 호환을 검증한다.** 목표 스택에 적혀 있다는 이유로 이미 설치돼 있다고 가정하지 않는다.
 
-아래 표의 **현재 값**은 코드가 실제로 읽는 키이며 `docs` 게이트가 코드와 대조한다. **구현 시 추가**는 해당 기능을 만드는 담당이 도입할 예정 값이고 아직 아무도 읽지 않는다.
+각 서비스가 읽는 환경변수는 그 서비스 README의 '환경변수' 절에 적고, `docs` 게이트가 서비스 코드 전체와 대조한다. 서비스 담당이 자기 README를 고치므로 환경변수를 추가해도 이 문서를 바꿀 필요가 없다.
 
-| 프로세스 | 모듈 | 목표 주소 (현재 런처는 127.0.0.1:포트) | 현재 코드가 읽는 값 | 구현 시 추가 |
-| --- | --- | --- | --- | --- |
-| 중앙 공개 앱 | commerce.services.central_api.main:app | central.localhost:8000 | (없음) | CENTRAL_DB_PATH |
-| 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | MERCHANT_ID, FEATURE_DB_PATH, MODEL_DIR, FL_ENABLED, FL_MODE, FL_MODEL_VARIANT | MERCHANT_DB_PATH, MERCHANT_SECRET, COORDINATOR_URL, FL_CLIENT_TOKEN |
-| coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | (없음) | REGISTRY_DIR, AUTH_FILE, ROUND_STATE_DIR, FL_MODE, FL_MODEL_VARIANT |
+| 프로세스 | 모듈 | 목표 주소 (현재 런처는 127.0.0.1:포트) | 환경변수 |
+| --- | --- | --- | --- |
+| 중앙 공개 앱 | commerce.services.central_api.main:app | central.localhost:8000 | [central README](../../commerce/services/central_api/README.md) |
+| 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | [merchant README](../../commerce/services/merchant_api/README.md) |
+| coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | [coordinator README](../../commerce/services/fl_coordinator/README.md) |
 
 **필수 환경변수를 새로 도입하면 소유자가 C에게 알리고 C가 같은 변경에서 `commerce/deploy/run_local.py`를 갱신한다.** 런처가 값을 넘기지 않으면 기동이 실패하므로 A가 `MERCHANT_DB_PATH`를 필수로 만드는 변경은 런처 갱신과 함께 병합한다.
 

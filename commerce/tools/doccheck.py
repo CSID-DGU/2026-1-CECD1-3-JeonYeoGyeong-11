@@ -22,7 +22,6 @@ from typing import Dict, Iterable, List, Set, Tuple
 
 HERE = pathlib.Path(__file__).resolve()
 REPO_ROOT = HERE.parents[2]
-WORKING_AGREEMENT = REPO_ROOT / "docs/team/working-agreement.md"
 CONTRACTS_DOC = REPO_ROOT / "docs/contracts.md"
 DEVELOPMENT_DOC = REPO_ROOT / "docs/development.md"
 
@@ -51,7 +50,8 @@ BARE_DOC_PATH_RE = re.compile(r"(?<![\w(/.])(\.\./[\w./-]+\.md)")
 # CommonMark 코드 펜스. 닫는 펜스 뒤에는 공백만 올 수 있다.
 FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 ENV_TOKEN_RE = re.compile(r"\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b")
-MODULE_CELL_RE = re.compile(r"commerce\.services\.([a-z_]+)\.main:app")
+# 서비스 README의 환경변수 절. 담당이 자기 파일에 적으므로 보호 문서를 고치지 않고 값을 추가한다.
+ENV_LINE_PREFIX = "현재 코드가 읽는 값:"
 
 
 def _docs() -> List[pathlib.Path]:
@@ -116,7 +116,7 @@ def _check_fences(fail) -> int:
     return checked
 
 
-# --- 2. 환경변수: 문서의 '현재 코드가 읽는 값' vs 코드 ------------------------
+# --- 2. 환경변수: 서비스 README의 '현재 코드가 읽는 값' vs 코드 ----------------
 
 def _env_reads(path: pathlib.Path) -> Tuple[Set[str], Set[str]]:
     """(필수 키, 선택 키). os.environ[...]는 필수, os.environ.get(...)은 선택."""
@@ -148,39 +148,13 @@ def _env_written_by_launcher() -> Set[str]:
     return keys
 
 
-def _documented_env() -> Dict[str, Set[str]]:
-    """working-agreement §3 표에서 서비스별 '현재 코드가 읽는 값'을 읽는다.
-
-    열은 이름으로 찾는다. 열 순서가 바뀌어도 깨지지 않는다.
-    """
-    rows = [line for line in WORKING_AGREEMENT.read_text(encoding="utf-8").splitlines()
-            if line.strip().startswith("|")]
-    header_index = None
-    current_col = None
-    for position, line in enumerate(rows):
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if "현재 코드가 읽는 값" in cells:
-            header_index = position
-            current_col = cells.index("현재 코드가 읽는 값")
-            break
-    if header_index is None:
-        raise LookupError("working-agreement §3에서 '현재 코드가 읽는 값' 열을 찾지 못했다")
-
-    documented: Dict[str, Set[str]] = {}
-    for line in rows[header_index + 1:]:
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) <= current_col:
-            continue
-        service = None
-        for cell in cells:
-            found = MODULE_CELL_RE.search(cell)
-            if found:
-                service = found.group(1)
-                break
-        if service is None:
-            continue
-        documented[service] = set(ENV_TOKEN_RE.findall(cells[current_col]))
-    return documented
+def _documented_env(service_dir: pathlib.Path) -> Set[str]:
+    """서비스 README에서 '현재 코드가 읽는 값:' 줄의 키를 읽는다."""
+    readme = service_dir / "README.md"
+    for line in readme.read_text(encoding="utf-8").splitlines():
+        if ENV_LINE_PREFIX in line:
+            return set(ENV_TOKEN_RE.findall(line.split(ENV_LINE_PREFIX, 1)[1]))
+    raise LookupError("%s에 '%s' 줄이 없다" % (_rel(readme), ENV_LINE_PREFIX))
 
 
 def _service_env_reads(service_dir: pathlib.Path) -> Tuple[Set[str], Set[str], Dict[str, str]]:
@@ -202,23 +176,21 @@ def _check_env(fail) -> int:
         name: REPO_ROOT / "commerce/services" / name
         for name in ("central_api", "merchant_api", "fl_coordinator")
     }
-    try:
-        documented = _documented_env()
-    except LookupError as exc:
-        fail(_rel(WORKING_AGREEMENT), "표 해석 실패", str(exc))
-        return 0
-
     checked = 0
     for service, service_dir in services.items():
+        readme = _rel(service_dir / "README.md")
+        try:
+            listed = _documented_env(service_dir)
+        except LookupError as exc:
+            fail(readme, "환경변수 절 없음", str(exc))
+            continue
         required, optional, where = _service_env_reads(service_dir)
         actual = required | optional
-        listed = documented.get(service, set())
         checked += len(actual | listed)
         for key in sorted(actual - listed):
-            fail(_rel(WORKING_AGREEMENT), "코드가 읽는데 표에 없음", "%s (%s)" % (key, where[key]))
+            fail(readme, "코드가 읽는데 README에 없음", "%s (%s)" % (key, where[key]))
         for key in sorted(listed - actual):
-            fail(_rel(WORKING_AGREEMENT), "표의 '현재' 값인데 코드가 읽지 않음",
-                 "%s (%s)" % (key, _rel(service_dir)))
+            fail(readme, "README의 '현재' 값인데 코드가 읽지 않음", "%s (%s)" % (key, _rel(service_dir)))
 
     # 런처가 값을 넘기지 않으면 필수 키를 새로 만든 순간 기동이 깨진다.
     launcher_keys = _env_written_by_launcher()
