@@ -13,7 +13,7 @@
 
     CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
     SCAFFOLD OK: tests=<n>; business gates remain NOT_IMPLEMENTED
-    DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> failures=0
+    DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> fences=<n> failures=0
     POLICY OK: fl=<n> gates=<n> contracts=<n> failures=0
 
 실패하면 그 줄을 내지 않는다. 있는 그대로의 실패를 요약 문자열로 덮지 않기
@@ -99,7 +99,7 @@ def _not_implemented(gate: str, need: str) -> Callable[[bool], int]:
 GATES: Dict[str, Tuple[str, Callable[[bool], int]]] = {
     "contracts": ("모든 스키마와 fixture 검증(G1)", _run_contracts),
     "scaffold": ("공통 import·runtime 연결·기동 뼈대 검사", _run_scaffold),
-    "docs": ("문서 대 코드 대조(링크·환경변수·게이트명·import·도구 지시 파일)", _run_docs),
+    "docs": ("문서 대 코드 대조(링크·환경변수·게이트명·import·도구 지시 파일·코드 펜스)", _run_docs),
     "policy": ("자동 병합 전 위험 신호 검사(FL 기본값·게이트 상태 주장·계약 집합)", _run_policy),
     "a1": ("A 주문·권한·중앙 비잔류", _not_implemented("a1", "A 주문 API와 합성 상태 전이·권한·쿠키 검증")),
     "b1": ("B 데이터·텍스트 입력", _not_implemented("b1", "B data_adapters의 두 출처/live fixture와 텍스트 정규화 검증")),

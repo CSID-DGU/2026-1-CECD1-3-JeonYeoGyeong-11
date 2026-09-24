@@ -5,7 +5,8 @@
 
 기존 게이트는 코드 대 코드만 본다. 이 검사는 문서가 약속한 것과 코드에 실제로
 있는 것이 어긋나는 경우를 잡는다. 판정은 종료 코드 0과 마지막 줄
-`DOCS OK: links=<n> env=<n> gates=<n> imports=<n> failures=0`의 동시 충족이다.
+`DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> fences=<n> failures=0`의
+동시 충족이다.
 
 표준 라이브러리만 사용한다. 실패는 파일·항목·기대/실제를 함께 출력한다.
 """
@@ -44,6 +45,10 @@ VENDOR_INSTRUCTION_FILES = (
 VENDOR_POINTER_MAX_LINES = 12
 
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+?)(?:#[^)]*)?\)")
+# 링크 문법 밖에 적힌 상대 문서 경로. 렌더하면 눌리지 않고 링크 검사도 비켜 간다.
+BARE_DOC_PATH_RE = re.compile(r"(?<![\w(/.])(\.\./[\w./-]+\.md)")
+# CommonMark 코드 펜스. 닫는 펜스 뒤에는 공백만 올 수 있다.
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 ENV_TOKEN_RE = re.compile(r"\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b")
 MODULE_CELL_RE = re.compile(r"commerce\.services\.([a-z_]+)\.main:app")
 
@@ -71,6 +76,42 @@ def _check_links(fail) -> int:
             checked += 1
             if not (doc.parent / target).resolve().exists():
                 fail(_rel(doc), "끊어진 링크", target)
+        for number, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), 1):
+            for match in BARE_DOC_PATH_RE.finditer(LINK_RE.sub("", line)):
+                fail(_rel(doc), "링크가 아닌 문서 경로",
+                     "%s:%d %s ([이름](경로) 형식으로 쓴다)" % (_rel(doc), number, match.group(1)))
+    return checked
+
+
+# --- 1b. 코드 펜스: 원문은 멀쩡해도 GitHub 렌더가 깨지는 경우 ------------------
+
+def _check_fences(fail) -> int:
+    """닫는 펜스 뒤에 글자가 붙으면 CommonMark는 닫힌 것으로 보지 않는다.
+
+    그러면 파일 끝까지 전부 코드 블록으로 렌더되고 그 안의 링크도 눌리지 않는다.
+    에이전트는 원문을 읽으므로 알아채지 못하고 사람만 깨진 화면을 본다.
+    """
+    checked = 0
+    for doc in _docs():
+        opened = None  # (문자, 길이, 줄 번호)
+        for number, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), 1):
+            match = FENCE_RE.match(line)
+            if not match:
+                continue
+            run, rest = match.group(1), match.group(2)
+            if opened is None:
+                if run[0] == "`" and "`" in rest:
+                    continue  # ```x``` 같은 인라인 코드는 펜스가 아니다.
+                opened = (run[0], len(run), number)
+                checked += 1
+            elif run[0] == opened[0] and len(run) >= opened[1]:
+                if rest.strip():
+                    fail(_rel(doc), "닫는 펜스 뒤에 본문이 붙음",
+                         "%s:%d 펜스 다음 줄로 본문을 내린다" % (_rel(doc), number))
+                # 렌더러는 여기서 닫지 않지만, 한 번 보고했으니 뒤쪽 펜스까지 연쇄로 틀리지 않게 닫는다.
+                opened = None
+        if opened is not None:
+            fail(_rel(doc), "닫히지 않은 코드 펜스", "%s:%d" % (_rel(doc), opened[2]))
     return checked
 
 
@@ -265,10 +306,11 @@ def run(verbose: bool = False) -> int:
     gates = _check_gates(fail)
     imports = _check_imports(fail)
     vendor = _check_vendor_pointers(fail)
+    fences = _check_fences(fail)
     _check_legacy_names(fail)
 
-    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d·도구지시 %d, 실패 %d건."
-          % (links, env, gates, imports, vendor, len(failures)))
+    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d·도구지시 %d·코드펜스 %d, 실패 %d건."
+          % (links, env, gates, imports, vendor, fences, len(failures)))
     if failures:
         # contracts 러너와 같은 규약: 실패 시 OK 줄을 내지 않는다.
         for where, kind, detail in failures:
@@ -276,8 +318,8 @@ def run(verbose: bool = False) -> int:
         return 1
     if verbose:
         print("문서 %d개를 읽었다." % len(_docs()))
-    print("DOCS OK: links=%d env=%d gates=%d imports=%d vendor=%d failures=0"
-          % (links, env, gates, imports, vendor))
+    print("DOCS OK: links=%d env=%d gates=%d imports=%d vendor=%d fences=%d failures=0"
+          % (links, env, gates, imports, vendor, fences))
     return 0
 
 

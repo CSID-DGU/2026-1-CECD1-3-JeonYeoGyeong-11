@@ -30,7 +30,7 @@ run_local.py와 호환 의존성·환경 예제를 소유한다. 중앙/coordina
 판매자별 origin을 분리하고 루프백 해석·쿠키 범위를 확인한다. REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일.
 A는 lifespan hook, B는 runtime API를 제공한다. C가 다른 소유자의 DB를 직접 변경하지 않는다.
 
-../../design/model-lab.md/D0018에 따라 집계 모듈을 HTTP 앱과 분리하고 B의 실험 실행기에서도 재사용한다. 초기 학습 release의 로컬 import/검증/registry 등록을 제공한다. G4 보호 모듈 테스트는 A 화면 없이 합성 입력으로 실행할 수 있으며, 서비스 전체 비잔류는 A 연결 후 추가 검사한다.
+[독립 모델 실험](../../design/model-lab.md)과 D0018에 따라 집계 모듈을 HTTP 앱과 분리하고 B의 실험 실행기에서도 재사용한다. 초기 학습 release의 로컬 import/검증/registry 등록을 제공한다. G4 보호 모듈 테스트는 A 화면 없이 합성 입력으로 실행할 수 있으며, 서비스 전체 비잔류는 A 연결 후 추가 검사한다.
 
 ## 공통 모델과 개인화 분리
 D0019/[모델 비교](../../design/comparison.md)을 따른다. FL_MODEL_VARIANT는 한 실행 동안 고정하고 text_only/text_relation의 registry·라운드·인증 설정을 분리한다. 먼저 순차 실행하고 두 공통 release를 판매자에 미리 설치한다. shape가 같더라도 architecture/variant가 다른 제출은 c1에서 거부한다.
