@@ -5,7 +5,7 @@
 A/B가 독립 구현해도 연결되는 계약과 실행 환경을 제공하고 최종 개별 업데이트 보호 집계를 완성한다.
 소유: commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/.
 첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 환경·게이트는 [작업 규칙](../working-agreement.md), 집계·배포는 [인터페이스 계약](../../design/interfaces.md), 실제 모델 연결은 [모델 경계](../../design/model.md) §4~8, 보호 전제는 [아키텍처](../../design/architecture.md).
-지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 저장소 준비를 맡으면 통합 브랜치·보호 설정·계약 CI를 별도 산출물로 기록한다.
+지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 브랜치 보호나 CI를 바꾸면 같은 PR에서 [Git 협업](../git-workflow.md) 'CI와 저장소 설정' 절을 갱신한다. 설정값을 읽는 것만으로 강제된다고 적지 않고 실제로 막히는지 확인한다.
 
 ## 첫 작업 두 갈래
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 [팀 시작 안내](../start.md)의 C 첫 작업을 확인하고, 전체 coordinator와 보호 집계를 한 번에 구현하지 않는다.

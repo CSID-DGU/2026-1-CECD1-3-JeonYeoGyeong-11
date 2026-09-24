@@ -2,7 +2,7 @@
 
 **This is the shared entry point for every coding agent.** A/B/C may use different tools on separate machines. Vendor-specific instruction files must stay short and point here; do not duplicate project rules in them.
 
-The gates in `commerce/tools/` and CI enforce a subset of these rules. Review routing, ownership and human decisions also require the workflow below; a green CI result does not prove those steps happened.
+The gates in `commerce/tools/` and CI enforce a subset of these rules. Review routing, ownership and human decisions also require the workflow below; a green CI result does not prove those steps happened. GitHub currently enforces only the `scaffold` check: it will merge a CODEOWNERS path with no approval, so the merging agent checks that approval itself.
 
 - Read this file, then `docs/team/start.md` and only your own A/B/C card. Follow the scoped reading guide there; do not preload all of `docs/`. Inspect the relevant package code and contracts before implementing a bounded task. `docs/README.md` is a lookup index, not required reading in full. No private document bundle is required.
 - At session start, check your PR feedback, assigned issues, requested reviews and open PRs affecting your role, then inspect only new relevant diffs. Use the commands in `docs/team/git-workflow.md`; there is no background review watcher. Prioritize work that blocks peers without waiting for every peer to be online.

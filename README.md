@@ -100,7 +100,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 └── fedcommerce/                 이전 탐색 분석 · 참고용
 ```
 
-`A` `B` `C`는 그 경로를 **작성하는** 담당입니다. `*`는 세 역할이 모두 소비하는 것이라 작성자 외 **다른 한 명의 승인이 있어야 병합**되는 경로입니다. 예를 들어 계약은 C가 쓰지만 A·B가 그대로 쓰기 때문에 C 혼자 바꿀 수 없습니다.
+`A` `B` `C`는 그 경로를 **작성하는** 담당입니다. `*`는 세 역할이 모두 소비하는 것이라 작성자 외 **다른 한 명의 승인을 받고 병합**하는 경로입니다. 현재 GitHub 설정은 승인 없는 병합을 막지 않으므로 병합하는 에이전트가 확인합니다([Git 협업](docs/team/git-workflow.md) 'CI와 저장소 설정'). 예를 들어 계약은 C가 쓰지만 A·B가 그대로 쓰기 때문에 C 혼자 바꿀 수 없습니다.
 
 소유 경로의 기준은 [작업 규칙](docs/team/working-agreement.md) §1입니다. **공동 검토**로 표시한 곳과 requirements·CI·동작 명세는 바꿀 때 다른 담당자의 승인이 필요하고, 그 목록은 [.github/CODEOWNERS](.github/CODEOWNERS)에 있습니다.
 
