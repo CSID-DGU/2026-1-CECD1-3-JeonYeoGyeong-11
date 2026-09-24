@@ -1,4 +1,8 @@
-"""B's callable skeleton. No method pretends to persist or train successfully."""
+"""B's callable skeleton. No method pretends to persist or train successfully.
+
+UnimplementedRuntime is the reference stub that gate scaffold checks. Build the
+real runtime as a separate class and have open_runtime return it; keep this one.
+"""
 from pathlib import Path
 
 from commerce.packages.contracts.errors import FeatureNotImplemented

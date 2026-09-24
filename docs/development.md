@@ -46,9 +46,18 @@ context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRunt
 `build_context`의 `runtime_factory`와 `client_factory`가 그 주입점이다. C도 c1의 stub trainer를 같은 방식으로 주입한다.
 
 - double은 **자기 소유 경로**에 둔다. A는 `commerce/services/merchant_api/` 또는 자기 테스트 아래, C는 `commerce/tests/e2e/` 아래다.
-- `commerce/packages/recommender/runtime.py`를 고쳐서 성공을 만들지 않는다. B 소유이며 `gate scaffold`가 모든 메서드의 예외 발생을 검사한다.
+- A·C는 `commerce/packages/recommender/runtime.py`를 고쳐 성공을 만들지 않는다. B 소유이며 `gate scaffold`가 기준 stub `UnimplementedRuntime`의 모든 메서드가 예외를 내는지 검사한다. B는 실제 runtime을 별도 클래스로 만들어 `open_runtime`이 그것을 돌려주게 하고, stub 클래스는 남겨 둔다.
 - `FeatureNotImplemented`를 잡아 delivered·학습 완료·정상 추천으로 바꾸지 않는다.
 - double은 `ports.py`의 시그니처와 `types.py`의 반환 타입을 지킨다. 계약과 다른 모양을 돌려주면 실제 연결에서 다시 깨진다.
+
+### scaffold 검사가 고정하는 것
+
+필수 CI check인 `gate scaffold`는 [test_scaffold.py](../commerce/tests/e2e/test_scaffold.py)의 두 종류 검사를 실행한다.
+
+- **항상 지킬 경계** (`ScaffoldInvariants`): 판매자별 runtime·실행기 분리, 기준 stub의 미구현 예외, 중앙·coordinator에 판매자 상태와 주문 경로가 없음, 오류 응답 schema. 기준 stub을 직접 주입하므로 A·B의 실제 구현이 결과를 바꾸지 않는다.
+- **아직 없는 C 기능** (`NotYetImplemented`): FL 활성화 거부, coordinator 제출 경로 없음. 그 기능을 구현하는 C PR이 같은 PR에서 실제 동작 검사로 바꾼다.
+
+다른 역할의 현재 구현 상태는 여기서 고정하지 않는다. 자기 구현 때문에 scaffold가 깨지면 게이트를 느슨하게 하지 말고 C에게 PR로 알린다. 경계를 어긴 것인지, 테스트가 임시 상태를 고정한 것인지 함께 본다. `MerchantSettings`에 필드를 추가할 때는 기본값을 둔다. scaffold가 기존 세 필드만으로 만든다.
 
 ## 고정한 import와 타입
 
