@@ -3,7 +3,7 @@
 
 ## 목표와 소유
 구매자/판매자 화면과 판매자 로컬 주문을 만들고 B의 실제 추천을 화면에 연결한다.
-소유: commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/.
+소유: commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/, commerce/evaluation/metrics/.
 첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 소유권·환경은 [작업 규칙](../working-agreement.md), 배치·데이터 경계는 [아키텍처](../../design/architecture.md), 주문·추천 연결은 [인터페이스 계약](../../design/interfaces.md) §1~4.
 지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 이벤트/추천 계약 변경과 C의 실행 훅 변경을 확인한다.
 
@@ -46,7 +46,11 @@ NLP/FL 미구현 stub을 사용한 경우 결과에 명시하고 g2/g3 통과라
   - Recall@10/20, NDCG@10/20 (고객 → 판매자 macro, micro 별도)
   - 동점 구간 기대값, repeat/explore 분리, 신상품 cohort 지표
   - 모델이 아닌 기준선: 로컬 인기순, P-TopFreq
-- 입력은 B 실행기가 넘기는 (판매자, 고객, cutoff, 후보별 점수, 정답 집합)이다. 형식은 B와 정하고, B 실행기가 이 모듈을 호출한다. A가 특징이나 모델을 직접 계산하지 않는다.
+- 입력은 B 실행기가 예제마다 넘기는 두 묶음이다.
+  - 채점용: (판매자, 고객, cutoff, 후보별 모델 점수, 정답 집합)
+  - 기준선·분리 보고용: cutoff 이전 그 고객의 상품별 구매 횟수, cutoff 이전 판매자의 상품별 구매 횟수, 정답 상품별 repeat/explore·신상품 cohort 표시
+- 기준선 점수는 이 횟수로만 계산하며 모델 특징이 아니다. A는 원자료나 특징 DB를 직접 읽지 않는다.
+- 입력 타입은 `metrics/` 안에 둔다. B 실행기만 쓰는 로컬 타입이라 contracts에 올리지 않는다. 형식은 B와 정하고 B 실행기가 이 모듈을 호출한다.
 - 손으로 계산할 수 있는 합성 예제를 테스트로 두고 a1 selfcheck에서 함께 호출한다. B의 D7 점검(E-G0와 기준선 수치) 전에 준비한다.
 
 ## 이후 협업

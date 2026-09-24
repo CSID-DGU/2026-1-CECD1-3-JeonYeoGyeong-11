@@ -10,14 +10,14 @@ A/B가 독립 구현해도 연결되는 계약과 실행 환경을 제공하고 
 ## 첫 작업 두 갈래
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 [팀 시작 안내](../start.md)의 C 첫 작업을 확인하고, 전체 coordinator와 보호 집계를 한 번에 구현하지 않는다.
 
-1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다. stub trainer는 자기 소유 경로에 두고 주입한다([개발 안내 §상대 모듈을 대체하는 방법](../../development.md#상대-모듈을-대체하는-방법)). c1에만 쓰는 검증 코드(npz 길이·해시, 라운드 상태)도 `fl_coordinator/`·`fl_client/` 아래 둔다. `contracts/`는 세 역할이 함께 쓰는 보호 경로라 바꿀 때마다 다른 소유자의 승인이 필요하므로, A·B도 쓰는 것만 둔다. 더미 tensor는 `shared_model_manifest.v1/valid/dummy_tensors_for_round_bringup.json` fixture의 이름·shape를 기준으로 만든다. 그 fixture의 `manifest_hash`는 형태 예시이므로 `ids.manifest_hash`로 다시 계산한다.
+1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다. stub trainer(가짜 B runtime)는 `commerce/tests/e2e/`에 두고 자기 `create_client`에 직접 넘긴다. A의 `build_context`는 거치지 않는다([개발 안내 §상대 모듈을 대체하는 방법](../../development.md#상대-모듈을-대체하는-방법)). c1에만 쓰는 검증 코드(npz 길이·해시, 라운드 상태)도 `fl_coordinator/`·`fl_client/` 아래 둔다. `contracts/`는 세 역할이 함께 쓰는 보호 경로라 바꿀 때마다 다른 소유자의 승인이 필요하므로, A·B도 쓰는 것만 둔다. 더미 tensor는 `shared_model_manifest.v1/valid/dummy_tensors_for_round_bringup.json` fixture의 이름·shape를 기준으로 만든다. 그 fixture의 `manifest_hash`는 형태 예시이므로 `ids.manifest_hash`로 다시 계산한다.
 2. 동시에 최종 보호 집계 구현의 타당성을 먼저 확인한다. 허용하는 구현 범위와 이탈 허용 0은 [결정](../../design/decisions.md) D0021이다. 기존 검증된 구현·정확한 버전·환경 호환·위협 가정·참여 하한(이탈 허용 0)·메시지·양자화·실패 조건을 작은 예제로 검토한다.
 
 보호 방식 선정 기록은 C 첫 산출물이다. 조사 내용은 `docs/design/` 아래 새 문서에 두고, 채택 결론은 사람이 결정한 뒤 [결정 요약](../../design/decisions.md)에 D 번호로 올린다. G3까지 다 만든 뒤 처음 검토하지 않는다. 선정 전에도 합성 평문 c1과 A/B 계약 작업은 진행 가능하다.
 라이브러리 미지원/예산 초과면 근거와 대안을 팀에 보고한다. “메모리만 썼으므로 안전”으로 목표를 낮추지 않는다.
 
 ## c1 산출물
-- Bearer seller 인증(인증 실패 코드는 OQ13 결정 뒤), round config, round_submission/npz 검증, 재시도 멱등성.
+- Bearer seller 인증(인증 실패 코드는 OQ13 결정 뒤), round config, round_submission/npz 검증, 재시도 멱등성. FL client의 합성 평문 활성화는 OQ17 결정 뒤.
 - 사전 고정 cohort 전원 완료 또는 전체 폐기. 지각 이월 없음.
 - 실제 npz 전송 길이/해시와 개별 tensor 크기를 구분한 제한.
 - immutable model release, latest/manifest/weights, 신규 판매자 설치.

@@ -46,7 +46,7 @@ from commerce.services.merchant_api.context import MerchantSettings, build_conte
 context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRuntime(sid))
 ```
 
-`build_context`의 `runtime_factory`와 `client_factory`가 그 주입점이다. C도 c1의 stub trainer를 같은 방식으로 주입한다.
+`build_context`의 `runtime_factory`와 `client_factory`가 A의 주입점이다. C는 A의 `build_context`를 거치지 않고 자기 `create_client(runtime, jobs, config)`에 stub runtime을 직접 넘긴다.
 
 - double과 테스트는 **자기 소유 경로** 아래 둔다. 예: A는 `commerce/services/merchant_api/tests/`, B는 `commerce/packages/data_adapters/tests/`, C는 `commerce/tests/e2e/`. CI는 테스트를 직접 찾지 않으므로 자기 selfcheck가 호출한다. `tests/`에 `__init__.py`를 두면 `unittest.defaultTestLoader.discover("<소유 경로>/tests", top_level_dir=<저장소 루트>)`로 찾을 수 있다. 상위의 `commerce/services/` 등은 `__init__.py` 없는 namespace 패키지여도 된다. `tests/`에 `__init__.py`가 없으면 discover가 ImportError를 낸다.
 - A·C는 `commerce/packages/recommender/runtime.py`를 고쳐 성공을 만들지 않는다. B 소유이며 `gate scaffold`가 기준 stub `UnimplementedRuntime`의 모든 메서드가 예외를 내는지 검사한다. B는 실제 runtime을 별도 클래스로 만들어 `open_runtime`이 그것을 돌려주게 하고, stub 클래스는 남겨 둔다.

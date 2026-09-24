@@ -14,7 +14,7 @@
 | contract_error.v1 | 오류 응답 | 경계별 안전한 오류 표현 |
 | shared_model_manifest.v1 | 공유 tensor 구조 | 공통 모델 검증 |
 | round_config.v1 | 학습 기준 모델·라운드 설정 | 학습 조정 |
-| delta_manifest.v1 | 업데이트 구조와 완료 여부 | 판매자 학습 모듈 → FL client |
+| delta_manifest.v1 | 업데이트 구조와 완료 여부 | 판매자 FL client가 B의 TrainingResult로 작성 |
 | round_submission.v1 | 업데이트·지표·payload 설명 | 생성 합성 데이터의 평문 연결 검사 전용 |
 | model_release.v1 | 배포 버전·해시·크기 | 모델 설치 검증 |
 | round_submit_ack.v1 | 제출·집계 진행 결과 | 합성 FL 연결 검사 |

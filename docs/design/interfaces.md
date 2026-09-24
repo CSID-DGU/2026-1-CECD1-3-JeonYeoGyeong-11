@@ -15,7 +15,7 @@ JSON 필드·타입은 commerce/packages/contracts/schemas/의 같은 이름 파
 | contract_error.v1 | 공통 거부 응답 | 원문·비밀을 detail에 넣지 않음 |
 | shared_model_manifest.v1 | B → C 모델 구조 | 상품·고객축 없는 공통 구조 |
 | round_config.v1 | C → 판매자 학습 설정 | 기준 모델과 라운드 |
-| delta_manifest.v1 | B → 판매자 FL client | 업데이트의 구조·완료 여부 |
+| delta_manifest.v1 | 판매자 FL client가 B의 TrainingResult(shared_delta·metrics·completed)로 작성 | 업데이트의 구조·완료 여부 |
 | round_submission.v1 | 판매자 → C | 합성 평문 모드의 manifest·metrics·바이트 설명 |
 | model_release.v1 | C → 판매자 | 설치할 집계 모델 식별자·무결성 |
 | round_submit_ack.v1 | C → 판매자 | 합성 모드 제출 진행·처분 |

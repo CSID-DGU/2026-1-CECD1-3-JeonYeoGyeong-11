@@ -36,7 +36,7 @@ git switch -c commerce/a/first-order origin/main
 | 역할 | 첫 작업에 필요한 참조 | 먼저 보여줄 결과 | 이후 상대에게 확인할 것 |
 | --- | --- | --- | --- |
 | A | [A 카드](tasks/A.md), [merchant 진입점](../../commerce/services/merchant_api/README.md)·현재 코드, [인터페이스](../design/interfaces.md) §1~3부터. 추천 연결 시 §4 | 합성 주문 한 건의 상태·catalog/purchase_event 예제와 작은 검사 | B의 영속 반영·상품 전달 순서, C 기동 설정 |
-| B | [B 카드](tasks/B.md), [어댑터](../../commerce/packages/data_adapters/README.md)·[추천 runtime](../../commerce/packages/recommender/README.md)·현재 코드, [데이터](../design/data.md)의 해당 입력 절. NLP 구현 시 [모델](../design/model.md) §1~2·7, 학습 전 손실·평가 규칙 | 두 출처/live 공통 입력·text builder 예제 | A 상품 매핑, C manifest·학습 반환 |
+| B | [B 카드](tasks/B.md), [어댑터](../../commerce/packages/data_adapters/README.md)·[추천 runtime](../../commerce/packages/recommender/README.md)·현재 코드, [데이터](../design/data.md)의 해당 입력 절. NLP 구현 시 [모델](../design/model.md) §1~2·7, 학습 전 손실·평가 규칙 | Instacart·live 공통 입력과 text builder 예제(DH는 뒤에) | A 상품 매핑, C manifest·학습 반환 |
 | C | [C 카드](tasks/C.md), [FL client 진입점](../../commerce/packages/fl_client/README.md)·현재 코드, [인터페이스](../design/interfaces.md) §1·5~8. 보호 조사 시 [아키텍처](../design/architecture.md) §2~3 | 더미 tensor 라운드의 작은 예제와 보호 후보의 실행 가능성 | B 실제 tensor 계약, A lifespan/실행 환경 |
 
 위 결과는 먼저 피드백하기 좋은 단위다. 더 넓은 범위를 맡았다면 독립적으로 가능한 구현을 연속 진행해도 된다. 작은 예제 성공을 a1/b1/c1 전체 완료로 보고하지 않는다.

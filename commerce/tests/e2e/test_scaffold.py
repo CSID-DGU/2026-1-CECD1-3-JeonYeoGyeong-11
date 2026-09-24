@@ -135,7 +135,7 @@ class ScaffoldInvariants(_TempSeller):
 
 class NotYetImplemented(_TempSeller):
     def test_enabled_fl_fails_closed_in_both_modes(self):
-        # c1 retires synthetic_plaintext, g4 retires protected.
+        # c1 retires synthetic_plaintext once OQ17 is decided; g4 retires protected.
         for mode in ("protected", "synthetic_plaintext"):
             settings = MerchantSettings(seller_id=self.settings.seller_id, feature_db_path=self.settings.feature_db_path,
                                         model_dir=self.settings.model_dir, fl=FLClientConfig(enabled=True, mode=mode))
