@@ -53,7 +53,7 @@ git switch -c commerce/a/first-order origin/main
 
 ## 4. 다음 사람이 이어받을 때
 
-인계 형식은 [PR 템플릿](../../.github/PULL_REQUEST_TEMPLATE.md) 하나다. 템플릿의 각 절을 짧게 채우고, '다음 작업 / 인계'의 첫 줄 `현재 상태 / 다음 행동 / 다음 담당 계정 / 관련 SHA·Issue`는 [Git 협업](git-workflow.md)의 상태 표기를 쓴다. 팀원이 결과를 읽고 필요한 검사를 재현한다. 코드 생성과 검증 완료는 구분한다.
+인계는 [PR 템플릿](../../.github/PULL_REQUEST_TEMPLATE.md)을 짧게 채우면 된다. 특히 검사 결과, 미구현·stub, `다음 행동 / 담당 계정`을 적는다. SHA와 병합 상태는 GitHub이 보여 준다. 팀원이 결과를 읽고 필요한 검사를 재현한다. 코드 생성과 검증 완료는 구분한다.
 
 새 에이전트에 전달할 정보도 역할·작업 범위·기준 PR/SHA와 그 PR의 인계면 충분하다. 공통 규칙은 루트 AGENTS.md를 사용한다. Git 업로드와 병합은 [Git 규약](git-workflow.md)을 따른다.
 
