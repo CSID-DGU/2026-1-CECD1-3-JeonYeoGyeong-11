@@ -92,20 +92,7 @@ B는 contract_error에 대응하는 코드·field_path를 가진 예외를 제�
 
 recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B의 로컬 ps- ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
 
-compare_local(request)는 다음 **로컬 Python 객체** ComparisonResult를 반환한다. A는 속성으로 읽으며 이 객체를 JSON 계약으로 외부 직렬화하지 않는다.
-
-| 항목 | 의미 |
-| --- | --- |
-| comparison_id | 판매자 로컬 비교 식별자 |
-| as_of, feature_snapshot_id | 네 결과가 함께 참조한 시점과 immutable 특징 snapshot |
-| candidate_set_hash | 중복 제거 후 상품 ID 문자열 오름차순으로 정렬한 후보 목록의 정규 JSON SHA-256 |
-| arms | T-G/R-G/T-P/R-P 순서의 4개 결과 |
-| 각 arm의 arm_id, model_variant, mode | 결과 ID, text_only/text_relation, global/personalized |
-| 각 arm의 available, unavailable_reason | 준비 여부와 고정된 비민감 사유. 가능하면 사유는 null |
-| 각 arm의 base_model_version, personalization_revision | base는 비교 설정에 지정한 ID(미설정이면 null). G와 미준비 P의 revision은 null. 준비된 P는 같은 variant G의 base와 일치 |
-| 각 arm의 recommendation | available이면 기존 recommendation.v1, 아니면 null |
-
-unavailable_reason은 model_not_ready / personalization_not_ready / insufficient_data / validation_rejected / base_mismatch 중 하나다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
+compare_local(request)는 로컬 Python 객체 ComparisonResult를 반환한다. A는 속성으로 읽고 JSON 계약으로 외부 직렬화하지 않는다. 필드와 사유 값은 `commerce/packages/contracts/types.py`의 `ComparisonResult`·`ComparisonArm`·`UnavailableReason`이 기준이다. 코드에 없는 의미만 적는다. arms는 T-G/R-G/T-P/R-P 순서다. candidate_set_hash는 중복을 없애고 상품 ID 오름차순으로 정렬한 후보 목록의 정규 JSON SHA-256이다(`ids.canonical_json`). 준비된 P의 base는 같은 variant G의 base와 같다. available이 아니면 recommendation과 personalization_revision은 null이다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
 
 B의 seller runtime이 원장·catalog snapshot과 후보를 한 번 고정한다. A가 별도 요청 4개를 호출하거나 비교 중 구매를 arm별로 따로 반영하지 않는다. 준비된 comparison 설정은 variant별 base checkpoint를 지정하고 요청 중 latest를 따라가지 않는다. 상세 시나리오와 판정은 [모델 비교](comparison.md)을 따른다.
 

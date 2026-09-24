@@ -71,19 +71,7 @@ X[u,c]와 B[b,c]는 구매 여부의 이진 행렬이다. 공동구매 강도는
 
 B는 seller별 RecommenderRuntime 객체를 제공한다. A와 C는 같은 판매자 객체에 연결하고 다른 판매자 상태를 전역 singleton으로 섞지 않는다.
 
-~~~python
-runtime = open_runtime(seller_id, feature_db_path, model_dir)
-runtime.ingest_purchase_event(event: dict) -> None
-runtime.upsert_catalog_item(item: dict, source_seq: int) -> None
-runtime.predict_local(request: dict, *, model_variant="text_relation", mode="auto") -> dict
-runtime.get_local_data_ref() -> str
-runtime.get_shared_manifest(*, model_variant="text_relation") -> dict
-runtime.export_shared_state(*, model_variant="text_relation") -> dict[str, numpy.ndarray]
-runtime.train_round(local_data_ref: str, round_config: dict, *, model_variant="text_relation") -> TrainingResult
-runtime.install_release(release: dict, manifest: dict, tensors: dict, *, model_variant="text_relation") -> None
-runtime.personalize_local(local_data_ref: str, personal_config: dict, *, model_variant="text_relation") -> PersonalizationResult
-runtime.compare_local(request: dict) -> ComparisonResult
-~~~
+메서드 시그니처와 반환 타입은 `commerce/packages/contracts/ports.py`의 `RecommenderRuntime`과 `types.py`가 기준이다. 아래는 코드에 없는 의미다.
 
 ingest 정상 반환은 영속 반영 완료를 뜻한다. 이미 같은 event ID·본문이면 성공으로 반환하고, 다른 본문이면 DUPLICATE_EVENT다. B는 이벤트 기록·반영 ID·feature_epoch를 같은 특징 DB 트랜잭션으로 갱신한다. catalog의 source_seq는 A의 로컬 outbox 순번이며 같은 상품의 오래된 갱신이 새 값을 덮지 않도록 저장한다. source_seq는 catalog JSON에 임의 추가하지 않는다.
 

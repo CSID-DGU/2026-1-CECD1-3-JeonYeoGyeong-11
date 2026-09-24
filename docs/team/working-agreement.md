@@ -49,7 +49,7 @@ D0019에 따라 전체 추천 가중치를 공유한 뒤 query_proj/scorer만 �
 | 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | [merchant README](../../commerce/services/merchant_api/README.md) |
 | coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | [coordinator README](../../commerce/services/fl_coordinator/README.md) |
 
-**필수 환경변수는 런처가 먼저 넘기고 서비스가 나중에 필수로 읽는다.** 런처는 자식 프로세스에 자기가 적은 값만 넘기므로, 넘기지 않는 값을 필수로 읽으면 기동이 실패한다. 서비스 담당이 C에게 알리면 C가 `commerce/deploy/run_local.py`에서 그 값을 넘기는 PR을 먼저 병합하고, 서비스 담당은 그 뒤에 그 값을 필수로 읽는 PR을 병합한다. 두 소유자의 변경을 한 PR에 섞지 않는다. docs 게이트가 순서를 검사한다(런처가 넘기지 않는 필수 값이면 실패). 선택 값(`os.environ.get`)은 런처 변경 없이 먼저 넣어도 된다.
+**필수 환경변수.** 런처가 넘기지 않는 필수 값은 docs 게이트가 막는다. C에게 런처(`commerce/deploy/run_local.py`) 변경을 요청해 먼저 병합하거나, `os.environ.get`과 기본값을 쓴다.
 
 모든 호스트명은 로컬 loopback으로 해석되도록 C가 실행 환경에서 확인한다. 안 되면 hosts 또는 로컬 DNS 설정 절차를 제공한다. 같은 localhost의 포트만으로 쿠키를 분리하지 않는다. 쿠키는 Domain을 지정하지 않는 host-only, HttpOnly, SameSite 설정과 CSRF 검사를 사용한다. HTTPS 배포에서는 Secure를 켠다.
 
@@ -75,7 +75,7 @@ REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 
 
 A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐이다. 자기 머신에서만 되는 상태를 만들지 않는다.
 
-- 작업을 시작하거나 `main`을 반영할 때 **자기 머신에서 lock을 다시 설치하고 게이트를 직접 실행한다.** 상대가 통과시켰다는 기록만 보고 자기 환경이 같다고 보지 않는다.
+- lock이 바뀌었으면 **자기 머신에서 다시 설치하고**, 게이트는 자기 머신에서 직접 실행한다. 상대가 통과시켰다는 기록만 보고 자기 환경이 같다고 보지 않는다.
 - **의존성을 추가하면 같은 PR에서 `commerce/requirements-dev.txt`와 `commerce/requirements-lock.txt`를 함께 갱신한다.** 자기 머신에만 설치하고 lock을 두지 않으면 다른 두 머신은 재현할 수 없고 아무도 알아채지 못한다. lock을 바꾼 PR의 검토는 [Git 협업](git-workflow.md) 첫 표를 따른다.
 - PR에 **실행한 OS와 Python 버전**을 남긴다. `run_local.py`에는 Windows 분기가 있고 CI는 Linux다. "내 머신에서 통과"는 OS를 밝히지 않으면 재현 근거가 아니다.
 - 로컬에만 있는 파일(`commerce/deploy/var/`, `.team/`, 내려받은 원자료)은 다른 머신에 없다. 그 존재를 전제로 한 지시나 검사를 만들지 않는다.
