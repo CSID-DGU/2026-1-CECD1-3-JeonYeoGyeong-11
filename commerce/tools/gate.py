@@ -12,7 +12,7 @@
 마지막 줄은 각각 다음 하나다.
 
     CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
-    SCAFFOLD OK: tests=<n>; business gates remain NOT_IMPLEMENTED
+    SCAFFOLD OK: tests=<n>; business gates are checked by gate business
     DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> fences=<n> failures=0
     POLICY OK: fl=<n> gates=<n> contracts=<n> failures=0
     BUSINESS OK: passed=<n> not_implemented=<n> failures=0
@@ -32,8 +32,10 @@ NOT_IMPLEMENTED다. selfcheck의 종료 코드 규약:
     1  실패한 항목이 있음
     2  검사 자체가 깨짐(모듈 import 실패 등)
 
-CI가 모든 PR에서 돌리므로, 원자료·가중치처럼 CI에 없는 자원이 필요한 항목은
-2가 아니라 남은 항목(3)으로 이유와 함께 보고한다.
+CI가 모든 PR에서 돌리므로 게이트 항목은 lock과 저장소만으로 돌 수 있는 것만
+둔다(작은 합성 입력, 작은 테스트 모델). 원자료·실제 가중치로만 확인되는 것(예:
+b1의 원자료 재현)은 게이트 항목이 아니라 PR에 따로 보고한다. 그래서 항목을 모두
+구현하면 CI에서도 0이 된다.
 
 무엇을 확인해야 하는지는 docs/team/working-agreement.md §4가 기준이다.
 """
@@ -99,7 +101,7 @@ def _run_scaffold(verbose: bool) -> int:
     result = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(suite)
     if not result.wasSuccessful() or result.testsRun == 0:
         return 1
-    print("SCAFFOLD OK: tests=%s; business gates remain NOT_IMPLEMENTED" % result.testsRun)
+    print("SCAFFOLD OK: tests=%s; business gates are checked by gate business" % result.testsRun)
     return 0
 
 

@@ -192,11 +192,14 @@ def _check_env(fail) -> int:
         for key in sorted(listed - actual):
             fail(readme, "README의 '현재' 값인데 코드가 읽지 않음", "%s (%s)" % (key, _rel(service_dir)))
 
-    # 런처가 값을 넘기지 않으면 필수 키를 새로 만든 순간 기동이 깨진다.
+    # 런처는 자식 프로세스의 환경을 비우고 자기 dict에 적은 값만 넘긴다. 그래서
+    # 어느 서비스든 필수 키를 새로 만들면서 런처가 넘기지 않으면 기동이 깨진다.
     launcher_keys = _env_written_by_launcher()
-    merchant_required, _, _ = _service_env_reads(services["merchant_api"])
-    for key in sorted(merchant_required - launcher_keys):
-        fail("commerce/deploy/run_local.py", "필수 환경변수를 런처가 넘기지 않음", key)
+    for service, service_dir in services.items():
+        required, _, where = _service_env_reads(service_dir)
+        for key in sorted(required - launcher_keys):
+            fail("commerce/deploy/run_local.py", "필수 환경변수를 런처가 넘기지 않음",
+                 "%s (%s)" % (key, where[key]))
     return checked
 
 
