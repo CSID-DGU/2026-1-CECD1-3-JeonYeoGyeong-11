@@ -4,21 +4,25 @@
 
 ## 1. 담당과 파일 소유권
 
-| 패키지 | 담당자 | 소유 경로 |
+| 패키지 | 담당 계정 | 소유 경로 |
 | --- | --- | --- |
-| A 플랫폼 | 미배정 | commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/ |
-| B 데이터·모델 | 미배정 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
-| C FL·통합 | 미배정 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
+| A 플랫폼 | [A 카드](tasks/A.md) 2행 | commerce/apps/buyer/, commerce/apps/seller/, commerce/services/central_api/, commerce/services/merchant_api/ |
+| B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
+| C FL·통합 | [C 카드](tasks/C.md) 2행 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
+| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
 
-**역할 선점:** 담당자는 미리 배정하지 않는다. 각 에이전트가 시작할 때 자기 첫 PR에 위 표의 담당자 칸을 **자기 GitHub 계정**으로 채우는 diff를 포함한다. 공개 저장소이므로 실명은 넣지 않는다. 계정을 쓰는 이유는 CODEOWNERS·PR 작성자·리뷰 요청이 모두 같은 식별자를 쓰기 때문이다. 실명으로는 어느 PR이 누구 것인지 대조할 수 없다. 사람은 역할만 고르고, 계정 확인과 표 갱신은 에이전트가 첫 PR에서 함께 수행한다.
+**역할 선점:** 역할은 사람이 정한다. 계정은 각 역할 카드 2행 `담당 계정:`에 한 번만 적고, 공개 저장소이므로 실명은 넣지 않는다. CODEOWNERS·PR 작성자·리뷰 요청이 모두 GitHub 계정을 쓰므로 계정이어야 누구 PR인지 대조할 수 있다.
+
+1. 사용자가 알려준 역할의 카드 2행이 `미선점`인지 확인한다. 이미 계정이 있으면 팀 합의 없이 바꾸지 않고 사용자에게 알린다.
+2. 아래 명령으로 계정을 확인하고, **그 계정이 사용자 본인 것인지 사용자에게 확인받은 뒤** 적는다. 다른 사람의 로그인이 남은 PC일 수 있다.
+3. 그 한 줄만 바꾸는 **선점 PR을 작업 PR과 따로** 먼저 연다. 자기 카드 한 줄은 내부 변경이므로 CI가 통과하면 바로 병합한다.
 
 ```text
 gh api user --jq .login
 ```
 
-병합 순서가 선점 순서이며, 이미 채워진 역할은 팀 합의 없이 가져가지 않는다. 계정이 비어 있으면 역할·영향 설명으로 관련 PR을 확인하되 자동 할당이 된 것으로 가정하지 않는다. 브랜치 보호와 CODEOWNERS는 설정되어 있으며 실제 역할·계정에 맞는 검토 요청은 [Git 협업](git-workflow.md)을 따른다.
+역할마다 파일이 달라 세 선점 PR은 서로 충돌하지 않는다. 같은 역할을 두 사람이 선점하면 같은 줄이 충돌해 드러나고, 먼저 병합된 쪽을 유지한 채 사람이 정한다. 선점을 작업 PR에 섞지 않는 이유는 작업 PR의 검토·충돌이 선점을 늦추고, 선점 전에는 누구에게 리뷰를 요청할지 정할 수 없기 때문이다. 미선점 역할의 리뷰 요청은 [Git 협업](git-workflow.md)을 따른다.
 
 하위 이름은 밑줄을 사용한다. 다른 패키지 파일은 읽을 수 있으나 임의 수정하지 않는다. 다른 파트 문제는 PR/이슈에 담당·재현·기대/실제 동작·검사 SHA를 남기고 해당 담당 에이전트가 수정한다. 소비자는 연결 동작을 재확인하며 내부 구현 전체를 대신 이해하거나 작성하지 않는다. 공통 계약 변경은 생산자·소비자 영향과 fixture를 함께 제안하고 C가 통합을 조정한다. 동료 검토는 다른 파트가 소비하는 동작과 공동 경계의 변경에 적용한다.
 
@@ -135,7 +139,7 @@ A의 g2 연결 작업이 끝난 시점과 C의 c1 시점에 B의 NLP·어댑터 
 - 계약 변경은 schema/fixture/동작 문서/소비자 영향을 함께 검토한다. 정상 실행 경로를 유지할 호환 전환 또는 공동 변경을 준비한다.
 - 실제 데이터·산출물·비밀을 제외하고 자기 변경 경로만 stage한다. 사용자에게 위임받은 Git 수행 범위와 [Git 협업](git-workflow.md)의 병합 조건을 따른다.
 
-초기 PR #3은 `main`에 병합되었고 CI·브랜치 보호·required check·CODEOWNERS가 적용되어 있다. 실제 역할 담당자는 위 표에 기록한다. 세부 설정과 문서 규칙의 강제 범위는 Git 협업 문서를 따른다.
+초기 PR #3은 `main`에 병합되었고 CI·브랜치 보호·required check·CODEOWNERS가 적용되어 있다. 역할별 계정은 각 역할 카드 2행에 기록한다. 세부 설정과 문서 규칙의 강제 범위는 Git 협업 문서를 따른다.
 
 ## 8. 과제와 일정
 
