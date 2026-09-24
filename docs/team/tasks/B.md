@@ -39,7 +39,7 @@ local_data_ref의 경로를 C coordinator에 보내지 않는다. per-client los
 b2: gradient·frozen 불변·실제 export·고정 val split·버전 교체 실패 복구.
 음성 샘플에서 target basket 전체를 제외한다. 작은 카탈로그의 음성 부족·빈 데이터도 처리한다.
 
-G4 전에는 실데이터 로컬 분석/학습까지 가능하다. 중앙 FL 평가 R1/R2는 보호 경로 뒤 진행한다.
+R1/R2 소형 표본은 C 집계 core를 호출하는 실험실 FL 시뮬레이션으로 G4와 별도로 진행한다(D0020). 결과는 "비보호 FL 시뮬레이션"으로 표시하고 서비스 경로에는 연결하지 않는다.
 신규 판매자 A-0와 이력조차 없는 fallback을 구분한다. 신상품 C-new와 관계만 가리는 C0도 구분한다.
 
 ## 개인화와 비교
