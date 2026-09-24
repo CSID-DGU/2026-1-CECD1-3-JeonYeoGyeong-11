@@ -74,7 +74,7 @@ FL_MODEL_VARIANT는 text_only 또는 text_relation이며 실행 중 바꾸지 �
 | 공통 base | commerce/deploy/var/merchant_i/models/base/{variant}/{base_version}/ | B, C는 B API 호출 |
 | 개인화 결과 | commerce/deploy/var/merchant_i/models/personal/{variant}/{base_version}/{revision}/ | B, 중앙 배포/집계 제외 |
 | 집계 모델 | commerce/deploy/var/fl/{variant}/registry/{model_version}/ | C |
-| 작업 비용 해시 설정 | commerce/deploy/var/fl/{variant}/auth.json | C |
+| 판매자 토큰 해시(평문 토큰 없이 작업 비용이 있는 해시만) | commerce/deploy/var/fl/{variant}/auth.json | C |
 | 라운드 상태 | commerce/deploy/var/fl/{variant}/rounds/ | C, 비밀·개별 평문 제외 |
 
 REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 판매자 DB 경로나 비밀키를 주입하지 않는다. 동일 PC 프로세스 분리는 host 관리자에 대한 암호적 격리가 아니다.
@@ -120,7 +120,7 @@ A: 공개 목록 → 판매자 화면 → 상품·장바구니 → 주문 요청
 B: NLP와 텍스트만 추천 → 관계 특징·시퀀스 → variant별 shared export/load/train → 후반부 개인화·compare_local → 두 콜드스타트의 2×2 평가.
 C: 모델 manifest·release → 합성 동기 FL → variant 분리·개인화 미제출 확인 → 보호 집계. 최초 동기 모드에는 지각 이월 큐가 없다.
 
-성능 실험 R1/R2는 G4 뒤 중앙 FL로 실행한다. 지각 이월 X4·작업량 실험 X5·속도 주입은 필수 서비스 구현 일정과 분리한다.
+성능 실험 R1/R2는 G4 뒤 중앙 FL로 실행한다. 지각 이월·작업량 실험·속도 주입은 필수 서비스 구현 일정과 분리한다.
 
 여기서 G4 보호 모듈 검증은 화면 없이 먼저 수행할 수 있다. 모델 실험이 G2 화면 통합을 기다리는 의존성을 만들지 않는다. 서비스 전체 중앙 비잔류 검사는 A 연결 뒤 완료한다. 플랫폼 startup은 준비된 모델 load이며 장시간 학습 실행이 아니다.
 

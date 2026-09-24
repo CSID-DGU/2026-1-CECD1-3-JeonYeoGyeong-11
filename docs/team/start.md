@@ -65,3 +65,22 @@ PR에 아래 내용만 짧게 남긴다. 팀원이 결과를 읽고 필요한 �
 ```
 
 새 에이전트에 전달할 정보도 역할·작업 범위·기준 PR/SHA와 위 인계면 충분하다. 공통 규칙은 루트 AGENTS.md를 사용한다. Git 업로드와 병합은 [Git 규약](git-workflow.md)을 따른다.
+
+## 5. 약어
+
+역할 카드와 설계 문서에 나오는 ID다. 뜻만 알면 되는 경우 여기서 멈추고, 구현에 필요할 때 정의 문서의 해당 절을 읽는다.
+
+| 약어 | 뜻 | 정의 |
+| --- | --- | --- |
+| a1·b1·b2·c1 | 역할별 업무 게이트 | [작업 규칙](working-agreement.md) §4 |
+| G1, g2·g3·g4 (G2~G4) | 통합 게이트. G1은 `contracts` | [작업 규칙](working-agreement.md) §4 |
+| D0017~D0019 | 채택한 설계 결정 | [결정 요약](../design/decisions.md) |
+| Q01~ | 구현 전에 확정할 열린 항목 | [열린 구현 항목](../design/open-questions.md) |
+| text_only · text_relation | 두 모델 variant. 텍스트만 / 텍스트와 로컬 구매 관계 | [모델 비교](../design/comparison.md) §2 |
+| T-G·R-G·T-P·R-P | 2×2 비교 결과. T=text_only, R=text_relation, G=공통 모델, P=후반부 개인화 | [모델 비교](../design/comparison.md) §2 |
+| z | 고정 NLP 인코더가 만든 상품 텍스트 벡터 | [모델 경계](../design/model.md) §3 |
+| E-G0 | 텍스트만 기준선의 소형 첫 실행. NLP·비용·입력 품질을 잰다 | [평가](../design/evaluation.md) §1 |
+| R1 · R2 | 전체 roster 실험. 두 출처 플랫폼 학습 / 보류 판매자 이전. 후순위 | [평가](../design/evaluation.md) §5 |
+| A-0 · A-few | 신규 판매자. 학습 미참여로 공통 모델만 / 소수 step 개인화 | [평가](../design/evaluation.md) §3 |
+| C-new · C0 | 신상품. 학습에서 보류한 상품 / 관계만 0으로 가린 보조 분석(신상품 증거 아님) | [평가](../design/evaluation.md) §3 |
+| `CONTRACTS.md §8`, `R6`, `SC4`, `MODEL_BOUNDARY.md` | 스키마 설명·코드 주석에 남은 옛 문서명과 규칙 번호. 뜻은 인터페이스·모델 경계 문서에 있다 | [계약 문서](../contracts.md) '기존 설계 참조' |

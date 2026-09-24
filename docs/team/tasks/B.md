@@ -1,5 +1,5 @@
 # B 작업 카드 — 데이터·NLP·추천
-담당 계정: 미선점 · 선점은 [작업 규칙](../working-agreement.md) §1 · 실행 기준 [D0017~D0019](../../design/decisions.md)
+담당 계정: 미선점 · 선점은 [작업 규칙](../working-agreement.md) §1 · 실행 기준 [D0017~D0019](../../design/decisions.md) · 약어는 [팀 시작 안내](../start.md) §5
 
 ## 목표와 소유
 두 과거 데이터와 live 구매를 로컬 추천에 연결하고 신규 판매자/신상품을 점수화한다.

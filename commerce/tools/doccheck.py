@@ -31,8 +31,9 @@ LEGACY_NAMES = (
     "START_HERE", "WORKING_AGREEMENT", "ARCHITECTURE", "CONTRACTS",
     "MODEL_BOUNDARY", "LAB_WORKFLOW", "GIT_WORKFLOW", "COMPARISON", "EVALUATION",
 )
-# docs/README.md는 이전 문서명 매핑표, docs/contracts.md는 그 매핑 설명을 담는다.
-LEGACY_EXEMPT = {"docs/README.md", "docs/contracts.md"}
+# docs/README.md는 이전 문서명 매핑표, docs/contracts.md는 그 매핑 설명, start.md §5는
+# 역할 카드 독자용 약어표로 옛 이름을 알아보게 하려고 적는다.
+LEGACY_EXEMPT = {"docs/README.md", "docs/contracts.md", "docs/team/start.md"}
 # 게이트가 출력하는 판정 문자열이며 문서명이 아니다.
 LEGACY_ALLOWED_PHRASE = "CONTRACTS OK"
 
