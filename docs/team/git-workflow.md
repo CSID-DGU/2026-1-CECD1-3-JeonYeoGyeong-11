@@ -9,9 +9,11 @@ git status -sb
 git fetch origin
 gh pr status
 gh pr list --search "review-requested:@me" --state open
+gh issue list --assignee "@me" --state open
+gh pr list --state open
 ```
 
-1. 새 활동이 있는 PR만 `gh pr view <번호> --comments`로 읽는다. 코드 줄 댓글은 `gh api "repos/{owner}/{repo}/pulls/<번호>/comments"`로 본다. 이미 본 SHA 이후의 변경만 읽는다.
+1. 할당된 이슈는 다른 역할이 넘긴 버그와 후속 작업이다. 열린 PR 목록에서 자기 역할에 걸리는 PR도 확인한다. 새 활동이 있는 PR만 `gh pr view <번호> --comments`로 읽는다. 코드 줄 댓글은 `gh api "repos/{owner}/{repo}/pulls/<번호>/comments"`로 본다. 이미 본 SHA 이후의 변경만 읽는다.
 2. 받은 리뷰 요청과 다른 역할을 막는 자기 수정을 자기 작업보다 먼저 처리한다. 모든 응답을 기다리느라 독립 작업을 멈추지 않는다.
 3. 작업은 `origin/main`에서 분기한 `commerce/a|b|c/<작업명>` 브랜치에서 한다. 자기 clone을 쓰고, 병렬 작업은 worktree로 나눈다. 명시한 경로만 stage하고 작은 단위로 커밋해 Draft PR로 올린다. PR base는 `main`이다.
 4. 리뷰를 받을 준비가 되면 `gh pr ready <번호>`로 바꾸고 아래 표의 검토자에게 요청한다. PR 본문의 `다음 행동 / 담당 계정` 한 줄을 최신으로 둔다.
