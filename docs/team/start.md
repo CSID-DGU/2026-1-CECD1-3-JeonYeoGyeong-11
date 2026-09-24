@@ -75,7 +75,7 @@ PR에 아래 내용만 짧게 남긴다. 팀원이 결과를 읽고 필요한 �
 | a1·b1·b2·c1 | 역할별 업무 게이트 | [작업 규칙](working-agreement.md) §4 |
 | G1, g2·g3·g4 (G2~G4) | 통합 게이트. G1은 `contracts` | [작업 규칙](working-agreement.md) §4 |
 | D0017~D0019 | 채택한 설계 결정 | [결정 요약](../design/decisions.md) |
-| Q01~ | 구현 전에 확정할 열린 항목 | [열린 구현 항목](../design/open-questions.md) |
+| OQ01~ | 구현 전에 확정할 열린 항목 | [열린 구현 항목](../design/open-questions.md) |
 | text_only · text_relation | 두 모델 variant. 텍스트만 / 텍스트와 로컬 구매 관계 | [모델 비교](../design/comparison.md) §2 |
 | T-G·R-G·T-P·R-P | 2×2 비교 결과. T=text_only, R=text_relation, G=공통 모델, P=후반부 개인화 | [모델 비교](../design/comparison.md) §2 |
 | z | 고정 NLP 인코더가 만든 상품 텍스트 벡터 | [모델 경계](../design/model.md) §3 |

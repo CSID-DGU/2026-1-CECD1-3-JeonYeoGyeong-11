@@ -10,7 +10,7 @@
 | B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
 | C FL·통합 | [C 카드](tasks/C.md) 2행 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
+| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 검토는 [Git 협업](git-workflow.md) 첫 표 |
 
 **역할 선점:** 역할은 사람이 정한다. 계정은 각 역할 카드 2행 `담당 계정:`에 한 번만 적고, 공개 저장소이므로 실명은 넣지 않는다. CODEOWNERS·PR 작성자·리뷰 요청이 모두 GitHub 계정을 쓰므로 계정이어야 누구 PR인지 대조할 수 있다.
 
@@ -26,7 +26,7 @@ gh api user --jq .login
 
 Python 패키지·모듈 이름은 밑줄(`data_adapters`), 브랜치 작업명은 하이픈(`commerce/a/first-order`)을 쓴다. 다른 패키지 파일은 읽을 수 있으나 임의 수정하지 않는다. 다른 파트 문제는 PR/이슈에 담당·재현·기대/실제 동작·검사 SHA를 남기고 해당 담당 에이전트가 수정한다. 소비자는 연결 동작을 재확인하며 내부 구현 전체를 대신 이해하거나 작성하지 않는다. 공통 계약 변경은 생산자·소비자 영향과 fixture를 함께 제안하고 C가 통합을 조정한다. 동료 검토는 다른 파트가 소비하는 동작과 공동 경계의 변경에 적용한다.
 
-팀원용 [작업 시작 지시서](start.md)는 C가 유지하고 A/B가 자기 역할 절을 검토한다. 상세 소유권·계약·완료 기준은 위 기준 문서를 따르며 지시서에서 별도로 바꾸지 않는다.
+팀원용 [작업 시작 지시서](start.md)는 C가 유지한다. 상세 소유권·계약·완료 기준은 위 기준 문서를 따르며 지시서에서 별도로 바꾸지 않는다.
 Git 운영 문서 git-workflow.md와 `.github/`의 템플릿·CI·CODEOWNERS는 C가 유지하며, 기존 저장소 설정과 소비자 영향을 확인한다.
 
 ## 2. 최초 작업과 의존성
@@ -86,7 +86,7 @@ REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 
 A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐이다. 자기 머신에서만 되는 상태를 만들지 않는다.
 
 - 작업을 시작하거나 `main`을 반영할 때 **자기 머신에서 lock을 다시 설치하고 게이트를 직접 실행한다.** 상대가 통과시켰다는 기록만 보고 자기 환경이 같다고 보지 않는다.
-- **의존성을 추가하면 같은 PR에서 `commerce/requirements-dev.txt`와 `commerce/requirements-lock.txt`를 함께 갱신한다.** 자기 머신에만 설치하고 lock을 두지 않으면 다른 두 머신은 재현할 수 없고 아무도 알아채지 못한다. lock을 바꾼 PR은 C가 검토한다.
+- **의존성을 추가하면 같은 PR에서 `commerce/requirements-dev.txt`와 `commerce/requirements-lock.txt`를 함께 갱신한다.** 자기 머신에만 설치하고 lock을 두지 않으면 다른 두 머신은 재현할 수 없고 아무도 알아채지 못한다. lock을 바꾼 PR의 검토는 [Git 협업](git-workflow.md) 첫 표를 따른다.
 - PR에 **실행한 OS와 Python 버전**을 남긴다. `run_local.py`에는 Windows 분기가 있고 CI는 Linux다. "내 머신에서 통과"는 OS를 밝히지 않으면 재현 근거가 아니다.
 - 로컬에만 있는 파일(`commerce/deploy/var/`, `.team/`, 내려받은 원자료)은 다른 머신에 없다. 그 존재를 전제로 한 지시나 검사를 만들지 않는다.
 

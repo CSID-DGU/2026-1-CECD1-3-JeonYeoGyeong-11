@@ -55,7 +55,7 @@ context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRunt
 
 ### scaffold 검사가 고정하는 것
 
-필수 CI check인 `gate scaffold`는 [test_scaffold.py](../commerce/tests/e2e/test_scaffold.py)의 두 종류 검사를 실행한다.
+`gate scaffold`(필수 CI job `scaffold`가 도는 게이트 중 하나)는 [test_scaffold.py](../commerce/tests/e2e/test_scaffold.py)의 두 종류 검사를 실행한다.
 
 - **항상 지킬 경계** (`ScaffoldInvariants`): 판매자별 runtime·실행기 분리, 기준 stub의 미구현 예외, 중앙·coordinator에 판매자 상태와 주문 경로가 없음, 오류 응답 schema. 기준 stub을 직접 주입하므로 A·B의 실제 구현이 결과를 바꾸지 않는다.
 - **아직 없는 C 기능** (`NotYetImplemented`): FL 활성화 거부, coordinator 제출 경로 없음. 그 기능을 구현하는 C PR이 같은 PR에서 실제 동작 검사로 바꾼다.
