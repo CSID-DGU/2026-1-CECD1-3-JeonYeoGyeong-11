@@ -10,13 +10,13 @@
 | B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
 | C FL·통합 | [C 카드](tasks/C.md) 2행 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts(각 업무 게이트의 상태 칸은 그 게이트 담당)·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 검토는 [Git 협업](git-workflow.md) 첫 표 |
+| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md, 자기가 새로 만든 `docs/design/` 문서 / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts(각 업무 게이트의 상태 칸은 그 게이트 담당)·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 검토는 [Git 협업](git-workflow.md) 첫 표 |
 
 **역할 선점:** 역할은 사람이 정한다. 계정은 각 역할 카드 2행 `담당 계정:`에 한 번만 적고, 공개 저장소이므로 실명은 넣지 않는다. CODEOWNERS·PR 작성자·리뷰 요청이 모두 GitHub 계정을 쓰므로 계정이어야 누구 PR인지 대조할 수 있다.
 
 1. 사용자가 알려준 역할의 카드 2행이 `미선점`인지 확인한다. 이미 계정이 있으면 팀 합의 없이 바꾸지 않고 사용자에게 알린다.
 2. 아래 명령으로 계정을 확인하고, **그 계정이 사용자 본인 것인지 사용자에게 확인받은 뒤** 적는다. 다른 사람의 로그인이 남은 PC일 수 있다. 한 계정은 한 역할만 선점한다. 두 역할을 맡으면 서로의 PR을 자기 계정으로 승인하는 셈이 된다.
-3. 2행의 `미선점`만 `@계정`으로 바꾸고 나머지는 그대로 둔다. 그 한 줄짜리 **선점 PR을 작업 PR과 따로**, 작업 PR을 열기 전에 연다. 자기 카드 한 줄은 내부 변경이므로 CI가 통과하면 바로 병합한다. 로컬 작업은 그동안 시작해도 된다.
+3. 2행의 `미선점`만 `@계정`으로 바꾸고 나머지는 그대로 둔다. 그 한 줄짜리 **선점 PR을 작업 PR과 따로**, 작업 PR을 열기 전에 연다. 자기 카드 한 줄은 내부 변경([Git 협업](git-workflow.md) 첫 표)이므로 CI가 통과하면 바로 병합한다. 로컬 작업은 그동안 시작해도 된다.
 
 ```text
 gh api user --jq .login
@@ -111,7 +111,7 @@ A/B/C는 서로 다른 로컬에서 동작하며 공유 수단은 저장소뿐�
 
 G3의 신상품 검사는 관계를 만드는 통제된 구매 예제를 사용한다. 구매 한 건이면 반드시 점수가 바뀐다고 가정하지 않는다. 캐시·feature_epoch 갱신과 관계 변화가 있을 때 표현 갱신을 확인한다. 보호 집계는 G3의 부가 표기가 아니라 별도 G4다.
 
-업무 게이트는 각 담당 소유 경로의 selfcheck 모듈에 **미리 연결돼 있다.** 위치와 상태는 [계약 문서](../contracts.md)의 표, 종료 코드 규약(0 통과·3 부분 구현·1 실패·2 실행 불가)은 `commerce/tools/gate.py` 머리말에 있다. 담당은 그 위치에 selfcheck를 만들고 같은 PR에서 표의 상태를 바꾸며 `gate.py`는 고치지 않는다. CI의 `business` 게이트가 모든 업무 게이트를 돌리므로 selfcheck를 추가한 순간부터 모든 PR에서 그 검사가 실행된다. 그래서 selfcheck는 lock과 저장소만으로 Linux CI에서 빠르게 끝나야 하고 임시 디렉터리만 쓴다. 그래서 게이트 항목은 CI에서 돌 수 있는 것(작은 합성 입력, 작은 테스트 모델)만 둔다. 원자료·실제 가중치로만 확인되는 것(예: b1의 원자료 재현, [데이터](../design/data.md) §6)은 게이트 항목이 아니라 PR에 따로 보고하므로, 항목을 모두 구현하면 CI에서도 게이트가 0이 된다. 자기 selfcheck를 추가하거나 고치는 것은 내부 변경이며, 표의 자기 게이트 상태 칸도 그 담당이 고친다. 자기 테스트는 자기 소유 경로 아래 두고 selfcheck가 호출한다. 합성/원자료 실행 모드를 결과에 명시한다. 원자료 없는 합성 통과를 데이터 전수 검증으로 보고하지 않는다.
+업무 게이트는 각 담당 소유 경로의 selfcheck 모듈에 **미리 연결돼 있다.** 위치와 상태는 [계약 문서](../contracts.md)의 표, 종료 코드 규약(0 통과·3 부분 구현·1 실패·2 실행 불가)은 `commerce/tools/gate.py` 머리말에 있다. 담당은 그 위치에 selfcheck를 만들고 같은 PR에서 표의 상태를 바꾸며 `gate.py`는 고치지 않는다. CI의 `business` 게이트가 모든 업무 게이트를 돌리므로 selfcheck를 추가한 순간부터 모든 PR에서 그 검사가 실행된다. 그래서 selfcheck는 lock과 저장소만으로 Linux CI에서 빠르게 끝나야 하고 임시 디렉터리만 쓴다. 그래서 게이트 항목은 CI에서 돌 수 있는 것(작은 합성 입력, 작은 테스트 모델)만 둔다. 원자료·실제 가중치로만 확인되는 것(예: b1의 원자료 재현, [데이터](../design/data.md) §6)은 게이트 항목이 아니라 PR에 따로 보고하므로, 항목을 모두 구현하면 CI에서도 게이트가 0이 된다. 자기 selfcheck를 추가하거나 고치는 것은 내부 변경([Git 협업](git-workflow.md) 첫 표)이며, 표의 자기 게이트 상태 칸도 그 담당이 고친다. 자기 테스트는 자기 소유 경로 아래 두고 selfcheck가 호출한다. 합성/원자료 실행 모드를 결과에 명시한다. 원자료 없는 합성 통과를 데이터 전수 검증으로 보고하지 않는다.
 g2는 먼저 기본 주문/추천 경로를 연결하고 이후 네 결과 비교 검사를 추가한다. 중간 단계 성공은 부분 완료로 보고하며 비교가 없는 상태를 D0019의 최종 g2 완료로 표시하지 않는다. 두 variant가 실제 학습되기 전에는 A가 계약 stub으로 화면을 개발할 수 있다.
 
 ## 5. 첫 통합에 필요한 기능
