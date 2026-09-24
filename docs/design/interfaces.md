@@ -90,7 +90,7 @@ B는 contract_error에 대응하는 코드·field_path를 가진 예외를 제�
 
 [모델 경계](model.md) §4의 model_variant/mode는 A·B·C의 판매자 내부 함수 인자다. recommendation_request.v1에 variant, mode, feature_snapshot_id를 추가하지 않는다. 첫 비교 화면은 판매자 서버에서 렌더하여 별도 브라우저 JSON 응답 계약을 만들지 않는다.
 
-recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B의 로컬 ps- ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
+recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B가 정한 로컬 ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
 
 compare_local(request)는 로컬 Python 객체 ComparisonResult를 반환한다. A는 속성으로 읽고 JSON 계약으로 외부 직렬화하지 않는다. 필드와 사유 값은 `commerce/packages/contracts/types.py`의 `ComparisonResult`·`ComparisonArm`·`UnavailableReason`이 기준이다. 코드에 없는 의미만 적는다. arms는 T-G/R-G/T-P/R-P 순서다. candidate_set_hash는 중복을 없애고 상품 ID 오름차순으로 정렬한 후보 목록의 정규 JSON SHA-256이다(`ids.canonical_json`). 준비된 P의 base는 같은 variant G의 base와 같다. available이 아니면 recommendation과 personalization_revision은 null이다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
 
@@ -120,29 +120,14 @@ model_release는 model_version, manifest_hash, weights_sha256, weights_size_byte
 
 ## 6. 합성 FL HTTP 경로와 상태
 
-모든 모델/라운드 경로는 판매자별 Bearer 인증을 적용한다. seller는 토큰에서 확인하고 body와 대조한다. 요청 본문·Authorization·원시 텐서 로깅을 끈다. /healthz만 비민감 준비 상태를 200으로 반환한다.
+서비스 합성 FL(g3)은 [작업 규칙](../team/working-agreement.md) §8의 줄이는 순서 5번이다. 판매자 FL client와 coordinator는 둘 다 C 소유라, 경로·메서드·응답 코드·ack 값의 해석은 C가 구현할 때 `commerce/services/fl_coordinator/README.md`에 적는다. 이 절은 다른 역할과 보안에 걸리는 불변식만 고정한다.
 
-| 메서드·경로 | 입력 | 성공 응답 |
-| --- | --- | --- |
-| GET /rounds/current | 인증 | 200 round_config 또는 204(선택된 활성 라운드 없음) |
-| GET /models/latest | 인증 | 200 model_release, 미등록이면 404 |
-| GET /models/{model_version}/manifest | 인증 | 200 shared_model_manifest |
-| GET /models/{model_version}/weights | 인증 | 200 npz |
-| POST /rounds/{round_id}/submissions | round_submission | 201 빈 본문, Location은 아래 PUT 경로 |
-| PUT /rounds/{round_id}/submissions/delta | npz | 202 round_submit_ack |
-| GET /rounds/{round_id}/result | 인증 | 200 round_submit_ack, 아직 제출 없으면 404 |
-
-round_id/model_version은 C가 생성한 안전한 ID 패턴으로 제한한다. URL에 seller/customer/order ID를 넣지 않는다. C는 round·인증 seller별 제출 슬롯을 하나만 만든다. 같은 봉투·동일 바이트 재시도는 같은 결과를 반환하고, 달라지면 DUPLICATE_ROUND_SUBMIT. POST 예약 단계에는 집계하지 않는다.
-
-첫 동기 버전은 **미리 고정한 참여자 전원 완료 또는 라운드 전체 폐기**다. 동적 부분 집계·지각 이월은 구현하지 않는다. 합성 데모 참여자는 3명 이상, 보호 모드 하한은 최소 5명이며 선택 프로토콜이 더 높은 수를 요구하면 따른다. min_clients라는 숫자만으로 보안을 주장하지 않는다.
-
-모든 선택자의 completed=true와 유효한 delta가 deadline 안에 모이면 동일 가중치 평균(delta)을 기준 모델에 더한다. 샘플 수 가중치와 추가 step 재스케일은 없다. 미완료·탈락·deadline 초과이면 전체 폐기하고 마지막 모델을 유지한다. 실험 참여자 수와 deadline은 실행 config에 기록한다.
-
-초기 ack 사용값은 accepted_on_time / aggregated_on_time / dropped_incomplete / round_discarded다. 대기 조회는 accepted_on_time 유지, 집계 성공 시 aggregated_in_round_id를 채운다. 그 외에는 null. staleness_rounds는 대기 null, 정상 집계 0. arrival_t_s는 C의 라운드 시작 후 단조시계 경과 초이며 가상 지연이 아니다. schema의 나머지 enum은 과거 확장용으로 보존했으며 현행 경로에서 출력하지 않는다.
-
-coordinator가 합성 모드의 메모리 제출을 잃고 재시작하면 진행 라운드를 폐기한다. 개별 delta를 복구용 파일로 남기지 않는다. 보호 모드의 재시작·이탈·키 처리는 C가 선택 프로토콜대로 별도 명세화한다.
-
-신규 판매자는 /models/latest → manifest/weights 검증 → B install_release 순서로 설치한다. 라운드 참가 이력이 없어도 모델을 받을 수 있다.
+- 모든 모델·라운드 경로는 판매자별 Bearer 인증을 쓴다. seller는 토큰에서 확인하고 본문과 대조한다. 요청 본문·Authorization·원시 텐서를 로그에 남기지 않는다. `/healthz`만 비민감 준비 상태를 인증 없이 돌려준다.
+- round_id·model_version은 C가 만든 안전한 ID 패턴으로 제한하고, URL에 seller·customer·order ID를 넣지 않는다.
+- round·seller마다 제출 슬롯은 하나다. 같은 바이트의 재시도는 같은 결과를 돌려주고, 다르면 DUPLICATE_ROUND_SUBMIT이다.
+- 첫 동기 버전은 **미리 고정한 참여자 전원 완료 또는 라운드 전체 폐기**다(D0017). 모든 선택자의 completed=true와 유효한 delta가 deadline 안에 모이면 동일 가중치 평균을 기준 모델에 더한다. 샘플 수 가중치·추가 step 재스케일·지각 이월은 없다. 하나라도 빠지면 전체를 폐기하고 마지막 모델을 유지한다. 합성 데모는 3명 이상, 보호 모드는 5명 이상이며 선택 프로토콜이 더 요구하면 따른다. 인원수만으로 보안을 주장하지 않는다.
+- coordinator가 재시작하면 진행 중인 합성 라운드를 폐기한다. 개별 delta를 복구용 파일로 남기지 않는다. 보호 모드의 재시작·이탈·키 처리는 선택 프로토콜대로 C가 정한다(D0021).
+- 신규 판매자는 최신 release → manifest·weights 검증 → B install_release 순서로 설치한다. 라운드 참가 이력이 없어도 받을 수 있다.
 
 ## 7. 보호 집계 전제
 
