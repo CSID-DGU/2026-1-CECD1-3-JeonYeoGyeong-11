@@ -17,6 +17,8 @@
 | 기존 기준 roster | 101개 점포 | 100개 가상 client, 8,172명 / 129,586 prior orders |
 | 한계 | 동일 유통계열의 점포를 독립 주체로 시뮬레이션 | 실제 서로 다른 소매업체의 자료로 주장할 수 없음 |
 
+**판매자 간 차이에 대한 이전 기록.** 이전 탐색의 로컬 기록(`fedcommerce/DESIGN.md`, 저장소에 없음, 재현 전)에 따르면 DH 점포 간 이질성의 80~87%는 가구를 점포 하나에 묶은 데서 온다. 가구 무작위 분할과 비교하면 1.0~1.5배에 그친다. IC 가상 client의 이질성은 Dirichlet α=0.25 분할로 넣은 값이다(`fedcommerce/src/instacart_match.py`). 따라서 DH에서 FL이 local_only보다 좋아도 서로 다른 판매자 연합의 증거로 해석하지 않는다. IC의 FL·개인화 결과는 α에 달려 있다고 함께 적는다.
+
 Instacart는 prior만 사용한다. 공식 train/test를 이 프로젝트의 시간 분할과 혼동하지 않는다. 이전 가상 표본은 전체 206,209 고객 중 약 3.96%다. 전수 실험으로 표현하지 않는다.
 
 ### 출처와 로컬 준비
@@ -39,6 +41,10 @@ B는 실제 사용 파일별로 `출처 URL / 배포판·revision / 취득일 / 
 
 Dunnhumby 순서: product_category 유효 → quantity>0 → sales_value>=0 → COUPON/MISC ITEMS 제외 → household를 가장 많은 basket을 가진 점포 하나에 배정(동점 숫자 store_id 오름차순) → 300 basket 이상 점포 선택.
 제외 순서를 바꿔 나온 102개 결과와 기존 101개 roster를 섞지 않는다. 기존 보고의 최종 basket은 104,011개이며 B가 새 어댑터 실행으로 재현/차이를 설명한다.
+
+**판매자 배정과 표본 선정에는 train 구간만 쓴다.** validation/test 구간의 방문이 배정 라벨이나 선정 기준에 들어가면 판매자 구성이 평가 정답과 상관되고, local_only와 개인화가 유리해진다.
+- IC: 이전 스크립트는 고객의 전체 prior 주문으로 주력 aisle(배정 라벨)을 계산했다(`instacart_match.py` 70~76행). 각 고객의 floor(0.7n) 이전 주문만으로 다시 계산한다.
+- DH: 주이용 점포 배정과 300 basket 기준을 2~39주로 계산한다. 아래 기준 roster는 전체 기간으로 만든 것이므로, B는 새 계산 결과와의 차이를 보고한다.
 
 기준 roster: [dunnhumby_rb.csv](../../commerce/packages/data_adapters/rosters/dunnhumby_rb.csv). 공개하는 이 파일은 store_id 101개만 포함하며 고객·거래·배정표는 포함하지 않는다.
 파일 SHA-256: bb1d8e9c503b966be93a915b2d4d0c031ea4e7bbec34d8de0d1c9abe339965a5
@@ -99,9 +105,9 @@ A/C는 합성 상품·계정·주문으로 시작한다. B는 소형 두 출처 
 
 ## 6. 파일 반출과 완료 조건
 
-원자료, 고객별 배정표, 전처리 구매 이벤트, 관계·캐시·개별 업데이트·실데이터 모델은 기본 Git 제외다. 공개할 수 있는 schema·직접 만든 합성 fixture·집계 보고서만 별도 검토한다. 라이선스 확인과 공개 범위 기록은 B가 맡고 C가 staged 파일을 확인한다.
+원자료, 고객별 배정표, 전처리 구매 이벤트, 관계·캐시·개별 업데이트·실데이터 모델은 기본 Git 제외다. 공개할 수 있는 schema·직접 만든 합성 fixture·집계 보고서만 별도 검토한다. 라이선스 확인과 공개 범위 기록은 B가 맡는다. 검토는 생성기를 새로 만들거나 생성 규칙을 바꿀 때 한 번 받는다([Git 협업](../team/git-workflow.md) 첫 표).
 
-새 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 둔다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
+직접 만든 합성 fixture는 커밋 대상이므로 자기 소유 경로의 `tests/fixtures/` 아래 두고, 생성기와 seed·개수 설정을 함께 커밋해 같은 결과를 다시 만들 수 있게 한다. 실행 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 두며 이들은 Git 제외다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
 
 b1 완료: 소형 입력으로 정제 순서·ID·수량 null·시간 종류·중복·한국어 보존 검사. 별도로 로컬 원자료 재현 보고(행 수/제외 사유/roster/해시)를 만든다. 합성 fixture 통과와 원자료 재현 완료를 따로 보고한다.
 

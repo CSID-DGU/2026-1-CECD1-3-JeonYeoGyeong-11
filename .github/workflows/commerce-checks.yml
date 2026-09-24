@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, 'commerce/a/**', 'commerce/b/**', 'commerce/c/**']
+    branches: [main]
 
 permissions:
   contents: read
@@ -24,4 +24,5 @@ jobs:
       - run: python -m commerce.tools.gate scaffold
       - run: python -m commerce.tools.gate docs
       - run: python -m commerce.tools.gate policy
+      - run: python -m commerce.tools.gate business
       - run: python -m commerce.deploy.run_local --smoke --merchants 2

@@ -3,9 +3,9 @@
   "seller_id": "ic-client-7",
   "source": "instacart",
   "seller_partition": "synthetic_partition",
-  "customer_id_local": "ic-user-112",
-  "basket_id_local": "ic-o-2539329",
-  "purchase_event_id": "a6fa13e9502b8c386dac7ba14fb20a12",
+  "customer_id_local": "ic-user-990001",
+  "basket_id_local": "ic-o-9900001",
+  "purchase_event_id": "d3486ccbffe23205d11e20306eb1a370",
   "time": {
     "kind": "relative_day",
     "value": "41.0"
@@ -13,11 +13,11 @@
   "order_rank": 7,
   "items": [
     {
-      "item_id_local": "ic-p-196",
+      "item_id_local": "ic-p-990001",
       "quantity_observed": null
     },
     {
-      "item_id_local": "ic-p-14084",
+      "item_id_local": "ic-p-990002",
       "quantity_observed": null
     }
   ]

@@ -1,6 +1,6 @@
 # 모델 경계 — NLP, 학습, 서빙
 
-갱신: 2026-09-23 · D0017~D0019 · 소유: B
+갱신: 2026-09-24 · D0017~D0021 · 소유: B
 
 ## 1. 모델의 네 종류 상태
 
@@ -63,7 +63,7 @@ X[u,c]와 B[b,c]는 구매 여부의 이진 행렬이다. 공동구매 강도는
 
 시간 관계는 채택한 설계대로 q[c→j]=mean_d(time_mlp(log1p(min(d,30)), 관측/검열 비트))다. 반대 방향을 별도로 만든다. 같은 basket의 동시 구매는 이 시간쌍에서 제외하고 basket 관계로 표현한다. 간격을 먼저 평균/중앙값 하나로 줄여 MLP에 넣는 방식은 동일하지 않으며 기본안으로 묵시 대체하지 않는다. Instacart의 실제 경과일 하한이라는 [데이터](data.md)의 제한도 유지한다.
 
-기존 sim_bask 단독 top-K는 동시구매가 적은 고객/시간 관계를 잘라낼 위험이 있어 최종 고정값에서 해제한다(D0018). B는 고객·바스켓·시간 각각의 후보를 합치는 제한 이웃 방식과 시간쌍 추출/샘플링 규칙을 세 관계가 서로 다른 이웃을 선택하는 작은 합성 예제로 확인한 뒤 E-G0에서 예산을 확정한다. 최근접 후속 방문/전 조합 등의 시간쌍 정의를 서로 다른 코드에서 임의로 선택하지 않는다. 확정 규칙·seed·K는 preprocessing_version에 반영한다.
+기존 sim_bask 단독 top-K는 동시구매가 적은 고객/시간 관계를 잘라낼 위험이 있어 최종 고정값에서 해제한다(D0018). B는 고객·바스켓·시간 각각의 후보를 합치는 제한 이웃 방식과 시간쌍 추출/샘플링 규칙을 세 관계가 서로 다른 이웃을 선택하는 작은 합성 예제로 확인한 뒤 관계 특징의 첫 소형 실행에서 예산을 확정한다(E-G0는 텍스트만 쓴다). 최근접 후속 방문/전 조합 등의 시간쌍 정의를 서로 다른 코드에서 임의로 선택하지 않는다. 확정 규칙·seed·K는 preprocessing_version에 반영한다.
 
 ## 4. A·B·C의 로컬 API
 
@@ -71,19 +71,7 @@ X[u,c]와 B[b,c]는 구매 여부의 이진 행렬이다. 공동구매 강도는
 
 B는 seller별 RecommenderRuntime 객체를 제공한다. A와 C는 같은 판매자 객체에 연결하고 다른 판매자 상태를 전역 singleton으로 섞지 않는다.
 
-~~~python
-runtime = open_runtime(seller_id, feature_db_path, model_dir)
-runtime.ingest_purchase_event(event: dict) -> None
-runtime.upsert_catalog_item(item: dict, source_seq: int) -> None
-runtime.predict_local(request: dict, *, model_variant="text_relation", mode="auto") -> dict
-runtime.get_local_data_ref() -> str
-runtime.get_shared_manifest(*, model_variant="text_relation") -> dict
-runtime.export_shared_state(*, model_variant="text_relation") -> dict[str, numpy.ndarray]
-runtime.train_round(local_data_ref: str, round_config: dict, *, model_variant="text_relation") -> TrainingResult
-runtime.install_release(release: dict, manifest: dict, tensors: dict, *, model_variant="text_relation") -> None
-runtime.personalize_local(local_data_ref: str, personal_config: dict, *, model_variant="text_relation") -> PersonalizationResult
-runtime.compare_local(request: dict) -> ComparisonResult
-~~~
+메서드 시그니처와 반환 타입은 `commerce/packages/contracts/ports.py`의 `RecommenderRuntime`과 `types.py`가 기준이다. 아래는 코드에 없는 의미다.
 
 ingest 정상 반환은 영속 반영 완료를 뜻한다. 이미 같은 event ID·본문이면 성공으로 반환하고, 다른 본문이면 DUPLICATE_EVENT다. B는 이벤트 기록·반영 ID·feature_epoch를 같은 특징 DB 트랜잭션으로 갱신한다. catalog의 source_seq는 A의 로컬 outbox 순번이며 같은 상품의 오래된 갱신이 새 값을 덮지 않도록 저장한다. source_seq는 catalog JSON에 임의 추가하지 않는다.
 
@@ -140,20 +128,16 @@ b2는 frozen 해시 불변, 공유 층 gradient, export에 local/frozen/상품�
 
 ## 8. 후반부 개인화와 버전
 
-1. variant의 공통 base에서 별도 복사본을 만든다. query_proj와 scorer만 gradient를 켜고 나머지는 freeze/eval로 둔다.
-2. 허용된 로컬 과거 prefix로 학습한다. 원안의 음성/정답 규칙을 동일하게 적용하고 검증/test label을 학습에 쓰지 않는다. 개인화 optimizer는 새로 만든다.
-3. personal_config에는 base_model_version, 학습/검증 snapshot 참조, seed, learning_rate, max_steps, 최소 데이터 조건과 검증 판정 기준을 둔다. 값은 B가 validation에서 정해 두 variant에 공통 적용한다.
-4. 검증 가능한 데이터가 없으면 skipped, 정해진 검증 기준보다 나빠지면 rejected, 검증을 통과하면 installed로 기록한다. 개인화가 미완료인 일반 서비스는 base로 추천한다.
-5. 검증 시점까지 base/카탈로그/NLP config가 호환되는지 확인하고 tail·개인화 revision을 원자 설치한다. 작업 도중 base가 바뀌었다면 결과를 폐기하고 새 base에서 다시 시작한다.
+개인화는 [작업 규칙](../team/working-agreement.md) §8의 줄이는 순서 4번이다. 아래 불변식만 고정한다. 설정 항목, ID 형식, 저장 경로는 B가 구현할 때 정하고 PR에 적는다. 반환 객체는 `types.PersonalizationResult`가 기준이다.
 
-PersonalizationResult는 status(installed/skipped/rejected), reason, base_model_version, personalization_revision(미설치면 null)을 가진 로컬 반환 객체다. 검증 손실과 상세 데이터 참조는 로컬 실험 기록에만 남긴다.
+1. 해당 variant의 공통 base 복사본에서 시작하고 query_proj·scorer만 학습한다. 나머지는 freeze/eval로 둔다. 개인화 설정은 validation에서 정해 두 variant에 똑같이 적용한다.
+2. 공통 학습과 같은 음성·정답·보류 규칙을 쓰고, 검증/test label을 학습에 쓰지 않는다.
+3. 결과는 판매자 로컬에만 둔다. 어떤 FL export나 중앙 release에도 넣지 않고, 공통 가중치를 덮어쓰지 않는다.
+4. 개인화 결과는 만든 base에만 붙인다. base가 바뀌면 옛 결과를 쓰지 않고 새 base에서 다시 만든다.
+5. 데이터가 없거나 검증을 통과하지 못하면 공통 base로 서비스하고, 비교에서 P칸을 G 결과로 채우지 않는다.
 
-개인화 산출물은 seller + variant + base_model_version + personalization_revision으로 식별하고 해당 base의 manifest/config 해시에 묶는다. global 가중치와 같은 폴더 파일에 덮어쓰지 않는다. 기준 버전이 달라진 tail을 재사용하거나 새 공통 모델에 단순 덧붙이지 않는다.
+recommendation.model_version은 실제 서빙 가중치의 opaque ID다. C의 round_config.model_version은 항상 공통 base ID다. A는 서빙 ID를 해석해 모델 URL을 만들지 않는다.
 
-recommendation.model_version은 실제 서빙 가중치의 opaque ID다. global이면 base release ID, 개인화이면 B가 발급한 64자 이내 ps- 접두 ID를 사용한다. 로컬 인덱스가 그 ID를 base/revision/가중치 해시에 연결한다. C의 round_config.model_version은 항상 공통 base ID다. A는 서빙 ID를 해석해 모델 URL을 만들지 않는다.
-
-개인화 전후 공통 base 해시 불변, 두 그룹 밖 gradient/가중치 변경 없음, export에 개인화 값 미포함, 새 base/옛 tail 결합 거부를 b2에서 확인한다. 작은 실제 입력에서 frozen 앞부분의 dropout이 켜지지 않는지도 검사한다.
-
-sequence 마지막 블록까지 파인튜닝하는 확대안은 별도 실험 config/결정 이후에만 사용한다. 초기에 모든 층을 판매자별로 다시 학습하거나 별도 로컬 adapter를 추가하지 않는다.
+b2에서 개인화 전후 공통 base 해시 불변, 두 그룹 밖 가중치 불변, export에 개인화 값 없음, 다른 base와의 결합 거부를 확인한다.
 
 관련 미확정 사항과 완료 증거는 [열린 구현 항목](open-questions.md)를 확인한다.

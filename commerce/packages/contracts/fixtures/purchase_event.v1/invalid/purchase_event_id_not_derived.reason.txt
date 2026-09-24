@@ -1,0 +1,2 @@
+SCHEMA_INVALID
+형식은 맞지만 SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리가 아니다(interfaces.md §2). live_completed.json과 이 값만 다르다.

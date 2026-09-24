@@ -1,16 +1,18 @@
 # B 작업 카드 — 데이터·NLP·추천
-담당 이름: [작업 규칙](../working-agreement.md)에서 배정 · 실행 기준 D0017~D0019
+담당 계정: 미정 · 회의에서 정한 뒤 기입([작업 규칙](../working-agreement.md) §1) · 실행 기준 [D0017~D0021](../../design/decisions.md) · 약어는 [팀 시작 안내](../start.md) §5
 
 ## 목표와 소유
 두 과거 데이터와 live 구매를 로컬 추천에 연결하고 신규 판매자/신상품을 점수화한다.
-소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/.
+소유: commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ (metrics/ 제외). 평가 지표와 모델이 아닌 기준선은 A가 구현하고, B는 평가 정의와 실행기를 맡는다.
 첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 입력은 [데이터](../../design/data.md), NLP·학습·개인화는 [모델 경계](../../design/model.md), 연결은 [인터페이스 계약](../../design/interfaces.md) §2~5, 학습/평가 데이터 분할과 측정은 [평가](../../design/evaluation.md).
 지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 A의 입력 이벤트와 C의 모델 제출/설치 계약 변경을 확인한다.
 
-별도 학습/서비스 인계는 ../../design/model-lab.md와 D0018을 따른다. 화면 없이 같은 모델 core로 학습·평가·checkpoint 재개·export를 제공한다. 시간 관계는 개별 간격의 MLP 뒤 pooling을 유지하고 이웃/시간쌍 예산을 feature fixture와 E-G0에서 확정한다.
+별도 학습/서비스 인계는 [독립 모델 실험](../../design/model-lab.md)과 D0018을 따른다. 화면 없이 같은 모델 core로 학습·평가·checkpoint 재개·export를 제공한다. 시간 관계는 개별 간격의 MLP 뒤 pooling을 유지하고 이웃/시간쌍 예산을 feature fixture와 관계 특징의 첫 소형 실행에서 확정한다(E-G0는 텍스트만 쓴다).
 
 ## 첫 작업
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 팀 시작 안내의 B 첫 작업부터 확인하고 맡은 범위 안에서 이어간다.
+
+1차 대비가 Instacart이므로([평가](../../design/evaluation.md) §4) IC 경로(어댑터 → text builder → E-G0)를 먼저 끝까지 연결하고 DH는 뒤에 붙인다. 판매자 배정은 train 구간만으로 만든다([데이터](../../design/data.md) §2).
 
 1. 소형 두 출처 fixture와 live catalog/purchase fixture를 공통 로컬 표현으로 변환한다. 시간 종류와 미관측 수량을 보존한다.
 2. 한국어·영어·규격·결측을 보존하는 text builder를 만든다. 기존 NLP 완성 모듈은 없다.
@@ -18,7 +20,7 @@
 4. frozen wrapper·배치 벡터화·artifact hash·z cache를 구현한다. 임의 신규 special token은 추가하지 않는다.
 5. E-G0 텍스트만 기준선과 시간/메모리/절단률을 먼저 측정한다.
 
-첫 산출물: b1, NLP 선택 기록, b2의 freeze/해시 부분, 로컬 기준선.
+첫 산출물: b1, NLP 선택 기록, b2의 freeze/해시 부분, 로컬 기준선. NLP 선택 기록은 `docs/design/` 아래 새 문서(B 소유)에 두고, [모델 경계](../../design/model.md)에 반영할 결론만 따로 PR로 올린다. model.md는 CODEOWNERS 경로다.
 384차원·32토큰은 후보값이다. 실제 확정 전 manifest의 fixture 숫자를 실모델 크기로 복사하지 않는다.
 
 ## A에게 제공
@@ -39,7 +41,7 @@ local_data_ref의 경로를 C coordinator에 보내지 않는다. per-client los
 b2: gradient·frozen 불변·실제 export·고정 val split·버전 교체 실패 복구.
 음성 샘플에서 target basket 전체를 제외한다. 작은 카탈로그의 음성 부족·빈 데이터도 처리한다.
 
-G4 전에는 실데이터 로컬 분석/학습까지 가능하다. 중앙 FL 평가 R1/R2는 보호 경로 뒤 진행한다.
+R1/R2 소형 표본은 C 집계 core를 호출하는 실험실 FL 시뮬레이션으로 G4와 별도로 진행한다(D0020). 결과는 "비보호 FL 시뮬레이션"으로 표시하고 서비스 경로에는 연결하지 않는다.
 신규 판매자 A-0와 이력조차 없는 fallback을 구분한다. 신상품 C-new와 관계만 가리는 C0도 구분한다.
 
 ## 개인화와 비교

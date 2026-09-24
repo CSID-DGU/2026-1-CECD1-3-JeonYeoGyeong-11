@@ -5,7 +5,8 @@
 
 기존 게이트는 코드 대 코드만 본다. 이 검사는 문서가 약속한 것과 코드에 실제로
 있는 것이 어긋나는 경우를 잡는다. 판정은 종료 코드 0과 마지막 줄
-`DOCS OK: links=<n> env=<n> gates=<n> imports=<n> failures=0`의 동시 충족이다.
+`DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> fences=<n> failures=0`의
+동시 충족이다.
 
 표준 라이브러리만 사용한다. 실패는 파일·항목·기대/실제를 함께 출력한다.
 """
@@ -21,7 +22,6 @@ from typing import Dict, Iterable, List, Set, Tuple
 
 HERE = pathlib.Path(__file__).resolve()
 REPO_ROOT = HERE.parents[2]
-WORKING_AGREEMENT = REPO_ROOT / "docs/team/working-agreement.md"
 CONTRACTS_DOC = REPO_ROOT / "docs/contracts.md"
 DEVELOPMENT_DOC = REPO_ROOT / "docs/development.md"
 
@@ -30,8 +30,9 @@ LEGACY_NAMES = (
     "START_HERE", "WORKING_AGREEMENT", "ARCHITECTURE", "CONTRACTS",
     "MODEL_BOUNDARY", "LAB_WORKFLOW", "GIT_WORKFLOW", "COMPARISON", "EVALUATION",
 )
-# docs/README.md는 이전 문서명 매핑표, docs/contracts.md는 그 매핑 설명을 담는다.
-LEGACY_EXEMPT = {"docs/README.md", "docs/contracts.md"}
+# docs/README.md는 이전 문서명 매핑표, docs/contracts.md는 그 매핑 설명, start.md §5는
+# 역할 카드 독자용 약어표로 옛 이름을 알아보게 하려고 적는다.
+LEGACY_EXEMPT = {"docs/README.md", "docs/contracts.md", "docs/team/start.md"}
 # 게이트가 출력하는 판정 문자열이며 문서명이 아니다.
 LEGACY_ALLOWED_PHRASE = "CONTRACTS OK"
 
@@ -44,8 +45,13 @@ VENDOR_INSTRUCTION_FILES = (
 VENDOR_POINTER_MAX_LINES = 12
 
 LINK_RE = re.compile(r"\[[^\]]+\]\(([^)\s]+?)(?:#[^)]*)?\)")
+# 링크 문법 밖에 적힌 상대 문서 경로. 렌더하면 눌리지 않고 링크 검사도 비켜 간다.
+BARE_DOC_PATH_RE = re.compile(r"(?<![\w(/.])(\.\./[\w./-]+\.md)")
+# CommonMark 코드 펜스. 닫는 펜스 뒤에는 공백만 올 수 있다.
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})(.*)$")
 ENV_TOKEN_RE = re.compile(r"\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b")
-MODULE_CELL_RE = re.compile(r"commerce\.services\.([a-z_]+)\.main:app")
+# 서비스 README의 환경변수 절. 담당이 자기 파일에 적으므로 보호 문서를 고치지 않고 값을 추가한다.
+ENV_LINE_PREFIX = "현재 코드가 읽는 값:"
 
 
 def _docs() -> List[pathlib.Path]:
@@ -71,10 +77,46 @@ def _check_links(fail) -> int:
             checked += 1
             if not (doc.parent / target).resolve().exists():
                 fail(_rel(doc), "끊어진 링크", target)
+        for number, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), 1):
+            for match in BARE_DOC_PATH_RE.finditer(LINK_RE.sub("", line)):
+                fail(_rel(doc), "링크가 아닌 문서 경로",
+                     "%s:%d %s ([이름](경로) 형식으로 쓴다)" % (_rel(doc), number, match.group(1)))
     return checked
 
 
-# --- 2. 환경변수: 문서의 '현재 코드가 읽는 값' vs 코드 ------------------------
+# --- 1b. 코드 펜스: 원문은 멀쩡해도 GitHub 렌더가 깨지는 경우 ------------------
+
+def _check_fences(fail) -> int:
+    """닫는 펜스 뒤에 글자가 붙으면 CommonMark는 닫힌 것으로 보지 않는다.
+
+    그러면 파일 끝까지 전부 코드 블록으로 렌더되고 그 안의 링크도 눌리지 않는다.
+    에이전트는 원문을 읽으므로 알아채지 못하고 사람만 깨진 화면을 본다.
+    """
+    checked = 0
+    for doc in _docs():
+        opened = None  # (문자, 길이, 줄 번호)
+        for number, line in enumerate(doc.read_text(encoding="utf-8").splitlines(), 1):
+            match = FENCE_RE.match(line)
+            if not match:
+                continue
+            run, rest = match.group(1), match.group(2)
+            if opened is None:
+                if run[0] == "`" and "`" in rest:
+                    continue  # ```x``` 같은 인라인 코드는 펜스가 아니다.
+                opened = (run[0], len(run), number)
+                checked += 1
+            elif run[0] == opened[0] and len(run) >= opened[1]:
+                if rest.strip():
+                    fail(_rel(doc), "닫는 펜스 뒤에 본문이 붙음",
+                         "%s:%d 펜스 다음 줄로 본문을 내린다" % (_rel(doc), number))
+                # 렌더러는 여기서 닫지 않지만, 한 번 보고했으니 뒤쪽 펜스까지 연쇄로 틀리지 않게 닫는다.
+                opened = None
+        if opened is not None:
+            fail(_rel(doc), "닫히지 않은 코드 펜스", "%s:%d" % (_rel(doc), opened[2]))
+    return checked
+
+
+# --- 2. 환경변수: 서비스 README의 '현재 코드가 읽는 값' vs 코드 ----------------
 
 def _env_reads(path: pathlib.Path) -> Tuple[Set[str], Set[str]]:
     """(필수 키, 선택 키). os.environ[...]는 필수, os.environ.get(...)은 선택."""
@@ -106,71 +148,58 @@ def _env_written_by_launcher() -> Set[str]:
     return keys
 
 
-def _documented_env() -> Dict[str, Set[str]]:
-    """working-agreement §3 표에서 서비스별 '현재 코드가 읽는 값'을 읽는다.
+def _documented_env(service_dir: pathlib.Path) -> Set[str]:
+    """서비스 README에서 '현재 코드가 읽는 값:' 줄의 키를 읽는다."""
+    readme = service_dir / "README.md"
+    for line in readme.read_text(encoding="utf-8").splitlines():
+        if ENV_LINE_PREFIX in line:
+            return set(ENV_TOKEN_RE.findall(line.split(ENV_LINE_PREFIX, 1)[1]))
+    raise LookupError("%s에 '%s' 줄이 없다" % (_rel(readme), ENV_LINE_PREFIX))
 
-    열은 이름으로 찾는다. 열 순서가 바뀌어도 깨지지 않는다.
-    """
-    rows = [line for line in WORKING_AGREEMENT.read_text(encoding="utf-8").splitlines()
-            if line.strip().startswith("|")]
-    header_index = None
-    current_col = None
-    for position, line in enumerate(rows):
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if "현재 코드가 읽는 값" in cells:
-            header_index = position
-            current_col = cells.index("현재 코드가 읽는 값")
-            break
-    if header_index is None:
-        raise LookupError("working-agreement §3에서 '현재 코드가 읽는 값' 열을 찾지 못했다")
 
-    documented: Dict[str, Set[str]] = {}
-    for line in rows[header_index + 1:]:
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) <= current_col:
-            continue
-        service = None
-        for cell in cells:
-            found = MODULE_CELL_RE.search(cell)
-            if found:
-                service = found.group(1)
-                break
-        if service is None:
-            continue
-        documented[service] = set(ENV_TOKEN_RE.findall(cells[current_col]))
-    return documented
+def _service_env_reads(service_dir: pathlib.Path) -> Tuple[Set[str], Set[str], Dict[str, str]]:
+    """서비스 디렉터리의 모든 .py가 읽는 키. main.py만 보면 다른 모듈에서 읽는 키를 놓친다."""
+    required: Set[str] = set()
+    optional: Set[str] = set()
+    where: Dict[str, str] = {}
+    for source in sorted(service_dir.rglob("*.py")):
+        req, opt = _env_reads(source)
+        required |= req
+        optional |= opt
+        for key in req | opt:
+            where.setdefault(key, _rel(source))
+    return required, optional, where
 
 
 def _check_env(fail) -> int:
     services = {
-        "central_api": REPO_ROOT / "commerce/services/central_api/main.py",
-        "merchant_api": REPO_ROOT / "commerce/services/merchant_api/main.py",
-        "fl_coordinator": REPO_ROOT / "commerce/services/fl_coordinator/main.py",
+        name: REPO_ROOT / "commerce/services" / name
+        for name in ("central_api", "merchant_api", "fl_coordinator")
     }
-    try:
-        documented = _documented_env()
-    except LookupError as exc:
-        fail(_rel(WORKING_AGREEMENT), "표 해석 실패", str(exc))
-        return 0
-
     checked = 0
-    for service, source in services.items():
-        required, optional = _env_reads(source)
+    for service, service_dir in services.items():
+        readme = _rel(service_dir / "README.md")
+        try:
+            listed = _documented_env(service_dir)
+        except LookupError as exc:
+            fail(readme, "환경변수 절 없음", str(exc))
+            continue
+        required, optional, where = _service_env_reads(service_dir)
         actual = required | optional
-        listed = documented.get(service, set())
         checked += len(actual | listed)
         for key in sorted(actual - listed):
-            fail(_rel(WORKING_AGREEMENT), "코드가 읽는데 표에 없음",
-                 "%s (%s)" % (key, _rel(source)))
+            fail(readme, "코드가 읽는데 README에 없음", "%s (%s)" % (key, where[key]))
         for key in sorted(listed - actual):
-            fail(_rel(WORKING_AGREEMENT), "표의 '현재' 값인데 코드가 읽지 않음",
-                 "%s (%s)" % (key, _rel(source)))
+            fail(readme, "README의 '현재' 값인데 코드가 읽지 않음", "%s (%s)" % (key, _rel(service_dir)))
 
-    # 런처가 값을 넘기지 않으면 필수 키를 새로 만든 순간 기동이 깨진다.
+    # 런처는 자식 프로세스의 환경을 비우고 자기 dict에 적은 값만 넘긴다. 그래서
+    # 어느 서비스든 필수 키를 새로 만들면서 런처가 넘기지 않으면 기동이 깨진다.
     launcher_keys = _env_written_by_launcher()
-    merchant_required, _ = _env_reads(services["merchant_api"])
-    for key in sorted(merchant_required - launcher_keys):
-        fail("commerce/deploy/run_local.py", "필수 환경변수를 런처가 넘기지 않음", key)
+    for service, service_dir in services.items():
+        required, _, where = _service_env_reads(service_dir)
+        for key in sorted(required - launcher_keys):
+            fail("commerce/deploy/run_local.py", "필수 환경변수를 런처가 넘기지 않음",
+                 "%s (%s)" % (key, where[key]))
     return checked
 
 
@@ -265,10 +294,11 @@ def run(verbose: bool = False) -> int:
     gates = _check_gates(fail)
     imports = _check_imports(fail)
     vendor = _check_vendor_pointers(fail)
+    fences = _check_fences(fail)
     _check_legacy_names(fail)
 
-    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d·도구지시 %d, 실패 %d건."
-          % (links, env, gates, imports, vendor, len(failures)))
+    print("문서 대 코드 대조: 링크 %d·환경변수 %d·게이트 %d·import %d·도구지시 %d·코드펜스 %d, 실패 %d건."
+          % (links, env, gates, imports, vendor, fences, len(failures)))
     if failures:
         # contracts 러너와 같은 규약: 실패 시 OK 줄을 내지 않는다.
         for where, kind, detail in failures:
@@ -276,8 +306,8 @@ def run(verbose: bool = False) -> int:
         return 1
     if verbose:
         print("문서 %d개를 읽었다." % len(_docs()))
-    print("DOCS OK: links=%d env=%d gates=%d imports=%d vendor=%d failures=0"
-          % (links, env, gates, imports, vendor))
+    print("DOCS OK: links=%d env=%d gates=%d imports=%d vendor=%d fences=%d failures=0"
+          % (links, env, gates, imports, vendor, fences))
     return 0
 
 

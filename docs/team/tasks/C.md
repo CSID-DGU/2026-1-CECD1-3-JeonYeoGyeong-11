@@ -1,23 +1,23 @@
 # C 작업 카드 — 계약·FL·통합
-담당 이름: [작업 규칙](../working-agreement.md)에서 배정 · 실행 기준 D0017~D0019
+담당 계정: 미정 · 회의에서 정한 뒤 기입([작업 규칙](../working-agreement.md) §1) · 실행 기준 [D0017~D0021](../../design/decisions.md) · 약어는 [팀 시작 안내](../start.md) §5
 
 ## 목표와 소유
 A/B가 독립 구현해도 연결되는 계약과 실행 환경을 제공하고 최종 개별 업데이트 보호 집계를 완성한다.
 소유: commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/.
 첫 읽기는 [팀 시작 안내](../start.md) §0·2를 따른다. 아래는 기능별 참고이며 전부 선독할 목록이 아니다: 환경·게이트는 [작업 규칙](../working-agreement.md), 집계·배포는 [인터페이스 계약](../../design/interfaces.md), 실제 모델 연결은 [모델 경계](../../design/model.md) §4~8, 보호 전제는 [아키텍처](../../design/architecture.md).
-지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 저장소 준비를 맡으면 통합 브랜치·보호 설정·계약 CI를 별도 산출물로 기록한다.
+지속 작업: [Git 협업](../git-workflow.md)에 따라 작업별 브랜치와 Draft PR을 사용한다. 시작 때 B의 manifest/학습 API와 A의 실행 훅 변경을 확인한다. 브랜치 보호나 CI를 바꾸면 같은 PR에서 [Git 협업](../git-workflow.md) 'CI와 저장소 설정' 절을 갱신한다. 설정값을 읽는 것만으로 강제된다고 적지 않고 실제로 막히는지 확인한다.
 
 ## 첫 작업 두 갈래
 아래는 피드백을 거쳐 나눠 수행할 초기 순서다. 먼저 [팀 시작 안내](../start.md)의 C 첫 작업을 확인하고, 전체 coordinator와 보호 집계를 한 번에 구현하지 않는다.
 
-1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다. stub trainer는 자기 소유 경로에 두고 주입한다([개발 안내 §상대 모듈을 대체하는 방법](../../development.md#상대-모듈을-대체하는-방법)). 더미 tensor는 `shared_model_manifest.v1/valid/dummy_tensors_for_round_bringup.json` fixture를 기준으로 만든다.
-2. 동시에 최종 보호 집계 구현의 타당성을 먼저 확인한다. 기존 검증된 구현·정확한 버전·환경 호환·위협 가정·참여/이탈 하한·메시지·양자화·실패 조건을 작은 예제로 검토한다.
+1. contracts 게이트와 fixture를 확인하고 합성 stub trainer로 round → 제출 → 균등 평균 → release를 연결한다. stub trainer(가짜 B runtime)는 `commerce/tests/e2e/`에 두고 자기 `create_client`에 직접 넘긴다. A의 `build_context`는 거치지 않는다([개발 안내 §상대 모듈을 대체하는 방법](../../development.md#상대-모듈을-대체하는-방법)). c1에만 쓰는 검증 코드(npz 길이·해시, 라운드 상태)도 `fl_coordinator/`·`fl_client/` 아래 둔다. `contracts/`는 세 역할이 함께 쓰는 보호 경로라 바꿀 때마다 다른 소유자의 승인이 필요하므로, A·B도 쓰는 것만 둔다. 더미 tensor는 `shared_model_manifest.v1/valid/dummy_tensors_for_round_bringup.json` fixture의 이름·shape를 기준으로 만든다. 그 fixture의 `manifest_hash`는 형태 예시이므로 `ids.manifest_hash`로 다시 계산한다.
+2. 동시에 최종 보호 집계 구현의 타당성을 먼저 확인한다. 허용하는 구현 범위와 이탈 허용 0은 [결정](../../design/decisions.md) D0021이다. 기존 검증된 구현·정확한 버전·환경 호환·위협 가정·참여 하한(이탈 허용 0)·메시지·양자화·실패 조건을 작은 예제로 검토한다.
 
-보호 방식 선정 기록은 C 첫 산출물이다. G3까지 다 만든 뒤 처음 검토하지 않는다. 선정 전에도 합성 평문 c1과 A/B 계약 작업은 진행 가능하다.
+보호 방식 선정 기록은 C 첫 산출물이다. 조사 내용은 `docs/design/` 아래 새 문서에 두고, 채택 결론은 사람이 결정한 뒤 [결정 요약](../../design/decisions.md)에 D 번호로 올린다. G3까지 다 만든 뒤 처음 검토하지 않는다. 선정 전에도 합성 평문 c1과 A/B 계약 작업은 진행 가능하다.
 라이브러리 미지원/예산 초과면 근거와 대안을 팀에 보고한다. “메모리만 썼으므로 안전”으로 목표를 낮추지 않는다.
 
 ## c1 산출물
-- Bearer seller 인증, round config, round_submission/npz 검증, 재시도 멱등성.
+- Bearer seller 인증(인증 실패 코드는 OQ13 결정 뒤), round config, round_submission/npz 검증, 재시도 멱등성. FL client의 합성 평문 활성화는 OQ17 결정 뒤.
 - 사전 고정 cohort 전원 완료 또는 전체 폐기. 지각 이월 없음.
 - 실제 npz 전송 길이/해시와 개별 tensor 크기를 구분한 제한.
 - immutable model release, latest/manifest/weights, 신규 판매자 설치.
@@ -30,7 +30,7 @@ run_local.py와 호환 의존성·환경 예제를 소유한다. 중앙/coordina
 판매자별 origin을 분리하고 루프백 해석·쿠키 범위를 확인한다. REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일.
 A는 lifespan hook, B는 runtime API를 제공한다. C가 다른 소유자의 DB를 직접 변경하지 않는다.
 
-../../design/model-lab.md/D0018에 따라 집계 모듈을 HTTP 앱과 분리하고 B의 실험 실행기에서도 재사용한다. 초기 학습 release의 로컬 import/검증/registry 등록을 제공한다. G4 보호 모듈 테스트는 A 화면 없이 합성 입력으로 실행할 수 있으며, 서비스 전체 비잔류는 A 연결 후 추가 검사한다.
+[독립 모델 실험](../../design/model-lab.md)과 D0018에 따라 집계 모듈을 HTTP 앱과 분리하고 B의 실험 실행기에서도 재사용한다. 초기 학습 release의 로컬 import/검증/registry 등록을 제공한다. G4 보호 모듈 테스트는 A 화면 없이 합성 입력으로 실행할 수 있으며, 서비스 전체 비잔류는 A 연결 후 추가 검사한다.
 
 ## 공통 모델과 개인화 분리
 D0019/[모델 비교](../../design/comparison.md)을 따른다. FL_MODEL_VARIANT는 한 실행 동안 고정하고 text_only/text_relation의 registry·라운드·인증 설정을 분리한다. 먼저 순차 실행하고 두 공통 release를 판매자에 미리 설치한다. shape가 같더라도 architecture/variant가 다른 제출은 c1에서 거부한다.

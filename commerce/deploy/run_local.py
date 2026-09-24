@@ -1,4 +1,4 @@
-"""Start local health-only app shells. No database, training or FL submission."""
+"""Start the local services and check each /healthz. FL stays disabled."""
 from __future__ import annotations
 
 import argparse
@@ -41,6 +41,7 @@ def main(argv=None) -> int:
     if args.check:
         return 0
     processes: list[subprocess.Popen] = []
+    ready: dict[str, bool] = {}
     opener = build_opener(ProxyHandler({}))
     try:
         # Detect occupied ports before launching; never stop an unrelated server.
@@ -66,14 +67,18 @@ def main(argv=None) -> int:
                 try:
                     with opener.open(f"http://127.0.0.1:{port}/healthz", timeout=0.5) as response:
                         payload = json.load(response)
-                    if payload != {"service": role, "status": "scaffold", "ready": False}:
-                        raise RuntimeError("Unexpected health response")
+                    # Check the shape only. Pinning today's "scaffold"/ready=false would fail the
+                    # required CI job the moment A or C implements a service.
+                    if payload.get("service") != role or not isinstance(payload.get("ready"), bool):
+                        raise RuntimeError(f"{role}: unexpected health response {payload!r}")
+                    ready[f"{role}:{port}"] = payload["ready"]
                     break
                 except OSError:
                     if time.monotonic() >= deadline:
                         raise RuntimeError(f"{role} health timeout")
                     time.sleep(0.1)
-        print("SCAFFOLD SERVICES UP: business ready=false; FL disabled", flush=True)
+        states = " ".join(f"{name}={'ready' if ok else 'not-ready'}" for name, ok in ready.items())
+        print(f"SERVICES UP: {states}; FL disabled", flush=True)
         if not args.smoke:
             while all(p.poll() is None for p in processes):
                 time.sleep(0.5)

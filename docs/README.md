@@ -21,7 +21,7 @@
 | [평가](design/evaluation.md) | 시점·두 콜드스타트·기준선·지표 | B | EVALUATION |
 | [독립 모델 실험](design/model-lab.md) | 화면 없는 학습·checkpoint·초기 release | B, C | LAB_WORKFLOW |
 | [모델 비교](design/comparison.md) | T-G/R-G/T-P/R-P·동일 snapshot 시연 | A, B | COMPARISON |
-| [채택한 설계 결정](design/decisions.md) | D0017~D0019 및 초기 뼈대 선택 이유 | 필요한 경우 | 현행 결정 요약 |
+| [채택한 설계 결정](design/decisions.md) | D0017~D0021 및 초기 뼈대 선택 이유 | 필요한 경우 | 현행 결정 요약 |
 | [열린 구현 항목](design/open-questions.md) | 미확정 부분·담당·완료 증거 | 해당 담당 | 현행 검토 항목 |
 
 본문의 CONTRACTS/MODEL_BOUNDARY 등 약칭은 위 공개 문서를 가리킨다. JSON 필드/타입은 [스키마와 검사](contracts.md), Python 호출은 `commerce/packages/contracts/ports.py`와 `types.py`를 기준으로 한다. 기술 설명과 코드가 충돌하면 관련 소비자가 함께 수정한다.

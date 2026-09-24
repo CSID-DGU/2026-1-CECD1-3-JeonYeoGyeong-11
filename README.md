@@ -55,6 +55,7 @@ python -m commerce.tools.gate contracts
 python -m commerce.tools.gate scaffold
 python -m commerce.tools.gate docs
 python -m commerce.tools.gate policy
+python -m commerce.tools.gate business
 python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 
@@ -64,7 +65,7 @@ python -m commerce.deploy.run_local --smoke --merchants 2
 CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 ```
 
-이 검사는 입력 형태와 일부 의미 규칙을 확인합니다. 실제 주문 복구·모델 품질·보호 집계 동작을 검증하는 것은 아닙니다. `scaffold`는 객체 연결과 미구현 경계를 검사하고, 로컬 smoke는 health-only 프로세스를 기동했다가 종료합니다. 업무 게이트는 현재 `NOT_IMPLEMENTED`와 종료 코드 3을 반환합니다.
+이 검사는 입력 형태와 일부 의미 규칙을 확인합니다. 실제 주문 복구·모델 품질·보호 집계 동작을 검증하는 것은 아닙니다. `scaffold`는 객체 연결과 미구현 경계를 검사하고, 로컬 smoke는 health-only 프로세스를 기동했다가 종료합니다. 업무 게이트는 담당이 selfcheck를 추가하기 전까지 `NOT_IMPLEMENTED`와 종료 코드 3을 반환하고, `business`는 그중 실패가 없는지만 봅니다.
 
 ## 구성
 
@@ -75,7 +76,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 │
 ├── docs/                        설계 · 협업 문서
 │   ├── README.md                문서 목차
-│   ├── contracts.md             계약 목록 · 게이트 상태
+│   ├── contracts.md             계약 목록 · 게이트 위치
 │   ├── development.md           설치 · 호출 규격 · 모듈 대체 방법
 │   ├── design/                  아키텍처 · 인터페이스 · 모델 · 데이터 · 평가
 │   └── team/                    시작 안내 · 작업 규칙 · Git 규약
@@ -90,7 +91,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 │   ├── packages/
 │   │   ├── data_adapters/   B   두 출처 · live 입력 변환
 │   │   ├── recommender/     B   NLP · 관계 · 추천 runtime
-│   │   ├── contracts/       C*  스키마 13 · 픽스처 121 · 검증기
+│   │   ├── contracts/       C*  스키마 · 픽스처 · 검증기 · 공용 ID
 │   │   └── fl_client/       C   판매자 FL client
 │   ├── evaluation/          B   화면 없는 학습 · 평가 실행기
 │   ├── deploy/              C   로컬 실행 런처
@@ -100,7 +101,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 └── fedcommerce/                 이전 탐색 분석 · 참고용
 ```
 
-`A` `B` `C`는 그 경로를 **작성하는** 담당입니다. `*`는 세 역할이 모두 소비하는 것이라 작성자 외 **다른 한 명의 승인이 있어야 병합**되는 경로입니다. 예를 들어 계약은 C가 쓰지만 A·B가 그대로 쓰기 때문에 C 혼자 바꿀 수 없습니다.
+`A` `B` `C`는 그 경로를 **작성하는** 담당입니다. `*`는 세 역할이 모두 소비하는 것이라 작성자 외 **다른 한 명의 승인을 받고 병합**하는 경로입니다. GitHub이 이 승인을 강제합니다([Git 협업](docs/team/git-workflow.md) 'CI와 저장소 설정'). 예를 들어 계약은 C가 쓰지만 A·B가 그대로 쓰기 때문에 C 혼자 바꿀 수 없습니다.
 
 소유 경로의 기준은 [작업 규칙](docs/team/working-agreement.md) §1입니다. **공동 검토**로 표시한 곳과 requirements·CI·동작 명세는 바꿀 때 다른 담당자의 승인이 필요하고, 그 목록은 [.github/CODEOWNERS](.github/CODEOWNERS)에 있습니다.
 

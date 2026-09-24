@@ -1,5 +1,5 @@
 # 인터페이스 계약
-갱신: 2026-09-23 · D0017~D0019 · 소유: C, 생산자/소비자 공동 검토
+갱신: 2026-09-24 · D0017~D0021 · 소유: C, 생산자/소비자 공동 검토
 
 ## 1. 공통 기준과 계약 목록
 
@@ -15,7 +15,7 @@ JSON 필드·타입은 commerce/packages/contracts/schemas/의 같은 이름 파
 | contract_error.v1 | 공통 거부 응답 | 원문·비밀을 detail에 넣지 않음 |
 | shared_model_manifest.v1 | B → C 모델 구조 | 상품·고객축 없는 공통 구조 |
 | round_config.v1 | C → 판매자 학습 설정 | 기준 모델과 라운드 |
-| delta_manifest.v1 | B → 판매자 FL client | 업데이트의 구조·완료 여부 |
+| delta_manifest.v1 | 판매자 FL client가 B의 TrainingResult(shared_delta·metrics·completed)로 작성 | 업데이트의 구조·완료 여부 |
 | round_submission.v1 | 판매자 → C | 합성 평문 모드의 manifest·metrics·바이트 설명 |
 | model_release.v1 | C → 판매자 | 설치할 집계 모델 식별자·무결성 |
 | round_submit_ack.v1 | C → 판매자 | 합성 모드 제출 진행·처분 |
@@ -51,7 +51,7 @@ A는 구매자의 입력을 서버에서 검증하고 가격·상태·완료시�
 
 구매 성공은 A commit 기준이다. B 전달 대기는 주문 실패로 바꾸지 않고 로컬 상태로 표시한다. 시작 시와 주기적으로 pending을 재생한다. A와 B의 DB를 직접 교차 쓰지 않는다.
 
-purchase_event_id = SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리. 이벤트는 immutable이며 한 완료 주문에 하나다. basket_id_local=live order_id. 상품 중복은 주문 단계에서 수량을 합친다. 기존 이벤트를 원장으로 재생할 때도 같은 ID를 쓴다.
+purchase_event_id = SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리. A와 B 모두 `commerce.packages.contracts.ids.purchase_event_id`로 계산하고 검증기가 fixture를 이 식과 대조한다. 이벤트는 immutable이며 한 완료 주문에 하나다. basket_id_local=live order_id. 상품 중복은 주문 단계에서 수량을 합친다. 기존 이벤트를 원장으로 재생할 때도 같은 ID를 쓴다.
 
 | 출처 | seller_partition | time / order_rank | 수량 |
 | --- | --- | --- | --- |
@@ -90,22 +90,9 @@ B는 contract_error에 대응하는 코드·field_path를 가진 예외를 제�
 
 [모델 경계](model.md) §4의 model_variant/mode는 A·B·C의 판매자 내부 함수 인자다. recommendation_request.v1에 variant, mode, feature_snapshot_id를 추가하지 않는다. 첫 비교 화면은 판매자 서버에서 렌더하여 별도 브라우저 JSON 응답 계약을 만들지 않는다.
 
-recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B의 로컬 ps- ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
+recommendation.model_version은 실제 서빙 가중치 ID다. 공통 모델은 base release ID, 개인화는 B가 정한 로컬 ID다. 이 문자열의 64자 상한은 유지한다. base/revision 해석은 B의 로컬 인덱스가 담당하며 중앙에는 개인화 ID/가중치/손실을 제출하지 않는다. C의 round_config/delta_manifest/model_release의 model_version은 계속 공통 base 버전이다.
 
-compare_local(request)는 다음 **로컬 Python 객체** ComparisonResult를 반환한다. A는 속성으로 읽으며 이 객체를 JSON 계약으로 외부 직렬화하지 않는다.
-
-| 항목 | 의미 |
-| --- | --- |
-| comparison_id | 판매자 로컬 비교 식별자 |
-| as_of, feature_snapshot_id | 네 결과가 함께 참조한 시점과 immutable 특징 snapshot |
-| candidate_set_hash | 중복 제거 후 상품 ID 문자열 오름차순으로 정렬한 후보 목록의 정규 JSON SHA-256 |
-| arms | T-G/R-G/T-P/R-P 순서의 4개 결과 |
-| 각 arm의 arm_id, model_variant, mode | 결과 ID, text_only/text_relation, global/personalized |
-| 각 arm의 available, unavailable_reason | 준비 여부와 고정된 비민감 사유. 가능하면 사유는 null |
-| 각 arm의 base_model_version, personalization_revision | base는 비교 설정에 지정한 ID(미설정이면 null). G와 미준비 P의 revision은 null. 준비된 P는 같은 variant G의 base와 일치 |
-| 각 arm의 recommendation | available이면 기존 recommendation.v1, 아니면 null |
-
-unavailable_reason은 model_not_ready / personalization_not_ready / insufficient_data / validation_rejected / base_mismatch 중 하나다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
+compare_local(request)는 로컬 Python 객체 ComparisonResult를 반환한다. A는 속성으로 읽고 JSON 계약으로 외부 직렬화하지 않는다. 필드와 사유 값은 `commerce/packages/contracts/types.py`의 `ComparisonResult`·`ComparisonArm`·`UnavailableReason`이 기준이다. 코드에 없는 의미만 적는다. arms는 T-G/R-G/T-P/R-P 순서다. candidate_set_hash는 중복을 없애고 상품 ID 오름차순으로 정렬한 후보 목록의 정규 JSON SHA-256이다(`ids.canonical_json`). 준비된 P의 base는 같은 variant G의 base와 같다. available이 아니면 recommendation과 personalization_revision은 null이다. P칸에 G 결과를 대신 넣지 않는다. 권한·요청 오류는 비교 자체를 거부하며 unavailable로 숨기지 않는다. 추천 자체의 이력 부족 fallback은 recommendation의 기존 필드로 표시한다.
 
 B의 seller runtime이 원장·catalog snapshot과 후보를 한 번 고정한다. A가 별도 요청 4개를 호출하거나 비교 중 구매를 arm별로 따로 반영하지 않는다. 준비된 comparison 설정은 variant별 base checkpoint를 지정하고 요청 중 latest를 따라가지 않는다. 상세 시나리오와 판정은 [모델 비교](comparison.md)을 따른다.
 
@@ -133,40 +120,25 @@ model_release는 model_version, manifest_hash, weights_sha256, weights_size_byte
 
 ## 6. 합성 FL HTTP 경로와 상태
 
-모든 모델/라운드 경로는 판매자별 Bearer 인증을 적용한다. seller는 토큰에서 확인하고 body와 대조한다. 요청 본문·Authorization·원시 텐서 로깅을 끈다. /healthz만 비민감 준비 상태를 200으로 반환한다.
+서비스 합성 FL(g3)은 [작업 규칙](../team/working-agreement.md) §8의 줄이는 순서 5번이다. 판매자 FL client와 coordinator는 둘 다 C 소유라, 경로·메서드·응답 코드·ack 값의 해석은 C가 구현할 때 `commerce/services/fl_coordinator/README.md`에 적는다. 이 절은 다른 역할과 보안에 걸리는 불변식만 고정한다.
 
-| 메서드·경로 | 입력 | 성공 응답 |
-| --- | --- | --- |
-| GET /rounds/current | 인증 | 200 round_config 또는 204(선택된 활성 라운드 없음) |
-| GET /models/latest | 인증 | 200 model_release, 미등록이면 404 |
-| GET /models/{model_version}/manifest | 인증 | 200 shared_model_manifest |
-| GET /models/{model_version}/weights | 인증 | 200 npz |
-| POST /rounds/{round_id}/submissions | round_submission | 201 빈 본문, Location은 아래 PUT 경로 |
-| PUT /rounds/{round_id}/submissions/delta | npz | 202 round_submit_ack |
-| GET /rounds/{round_id}/result | 인증 | 200 round_submit_ack, 아직 제출 없으면 404 |
-
-round_id/model_version은 C가 생성한 안전한 ID 패턴으로 제한한다. URL에 seller/customer/order ID를 넣지 않는다. C는 round·인증 seller별 제출 슬롯을 하나만 만든다. 같은 봉투·동일 바이트 재시도는 같은 결과를 반환하고, 달라지면 DUPLICATE_ROUND_SUBMIT. POST 예약 단계에는 집계하지 않는다.
-
-첫 동기 버전은 **미리 고정한 참여자 전원 완료 또는 라운드 전체 폐기**다. 동적 부분 집계·지각 이월은 구현하지 않는다. 합성 데모 참여자는 3명 이상, 보호 모드 하한은 최소 5명이며 선택 프로토콜이 더 높은 수를 요구하면 따른다. min_clients라는 숫자만으로 보안을 주장하지 않는다.
-
-모든 선택자의 completed=true와 유효한 delta가 deadline 안에 모이면 동일 가중치 평균(delta)을 기준 모델에 더한다. 샘플 수 가중치와 추가 step 재스케일은 없다. 미완료·탈락·deadline 초과이면 전체 폐기하고 마지막 모델을 유지한다. 실험 참여자 수와 deadline은 실행 config에 기록한다.
-
-초기 ack 사용값은 accepted_on_time / aggregated_on_time / dropped_incomplete / round_discarded다. 대기 조회는 accepted_on_time 유지, 집계 성공 시 aggregated_in_round_id를 채운다. 그 외에는 null. staleness_rounds는 대기 null, 정상 집계 0. arrival_t_s는 C의 라운드 시작 후 단조시계 경과 초이며 가상 지연이 아니다. schema의 나머지 enum은 과거 확장용으로 보존했으며 현행 경로에서 출력하지 않는다.
-
-coordinator가 합성 모드의 메모리 제출을 잃고 재시작하면 진행 라운드를 폐기한다. 개별 delta를 복구용 파일로 남기지 않는다. 보호 모드의 재시작·이탈·키 처리는 C가 선택 프로토콜대로 별도 명세화한다.
-
-신규 판매자는 /models/latest → manifest/weights 검증 → B install_release 순서로 설치한다. 라운드 참가 이력이 없어도 모델을 받을 수 있다.
+- 모든 모델·라운드 경로는 판매자별 Bearer 인증을 쓴다. seller는 토큰에서 확인하고 본문과 대조한다. 요청 본문·Authorization·원시 텐서를 로그에 남기지 않는다. `/healthz`만 비민감 준비 상태를 인증 없이 돌려준다.
+- round_id·model_version은 C가 만든 안전한 ID 패턴으로 제한하고, URL에 seller·customer·order ID를 넣지 않는다.
+- round·seller마다 제출 슬롯은 하나다. 같은 바이트의 재시도는 같은 결과를 돌려주고, 다르면 DUPLICATE_ROUND_SUBMIT이다.
+- 첫 동기 버전은 **미리 고정한 참여자 전원 완료 또는 라운드 전체 폐기**다(D0017). 모든 선택자의 completed=true와 유효한 delta가 deadline 안에 모이면 동일 가중치 평균을 기준 모델에 더한다. 샘플 수 가중치·추가 step 재스케일·지각 이월은 없다. 하나라도 빠지면 전체를 폐기하고 마지막 모델을 유지한다. 합성 데모는 3명 이상, 보호 모드는 5명 이상이며 선택 프로토콜이 더 요구하면 따른다. 인원수만으로 보안을 주장하지 않는다.
+- coordinator가 재시작하면 진행 중인 합성 라운드를 폐기한다. 개별 delta를 복구용 파일로 남기지 않는다. 보호 모드의 재시작·이탈·키 처리는 선택 프로토콜대로 C가 정한다(D0021).
+- 신규 판매자는 최신 release → manifest·weights 검증 → B install_release 순서로 설치한다. 라운드 참가 이력이 없어도 받을 수 있다.
 
 ## 7. 보호 집계 전제
 
-C의 첫 산출물은 프로토콜/라이브러리/버전, 서버·클라이언트 위협 가정, 참여·이탈 하한, 양자화/마스킹, 키 수명, 인증, 재시도·중복·실패 처리, 모델 일관성 확인과 테스트 계획이다. 이를 결정 기록과 schema에 반영한 뒤 G4를 구현한다.
+C의 첫 산출물은 프로토콜/라이브러리/버전, 서버·클라이언트 위협 가정, 참여 하한(이탈 허용은 0, D0021), 양자화/마스킹, 키 수명, 인증, 재시도·중복·실패 처리, 모델 일관성 확인과 테스트 계획이다. 이를 결정 기록과 schema에 반영한 뒤 G4를 구현한다.
 
 - 중앙에는 허용된 참여 메타데이터와 집계 결과만 보인다. 개별 평문 delta·loss·로컬 sample count 금지.
 - 로컬 지표가 필요하면 유효값 합계와 유효 여부를 프로토콜 안에서 함께 집계한다. 개인별 값이나 누락 사유를 중앙에 노출하지 않는다.
 - 처음에는 고정 라운드 수를 쓰고, 보호된 검증 지표가 준비되기 전에는 중앙 조기 종료를 끈다.
 - 최소 인원이 없거나 프로토콜 검증에 실패하면 집계를 공개하지 않는다. 같은 라운드를 작은 부분집합으로 반복 공개하지 않는다.
 - FL_MODE=synthetic_plaintext는 신뢰된 합성 입력 경로로만 실행한다. source=live라는 필드만으로 합성임을 판정하지 않는다.
-- G4 전 실데이터 분석·로컬 학습은 가능하지만 실데이터 유래 업데이트의 중앙 FL는 비활성이다.
+- G4 전에는 서비스 경로에서 실데이터 유래 업데이트의 중앙 FL를 비활성으로 둔다. 공개 데이터의 실험실 시뮬레이션은 이 경로가 아니다(D0020).
 
 ## 8. 오류, 버전, fixture 게이트
 
