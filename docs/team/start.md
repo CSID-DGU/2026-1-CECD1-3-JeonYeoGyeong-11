@@ -25,7 +25,7 @@ cd 2026-1-CECD1-3-JeonYeoGyeong-11
 git switch -c commerce/a/first-order origin/main
 ```
 
-마지막 브랜치는 자신의 역할/작업명으로 바꾼다. 분기 기준은 현재 HEAD가 아니라 `origin/main`이다. 다른 브랜치가 체크아웃된 폴더에서 HEAD로 분기하면 남의 커밋이 PR에 딸려 간다. PR의 base는 항상 `main`이다. 기존 작업 폴더를 쓰는 경우 미커밋 변경을 먼저 확인하고 `git fetch origin` 뒤에 분기한다.
+마지막 브랜치는 자신의 역할/작업명으로 바꾼다. 분기 기준은 현재 HEAD가 아니라 `origin/main`이다(아직 병합되지 않은 PR 위에서 일할 때는 [Git 협업](git-workflow.md)의 '의존 PR 쌓기'). 다른 브랜치가 체크아웃된 폴더에서 HEAD로 분기하면 남의 커밋이 PR에 딸려 간다. PR의 base는 항상 `main`이다. 기존 작업 폴더를 쓰는 경우 미커밋 변경을 먼저 확인하고 `git fetch origin` 뒤에 분기한다.
 
 설치·최초 검사는 [개발 안내](../development.md)를 따른다. Git 작성자 이름·이메일은 각자 본인 것으로 설정한다. 별도 ZIP이나 비공개 문서는 필요 없다.
 

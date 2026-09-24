@@ -59,7 +59,7 @@ D0019에 따라 전체 추천 가중치를 공유한 뒤 query_proj/scorer만 �
 | 판매자 i | commerce.services.merchant_api.main:app | merchant-i.localhost:8100+i | [merchant README](../../commerce/services/merchant_api/README.md) |
 | coordinator | commerce.services.fl_coordinator.main:app | coordinator.localhost:8200 | [coordinator README](../../commerce/services/fl_coordinator/README.md) |
 
-**필수 환경변수를 새로 도입하면 소유자가 C에게 알리고 C가 같은 변경에서 `commerce/deploy/run_local.py`를 갱신한다.** 런처가 값을 넘기지 않으면 기동이 실패하므로 A가 `MERCHANT_DB_PATH`를 필수로 만드는 변경은 런처 갱신과 함께 병합한다.
+**필수 환경변수는 런처가 먼저 넘기고 서비스가 나중에 필수로 읽는다.** 런처는 자식 프로세스에 자기가 적은 값만 넘기므로, 넘기지 않는 값을 필수로 읽으면 기동이 실패한다. 서비스 담당이 C에게 알리면 C가 `commerce/deploy/run_local.py`에서 그 값을 넘기는 PR을 먼저 병합하고, 서비스 담당은 그 뒤에 그 값을 필수로 읽는 PR을 병합한다. 두 소유자의 변경을 한 PR에 섞지 않는다. docs 게이트가 순서를 검사한다(런처가 넘기지 않는 필수 값이면 실패). 선택 값(`os.environ.get`)은 런처 변경 없이 먼저 넣어도 된다.
 
 모든 호스트명은 로컬 loopback으로 해석되도록 C가 실행 환경에서 확인한다. 안 되면 hosts 또는 로컬 DNS 설정 절차를 제공한다. 같은 localhost의 포트만으로 쿠키를 분리하지 않는다. 쿠키는 Domain을 지정하지 않는 host-only, HttpOnly, SameSite 설정과 CSRF 검사를 사용한다. HTTPS 배포에서는 Secure를 켠다.
 

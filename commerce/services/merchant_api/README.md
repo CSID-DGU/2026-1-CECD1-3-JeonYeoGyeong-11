@@ -14,4 +14,4 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 - 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`
 - 구현 시 추가: `MERCHANT_DB_PATH`, `MERCHANT_SECRET`, `COORDINATOR_URL`, `FL_CLIENT_TOKEN`
 
-필수 값을 새로 만들면 C의 `commerce/deploy/run_local.py`도 같은 변경에서 그 값을 넘겨야 한다([작업 규칙](../../../docs/team/working-agreement.md) §3).
+필수 값은 C의 `commerce/deploy/run_local.py`가 그 값을 넘기는 PR이 먼저 병합된 뒤에 읽는다([작업 규칙](../../../docs/team/working-agreement.md) §3).
