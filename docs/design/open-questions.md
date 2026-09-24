@@ -17,6 +17,11 @@
 | OQ11 | B 비용 측정, A/C 서비스 연결 · 소형 실행 후 | 판매자별 계산 예산·한 PC 순차 실행의 deadline·학습 중 서비스 자원 경합 | 장치·데이터 규모·설정을 기록한 추천/학습 시간·최대 메모리, 학습 유무의 주문/추천 응답 비교. 절차는 model-lab.md §5 |
 | OQ12 | B · 어댑터 확정 전 | Dunnhumby 절대시각의 시간대(원자료에 기록이 없다)와 원자료 입력 형식(.rds 직접 읽기는 lock에 없는 의존성 필요, 또는 CSV 내보내기) | 선택과 근거를 기록한 어댑터 fixture. 시간대를 추정하면 추정이라고 표시 |
 | OQ13 | A, C · 인증 API 추가 전 | 인증 실패(401)의 `contract_error.v1` 코드. 현재 v1 enum에 인증 오류 코드가 없고 strict v1이라 추가도 계약 변경이다 | 결정 기록과 schema·fixture·오류 매핑 |
+| OQ14 | A, C · 공개 목록 구현 전 | 판매자가 중앙에 catalog_snapshot을 올릴 때의 판매자 인증. [인터페이스](interfaces.md) §3은 중앙이 인증된 판매자의 snapshot만 받는다고 하고, [작업 규칙](../team/working-agreement.md) §3은 중앙에 판매자 비밀키를 넣지 않는다 | 인증 방식 결정, 다른 판매자 행 교체 거부 사례 |
+| OQ15 | A · 판매자 주문 화면 전 | 판매자 origin URL에 order_id를 넣어도 되는지. [아키텍처](architecture.md)는 고객·주문 ID를 URL·중앙 로그에 넣지 않는다고 하고, [인터페이스](interfaces.md) §1은 판매자 로컬에서 고객 ID만 금지한다 | 허용 범위 결정과 판매자 access log 확인 |
+| OQ16 | C · g3 전 | 런처로 합성 FL을 켜는 방법. policy 게이트는 런처의 `FL_ENABLED`가 상수 `"false"`일 때만 통과한다 | 정책을 바꿀지(사람 결정) 또는 런처 밖 실행 경로 |
+| OQ17 | C · 합성 평문 모드 활성화 전 | `FL_MODE=synthetic_plaintext`의 "신뢰된 합성 입력 경로"를 무엇으로 확인하는지([인터페이스](interfaces.md) §7). `source` 필드만으로는 판정하지 않는다 | 출처 확인 규칙과 실데이터 유래 입력 거부 사례 |
+| OQ18 | B, C · 첫 PyTorch PR 전 | torch를 lock 하나로 Windows 개발 PC와 Linux CI에 설치하는 방법(CPU 전용 index 등) | 두 OS에서 lock 재설치 후 게이트 통과 기록 |
 
 OQ08은 초기 뼈대에서 단일 worker/runtime·공유 실행기·중복/실패 거부·health 응답까지 부분 반영했다. 실학습·모델 교체·재시작 복구까지 해결한 것은 아니다.
 
