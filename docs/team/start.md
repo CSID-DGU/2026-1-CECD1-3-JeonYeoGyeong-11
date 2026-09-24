@@ -71,6 +71,7 @@ git switch -c commerce/a/first-order origin/main
 | T-G·R-G·T-P·R-P | 2×2 비교 결과. T=text_only, R=text_relation, G=공통 모델, P=후반부 개인화 | [모델 비교](../design/comparison.md) §2 |
 | z | 고정 NLP 인코더가 만든 상품 텍스트 벡터 | [모델 경계](../design/model.md) §3 |
 | E-G0 | 텍스트만 기준선의 소형 첫 실행. NLP·비용·입력 품질을 잰다 | [평가](../design/evaluation.md) §1 |
+| 통제 이벤트 | 비교 시연과 G3 확인용으로 일부러 넣는 합성 구매. 상품 사이 관계를 만든다 | [데이터](../design/data.md) §5, [모델 비교](../design/comparison.md) §6 |
 | R1 · R2 | 전체 roster 실험. 두 출처 플랫폼 학습 / 보류 판매자 이전. 후순위 | [평가](../design/evaluation.md) §5 |
 | A-0 · A-few | 신규 판매자. 학습 미참여로 공통 모델만 / 소수 step 개인화 | [평가](../design/evaluation.md) §3 |
 | C-new · C0 | 신상품. 학습에서 보류한 상품 / 관계만 0으로 가린 보조 분석(신상품 증거 아님) | [평가](../design/evaluation.md) §3 |

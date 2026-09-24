@@ -17,7 +17,7 @@ A/B가 독립 구현해도 연결되는 계약과 실행 환경을 제공하고 
 라이브러리 미지원/예산 초과면 근거와 대안을 팀에 보고한다. “메모리만 썼으므로 안전”으로 목표를 낮추지 않는다.
 
 ## c1 산출물
-- Bearer seller 인증, round config, round_submission/npz 검증, 재시도 멱등성.
+- Bearer seller 인증(인증 실패 코드는 OQ13 결정 뒤), round config, round_submission/npz 검증, 재시도 멱등성.
 - 사전 고정 cohort 전원 완료 또는 전체 폐기. 지각 이월 없음.
 - 실제 npz 전송 길이/해시와 개별 tensor 크기를 구분한 제한.
 - immutable model release, latest/manifest/weights, 신규 판매자 설치.
