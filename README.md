@@ -76,7 +76,7 @@ CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 │
 ├── docs/                        설계 · 협업 문서
 │   ├── README.md                문서 목차
-│   ├── contracts.md             계약 목록 · 게이트 상태
+│   ├── contracts.md             계약 목록 · 게이트 위치
 │   ├── development.md           설치 · 호출 규격 · 모듈 대체 방법
 │   ├── design/                  아키텍처 · 인터페이스 · 모델 · 데이터 · 평가
 │   └── team/                    시작 안내 · 작업 규칙 · Git 규약

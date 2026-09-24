@@ -14,7 +14,7 @@
     CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
     SCAFFOLD OK: tests=<n>; business gates are checked by gate business
     DOCS OK: links=<n> env=<n> gates=<n> imports=<n> vendor=<n> fences=<n> failures=0
-    POLICY OK: fl=<n> gates=<n> contracts=<n> failures=0
+    POLICY OK: fl=<n> contracts=<n> failures=0
     BUSINESS OK: passed=<n> not_implemented=<n> failures=0
 
 실패하면 그 줄을 내지 않는다. 있는 그대로의 실패를 요약 문자열로 덮지 않기
@@ -114,8 +114,6 @@ def _not_implemented(gate: str, module: str) -> Callable[[bool], int]:
         print("NOT_IMPLEMENTED %s" % gate)
         print("추가 위치: %s (확인 항목: docs/team/working-agreement.md §4)" % _module_file(module))
         return 3
-    # policy 게이트가 '실행 가능'이라는 문서 주장과 대조할 때 쓰는 표식이다.
-    _run.not_implemented = True
     return _run
 
 
@@ -173,7 +171,7 @@ GATES: Dict[str, Tuple[str, Callable[[bool], int]]] = {
     "contracts": ("모든 스키마와 fixture 검증(G1)", _run_contracts),
     "scaffold": ("공통 import·runtime 연결·기동 뼈대 검사", _run_scaffold),
     "docs": ("문서 대 코드 대조(링크·환경변수·게이트명·import·도구 지시 파일·코드 펜스)", _run_docs),
-    "policy": ("자동 병합 전 위험 신호 검사(FL 기본값·게이트 상태 주장·계약 집합)", _run_policy),
+    "policy": ("병합 전 위험 신호 검사(FL 기본값·계약 집합)", _run_policy),
     "business": ("업무 게이트 일괄 실행: 실패가 없으면 통과, 미구현·부분 구현은 허용", _run_business),
     "a1": ("A 주문·권한 업무 게이트", _selfcheck("a1", SELFCHECKS["a1"])),
     "b1": ("B 데이터·텍스트 입력 업무 게이트", _selfcheck("b1", SELFCHECKS["b1"])),

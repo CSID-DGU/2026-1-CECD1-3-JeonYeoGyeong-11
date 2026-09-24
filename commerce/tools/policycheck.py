@@ -4,11 +4,11 @@
     python -m commerce.tools.gate policy
 
 CODEOWNERS는 "어떤 파일을 고쳤는가"만 본다. 그런데 소유자가 자기 경로 안에서
-FL를 켜거나 미구현 게이트를 통과한 것처럼 적는 변경은 경로만 보면 평범하다.
-이 검사는 그런 상태를 직접 확인해 자동 병합을 멈춘다.
+FL를 켜거나 계약 schema를 빼는 변경은 경로만 보면 평범하다. 이 검사는 그런 상태를
+직접 확인해 병합을 막는다.
 
 판정은 종료 코드 0과 마지막 줄
-`POLICY OK: fl=<n> gates=<n> contracts=<n> failures=0`의 동시 충족이다.
+`POLICY OK: fl=<n> contracts=<n> failures=0`의 동시 충족이다.
 """
 
 from __future__ import annotations
@@ -22,11 +22,6 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONTRACTS_DOC = REPO_ROOT / "docs/contracts.md"
 RUN_LOCAL = REPO_ROOT / "commerce/deploy/run_local.py"
 SCHEMA_DIR = REPO_ROOT / "commerce/packages/contracts/schemas"
-
-# 문서 표의 상태 문자열. '실행 가능 (업무 검증 제외)'처럼 뒤에 단서가 붙을 수 있다.
-IMPLEMENTED_PREFIX = "실행 가능"
-NOT_IMPLEMENTED = "미구현"
-
 
 # --- 1. FL은 기본적으로 꺼져 있어야 한다 --------------------------------------
 
@@ -61,44 +56,7 @@ def _check_fl_defaults(fail) -> int:
     return checked
 
 
-# --- 2. 게이트 상태 주장이 실제 동작과 같아야 한다 ----------------------------
-
-def _gate_status_from_doc() -> dict:
-    status = {}
-    for line in CONTRACTS_DOC.read_text(encoding="utf-8").splitlines():
-        if not line.strip().startswith("|"):
-            continue
-        cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        if len(cells) < 3:
-            continue
-        name = cells[0].split(" ")[0]
-        if re.fullmatch(r"[a-z][a-z0-9]*", name):
-            status[name] = cells[-1]
-    return status
-
-
-def _check_gate_honesty(fail) -> int:
-    from commerce.tools.gate import GATES
-
-    documented = _gate_status_from_doc()
-    checked = 0
-    for name, (_, runner) in GATES.items():
-        claimed = documented.get(name)
-        if claimed is None:
-            continue  # docs 게이트가 표 누락을 따로 잡는다.
-        checked += 1
-        is_stub = getattr(runner, "not_implemented", False)
-        if claimed.startswith(NOT_IMPLEMENTED) and not is_stub:
-            fail(str(CONTRACTS_DOC.relative_to(REPO_ROOT)),
-                 "%s 는 문서에서 미구현인데 selfcheck가 있다. 이 표의 상태를 '부분 구현' 또는 "
-                 "'실행 가능'으로 갱신하라(gate.py는 고치지 않는다)" % name)
-        if claimed.startswith(IMPLEMENTED_PREFIX) and is_stub:
-            fail(str(CONTRACTS_DOC.relative_to(REPO_ROOT)),
-                 "%s 를 '실행 가능'이라고 적었지만 NOT_IMPLEMENTED를 반환한다" % name)
-    return checked
-
-
-# --- 3. 계약이 조용히 사라지지 않아야 한다 ------------------------------------
+# --- 2. 계약이 조용히 사라지지 않아야 한다 ------------------------------------
 
 def _check_contract_set(fail) -> int:
     text = CONTRACTS_DOC.read_text(encoding="utf-8")
@@ -122,17 +80,15 @@ def run(verbose: bool = False) -> int:
         failures.append((where, detail))
 
     fl = _check_fl_defaults(fail)
-    gates = _check_gate_honesty(fail)
     contracts = _check_contract_set(fail)
 
-    print("정책 검사: FL 기본값 %d·게이트 상태 %d·계약 집합 %d, 실패 %d건."
-          % (fl, gates, contracts, len(failures)))
+    print("정책 검사: FL 기본값 %d·계약 집합 %d, 실패 %d건." % (fl, contracts, len(failures)))
     if failures:
         for where, detail in failures:
             print("  %-44s %s" % (where, detail))
-        print("이 변경은 자동 병합하지 않는다. 담당자가 위 항목을 고친다. 정책 자체를 바꿔야 할 때만 사람이 결정한다.")
+        print("이 변경은 병합하지 않는다. 담당자가 위 항목을 고친다. 정책 자체를 바꿔야 할 때만 사람이 결정한다.")
         return 1
-    print("POLICY OK: fl=%d gates=%d contracts=%d failures=0" % (fl, gates, contracts))
+    print("POLICY OK: fl=%d contracts=%d failures=0" % (fl, contracts))
     return 0
 
 

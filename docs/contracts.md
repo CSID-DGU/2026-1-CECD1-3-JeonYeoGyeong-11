@@ -38,24 +38,24 @@ python -m commerce.tools.gate contracts
 
 `contracts`는 종료 코드 0과 `CONTRACTS OK` 요약으로 판정합니다. 정상 예제는 `fixtures/<계약>/valid`, 오류 예제는 `invalid`에 있으며 대응하는 `.reason.txt`의 첫 줄이 기대 오류 코드입니다.
 
-각 게이트가 무엇을 확인하는지는 [작업 규칙](team/working-agreement.md) §4가 기준입니다. 이 표는 검사 위치와 현재 상태만 적습니다.
+각 게이트가 무엇을 확인하는지는 [작업 규칙](team/working-agreement.md) §4가 기준입니다. 이 표는 검사 위치만 적습니다. 현재 상태는 `python -m commerce.tools.gate business` 출력이 기준이며 문서에 따로 적지 않습니다.
 
-| 게이트 | 검사 위치 | 현재 상태 |
-| --- | --- | --- |
-| contracts | `commerce/packages/contracts/validate.py` | 실행 가능 |
-| scaffold | `commerce/tests/e2e/test_scaffold.py` | 실행 가능 (업무 검증 제외) |
-| docs | `commerce/tools/doccheck.py` | 실행 가능 |
-| policy | `commerce/tools/policycheck.py` | 실행 가능 |
-| business | 아래 업무 게이트를 모두 실행 | 실행 가능 |
-| a1 | `commerce/services/merchant_api/selfcheck.py` | 미구현 |
-| b1 | `commerce/packages/data_adapters/selfcheck.py` | 미구현 |
-| b2 | `commerce/packages/recommender/selfcheck.py` | 미구현 |
-| c1 | `commerce/services/fl_coordinator/selfcheck.py` | 미구현 |
-| g2 | `commerce/tests/e2e/selfcheck_g2.py` | 미구현 |
-| g3 | `commerce/tests/e2e/selfcheck_g3.py` | 미구현 |
-| g4 | `commerce/tests/e2e/selfcheck_g4.py` | 미구현 |
+| 게이트 | 검사 위치 |
+| --- | --- |
+| contracts | `commerce/packages/contracts/validate.py` |
+| scaffold | `commerce/tests/e2e/test_scaffold.py` |
+| docs | `commerce/tools/doccheck.py` |
+| policy | `commerce/tools/policycheck.py` |
+| business | 아래 업무 게이트를 모두 실행 |
+| a1 | `commerce/services/merchant_api/selfcheck.py` |
+| b1 | `commerce/packages/data_adapters/selfcheck.py` |
+| b2 | `commerce/packages/recommender/selfcheck.py` |
+| c1 | `commerce/services/fl_coordinator/selfcheck.py` |
+| g2 | `commerce/tests/e2e/selfcheck_g2.py` |
+| g3 | `commerce/tests/e2e/selfcheck_g3.py` |
+| g4 | `commerce/tests/e2e/selfcheck_g4.py` |
 
-업무 게이트는 위 위치에 미리 연결돼 있습니다. 모듈이 없으면 종료 코드 3의 `NOT_IMPLEMENTED`입니다. 담당은 그 위치에 selfcheck를 만들고 같은 PR에서 상태를 `부분 구현` 또는 `실행 가능`으로 바꿉니다. `gate.py`는 고치지 않습니다. 기능 구현 PR에는 실제 호출 방법, 오류 처리, 사용한 데이터 종류, 검사 결과를 함께 기록합니다. 계약 변경 시 생산자·소비자 코드, 예제와 설명을 함께 맞춥니다.
+업무 게이트는 위 위치에 미리 연결돼 있습니다. 모듈이 없으면 종료 코드 3의 `NOT_IMPLEMENTED`입니다. 담당은 그 위치에 selfcheck를 만들면 되고 `gate.py`는 고치지 않습니다. 기능 구현 PR에는 실제 호출 방법, 오류 처리, 사용한 데이터 종류, 검사 결과를 함께 기록합니다. 계약 변경 시 생산자·소비자 코드, 예제와 설명을 함께 맞춥니다.
 
 ## 기존 설계 참조
 
