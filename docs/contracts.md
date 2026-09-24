@@ -38,21 +38,24 @@ python -m commerce.tools.gate contracts
 
 `contracts`는 종료 코드 0과 `CONTRACTS OK` 요약으로 판정합니다. 정상 예제는 `fixtures/<계약>/valid`, 오류 예제는 `invalid`에 있으며 대응하는 `.reason.txt`의 첫 줄이 기대 오류 코드입니다.
 
-| 게이트 | 검증할 기능 | 현재 상태 |
-| --- | --- | --- |
-| contracts | 계약 스키마·예제·의미 검증 | 실행 가능 |
-| scaffold | 공통 import·runtime 연결·기동 뼈대 | 실행 가능 (업무 검증 제외) |
-| docs | 문서 대 코드 대조: 링크·환경변수 표·게이트명·문서의 import·도구 지시 파일·코드 펜스 | 실행 가능 |
-| policy | 자동 병합 전 위험 신호: FL 기본값·게이트 상태 주장·계약 집합 | 실행 가능 |
-| a1 | 주문·권한·복구 경계 | 미구현 |
-| b1 | 데이터 어댑터·텍스트 입력 | 미구현 |
-| b2 | NLP·공유 모델·개인화 경계 | 미구현 |
-| c1 | 합성 FL 라운드·모델 배포 | 미구현 |
-| g2 | 실제 주문·추천·비교 연결 | 미구현 |
-| g3 | 실제 모델의 합성 FL·신규 판매자 | 미구현 |
-| g4 | 보호 집계와 실패 경계 | 미구현 |
+각 게이트가 무엇을 확인하는지는 [작업 규칙](team/working-agreement.md) §4가 기준입니다. 이 표는 검사 위치와 현재 상태만 적습니다.
 
-미구현 게이트는 종료 코드 3을 유지합니다. 기능 구현 PR에는 실제 호출 방법, 오류 처리, 사용한 데이터 종류, 검사 결과를 함께 기록하고 이 표를 갱신합니다. 계약 변경 시 생산자·소비자 코드, 예제와 설명을 함께 맞춥니다.
+| 게이트 | 검사 위치 | 현재 상태 |
+| --- | --- | --- |
+| contracts | `commerce/packages/contracts/validate.py` | 실행 가능 |
+| scaffold | `commerce/tests/e2e/test_scaffold.py` | 실행 가능 (업무 검증 제외) |
+| docs | `commerce/tools/doccheck.py` | 실행 가능 |
+| policy | `commerce/tools/policycheck.py` | 실행 가능 |
+| business | 아래 업무 게이트를 모두 실행 | 실행 가능 |
+| a1 | `commerce/services/merchant_api/selfcheck.py` | 미구현 |
+| b1 | `commerce/packages/data_adapters/selfcheck.py` | 미구현 |
+| b2 | `commerce/packages/recommender/selfcheck.py` | 미구현 |
+| c1 | `commerce/services/fl_coordinator/selfcheck.py` | 미구현 |
+| g2 | `commerce/tests/e2e/selfcheck_g2.py` | 미구현 |
+| g3 | `commerce/tests/e2e/selfcheck_g3.py` | 미구현 |
+| g4 | `commerce/tests/e2e/selfcheck_g4.py` | 미구현 |
+
+업무 게이트는 위 위치에 미리 연결돼 있습니다. 모듈이 없으면 종료 코드 3의 `NOT_IMPLEMENTED`입니다. 담당은 그 위치에 selfcheck를 만들고 같은 PR에서 상태를 `부분 구현` 또는 `실행 가능`으로 바꿉니다. `gate.py`는 고치지 않습니다. 기능 구현 PR에는 실제 호출 방법, 오류 처리, 사용한 데이터 종류, 검사 결과를 함께 기록합니다. 계약 변경 시 생산자·소비자 코드, 예제와 설명을 함께 맞춥니다.
 
 ## 기존 설계 참조
 

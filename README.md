@@ -55,6 +55,7 @@ python -m commerce.tools.gate contracts
 python -m commerce.tools.gate scaffold
 python -m commerce.tools.gate docs
 python -m commerce.tools.gate policy
+python -m commerce.tools.gate business
 python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 
@@ -64,7 +65,7 @@ python -m commerce.deploy.run_local --smoke --merchants 2
 CONTRACTS OK: schemas=<n> fixtures=<n> failures=0
 ```
 
-이 검사는 입력 형태와 일부 의미 규칙을 확인합니다. 실제 주문 복구·모델 품질·보호 집계 동작을 검증하는 것은 아닙니다. `scaffold`는 객체 연결과 미구현 경계를 검사하고, 로컬 smoke는 health-only 프로세스를 기동했다가 종료합니다. 업무 게이트는 현재 `NOT_IMPLEMENTED`와 종료 코드 3을 반환합니다.
+이 검사는 입력 형태와 일부 의미 규칙을 확인합니다. 실제 주문 복구·모델 품질·보호 집계 동작을 검증하는 것은 아닙니다. `scaffold`는 객체 연결과 미구현 경계를 검사하고, 로컬 smoke는 health-only 프로세스를 기동했다가 종료합니다. 업무 게이트는 담당이 selfcheck를 추가하기 전까지 `NOT_IMPLEMENTED`와 종료 코드 3을 반환하고, `business`는 그중 실패가 없는지만 봅니다.
 
 ## 구성
 

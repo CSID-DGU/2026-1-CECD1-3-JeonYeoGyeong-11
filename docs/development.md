@@ -13,12 +13,13 @@ python -m venv .venv
 .venv\Scripts\python -m commerce.tools.gate scaffold
 .venv\Scripts\python -m commerce.tools.gate docs
 .venv\Scripts\python -m commerce.tools.gate policy
+.venv\Scripts\python -m commerce.tools.gate business
 .venv\Scripts\python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 
 Linux/macOS에서는 `.venv/bin/python`을 사용한다. Python 3.11 기준이며 프로젝트 루트에서 실행한다. lock은 검증한 초기 개발 환경이다. 의존성을 바꿀 때 C가 전체 환경 호환성을 확인한다. 아직 PyTorch/NLP 모델 의존성이나 가중치는 설치하지 않는다.
 
-`scaffold` 성공은 기능 완성을 뜻하지 않는다. `a1/b1/b2/c1/g2/g3/g4`는 계속 종료 코드 3의 `NOT_IMPLEMENTED`다. health의 200은 프로세스 기동이며 `ready=false`가 업무 미준비를 뜻한다. 런처는 FL를 비활성으로 고정하며 데이터·모델을 만들지 않는다.
+`scaffold` 성공은 기능 완성을 뜻하지 않는다. `a1/b1/b2/c1/g2/g3/g4`는 담당이 selfcheck를 추가하기 전까지 종료 코드 3의 `NOT_IMPLEMENTED`이고, `business`는 이들 중 실패가 없다는 뜻일 뿐이다. health의 200은 프로세스 기동이며 `ready=false`가 업무 미준비를 뜻한다. 런처는 FL를 비활성으로 고정하며 데이터·모델을 만들지 않는다.
 
 ## 파트별 시작점
 
@@ -45,7 +46,7 @@ context = build_context(settings, runtime_factory=lambda sid, db, md: MyFakeRunt
 
 `build_context`의 `runtime_factory`와 `client_factory`가 그 주입점이다. C도 c1의 stub trainer를 같은 방식으로 주입한다.
 
-- double은 **자기 소유 경로**에 둔다. A는 `commerce/services/merchant_api/` 또는 자기 테스트 아래, C는 `commerce/tests/e2e/` 아래다.
+- double과 테스트는 **자기 소유 경로** 아래 둔다. 예: A는 `commerce/services/merchant_api/tests/`, B는 `commerce/packages/data_adapters/tests/`, C는 `commerce/tests/e2e/`. CI는 테스트를 직접 찾지 않으므로 자기 selfcheck가 호출한다.
 - A·C는 `commerce/packages/recommender/runtime.py`를 고쳐 성공을 만들지 않는다. B 소유이며 `gate scaffold`가 기준 stub `UnimplementedRuntime`의 모든 메서드가 예외를 내는지 검사한다. B는 실제 runtime을 별도 클래스로 만들어 `open_runtime`이 그것을 돌려주게 하고, stub 클래스는 남겨 둔다.
 - `FeatureNotImplemented`를 잡아 delivered·학습 완료·정상 추천으로 바꾸지 않는다.
 - double은 `ports.py`의 시그니처와 `types.py`의 반환 타입을 지킨다. 계약과 다른 모양을 돌려주면 실제 연결에서 다시 깨진다.

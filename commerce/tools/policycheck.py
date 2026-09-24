@@ -89,8 +89,9 @@ def _check_gate_honesty(fail) -> int:
         checked += 1
         is_stub = getattr(runner, "not_implemented", False)
         if claimed.startswith(NOT_IMPLEMENTED) and not is_stub:
-            fail("commerce/tools/gate.py",
-                 "%s 는 문서에서 미구현인데 실제 검사가 연결돼 있다. 표를 갱신하라" % name)
+            fail(str(CONTRACTS_DOC.relative_to(REPO_ROOT)),
+                 "%s 는 문서에서 미구현인데 selfcheck가 있다. 이 표의 상태를 '부분 구현' 또는 "
+                 "'실행 가능'으로 갱신하라(gate.py는 고치지 않는다)" % name)
         if claimed.startswith(IMPLEMENTED_PREFIX) and is_stub:
             fail(str(CONTRACTS_DOC.relative_to(REPO_ROOT)),
                  "%s 를 '실행 가능'이라고 적었지만 NOT_IMPLEMENTED를 반환한다" % name)

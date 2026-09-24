@@ -104,7 +104,7 @@ gh pr merge <번호> --auto --merge --match-head-commit <확인한-head-SHA>
 
 ## CI와 저장소 설정
 
-`Commerce checks`는 contracts/scaffold/docs/policy와 health smoke를 실행한다. 실제 서비스·모델·FL·보호 집계 완료를 보장하는 검사는 아니며 해당 기능을 구현할 때 담당자가 의미 있는 검사를 추가하고 C가 게이트·CI 연결을 조정한다. 검사 실패는 먼저 담당자가 원인을 수정한다. 정책 자체를 바꿀 필요가 있을 때만 사람의 결정을 받으며 게이트를 우회하거나 통과 조건을 느슨하게 만들지 않는다.
+`Commerce checks`는 contracts/scaffold/docs/policy/business와 health smoke를 실행한다. 실제 서비스·모델·FL·보호 집계 완료를 보장하는 검사는 아니다. 담당자가 자기 소유 경로에 selfcheck를 추가하면 `business` 게이트를 통해 CI에 자동으로 연결되므로 C의 게이트 수정을 기다리지 않는다. 검사 실패는 먼저 담당자가 원인을 수정한다. 정책 자체를 바꿀 필요가 있을 때만 사람의 결정을 받으며 게이트를 우회하거나 통과 조건을 느슨하게 만들지 않는다.
 
 2026-09-24 확인 기준: `main`은 최신 브랜치의 `scaffold` check를 필수로 요구하며 관리자에게도 보호가 적용된다. 저장소 자동 병합은 허용되어 있고 PR별 예약은 별도로 필요하다. 기존 승인 자동 취소와 미해결 대화 해소의 강제 설정은 꺼져 있다.
 
