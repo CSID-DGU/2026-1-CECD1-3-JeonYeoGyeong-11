@@ -25,11 +25,13 @@ Linux/macOS에서는 `.venv/bin/python`을 사용한다. Python 3.11 기준이�
 
 모든 경로는 저장소 루트 기준이다. **기능 개발자는 자기 파트 README → 공통 ports/types → 해당 구현 파일** 순서로 읽는다.
 
-| 파트 | 소유 경로 | 바로 읽을 파일 | 다음 작은 작업 |
-| --- | --- | --- | --- |
-| A 플랫폼 | `commerce/apps/buyer/`, `commerce/apps/seller/`, `commerce/services/central_api/`, `commerce/services/merchant_api/` | [merchant README](../commerce/services/merchant_api/README.md), `context.py`, `main.py` | 합성 주문 상태와 완료 이벤트/outbox |
-| B 데이터·모델 | `commerce/packages/data_adapters/`, `commerce/packages/recommender/`, `commerce/evaluation/` | [runtime README](../commerce/packages/recommender/README.md), `runtime.py` | 두 출처/live 입력과 텍스트 예제 |
-| C FL·통합 | `commerce/packages/contracts/`, `commerce/packages/fl_client/`, `commerce/services/fl_coordinator/`, `commerce/deploy/`, `commerce/tools/`, `commerce/tests/e2e/` | [FL client README](../commerce/packages/fl_client/README.md), `lifecycle.py` | 합성 FL 경로와 보호 방식의 작은 검증 |
+| 파트 | 바로 읽을 파일 |
+| --- | --- |
+| A 플랫폼 | [merchant README](../commerce/services/merchant_api/README.md), `context.py`, `main.py` |
+| B 데이터·모델 | [runtime README](../commerce/packages/recommender/README.md), `runtime.py` |
+| C FL·통합 | [FL client README](../commerce/packages/fl_client/README.md), `lifecycle.py` |
+
+소유 경로는 [작업 규칙](team/working-agreement.md) §1, 작업 순서는 각 역할 카드, 먼저 보여줄 결과는 [팀 시작 안내](team/start.md) §2에만 적는다. 여기와 패키지 README에는 되풀이하지 않는다.
 
 각자 구현 전 상대 모듈의 완성을 기다릴 필요는 없다. 호출자 테스트에서 의존성을 주입해 대체한다. 대체 구현의 결과를 실제 모델/보호 검증으로 보고하지 않는다. 공통 API 변경은 영향받는 생산자·소비자와 함께 검토한다.
 

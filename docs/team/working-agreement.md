@@ -10,7 +10,7 @@
 | B 데이터·모델 | [B 카드](tasks/B.md) 2행 | commerce/packages/data_adapters/, commerce/packages/recommender/, commerce/evaluation/ |
 | C FL·통합 | [C 카드](tasks/C.md) 2행 | commerce/packages/contracts/, commerce/packages/fl_client/, commerce/services/fl_coordinator/, commerce/deploy/, commerce/tools/, commerce/tests/e2e/ |
 | 공동 결정 | 팀 | docs/design/decisions.md |
-| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
+| 문서 | 각 역할: 자기 카드 tasks/A·B·C.md / A: architecture / B: model·data·evaluation·model-lab·comparison / C: interfaces·working-agreement·start·git-workflow·development·contracts·README·AGENTS와 도구별 포인터 파일 / 공동: docs/README·open-questions | 변경 소비자가 리뷰. [모델 비교](../design/comparison.md) 화면 절은 A 리뷰 |
 
 **역할 선점:** 역할은 사람이 정한다. 계정은 각 역할 카드 2행 `담당 계정:`에 한 번만 적고, 공개 저장소이므로 실명은 넣지 않는다. CODEOWNERS·PR 작성자·리뷰 요청이 모두 GitHub 계정을 쓰므로 계정이어야 누구 PR인지 대조할 수 있다.
 
@@ -24,7 +24,7 @@ gh api user --jq .login
 
 역할마다 파일이 달라 세 선점 PR은 서로 충돌하지 않는다. 같은 역할을 두 사람이 선점하면 같은 줄이 충돌해 드러나고, 먼저 병합된 쪽을 유지한 채 사람이 정한다. 선점을 작업 PR에 섞지 않는 이유는 작업 PR의 검토·충돌이 선점을 늦추고, 선점 전에는 누구에게 리뷰를 요청할지 정할 수 없기 때문이다. 미선점 역할의 리뷰 요청은 [Git 협업](git-workflow.md)을 따른다.
 
-하위 이름은 밑줄을 사용한다. 다른 패키지 파일은 읽을 수 있으나 임의 수정하지 않는다. 다른 파트 문제는 PR/이슈에 담당·재현·기대/실제 동작·검사 SHA를 남기고 해당 담당 에이전트가 수정한다. 소비자는 연결 동작을 재확인하며 내부 구현 전체를 대신 이해하거나 작성하지 않는다. 공통 계약 변경은 생산자·소비자 영향과 fixture를 함께 제안하고 C가 통합을 조정한다. 동료 검토는 다른 파트가 소비하는 동작과 공동 경계의 변경에 적용한다.
+Python 패키지·모듈 이름은 밑줄(`data_adapters`), 브랜치 작업명은 하이픈(`commerce/a/first-order`)을 쓴다. 다른 패키지 파일은 읽을 수 있으나 임의 수정하지 않는다. 다른 파트 문제는 PR/이슈에 담당·재현·기대/실제 동작·검사 SHA를 남기고 해당 담당 에이전트가 수정한다. 소비자는 연결 동작을 재확인하며 내부 구현 전체를 대신 이해하거나 작성하지 않는다. 공통 계약 변경은 생산자·소비자 영향과 fixture를 함께 제안하고 C가 통합을 조정한다. 동료 검토는 다른 파트가 소비하는 동작과 공동 경계의 변경에 적용한다.
 
 팀원용 [작업 시작 지시서](start.md)는 C가 유지하고 A/B가 자기 역할 절을 검토한다. 상세 소유권·계약·완료 기준은 위 기준 문서를 따르며 지시서에서 별도로 바꾸지 않는다.
 Git 운영 문서 git-workflow.md와 `.github/`의 템플릿·CI·CODEOWNERS는 C가 유지하며, 기존 저장소 설정과 소비자 영향을 확인한다.
@@ -49,7 +49,7 @@ D0019에 따라 전체 추천 가중치를 공유한 뒤 query_proj/scorer만 �
 ## 3. 런타임과 배치 계약
 
 목표 스택은 Python 3.11, FastAPI/Jinja2, SQLite, PyTorch다. 첫 CPU 실행을 기준으로 의존성을 검증한다. CPU 전용 여부와 속도 수치를 추정해 확정하지 않는다.
-현재 `commerce/requirements-lock.txt`에는 뼈대 실행에 필요한 것만 있다(jsonschema, numpy, fastapi, uvicorn, httpx). **Jinja2는 A가 화면을, PyTorch는 B가 모델을 구현할 때 각자 requirements에 추가하고 C가 호환을 검증한다.** 목표 스택에 적혀 있다는 이유로 이미 설치돼 있다고 가정하지 않는다.
+현재 `commerce/requirements-lock.txt`에는 뼈대 실행에 필요한 것만 있다(jsonschema, numpy, fastapi, uvicorn, httpx). **Jinja2는 A가 화면을, PyTorch는 B가 모델을 구현하는 PR에서 공용 `commerce/requirements-dev.txt`와 lock에 추가하고 C가 호환을 검증한다.** 목표 스택에 적혀 있다는 이유로 이미 설치돼 있다고 가정하지 않는다.
 
 아래 표의 **현재 값**은 코드가 실제로 읽는 키이며 `docs` 게이트가 코드와 대조한다. **구현 시 추가**는 해당 기능을 만드는 담당이 도입할 예정 값이고 아직 아무도 읽지 않는다.
 
@@ -79,7 +79,7 @@ FL_MODEL_VARIANT는 text_only 또는 text_relation이며 실행 중 바꾸지 �
 
 REGISTRY_DIR는 디렉터리, AUTH_FILE은 파일이다. 중앙 프로세스에 판매자 DB 경로나 비밀키를 주입하지 않는다. 동일 PC 프로세스 분리는 host 관리자에 대한 암호적 격리가 아니다.
 
-각 패키지는 의존성 선언을 소유한다. C가 호환 버전을 검증한 개발 환경 제약 파일을 관리한다. 각자 requirements에 서로 다른 torch 버전을 임의 고정하지 않는다.
+의존성은 공용 `commerce/requirements-dev.txt` 한 곳에 선언하고, 추가한 역할이 PR에 용도를 적는다. C가 호환 버전을 검증한 lock을 관리한다. 역할별 requirements 파일을 따로 만들거나 서로 다른 torch 버전을 고정하지 않는다.
 
 ### 머신이 세 대라는 전제
 
@@ -144,7 +144,7 @@ A의 g2 연결 작업이 끝난 시점과 C의 c1 시점에 B의 NLP·어댑터 
 
 ## 8. 과제와 일정
 
-약 2주 완성을 목표로 하며 날짜별 진도·고정 회의를 강제하지 않는다. [팀 시작 안내](start.md)의 소형 평가 범위·비용 제한·비동기 진행을 적용한다. 각자 가능한 때에 몰아서 진행할 수 있으며 절대 제출일·담당 이름·발표 형식은 팀이 채운다.
+약 2주 완성을 목표로 하며 날짜별 진도·고정 회의를 강제하지 않는다. [팀 시작 안내](start.md)의 소형 평가 범위·비용 제한·비동기 진행을 적용한다. 각자 가능한 때에 몰아서 진행할 수 있으며 제출일·발표 형식은 팀이 채운다.
 
 전체 roster 실험과 확장은 후순위로 두고, 두 출처의 작은 고정 표본으로 필수 경로를 완성한다. 검토는 결과가 준비되면 진행하며 합의된 내부 작업은 자율 수행한다. 마감이 가까워지면 새 기능보다 오류 수정·재현을 우선한다. 모델 비용·보호 구현 가능성은 먼저 확인하고 실패를 최종 완료로 포장하지 않는다.
 
