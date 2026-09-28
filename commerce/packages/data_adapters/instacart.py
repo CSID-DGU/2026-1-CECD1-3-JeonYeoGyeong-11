@@ -11,7 +11,7 @@ train period only (data.md §2) is a separate step.
 import csv
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Mapping
+from typing import Iterable, Iterator, Mapping
 import unicodedata
 
 from commerce.packages.contracts.ids import purchase_event_id
@@ -214,3 +214,21 @@ def _cumulative_days(orders: Mapping[int, tuple[int, int, str]]) -> dict[int, fl
                 total += value
             day[order] = total
     return day
+
+
+def first_in_cart(data_dir: str | Path, order_ids: Iterable[int]) -> dict[int, int]:
+    """order_id -> the product added to its cart first (smallest add_to_cart_order).
+
+    Lab only, for the HAREX-style next-item target (D0022): purchase_event.v1
+    carries no cart order, so the service path cannot rebuild this.
+    """
+    wanted, best = set(order_ids), {}
+    for r in read_table(Path(data_dir), "order_products__prior.csv"):
+        order = int(r["order_id"])
+        if order in wanted:
+            if "add_to_cart_order" not in r:
+                raise ValueError("order_products__prior.csv lacks add_to_cart_order")
+            rank = int(r["add_to_cart_order"])
+            if order not in best or rank < best[order][0]:
+                best[order] = (rank, int(r["product_id"]))
+    return {order: product for order, (_, product) in best.items()}

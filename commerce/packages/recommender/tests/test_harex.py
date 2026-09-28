@@ -1,0 +1,127 @@
+import dataclasses
+import math
+import random
+import unicodedata
+import unittest
+
+import torch
+
+from commerce.packages.recommender.harex import (
+    HAREX_ARCHITECTURES, PAD, UNKNOWN, HarexConfig, HarexRecommender, WordVocabulary, item_sequences, word_tokens,
+)
+from commerce.packages.recommender.tests.test_model import N_ITEMS, seller_data
+from commerce.packages.recommender.training import TrainConfig, batch_loss, catalog_scores, train, validation_loss
+
+TINY = HarexConfig("test.T_hx", "hx", False, d_model=16, n_heads=2, d_ffn=32, dropout=0.0, max_items=12,
+                   max_tokens=6, d_text=8, d_relation=4, mlp_hidden=16, d_time=4)
+
+
+def texts():
+    # Items share words in groups, so a word token links several items as in GCI.
+    return ["[NAME] Fixture product %d family%d [AISLE] aisle%d" % (i, i % 5, i % 3) for i in range(1, N_ITEMS + 1)]
+
+
+def with_tokens(data):
+    vocab = WordVocabulary(texts())
+    data.tokens = vocab.encode(texts(), TINY.max_tokens)
+    return data, vocab
+
+
+class Tokens(unittest.TestCase):
+    def test_space_tokenization_keeps_case_and_nfc(self):
+        self.assertEqual(word_tokens("  Organic   Whole\tMilk "), ["Organic", "Whole", "Milk"])
+        self.assertEqual(word_tokens(unicodedata.normalize("NFD", "유기농 우유")), ["유기농", "우유"])
+        self.assertEqual(word_tokens(None), [])
+
+    def test_vocabulary_pads_and_marks_unknown_words(self):
+        vocab = WordVocabulary(["a b", "b c"])
+        self.assertEqual(len(vocab), 5)  # pad, unknown, a, b, c
+        ids = vocab.encode(["a c", "zzz"], max_tokens=4)
+        self.assertEqual(ids.tolist(), [[vocab.index["a"], vocab.index["c"]], [UNKNOWN, PAD]])
+
+    def test_item_sequences_are_the_latest_items_right_aligned(self):
+        data = seller_data()
+        example = data.examples[5]
+        index, mask = item_sequences([example], data.row_of, 4)
+        flat = [data.row_of[i] for v in example.history for i in v.items]
+        self.assertEqual(index[0].tolist()[-min(4, len(flat)):], flat[-4:])
+        self.assertEqual(int(mask.sum()), min(4, len(flat)))
+
+
+class Variants(unittest.TestCase):
+    def setUp(self):
+        self.data, self.vocab = with_tokens(seller_data(relations=True))
+
+    def model(self, text="hx", relation=False, seed=0):
+        torch.manual_seed(seed)
+        config = dataclasses.replace(TINY, text=text, relation=relation)
+        return HarexRecommender(config, vocab_size=len(self.vocab) if text == "hx" else None)
+
+    def test_registry(self):
+        self.assertEqual(sorted(HAREX_ARCHITECTURES), ["harex.R_hx.v1", "harex.R_lm.v1", "harex.T_hx.v1", "harex.T_lm.v1"])
+        gci = HAREX_ARCHITECTURES["harex.T_hx.v1"]
+        self.assertEqual((gci.n_layers, gci.d_model, gci.n_heads, gci.d_ffn, gci.dropout), (1, 128, 4, 256, 0.2))
+
+    def test_t_and_r_start_from_the_same_shared_weights(self):
+        for text in ("hx", "lm"):
+            plain, related = self.model(text, False, seed=3), self.model(text, True, seed=3)
+            related_state = related.state_dict()
+            for name, tensor in plain.state_dict().items():
+                self.assertTrue(torch.equal(tensor, related_state[name]), (text, name))
+
+    def test_local_token_table_never_leaves_the_seller(self):
+        model = self.model("hx", True)
+        shared = model.shared_state()
+        self.assertFalse(any(k.startswith("local_tokens") for k in shared))
+        self.assertIn("sequence.layers.0.self_attn.in_proj_weight", shared)
+        self.assertFalse(any(len(self.vocab) in v.shape for v in shared.values()))
+
+    def test_relations_are_required_exactly_for_r(self):
+        with self.assertRaises(ValueError):
+            self.model("hx", False).encode_items(self.data)  # the test seller carries relations
+        plain = dataclasses.replace(self.data, relations=None)
+        plain.row_of = self.data.row_of
+        self.model("hx", False).encode_items(plain)
+        with self.assertRaises(ValueError):
+            self.model("hx", True).encode_items(plain)
+
+    def test_an_item_without_neighbours_gets_l_zero(self):
+        model = self.model("hx", True).eval()
+        base = model.base_repr(self.data)
+        l = model.relation_repr(base, self.data.relations)
+        never_sold = N_ITEMS - 1
+        self.assertFalse(bool(self.data.relations.has_neighbor[never_sold]))
+        self.assertEqual(float(l[never_sold].detach().abs().sum()), 0.0)
+
+    def test_padding_does_not_move_a_query(self):
+        model = self.model("lm", False).eval()
+        plain = dataclasses.replace(self.data, relations=None)
+        plain.row_of = self.data.row_of
+        e = model.encode_items(plain)
+        alone = model.encode_queries(e, [plain.examples[0]], plain)
+        mixed = model.encode_queries(e, [plain.examples[0]] + plain.examples[5:9], plain)
+        torch.testing.assert_close(alone[0], mixed[0], atol=1e-5, rtol=0)
+
+    def test_every_group_and_the_token_table_get_gradients(self):
+        model = self.model("hx", True).train()
+        loss, used = batch_loss(model, self.data, self.data.examples[:16], 10, random.Random(0))
+        self.assertGreater(used, 0)
+        loss.backward()
+        groups = HarexRecommender.GROUPS + ("local_tokens", "time_mlp", "relation_mlp", "relation_pool")
+        for group in groups:
+            grads = [p.grad for n, p in model.named_parameters() if n.startswith(group + ".")]
+            self.assertTrue(any(g is not None and g.abs().sum() > 0 for g in grads), group)
+
+    def test_all_four_variants_train_and_score(self):
+        for text in ("hx", "lm"):
+            for relation in (False, True):
+                data = self.data if relation else dataclasses.replace(self.data, relations=None)
+                data.row_of = self.data.row_of
+                model = self.model(text, relation)
+                before = validation_loss(model, [data], n_negatives=10)
+                log = train(model, [data], TrainConfig(steps=30, batch_size=16, n_negatives=10, lr=3e-3))
+                self.assertEqual(log["steps"], 30)
+                self.assertTrue(math.isfinite(log["loss_mean"]))
+                self.assertLess(validation_loss(model, [data], n_negatives=10), before)
+                scores = catalog_scores(model, data, data.examples[:3])
+                self.assertEqual(tuple(scores.shape), (3, N_ITEMS))

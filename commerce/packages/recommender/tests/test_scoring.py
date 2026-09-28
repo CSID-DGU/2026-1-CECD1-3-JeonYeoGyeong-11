@@ -25,6 +25,14 @@ class TiedRanking(unittest.TestCase):
         b = expected_metrics(np.array([1.0, 1.0, 0.0, 1.0]), {0}, ks=(2,))
         self.assertEqual(a, b)
 
+    def test_hit_rate_counts_any_relevant_item(self):
+        m = expected_metrics(np.array([3.0, 2.0, 1.0, 0.0]), {1, 3}, ks=(1, 2))
+        self.assertEqual((m["hr@1"], m["hr@2"]), (0.0, 1.0))
+        # 4 tied candidates, 1 relevant, 2 slots: 1 - C(3,2)/C(4,2) = 0.5
+        self.assertAlmostEqual(expected_metrics(np.zeros(4), {2}, ks=(2,))["hr@2"], 0.5)
+        # a sure hit before a tie group stays a sure hit
+        self.assertEqual(expected_metrics(np.array([5.0, 1.0, 1.0, 1.0]), {0, 3}, ks=(2,))["hr@2"], 1.0)
+
     def test_no_relevant_item_is_an_error(self):
         with self.assertRaises(ValueError):
             expected_metrics(np.zeros(3), set())

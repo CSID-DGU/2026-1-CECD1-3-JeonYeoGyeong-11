@@ -6,7 +6,7 @@ import unittest
 
 from commerce.packages.contracts.ids import purchase_event_id
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
-from commerce.packages.data_adapters.instacart import load_assignment, load_instacart
+from commerce.packages.data_adapters.instacart import first_in_cart, load_assignment, load_instacart
 from commerce.packages.data_adapters.tests import INSTACART_SMALL
 from commerce.packages.data_adapters.text import (
     audit_texts, build_product_text, catalog_item_fields, instacart_fields,
@@ -75,6 +75,13 @@ class SmallSample(unittest.TestCase):
             by_customer.setdefault(e["customer_id_local"], []).append(basket_from_event(e))
         for baskets in by_customer.values():
             customer_visits(baskets)
+
+
+class CartOrder(unittest.TestCase):
+    def test_first_product_added_to_each_cart(self):
+        first = first_in_cart(INSTACART_SMALL, [990001002, 990002002, 990001005])
+        # 990001002 lists 990002 twice then 990007; 990001005 is an official train order with no prior lines.
+        self.assertEqual(first, {990001002: 990002, 990002002: 990004})
 
 
 class CatalogAndText(unittest.TestCase):

@@ -13,7 +13,7 @@ from typing import Sequence
 import torch
 
 from commerce.packages.recommender.examples import Example
-from commerce.packages.recommender.model import Recommender, history_batch, sampled_softmax_loss
+from commerce.packages.recommender.model import Recommender, sampled_softmax_loss
 from commerce.packages.recommender.relations import RelationTensors
 
 
@@ -24,6 +24,7 @@ class SellerData:
     z: torch.Tensor  # (C, d_text) frozen text vectors
     examples: list[Example]
     relations: RelationTensors | None = None  # text_relation: this snapshot's relations
+    tokens: torch.Tensor | None = None  # (C, T) word-token ids for GCI-style (hx) item text, 0 = pad
     row_of: dict[str, int] = field(init=False)
 
     def __post_init__(self):
@@ -43,24 +44,30 @@ class TrainConfig:
 
 def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Example],
                n_negatives: int, rng: random.Random) -> tuple[torch.Tensor, int]:
-    e = model.item_repr(seller.z, seller.relations)
-    q = model.query(e, history_batch(examples, seller.row_of, model.config))
-    positives = torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples])
+    e = model.encode_items(seller)
+    q = model.encode_queries(e, examples, seller)
+    device = e.device
+    positives = torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples], device=device)
     negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
-    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
-    pos_scores = model.score(q, e[positives]).diagonal()
+    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool,
+                           device=device)
+    negatives = negatives.to(device)
+    pos_scores = (q * model.score_side(e[positives])).sum(-1) / model.score_scale
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
 
 
-def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig) -> dict:
-    """Run config.steps optimizer steps; a fresh AdamW every call, as every FL round does."""
+def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig,
+          optimizer: torch.optim.Optimizer | None = None) -> dict:
+    """Run config.steps optimizer steps. Without an optimizer every call starts a fresh AdamW, as
+    every FL round does; a local_only run passes its own so early-stopping checks keep its state."""
     rng = random.Random(config.seed)
     torch.manual_seed(config.seed)
     pool = [s for s in sellers if s.examples]
     if not pool:
         return {"steps": 0, "skipped_batches": 0, "loss_mean": None, "grad_norm_mean": None, "config": asdict(config)}
-    optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
+    if optimizer is None:
+        optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
     model.train()
     losses, norms, skipped = [], [], 0
     weights = [len(s.examples) for s in pool]
@@ -104,7 +111,18 @@ def catalog_scores(model: Recommender, seller: SellerData, examples: Sequence[Ex
                    batch_size: int = 256) -> torch.Tensor:
     """(len(examples), C) scores over the seller's whole catalog, rows in seller.items order."""
     model.eval()
-    e = model.item_repr(seller.z, seller.relations)
-    rows = [model.score(model.query(e, history_batch(examples[s:s + batch_size], seller.row_of, model.config)), e)
+    e = model.encode_items(seller)
+    rows = [model.score(model.encode_queries(e, examples[s:s + batch_size], seller), e).cpu()
             for s in range(0, len(examples), batch_size)]
     return torch.cat(rows) if rows else torch.zeros((0, len(seller.items)))
+
+
+def seller_on(seller: SellerData, device: torch.device) -> SellerData:
+    """A copy of the seller's tensors on the given device; examples and ids are shared."""
+    relations = seller.relations
+    if relations is not None:
+        relations = RelationTensors(*(getattr(relations, f).to(device) for f in (
+            "neighbor", "features", "time_forward", "time_backward", "has_neighbor")))
+    moved = SellerData(seller.seller_id, seller.items, seller.z.to(device), seller.examples, relations,
+                       None if seller.tokens is None else seller.tokens.to(device))
+    return moved
