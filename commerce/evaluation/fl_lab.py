@@ -58,8 +58,8 @@ def on_device(seller_parts, device):
 
 
 def local_tables(model):
-    """The seller's own tensors: the hx token table, none for lm."""
-    return {k: v.detach().clone() for k, v in model.state_dict().items() if k.startswith("local_")}
+    """A CPU copy of the seller's own tensors: the hx token table, none for lm."""
+    return {k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items() if k.startswith("local_")}
 
 
 def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
@@ -124,7 +124,7 @@ def main(argv=None):
         tables = None
         if hx:
             torch.manual_seed(args.seed)
-            tables = HarexRecommender(config, vocab_size=info["vocab_size"]).local_tokens.to(device)
+            tables = HarexRecommender(config, vocab_size=info["vocab_size"]).local_tokens  # on the CPU
             info["z"] = info["z"][:, :0]  # hx never reads z: keep none of it on the device
         info["z"], info["tokens"], info["keep"] = (info[k].to(device) for k in ("z", "tokens", "keep"))
         # Without relations everything stays on the device; relation snapshots move per turn.
@@ -133,9 +133,15 @@ def main(argv=None):
                          **{role: parts(info, seller, role, args.variant, args.target, first, place, args.seed)
                             for role in ("train", "validation", "test")}}
 
+    current = [None]
+
     def turn(s):
-        if s["tables"] is not None:
-            model.local_tokens = s["tables"]
+        """The seller's token table moves to the device for its turn and back after it."""
+        if s["tables"] is not None and current[0] is not s:
+            if current[0] is not None:
+                current[0]["tables"].to("cpu")
+            model.local_tokens = s["tables"].to(device)
+            current[0] = s
         return model
 
     def placed(seller_parts):

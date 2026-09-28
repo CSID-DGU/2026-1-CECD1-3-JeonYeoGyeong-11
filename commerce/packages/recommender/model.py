@@ -23,6 +23,7 @@ import torch.nn.functional as F
 
 from commerce.packages.recommender.examples import Example
 from commerce.packages.recommender.relations import REL_FEATURES, RelationTensors, bin_inputs
+from commerce.packages.recommender.transfer import to_device
 
 GAP_CAP_DAYS = 30.0
 
@@ -201,9 +202,9 @@ def sampled_softmax_loss(positive: torch.Tensor, negatives: torch.Tensor,
     used = int(usable.sum())
     if used == 0:
         return positive.sum() * 0.0, 0
-    mask = negative_mask.to(negatives.device)
+    mask = to_device(negative_mask, negatives.device)
     logits = torch.cat([positive.unsqueeze(1), negatives.masked_fill(~mask, float("-inf"))], dim=1)
-    per_example = -F.log_softmax(logits, dim=1)[:, 0] * usable.to(logits.device, logits.dtype)
+    per_example = -F.log_softmax(logits, dim=1)[:, 0] * to_device(usable, logits.device).to(logits.dtype)
     return per_example.sum() / used, used
 
 

@@ -31,6 +31,7 @@ import torch.nn.functional as F
 from commerce.packages.data_adapters.text import normalize_field
 from commerce.packages.recommender.examples import Example
 from commerce.packages.recommender.relations import REL_FEATURES, RelationTensors, bin_inputs
+from commerce.packages.recommender.transfer import to_device
 
 
 @dataclass(frozen=True)
@@ -166,8 +167,9 @@ class HarexRecommender(nn.Module):
         return self.fusion(torch.cat([base, l], dim=-1))
 
     def encode_queries(self, e: torch.Tensor, examples: Sequence[Example], seller) -> torch.Tensor:
-        index, mask = item_sequences(examples, seller.row_of, self.config.max_items)
-        index, mask = index.to(e.device), mask.to(e.device)
+        index, _ = item_sequences(examples, seller.row_of, self.config.max_items)
+        index = to_device(index, e.device)
+        mask = index >= 0
         n = self.config.max_items
         recency = torch.arange(n - 1, -1, -1, device=e.device).expand(len(examples), n)
         steps = e[index.clamp(min=0)] * mask.unsqueeze(-1) + self.position(recency)

@@ -15,6 +15,7 @@ import torch
 from commerce.packages.recommender.examples import Example
 from commerce.packages.recommender.model import Recommender, sampled_softmax_loss
 from commerce.packages.recommender.relations import RelationTensors
+from commerce.packages.recommender.transfer import to_device
 
 
 @dataclass
@@ -47,11 +48,12 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     e = model.encode_items(seller)
     q = model.encode_queries(e, examples, seller)
     device = e.device
-    positives = torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples], device=device)
+    positives = to_device(torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples]),
+                          device)
     negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
     allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
-    negatives = negatives.to(device)
+    negatives = to_device(negatives, device)
     pos_scores = (q * model.score_side(e[positives])).sum(-1) / model.score_scale
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
 
@@ -123,8 +125,8 @@ def seller_on(seller: SellerData, device: torch.device) -> SellerData:
     """A copy of the seller's tensors on the given device; examples and ids are shared."""
     relations = seller.relations
     if relations is not None:
-        relations = RelationTensors(*(getattr(relations, f).to(device) for f in (
+        relations = RelationTensors(*(to_device(getattr(relations, f), device) for f in (
             "neighbor", "features", "time_forward", "time_backward", "has_neighbor")))
-    moved = SellerData(seller.seller_id, seller.items, seller.z.to(device), seller.examples, relations,
-                       None if seller.tokens is None else seller.tokens.to(device))
+    moved = SellerData(seller.seller_id, seller.items, to_device(seller.z, device), seller.examples, relations,
+                       None if seller.tokens is None else to_device(seller.tokens, device))
     return moved
