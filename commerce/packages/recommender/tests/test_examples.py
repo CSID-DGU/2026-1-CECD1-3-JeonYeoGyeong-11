@@ -1,30 +1,10 @@
 import random
 import unittest
 
-from commerce.packages.contracts.ids import purchase_event_id
-from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
 from commerce.packages.data_adapters.instacart import split_role
 from commerce.packages.recommender.examples import K_ITEMS, L_VISITS, customer_examples, cut_items
 from commerce.packages.recommender.replay import SellerReplay, progress_bucket, visible_prefix
-
-SELLER = "ic-client-990101"
-
-
-def visits_of(customer, baskets, gaps=None):
-    """baskets: list of item-number lists, one per visit; gaps default to 7 days."""
-    events, day = [], 0.0
-    for rank, items in enumerate(baskets, start=1):
-        if rank > 1:
-            day += (gaps or {}).get(rank, 7.0)
-        basket = "ic-o-%s-%d" % (customer, rank)
-        events.append({
-            "schema_version": "purchase_event.v1", "seller_id": SELLER, "source": "instacart",
-            "seller_partition": "synthetic_partition", "customer_id_local": "ic-user-%s" % customer,
-            "basket_id_local": basket, "purchase_event_id": purchase_event_id(SELLER, "instacart", basket),
-            "time": {"kind": "relative_day", "value": day}, "order_rank": rank,
-            "items": [{"item_id_local": "ic-p-%d" % i, "quantity_observed": None} for i in sorted(set(items))],
-        })
-    return customer_visits(basket_from_event(e) for e in events)
+from commerce.packages.recommender.tests import visits_of
 
 
 class Split(unittest.TestCase):
