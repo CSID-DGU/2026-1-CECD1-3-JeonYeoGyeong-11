@@ -53,7 +53,8 @@ TARGETS = ("basket", "next_item")
 
 def build(args, record):
     started = time.perf_counter()
-    split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.seed)
+    # The cohort is fixed in advance (evaluation.md §5): --seed varies the model, not the sellers.
+    split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.split_seed)
     chosen = sorted(STAND_IN_TARGETS)[:args.sellers]
     users = {u: c for u, c in split.clients.items() if c in chosen}
     sample = load_instacart(args.instacart_dir, users)
@@ -190,6 +191,7 @@ def main(argv=None):
     parser.add_argument("--batch-size", type=int, default=128)  # GCI: BATCH_SIZE
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/harex_compare"))
