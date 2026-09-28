@@ -33,7 +33,7 @@ from commerce.evaluation.encoder_probe import peak_memory_mb
 from commerce.evaluation.harex_compare import TARGETS, build, evaluate, parts
 from commerce.evaluation.scoring import MacroAverager
 from commerce.packages.recommender.harex import HAREX_ARCHITECTURES, HarexRecommender
-from commerce.packages.recommender.training import TrainConfig, train, validation_loss
+from commerce.packages.recommender.training import TrainConfig, seller_on, train, validation_loss
 
 
 def aggregate_uniform(deltas: list[dict[str, torch.Tensor] | None]) -> dict[str, torch.Tensor] | None:
@@ -44,6 +44,12 @@ def aggregate_uniform(deltas: list[dict[str, torch.Tensor] | None]) -> dict[str,
     if any(set(d) != keys for d in deltas):
         raise ValueError("sellers returned different tensor sets")
     return {k: torch.stack([d[k] for d in deltas]).mean(0) for k in keys}
+
+
+def on_device(seller_parts, device):
+    """Move one seller's data to the device only while it trains: 100 sellers' relation snapshots
+    do not fit in GPU memory together."""
+    return [(bucket, seller_on(p, device)) for bucket, p in seller_parts]
 
 
 def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
@@ -102,16 +108,18 @@ def main(argv=None):
         torch.manual_seed(args.seed)
         model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None).to(device)
         model.load_state_dict(global_shared, strict=False)
+        cpu = torch.device("cpu")
         local[seller] = {"model": model,
-                         "train": parts(info, seller, "train", args.variant, args.target, first, device),
-                         "validation": parts(info, seller, "validation", args.variant, args.target, first, device),
-                         "test": parts(info, seller, "test", args.variant, args.target, first, device)}
+                         "train": parts(info, seller, "train", args.variant, args.target, first, cpu),
+                         "validation": parts(info, seller, "validation", args.variant, args.target, first, cpu),
+                         "test": parts(info, seller, "test", args.variant, args.target, first, cpu)}
 
     best, history, discarded = None, [], 0
     started = time.perf_counter()
     for rnd in range(args.rounds):
-        deltas = [local_round(s["model"], global_shared, s["train"], args.local_epochs, args.batch_size, args.lr,
-                              args.seed * 100000 + rnd * 1000 + i) for i, s in enumerate(local.values())]
+        deltas = [local_round(s["model"], global_shared, on_device(s["train"], device), args.local_epochs,
+                              args.batch_size, args.lr, args.seed * 100000 + rnd * 1000 + i)
+                  for i, s in enumerate(local.values())]
         mean = aggregate_uniform(deltas)
         if mean is None:
             discarded += 1
@@ -121,7 +129,7 @@ def main(argv=None):
         for s in local.values():
             s["model"].load_state_dict(global_shared, strict=False)
             n = sum(len(p.examples) for _, p in s["validation"])
-            loss = validation_loss(s["model"], [p for _, p in s["validation"]], seed=args.seed)
+            loss = validation_loss(s["model"], [p for _, p in on_device(s["validation"], device)], seed=args.seed)
             if loss is not None:
                 total, count = total + loss * n, count + n  # only the sum and count leave the loop
         val = total / count if count else None
@@ -131,16 +139,19 @@ def main(argv=None):
                     "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
                               for sid, s in local.items()}}
         if (rnd + 1) % 10 == 0:
-            print("round %d val %.4f best %d (%.4f)" % (rnd + 1, val, best["round"], best["val"]), flush=True)
+            print("round %d val %.4f best %d (%.4f) %.0fs" % (rnd + 1, val, best["round"], best["val"],
+                                                            time.perf_counter() - started), flush=True)
 
     arm = "%s FL" % args.variant
     arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")} for name in (arm, "popularity", "P-TopFreq")}
     for sid, s in local.items():
         s["model"].load_state_dict(best["shared"], strict=False)
         s["model"].load_state_dict(best["local"][sid], strict=False)
-        evaluate(s["model"], sellers[sid], s["test"], args.target, arms, arm)
+        evaluate(s["model"], sellers[sid], on_device(s["test"], device), args.target, arms, arm)
     record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],
                           "best_val_loss_aggregate": best["val"], "history": history,
+                          # Best round in the last tenth: the curve was still falling, so run longer.
+                          "plateaued": best["round"] <= 0.9 * args.rounds,
                           "seconds": round(time.perf_counter() - started, 1)}
     record["metrics"] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
     record["peak_memory_mb"] = peak_memory_mb()
@@ -149,7 +160,8 @@ def main(argv=None):
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({name: {k: round(v, 4) for k, v in record["metrics"][name]["all"]["macro"].items()
                              if k in ("ndcg@10", "recall@20", "hr@10")} for name in record["metrics"]}, indent=2))
-    print("best round %d of %d, discarded %d -> %s" % (best["round"], args.rounds, discarded, out))
+    print("best round %d of %d (plateaued=%s), discarded %d -> %s" % (
+        best["round"], args.rounds, record["training"]["plateaued"], discarded, out))
 
 
 if __name__ == "__main__":
