@@ -9,6 +9,12 @@ each seller. Targets: "basket" is the next visit's item set
 (evaluation.md §1); "next_item" is the first item added to the next visit's cart,
 predicted from earlier visits only (D0022, HAREX style).
 
+--holdout-frac > 0 runs C-new (evaluation.md §3): items chosen in advance from
+the seed and the item ID hash, the same set at every seller, leave every
+training and validation example (answers, negatives, input history, relations)
+and the hx vocabulary. At test they come back as candidates with no relation,
+their earlier purchases stay hidden, and "cnew" reports the answers among them.
+
 Mode local_only (model-lab.md §4): for every variant, target and seller, a model
 starts from the same seed, trains on that seller only with one AdamW, and is
 checked on its fixed validation loss every --eval-every steps; training stops
@@ -23,6 +29,7 @@ import argparse
 import copy
 import dataclasses
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -54,6 +61,26 @@ from commerce.packages.recommender.z_cache import ZCache
 VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm", "R_hx_shuffled")
 TARGETS = ("basket", "next_item")
 SHUFFLED = "_shuffled"
+PARTS = ("all", "repeat", "explore", "cnew")
+# A-0 sellers (evaluation.md §3), fixed in advance: a second split over the customers
+# the cohort did not take, with the cohort's stand-in size.
+HELD_OUT_TARGETS = {990201 + k: 1040 for k in range(20)}
+
+
+def held_out_item(item: str, frac: float, seed: int) -> bool:
+    """C-new membership from the seed and the item ID alone, never from purchase counts."""
+    digest = hashlib.sha256(("%d\x00%s" % (seed, item)).encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") < frac * 2 ** 64
+
+
+def without_items(visits, held):
+    """The visits with the held-out items removed; a visit left empty keeps its place and time."""
+    return [dataclasses.replace(v, basket=dataclasses.replace(
+        v.basket, items=tuple(i for i in v.basket.items if i.item_id_local not in held))) for v in visits]
+
+
+def new_arms(names):
+    return {name: {p: MacroAverager() for p in PARTS} for name in names}
 
 
 def architecture(variant: str):
@@ -78,17 +105,23 @@ def code_version() -> dict:
             "dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
 
 
-def build(args, record):
+def build(args, record, held_out=False):
+    """The cohort's sellers, or with held_out the A-0 sellers none of its customers belong to."""
     started = time.perf_counter()
     # The cohort is fixed in advance (evaluation.md §5): --seed varies the model, not the sellers.
     split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.split_seed)
     chosen = sorted(STAND_IN_TARGETS)[:args.sellers]
+    record["data"] = {"assignment": split.record, "stand_in_targets": "100 x 1,040 train orders"}
+    if held_out:
+        split = assign_clients(args.instacart_dir, HELD_OUT_TARGETS, alpha=0.25, seed=args.split_seed,
+                               exclude=set(split.clients))
+        chosen = sorted(HELD_OUT_TARGETS)[:args.held_out_sellers]
+        record["data"]["held_out_assignment"] = split.record
     users = {u: c for u, c in split.clients.items() if c in chosen}
     sample = load_instacart(args.instacart_dir, users)
     orders = [int(e["basket_id_local"].rsplit("-", 1)[1]) for e in sample.events]
     first = first_in_cart(args.instacart_dir, orders)
-    record["data"] = {"assignment": split.record, "stand_in_targets": "100 x 1,040 train orders",
-                      "chosen_clients": chosen, "adapter_report": sample.report}
+    record["data"].update(chosen_clients=chosen, adapter_report=sample.report)
 
     by_seller, catalogs = {}, {}
     for event in sample.events:
@@ -104,35 +137,73 @@ def build(args, record):
     need_relations = any(v.startswith("R_") for v in args.variants)
 
     sellers = {}
-    counts = {"examples": {r: 0 for r in ("train", "validation", "test")}, "catalog_items": 0, "vocab": {}}
+    counts = {"examples": {r: 0 for r in ("train", "validation", "test")}, "catalog_items": 0, "vocab": {},
+              "held_out_items": 0, "test_examples_with_held_out_answers": 0, "training_examples_only_held_out": 0,
+              "examples_history_all_held_out": 0}
     for seller, customers in sorted(by_seller.items()):
         items = tuple(c["item_id_local"] for c in catalogs[seller])
-        row_of = {item: row for row, item in enumerate(items)}
         texts = [catalog_item_text(c) for c in catalogs[seller]]
         z = torch.from_numpy(cache.vectors(texts).copy())
-        vocab = WordVocabulary(texts)
-        tokens = vocab.encode(texts, HAREX_ARCHITECTURES["harex.T_hx.v1"].max_tokens)
         visits = {cust: customer_visits(bs) for cust, bs in customers.items()}
-        grouped = {}
-        for vs in visits.values():
-            for example in customer_examples(vs, range(1, len(vs) + 1)):
-                key = (split_role(example.target_position, len(vs)), progress_bucket(example.target_position, len(vs)))
-                grouped.setdefault(key, []).append(example)
-        snapshots = {b: replay_relations(visits, b, row_of, len(items))
-                     for b in sorted({b for _, b in grouped})} if need_relations else {}
-        sellers[seller] = {"items": items, "z": z, "tokens": tokens, "vocab_size": len(vocab),
-                           "visits": visits, "replay": SellerReplay(visits), "grouped": grouped,
-                           "snapshots": snapshots}
-        for (role, _), examples in grouped.items():
-            counts["examples"][role] += len(examples)
-        counts["catalog_items"] += len(items)
-        counts["vocab"][seller] = len(vocab)
+        sellers[seller] = seller_info(items, texts, z, visits, args.holdout_frac, args.holdout_seed,
+                                      need_relations, counts)
+        counts["vocab"][seller] = sellers[seller]["vocab_size"]
     cache.close()
     record["data"].update(counts)
+    record["data"]["holdout"] = {"frac": args.holdout_frac, "seed": args.holdout_seed,
+                                 "rule": "sha256(seed, item_id) < frac"}
     record["encoder"] = {"text_artifact_hash": cache.text_artifact_hash,
                          "preprocessing_version": cache.preprocessing_version}
     record["seconds"] = {"build": round(time.perf_counter() - started, 1)}
     return sellers, first
+
+
+def seller_info(items, texts, z, full, frac, holdout_seed, need_relations, counts):
+    """One seller's examples, vocabulary and relation snapshots; C-new items leave training here."""
+    row_of = {item: row for row, item in enumerate(items)}
+    held = {i for i in items if held_out_item(i, frac, holdout_seed)} if frac > 0 else set()
+    keep = [row for row, item in enumerate(items) if item not in held]
+    train_items = tuple(items[row] for row in keep)
+    # The vocabulary comes from the items training sees; a held-out name's new words are UNKNOWN.
+    vocab = WordVocabulary([texts[row] for row in keep])
+    tokens = vocab.encode(texts, HAREX_ARCHITECTURES["harex.T_hx.v1"].max_tokens)
+    visits = {cust: without_items(vs, held) for cust, vs in full.items()} if held else full
+    grouped = {}
+    for cust, vs in visits.items():
+        answers = {v.basket.basket_id_local: v.basket.item_ids for v in full[cust]}
+        for example in customer_examples(vs, range(1, len(vs) + 1)):
+            role = split_role(example.target_position, len(vs))
+            if held and not any(v.items for v in example.history):
+                counts["examples_history_all_held_out"] += 1  # nothing left to read
+                continue
+            if held and role == "test":
+                # Held-out items come back only as answers; their earlier purchases stay hidden.
+                example = dataclasses.replace(example, target_items=answers[example.target_basket_id])
+                counts["test_examples_with_held_out_answers"] += bool(example.target_items & held)
+            elif not example.target_items:
+                counts["training_examples_only_held_out"] += 1  # left out of training (evaluation.md §3)
+                continue
+            grouped.setdefault((role, progress_bucket(example.target_position, len(vs))), []).append(example)
+
+    def snapshots(roles, catalog):
+        if not need_relations:
+            return {}
+        rows = {item: row for row, item in enumerate(catalog)}
+        return {b: replay_relations(visits, b, rows, len(catalog))
+                for b in sorted({b for r, b in grouped if r in roles})}
+    if held:
+        train_snapshots = snapshots(("train", "validation"), train_items)
+        test_snapshots = snapshots(("test",), items)
+    else:
+        train_snapshots = test_snapshots = snapshots(("train", "validation", "test"), items)
+    for (role, _), examples in grouped.items():
+        counts["examples"][role] += len(examples)
+    counts["catalog_items"] += len(items)
+    counts["held_out_items"] += len(held)
+    return {"items": items, "train_items": train_items, "keep": torch.tensor(keep, dtype=torch.long),
+            "held_rows": {row_of[i] for i in held}, "z": z, "tokens": tokens, "vocab_size": len(vocab),
+            "visits": visits, "replay": SellerReplay(visits), "grouped": grouped,
+            "train_snapshots": train_snapshots, "test_snapshots": test_snapshots}
 
 
 def with_target(examples, target, first):
@@ -147,16 +218,22 @@ def with_target(examples, target, first):
 
 
 def parts(info, seller, role, variant, target, first, device, seed=0):
+    """Training and validation see the catalog without held-out items; test ranks the whole catalog."""
     config = architecture(variant)
+    test = role == "test"
+    whole = test or len(info["train_items"]) == len(info["items"])
+    items = info["items"] if test else info["train_items"]
+    z = info["z"] if whole else info["z"][info["keep"]]
+    tokens = None if config.text != "hx" else info["tokens"] if whole else info["tokens"][info["keep"]]
+    snapshots = info["test_snapshots" if test else "train_snapshots"]
     out = []
     for (r, bucket), examples in sorted(info["grouped"].items()):
         if r != role:
             continue
-        relations = info["snapshots"][bucket] if config.relation else None
+        relations = snapshots[bucket] if config.relation else None
         if variant.endswith(SHUFFLED):
             relations = shuffled_relations(relations, seller, seed)
-        data = SellerData(seller, info["items"], info["z"], with_target(examples, target, first), relations,
-                          info["tokens"] if config.text == "hx" else None)
+        data = SellerData(seller, items, z, with_target(examples, target, first), relations, tokens)
         out.append((bucket, seller_on(data, device)))
     return out
 
@@ -198,7 +275,8 @@ def evaluate(model, info, test_parts, target, arms, model_arm):
                           "popularity": popularity_scores(seller.items, seller_counts),
                           "P-TopFreq": p_topfreq_scores(seller.items, example.prior_counts, seller_counts)}
             repeat = {r for r in relevant if seller.items[r] in example.prior_counts}
-            split = {"all": relevant, "repeat": repeat, "explore": relevant - repeat}
+            split = {"all": relevant, "repeat": repeat, "explore": relevant - repeat,
+                     "cnew": relevant & info["held_rows"]}
             for name, ranking in candidates.items():
                 for part, rel in split.items():
                     if rel:
@@ -221,6 +299,8 @@ def main(argv=None):
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
+    parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/harex_compare"))
@@ -236,15 +316,15 @@ def main(argv=None):
               "machine": {"os": platform.platform(), "python": platform.python_version(), "torch": torch.__version__,
                           "device": str(device), "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "threads": torch.get_num_threads(), "cpu_count": os.cpu_count()},
-              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL", "temporary scoring"],
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL", "temporary scoring"]
+              + (["C-new: items held out of training"] if args.holdout_frac > 0 else []),
               "results": {}}
     sellers, first = build(args, record)
     for target in args.targets:
         for variant in args.variants:
             arm = "%s %s" % (variant, "(HAREX baseline)" if variant == "T_hx" else "")
             arm = arm.strip()
-            arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")}
-                    for name in (arm, "popularity", "P-TopFreq")}
+            arms = new_arms((arm, "popularity", "P-TopFreq"))
             per_seller = {}
             for seller, info in sellers.items():
                 train_parts = parts(info, seller, "train", variant, target, first, device, args.seed)

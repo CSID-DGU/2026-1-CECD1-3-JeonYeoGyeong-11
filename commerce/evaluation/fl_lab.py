@@ -32,8 +32,9 @@ import time
 import torch
 
 from commerce.evaluation.encoder_probe import peak_memory_mb
-from commerce.evaluation.harex_compare import TARGETS, VARIANTS, architecture, build, code_version, evaluate, parts
-from commerce.evaluation.scoring import MacroAverager
+from commerce.evaluation.harex_compare import (
+    TARGETS, VARIANTS, architecture, build, code_version, evaluate, new_arms, parts,
+)
 from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.training import TrainConfig, seller_on, train, validation_loss
 
@@ -81,6 +82,8 @@ def main(argv=None):
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
+    parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
@@ -98,7 +101,8 @@ def main(argv=None):
                           "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "cpu_count": os.cpu_count()},
               "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
-                         "temporary aggregation", "temporary scoring"]}
+                         "temporary aggregation", "temporary scoring"]
+              + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
     sellers, first = build(args, record)
 
     # One model object per seller carries its local token table; all share the global weights.
@@ -162,8 +166,7 @@ def main(argv=None):
     arm = "%s FL" % args.variant
     record["metrics"] = {}
     for which, state in (("final_round", final), ("best_round", best)):
-        arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")}
-                for name in (arm, "popularity", "P-TopFreq")}
+        arms = new_arms((arm, "popularity", "P-TopFreq"))
         for sid, s in local.items():
             s["model"].load_state_dict(state["shared"], strict=False)
             s["model"].load_state_dict(state["local"][sid], strict=False)
