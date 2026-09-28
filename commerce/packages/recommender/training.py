@@ -54,7 +54,8 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
     allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
     negatives = to_device(negatives, device)
-    pos_scores = (q * model.score_side(e[positives])).sum(-1) / model.score_scale
+    # F.embedding: a batch repeats popular answers, and its backward sums them without atomics.
+    pos_scores = (q * model.score_side(torch.nn.functional.embedding(positives, e))).sum(-1) / model.score_scale
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
 
 

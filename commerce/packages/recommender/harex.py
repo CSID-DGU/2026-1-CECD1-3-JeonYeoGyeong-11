@@ -147,7 +147,9 @@ class HarexRecommender(nn.Module):
         forward = relations.time_forward.to(dev).float() @ times
         backward = relations.time_backward.to(dev).float() @ times
         pair = self.relation_mlp["pair"](torch.cat([relations.features.to(dev), forward, backward], dim=-1))
-        text = self.relation_mlp["text"](base)[neighbor.clamp(min=0)]
+        # F.embedding, not [neighbor]: popular items are thousands of items' neighbours, and the
+        # indexing backward adds their gradients one atomic at a time (27x slower on the lab GPU).
+        text = F.embedding(neighbor.clamp(min=0), self.relation_mlp["text"](base))
         per_pair = self.relation_mlp["out"](F.gelu(pair + text))
         mask = (neighbor >= 0).unsqueeze(-1).to(per_pair.dtype)
         pooled = self.relation_pool((per_pair * mask).sum(1) / mask.sum(1).clamp(min=1))
@@ -172,7 +174,7 @@ class HarexRecommender(nn.Module):
         mask = index >= 0
         n = self.config.max_items
         recency = torch.arange(n - 1, -1, -1, device=e.device).expand(len(examples), n)
-        steps = e[index.clamp(min=0)] * mask.unsqueeze(-1) + self.position(recency)
+        steps = F.embedding(index.clamp(min=0), e) * mask.unsqueeze(-1) + self.position(recency)
         hidden = self.sequence(steps, src_key_padding_mask=~mask)
         return self.query_proj(hidden[:, -1])
 
