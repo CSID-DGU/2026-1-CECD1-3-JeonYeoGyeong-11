@@ -33,6 +33,11 @@ def write_tiny_encoder(model_dir: Path, *, seed: int = 0) -> Path:
 SELLER = "ic-client-990101"
 
 
+def item_id(n: int) -> str:
+    """Item number n of a test catalog. IDs start at 990001, outside the raw Instacart range."""
+    return "ic-p-%d" % (990000 + n)
+
+
 def visits_of(customer, baskets, gaps=None):
     """baskets: list of item-number lists, one per visit; gaps default to 7 days."""
     events, day = [], 0.0
@@ -45,6 +50,6 @@ def visits_of(customer, baskets, gaps=None):
             "seller_partition": "synthetic_partition", "customer_id_local": "ic-user-%s" % customer,
             "basket_id_local": basket, "purchase_event_id": purchase_event_id(SELLER, "instacart", basket),
             "time": {"kind": "relative_day", "value": day}, "order_rank": rank,
-            "items": [{"item_id_local": "ic-p-%d" % i, "quantity_observed": None} for i in sorted(set(items))],
+            "items": [{"item_id_local": item_id(i), "quantity_observed": None} for i in sorted(set(items))],
         })
     return customer_visits(basket_from_event(e) for e in events)

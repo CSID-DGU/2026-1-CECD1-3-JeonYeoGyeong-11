@@ -1,8 +1,10 @@
 """Training step, fixed validation loss and full-catalog scores (model.md §6).
 
 A batch always comes from one seller and one relation snapshot: candidates and
-negatives are that seller's catalog, and e is computed once for the batch. One seller is a local_only run; several sellers pooled here
-is a central upper bound, not FL, and must be labelled so.
+negatives are that seller's catalog, and e is computed once for the batch. train() on one seller's data is the local_only mode of
+model-lab.md §4. Passing several sellers pools them into one optimizer, which is
+none of the lab modes and never an FL result; FL keeps sellers apart and merges
+their deltas through C's aggregation core.
 """
 from dataclasses import asdict, dataclass, field
 import random

@@ -9,15 +9,15 @@ from commerce.packages.recommender import relations as rel
 from commerce.packages.recommender.relations import (
     CENSORED_BIN, N_MAX, build_relations, gap_bin, replay_relations,
 )
-from commerce.packages.recommender.tests import visits_of
+from commerce.packages.recommender.tests import item_id, visits_of
 
 
 def catalog(n):
-    items = tuple("ic-p-%d" % i for i in range(1, n + 1))
+    items = tuple(item_id(i) for i in range(1, n + 1))
     return items, {item: row for row, item in enumerate(items)}
 
 
-A, B, C, D = 0, 1, 2, 3  # rows of ic-p-1 .. ic-p-4
+A, B, C, D = 0, 1, 2, 3  # rows of item_id(1) .. item_id(4)
 
 
 class HandCounted(unittest.TestCase):
@@ -79,8 +79,8 @@ class ThreeRelationsPickDifferentNeighbours(unittest.TestCase):
             visits["z%d" % i] = visits_of("z%d" % i, [[a], [z]])
         with mock.patch.object(rel, "NEIGHBOR_K", 1), mock.patch.object(rel, "N_MAX", 3):
             r = build_relations(visits, row_of, 12)
-        chosen = r.neighbor[row_of["ic-p-%d" % a]].tolist()
-        self.assertEqual(chosen[:3], [row_of["ic-p-%d" % i] for i in (x, y, z)])
+        chosen = r.neighbor[row_of[item_id(a)]].tolist()
+        self.assertEqual(chosen[:3], [row_of[item_id(i)] for i in (x, y, z)])
 
 
 class Snapshot(unittest.TestCase):

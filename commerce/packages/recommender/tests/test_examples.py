@@ -4,7 +4,7 @@ import unittest
 from commerce.packages.data_adapters.instacart import split_role
 from commerce.packages.recommender.examples import K_ITEMS, L_VISITS, customer_examples, cut_items
 from commerce.packages.recommender.replay import SellerReplay, progress_bucket, visible_prefix
-from commerce.packages.recommender.tests import visits_of
+from commerce.packages.recommender.tests import item_id, visits_of
 
 
 class Split(unittest.TestCase):
@@ -28,10 +28,10 @@ class Examples(unittest.TestCase):
         example = customer_examples(self.visits, [13])[0]
         self.assertEqual([h.items for h in example.history],
                          [cut_items(v.basket)[0] for v in self.visits[13 - 1 - L_VISITS:12]])
-        self.assertEqual(example.target_items, frozenset({"ic-p-3", "ic-p-4"}))
+        self.assertEqual(example.target_items, frozenset({item_id(3), item_id(4)}))
         # Counts cover all 12 earlier visits: visit 1 holds item 1 but is outside the last L_VISITS.
-        self.assertEqual(example.prior_counts["ic-p-1"], 4)
-        self.assertEqual(example.prior_counts["ic-p-2"], 4)
+        self.assertEqual(example.prior_counts[item_id(1)], 4)
+        self.assertEqual(example.prior_counts[item_id(2)], 4)
 
     def test_time_bits_come_from_the_visit(self):
         example = customer_examples(self.visits, [5])[0]
@@ -58,7 +58,7 @@ class Examples(unittest.TestCase):
         self.assertNotEqual(sorted(items), by_id)  # not simply the lowest IDs
         example = customer_examples(big, [4])[0]
         self.assertEqual(example.history[0].items_dropped, 18)
-        self.assertEqual(example.prior_counts["ic-p-40"], 1)  # counts see the whole basket
+        self.assertEqual(example.prior_counts[item_id(40)], 1)  # counts see the whole basket
 
 
 class ProgressReplay(unittest.TestCase):
@@ -74,7 +74,7 @@ class ProgressReplay(unittest.TestCase):
             "v": visits_of("v", [[2], [2], [4], [1], [1], [1], [1], [1], [1], [5]]),  # n = 10
         })
         # bucket 4: u sees floor(4*5/10) = 2 visits, v sees 4
-        self.assertEqual(dict(replay.counts(4)), {"ic-p-1": 3, "ic-p-2": 3, "ic-p-4": 1})
+        self.assertEqual(dict(replay.counts(4)), {item_id(1): 3, item_id(2): 3, item_id(4): 1})
         self.assertEqual(replay.visible_visits[4], 6)
         self.assertEqual(dict(replay.counts(0)), {})
 
