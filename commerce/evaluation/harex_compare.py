@@ -234,7 +234,8 @@ def main(argv=None):
     record["peak_memory_mb"] = peak_memory_mb()
     if device.type == "cuda":
         record["peak_gpu_memory_mb"] = round(torch.cuda.max_memory_allocated() / 2**20)
-    out = args.out_dir / stamp
+    # Runs started in the same second must not share a folder.
+    out = args.out_dir / ("%s_%s_s%d_%d" % (stamp, "-".join(args.targets), args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     summary = {}

@@ -155,7 +155,8 @@ def main(argv=None):
                           "seconds": round(time.perf_counter() - started, 1)}
     record["metrics"] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
     record["peak_memory_mb"] = peak_memory_mb()
-    out = args.out_dir / stamp
+    # Runs started in the same second must not share a folder.
+    out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({name: {k: round(v, 4) for k, v in record["metrics"][name]["all"]["macro"].items()
