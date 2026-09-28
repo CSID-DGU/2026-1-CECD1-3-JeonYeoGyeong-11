@@ -14,7 +14,8 @@ it in then and check the result is the same.
 The run has a fixed number of rounds (evaluation.md §5) and its result is the
 last round. Beside it, as an auxiliary, the round with the lowest validation
 loss summed over all sellers and divided by the total example count is tested
-too: an aggregate, never a per-seller value.
+too: an aggregate, never a per-seller value. The shared weights of both rounds
+are saved next to the record (Git-ignored runs/) for later held-out scoring.
 Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
 """
 import argparse
@@ -149,6 +150,15 @@ def main(argv=None):
     final = {"shared": global_shared,
              "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
                        for sid, s in local.items()}}
+    # Runs started in the same second must not share a folder.
+    out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
+    out.mkdir(parents=True, exist_ok=True)
+    # The shared weights alone (no seller's token table), so sellers left out of training can
+    # later be scored with the same models (evaluation.md §3, A-0).
+    torch.save({"architecture": config.architecture_version, "variant": args.variant, "best_round": best["round"],
+                "final_round_shared": {k: v.cpu() for k, v in final["shared"].items()},
+                "best_round_shared": {k: v.cpu() for k, v in best["shared"].items()}}, out / "shared_weights.pt")
+    record["weights"] = "shared_weights.pt"
     arm = "%s FL" % args.variant
     record["metrics"] = {}
     for which, state in (("final_round", final), ("best_round", best)):
@@ -166,9 +176,6 @@ def main(argv=None):
                           "plateaued": best["round"] <= 0.9 * args.rounds,
                           "seconds": round(time.perf_counter() - started, 1)}
     record["peak_memory_mb"] = peak_memory_mb()
-    # Runs started in the same second must not share a folder.
-    out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
-    out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     print(json.dumps({which: {name: {k: round(v, 4) for k, v in m["all"]["macro"].items()
                                      if k in ("ndcg@10", "recall@20", "hr@10")} for name, m in record["metrics"][which].items()}
