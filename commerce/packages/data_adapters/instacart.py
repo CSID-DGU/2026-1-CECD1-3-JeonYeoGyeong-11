@@ -37,6 +37,19 @@ def train_cutoff(n_prior: int) -> int:
     return 7 * n_prior // 10  # integer form: 0.7 * n in floats can land just below an integer
 
 
+def validation_cutoff(n_prior: int) -> int:
+    """Last validation order_number: floor(0.8 n). Later orders are test."""
+    return 8 * n_prior // 10
+
+
+def split_role(order_number: int, n_prior: int) -> str:
+    if not 1 <= order_number <= n_prior:
+        raise ValueError("order_number outside 1..n")
+    if order_number <= train_cutoff(n_prior):
+        return "train"
+    return "validation" if order_number <= validation_cutoff(n_prior) else "test"
+
+
 def seller_id(client_id: int) -> str:
     return "ic-client-%d" % client_id
 
