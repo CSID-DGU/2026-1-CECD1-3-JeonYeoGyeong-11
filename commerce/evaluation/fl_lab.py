@@ -19,6 +19,7 @@ are saved next to the record (Git-ignored runs/) for later held-out scoring.
 Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
 """
 import argparse
+from contextlib import contextmanager
 import copy
 import dataclasses
 from datetime import datetime, timezone
@@ -53,6 +54,17 @@ def on_device(seller_parts, device):
     """Move one seller's data to the device only while it trains: 100 sellers' relation snapshots
     do not fit in GPU memory together."""
     return [(bucket, seller_on(p, device)) for bucket, p in seller_parts]
+
+
+@contextmanager
+def staged(model, device):
+    """A seller's model waits on the CPU and visits the device only for its own turn: 100 sellers'
+    models held on one shared GPU for the whole run take gigabytes per run."""
+    model.to(device)
+    try:
+        yield model
+    finally:
+        model.to("cpu")
 
 
 def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
@@ -113,7 +125,7 @@ def main(argv=None):
     local = {}
     for seller, info in sellers.items():
         torch.manual_seed(args.seed)
-        model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None).to(device)
+        model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None)
         model.load_state_dict(global_shared, strict=False)
         cpu = torch.device("cpu")
         local[seller] = {"model": model,
@@ -124,9 +136,11 @@ def main(argv=None):
     best, history, discarded = None, [], 0
     started = time.perf_counter()
     for rnd in range(args.rounds):
-        deltas = [local_round(s["model"], global_shared, on_device(s["train"], device), args.local_epochs,
-                              args.batch_size, args.lr, args.seed * 100000 + rnd * 1000 + i)
-                  for i, s in enumerate(local.values())]
+        deltas = []
+        for i, s in enumerate(local.values()):
+            with staged(s["model"], device) as model:
+                deltas.append(local_round(model, global_shared, on_device(s["train"], device), args.local_epochs,
+                                          args.batch_size, args.lr, args.seed * 100000 + rnd * 1000 + i))
         mean = aggregate_uniform(deltas)
         if mean is None:
             discarded += 1
@@ -134,9 +148,10 @@ def main(argv=None):
         global_shared = {k: (v + mean[k] if k in mean else v) for k, v in global_shared.items()}
         total, count = 0.0, 0
         for s in local.values():
-            s["model"].load_state_dict(global_shared, strict=False)
             n = sum(len(p.examples) for _, p in s["validation"])
-            loss = validation_loss(s["model"], [p for _, p in on_device(s["validation"], device)], seed=args.seed)
+            with staged(s["model"], device) as model:
+                model.load_state_dict(global_shared, strict=False)
+                loss = validation_loss(model, [p for _, p in on_device(s["validation"], device)], seed=args.seed)
             if loss is not None:
                 total, count = total + loss * n, count + n  # only the sum and count leave the loop
         val = total / count if count else None
@@ -168,9 +183,10 @@ def main(argv=None):
     for which, state in (("final_round", final), ("best_round", best)):
         arms = new_arms((arm, "popularity", "P-TopFreq"))
         for sid, s in local.items():
-            s["model"].load_state_dict(state["shared"], strict=False)
-            s["model"].load_state_dict(state["local"][sid], strict=False)
-            evaluate(s["model"], sellers[sid], on_device(s["test"], device), args.target, arms, arm)
+            with staged(s["model"], device) as model:
+                model.load_state_dict(state["shared"], strict=False)
+                model.load_state_dict(state["local"][sid], strict=False)
+                evaluate(model, sellers[sid], on_device(s["test"], device), args.target, arms, arm)
         record["metrics"][which] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
     record["metrics"]["primary"] = "final_round"
     record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],

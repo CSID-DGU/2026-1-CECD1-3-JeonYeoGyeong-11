@@ -3,7 +3,7 @@ import unittest
 
 import torch
 
-from commerce.evaluation.fl_lab import aggregate_uniform, local_round
+from commerce.evaluation.fl_lab import aggregate_uniform, local_round, staged
 from commerce.evaluation.harex_compare import shuffled_relations
 from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.relations import RelationTensors
@@ -85,3 +85,13 @@ class ShuffleControl(unittest.TestCase):
         torch.testing.assert_close(again.features, shuffled_relations(original, "s", seed=0).features)
         self.assertFalse(torch.equal(again.features, shuffled_relations(original, "t", seed=0).features))
         self.assertFalse(torch.equal(again.features, shuffled_relations(original, "s", seed=1).features))
+
+
+class Staging(unittest.TestCase):
+    def test_the_model_is_back_on_the_cpu_even_after_an_error(self):
+        _, vocab = with_tokens(seller_data())
+        model = HarexRecommender(TINY, vocab_size=len(vocab))
+        with self.assertRaises(RuntimeError):
+            with staged(model, torch.device("cpu")):
+                raise RuntimeError("a failing round")
+        self.assertTrue(all(p.device.type == "cpu" for p in model.parameters()))
