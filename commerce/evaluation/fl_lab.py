@@ -11,9 +11,10 @@ the uniform mean of the deltas (D0017). aggregate_uniform is a TEMPORARY copy
 of that rule until C's aggregation core lands (working-agreement §8, D3); swap
 it in then and check the result is the same.
 
-The run has a fixed number of rounds (evaluation.md §5). The round kept for
-testing is the one with the lowest validation loss summed over all sellers and
-divided by the total example count: an aggregate, never a per-seller value.
+The run has a fixed number of rounds (evaluation.md §5) and its result is the
+last round. Beside it, as an auxiliary, the round with the lowest validation
+loss summed over all sellers and divided by the total example count is tested
+too: an aggregate, never a per-seller value.
 Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
 """
 import argparse
@@ -142,25 +143,35 @@ def main(argv=None):
             print("round %d val %.4f best %d (%.4f) %.0fs" % (rnd + 1, val, best["round"], best["val"],
                                                             time.perf_counter() - started), flush=True)
 
+    # The first run has a fixed round count (evaluation.md §5), so the last round is the result.
+    # The best aggregate-validation round is reported beside it as an auxiliary.
+    final = {"shared": global_shared,
+             "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
+                       for sid, s in local.items()}}
     arm = "%s FL" % args.variant
-    arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")} for name in (arm, "popularity", "P-TopFreq")}
-    for sid, s in local.items():
-        s["model"].load_state_dict(best["shared"], strict=False)
-        s["model"].load_state_dict(best["local"][sid], strict=False)
-        evaluate(s["model"], sellers[sid], on_device(s["test"], device), args.target, arms, arm)
+    record["metrics"] = {}
+    for which, state in (("final_round", final), ("best_round", best)):
+        arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")}
+                for name in (arm, "popularity", "P-TopFreq")}
+        for sid, s in local.items():
+            s["model"].load_state_dict(state["shared"], strict=False)
+            s["model"].load_state_dict(state["local"][sid], strict=False)
+            evaluate(s["model"], sellers[sid], on_device(s["test"], device), args.target, arms, arm)
+        record["metrics"][which] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
+    record["metrics"]["primary"] = "final_round"
     record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],
                           "best_val_loss_aggregate": best["val"], "history": history,
                           # Best round in the last tenth: the curve was still falling, so run longer.
                           "plateaued": best["round"] <= 0.9 * args.rounds,
                           "seconds": round(time.perf_counter() - started, 1)}
-    record["metrics"] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
     record["peak_memory_mb"] = peak_memory_mb()
     # Runs started in the same second must not share a folder.
     out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(json.dumps({name: {k: round(v, 4) for k, v in record["metrics"][name]["all"]["macro"].items()
-                             if k in ("ndcg@10", "recall@20", "hr@10")} for name in record["metrics"]}, indent=2))
+    print(json.dumps({which: {name: {k: round(v, 4) for k, v in m["all"]["macro"].items()
+                                     if k in ("ndcg@10", "recall@20", "hr@10")} for name, m in record["metrics"][which].items()}
+                      for which in ("final_round", "best_round")}, indent=2))
     print("best round %d of %d (plateaued=%s), discarded %d -> %s" % (
         best["round"], args.rounds, record["training"]["plateaued"], discarded, out))
 
