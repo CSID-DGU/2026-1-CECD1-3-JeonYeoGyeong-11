@@ -3,7 +3,9 @@
     python -m commerce.evaluation.harex_compare --instacart-dir fedcommerce/data/instacart
 
 Variants: T_hx (GCI word tokens, the HAREX baseline), R_hx (+ local purchase relations),
-T_lm (pretrained encoder), R_lm. Targets: "basket" is the next visit's item set
+T_lm (pretrained encoder), R_lm, and R_hx_shuffled, the relation shuffle control
+(evaluation.md §4): R_hx with the item-relation correspondence permuted inside
+each seller. Targets: "basket" is the next visit's item set
 (evaluation.md §1); "next_item" is the first item added to the next visit's cart,
 predicted from earlier visits only (D0022, HAREX style).
 
@@ -25,7 +27,9 @@ import json
 import os
 from pathlib import Path
 import platform
+import subprocess
 import time
+import zlib
 
 import numpy as np
 import torch
@@ -39,7 +43,7 @@ from commerce.packages.data_adapters.instacart import first_in_cart, item_id, lo
 from commerce.packages.data_adapters.text import catalog_item_text
 from commerce.packages.recommender.examples import customer_examples
 from commerce.packages.recommender.harex import HAREX_ARCHITECTURES, HarexRecommender, WordVocabulary
-from commerce.packages.recommender.relations import replay_relations
+from commerce.packages.recommender.relations import RelationTensors, replay_relations
 from commerce.packages.recommender.replay import SellerReplay, progress_bucket
 from commerce.packages.recommender.text_encoder import FrozenTextEncoder
 from commerce.packages.recommender.training import (
@@ -47,8 +51,31 @@ from commerce.packages.recommender.training import (
 )
 from commerce.packages.recommender.z_cache import ZCache
 
-VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm")
+VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm", "R_hx_shuffled")
 TARGETS = ("basket", "next_item")
+SHUFFLED = "_shuffled"
+
+
+def architecture(variant: str):
+    """R_hx_shuffled is R_hx's architecture; only its relation rows are permuted."""
+    return HAREX_ARCHITECTURES["harex.%s.v1" % variant.removesuffix(SHUFFLED)]
+
+
+def shuffled_relations(relations: RelationTensors, seller: str, seed: int) -> RelationTensors:
+    """Each item takes another item's relation row from the same seller: input form and capacity
+    stay, the item-relation correspondence goes. One permutation per seller and seed, the same in
+    every snapshot."""
+    generator = torch.Generator().manual_seed(zlib.crc32(("%s/%d" % (seller, seed)).encode()))
+    perm = torch.randperm(len(relations.has_neighbor), generator=generator)
+    return RelationTensors(**{f.name: getattr(relations, f.name)[perm] for f in dataclasses.fields(relations)})
+
+
+def code_version() -> dict:
+    """The commit a run used and whether tracked files differed from it."""
+    def git(*args):
+        return subprocess.run(["git", *args], capture_output=True, text=True).stdout.strip()
+    return {"commit": git("rev-parse", "HEAD") or None,
+            "dirty": bool(git("status", "--porcelain", "--untracked-files=no"))}
 
 
 def build(args, record):
@@ -119,21 +146,23 @@ def with_target(examples, target, first):
     return out
 
 
-def parts(info, seller, role, variant, target, first, device):
-    config = HAREX_ARCHITECTURES["harex.%s.v1" % variant]
+def parts(info, seller, role, variant, target, first, device, seed=0):
+    config = architecture(variant)
     out = []
     for (r, bucket), examples in sorted(info["grouped"].items()):
         if r != role:
             continue
-        data = SellerData(seller, info["items"], info["z"], with_target(examples, target, first),
-                          info["snapshots"][bucket] if config.relation else None,
+        relations = info["snapshots"][bucket] if config.relation else None
+        if variant.endswith(SHUFFLED):
+            relations = shuffled_relations(relations, seller, seed)
+        data = SellerData(seller, info["items"], info["z"], with_target(examples, target, first), relations,
                           info["tokens"] if config.text == "hx" else None)
         out.append((bucket, seller_on(data, device)))
     return out
 
 
 def fit(args, info, train_parts, val_parts, variant, device):
-    config = HAREX_ARCHITECTURES["harex.%s.v1" % variant]
+    config = architecture(variant)
     torch.manual_seed(args.seed)
     model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None).to(device)
     base = TrainConfig(steps=args.eval_every, batch_size=args.batch_size, lr=args.lr)
@@ -202,7 +231,7 @@ def main(argv=None):
     device = torch.device(args.device)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    record = {"run": "D0022 harex_compare", "started_at": stamp, "seed": args.seed,
+    record = {"run": "D0022 harex_compare", "started_at": stamp, "seed": args.seed, "code": code_version(),
               "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
               "machine": {"os": platform.platform(), "python": platform.python_version(), "torch": torch.__version__,
                           "device": str(device), "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
@@ -218,9 +247,9 @@ def main(argv=None):
                     for name in (arm, "popularity", "P-TopFreq")}
             per_seller = {}
             for seller, info in sellers.items():
-                train_parts = parts(info, seller, "train", variant, target, first, device)
-                val_parts = parts(info, seller, "validation", variant, target, first, device)
-                test_parts = parts(info, seller, "test", variant, target, first, device)
+                train_parts = parts(info, seller, "train", variant, target, first, device, args.seed)
+                val_parts = parts(info, seller, "validation", variant, target, first, device, args.seed)
+                test_parts = parts(info, seller, "test", variant, target, first, device, args.seed)
                 model, log = fit(args, info, train_parts, val_parts, variant, device)
                 evaluate(model, info, test_parts, target, arms, arm)
                 per_seller[seller] = {k: v for k, v in log.items() if k != "history"} | {"history": log["history"]}

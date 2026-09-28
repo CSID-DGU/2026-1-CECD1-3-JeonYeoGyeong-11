@@ -31,9 +31,9 @@ import time
 import torch
 
 from commerce.evaluation.encoder_probe import peak_memory_mb
-from commerce.evaluation.harex_compare import TARGETS, build, evaluate, parts
+from commerce.evaluation.harex_compare import TARGETS, VARIANTS, architecture, build, code_version, evaluate, parts
 from commerce.evaluation.scoring import MacroAverager
-from commerce.packages.recommender.harex import HAREX_ARCHITECTURES, HarexRecommender
+from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.training import TrainConfig, seller_on, train, validation_loss
 
 
@@ -71,7 +71,7 @@ def main(argv=None):
     parser.add_argument("--instacart-dir", type=Path, required=True)
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
-    parser.add_argument("--variant", required=True, choices=["T_hx", "R_hx", "T_lm", "R_lm"])
+    parser.add_argument("--variant", required=True, choices=VARIANTS)
     parser.add_argument("--target", default="basket", choices=TARGETS)
     parser.add_argument("--sellers", type=int, default=5)
     parser.add_argument("--rounds", type=int, default=300)
@@ -87,12 +87,12 @@ def main(argv=None):
     args.variants = [args.variant]
     torch.set_num_threads(args.threads)
     device = torch.device(args.device)
-    config = HAREX_ARCHITECTURES["harex.%s.v1" % args.variant]
+    config = architecture(args.variant)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     record = {"run": "D0022 federated_lab_sim", "mode": "비보호 FL 시뮬레이션 (unprotected FL simulation, D0020)",
               "aggregation": "temporary uniform mean, all complete or discard (stand-in for C's core)",
-              "started_at": stamp, "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
+              "started_at": stamp, "code": code_version(), "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
               "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device),
                           "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "cpu_count": os.cpu_count()},
@@ -112,9 +112,9 @@ def main(argv=None):
         model.load_state_dict(global_shared, strict=False)
         cpu = torch.device("cpu")
         local[seller] = {"model": model,
-                         "train": parts(info, seller, "train", args.variant, args.target, first, cpu),
-                         "validation": parts(info, seller, "validation", args.variant, args.target, first, cpu),
-                         "test": parts(info, seller, "test", args.variant, args.target, first, cpu)}
+                         "train": parts(info, seller, "train", args.variant, args.target, first, cpu, args.seed),
+                         "validation": parts(info, seller, "validation", args.variant, args.target, first, cpu, args.seed),
+                         "test": parts(info, seller, "test", args.variant, args.target, first, cpu, args.seed)}
 
     best, history, discarded = None, [], 0
     started = time.perf_counter()

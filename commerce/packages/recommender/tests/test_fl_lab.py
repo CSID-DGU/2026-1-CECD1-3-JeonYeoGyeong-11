@@ -4,7 +4,9 @@ import unittest
 import torch
 
 from commerce.evaluation.fl_lab import aggregate_uniform, local_round
+from commerce.evaluation.harex_compare import shuffled_relations
 from commerce.packages.recommender.harex import HarexRecommender
+from commerce.packages.recommender.relations import RelationTensors
 from commerce.packages.recommender.tests.test_harex import TINY, with_tokens
 from commerce.packages.recommender.tests.test_model import seller_data
 
@@ -55,3 +57,31 @@ class GlocalRound(unittest.TestCase):
         model = HarexRecommender(TINY, vocab_size=vocab_size)
         shared = {k: v.detach().clone() for k, v in model.shared_state().items()}
         self.assertIsNone(local_round(model, shared, [(0, empty)], 1, 16, 1e-3, 0))
+
+
+class ShuffleControl(unittest.TestCase):
+    def relations(self, n=40):
+        torch.manual_seed(0)
+        neighbor = torch.randint(-1, n, (n, 16))
+        return RelationTensors(neighbor=neighbor, features=torch.randn(n, 16, 10),
+                               time_forward=torch.rand(n, 16, 32).half(), time_backward=torch.rand(n, 16, 32).half(),
+                               has_neighbor=(neighbor >= 0).any(1))
+
+    def test_rows_move_together_and_nothing_is_lost(self):
+        original = self.relations()
+        shuffled = shuffled_relations(original, "s", seed=0)
+        self.assertFalse(torch.equal(shuffled.features, original.features))
+        # Every field is permuted by the same rows, so each item's relation row stays whole.
+        rows = {tuple(original.features[i].flatten().tolist()): i for i in range(len(original.has_neighbor))}
+        for c in range(len(shuffled.has_neighbor)):
+            src = rows[tuple(shuffled.features[c].flatten().tolist())]
+            self.assertTrue(torch.equal(shuffled.neighbor[c], original.neighbor[src]))
+            self.assertTrue(torch.equal(shuffled.time_forward[c], original.time_forward[src]))
+            self.assertEqual(bool(shuffled.has_neighbor[c]), bool(original.has_neighbor[src]))
+
+    def test_one_permutation_per_seller_and_seed(self):
+        original = self.relations()
+        again = shuffled_relations(original, "s", seed=0)
+        torch.testing.assert_close(again.features, shuffled_relations(original, "s", seed=0).features)
+        self.assertFalse(torch.equal(again.features, shuffled_relations(original, "t", seed=0).features))
+        self.assertFalse(torch.equal(again.features, shuffled_relations(original, "s", seed=1).features))
