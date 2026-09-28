@@ -1,0 +1,90 @@
+[
+  {
+    "schema_version": "purchase_event.v1",
+    "seller_id": "seller-a",
+    "source": "live",
+    "seller_partition": "platform_seller",
+    "customer_id_local": "buyer-1",
+    "basket_id_local": "order-1001",
+    "purchase_event_id": "ecf35d21b51ff9e15a9d7a68bd379359",
+    "time": {
+      "kind": "absolute",
+      "value": "2026-09-10T01:00:00Z"
+    },
+    "order_rank": null,
+    "items": [
+      {
+        "item_id_local": "item-1",
+        "quantity_observed": 2
+      },
+      {
+        "item_id_local": "item-5",
+        "quantity_observed": 1
+      }
+    ]
+  },
+  {
+    "schema_version": "purchase_event.v1",
+    "seller_id": "seller-a",
+    "source": "live",
+    "seller_partition": "platform_seller",
+    "customer_id_local": "buyer-1",
+    "basket_id_local": "order-1003",
+    "purchase_event_id": "e6395ffe8b881fae70dd4b6147edd677",
+    "time": {
+      "kind": "absolute",
+      "value": "2026-09-12T09:30:00Z"
+    },
+    "order_rank": null,
+    "items": [
+      {
+        "item_id_local": "item-2",
+        "quantity_observed": 1
+      }
+    ]
+  },
+  {
+    "schema_version": "purchase_event.v1",
+    "seller_id": "seller-a",
+    "source": "live",
+    "seller_partition": "platform_seller",
+    "customer_id_local": "buyer-1",
+    "basket_id_local": "order-1002",
+    "purchase_event_id": "36b69ce8cd39a91bf47ea6c15a7addb4",
+    "time": {
+      "kind": "absolute",
+      "value": "2026-09-12T09:30:00Z"
+    },
+    "order_rank": null,
+    "items": [
+      {
+        "item_id_local": "item-3",
+        "quantity_observed": 1
+      }
+    ]
+  },
+  {
+    "schema_version": "purchase_event.v1",
+    "seller_id": "seller-a",
+    "source": "live",
+    "seller_partition": "platform_seller",
+    "customer_id_local": "buyer-2",
+    "basket_id_local": "order-1004",
+    "purchase_event_id": "57ae4ea3aa1eb0a4e6a4ed1c5917b468",
+    "time": {
+      "kind": "absolute",
+      "value": "2026-09-15T12:00:00Z"
+    },
+    "order_rank": null,
+    "items": [
+      {
+        "item_id_local": "item-6",
+        "quantity_observed": 3
+      },
+      {
+        "item_id_local": "item-7",
+        "quantity_observed": 1
+      }
+    ]
+  }
+]
