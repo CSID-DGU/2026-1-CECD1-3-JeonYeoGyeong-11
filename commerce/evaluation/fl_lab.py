@@ -6,6 +6,8 @@ Each round every seller starts from the same global shared weights, trains
 --local-epochs on its own data with a fresh AdamW (GCI: one epoch per round,
 batch 128) and returns shared_delta = after - before. A seller's word-token
 table (hx) stays with it and is never aggregated, as in GCI's glocalization.
+The simulation keeps one model on the device and swaps each seller's table in
+for its turn; the shared weights are reloaded every turn anyway.
 The round is kept only if every seller completed; then the global model adds
 the uniform mean of the deltas (D0017). aggregate_uniform is a TEMPORARY copy
 of that rule until C's aggregation core lands (working-agreement §8, D3); swap
@@ -19,7 +21,6 @@ are saved next to the record (Git-ignored runs/) for later held-out scoring.
 Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
 """
 import argparse
-from contextlib import contextmanager
 import copy
 import dataclasses
 from datetime import datetime, timezone
@@ -56,15 +57,9 @@ def on_device(seller_parts, device):
     return [(bucket, seller_on(p, device)) for bucket, p in seller_parts]
 
 
-@contextmanager
-def staged(model, device):
-    """A seller's model waits on the CPU and visits the device only for its own turn: 100 sellers'
-    models held on one shared GPU for the whole run take gigabytes per run."""
-    model.to(device)
-    try:
-        yield model
-    finally:
-        model.to("cpu")
+def local_tables(model):
+    """The seller's own tensors: the hx token table, none for lm."""
+    return {k: v.detach().clone() for k, v in model.state_dict().items() if k.startswith("local_")}
 
 
 def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
@@ -90,6 +85,7 @@ def main(argv=None):
     parser.add_argument("--sellers", type=int, default=5)
     parser.add_argument("--rounds", type=int, default=300)
     parser.add_argument("--local-epochs", type=int, default=1)
+    parser.add_argument("--val-every", type=int, default=5)  # and always the last round
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
@@ -117,58 +113,65 @@ def main(argv=None):
               + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
     sellers, first = build(args, record)
 
-    # One model object per seller carries its local token table; all share the global weights.
+    # One model on the device; a seller's own part is its hx token table, made with the same
+    # seed as a model of its own would make it.
+    hx = config.text == "hx"
     torch.manual_seed(args.seed)
-    template = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"]
-                                if config.text == "hx" else None)
-    global_shared = {k: v.detach().clone().to(device) for k, v in template.shared_state().items()}
+    model = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"] if hx else None).to(device)
+    global_shared = {k: v.detach().clone() for k, v in model.shared_state().items()}
     local = {}
     for seller, info in sellers.items():
-        torch.manual_seed(args.seed)
-        model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None)
-        model.load_state_dict(global_shared, strict=False)
-        cpu = torch.device("cpu")
-        local[seller] = {"model": model,
-                         "train": parts(info, seller, "train", args.variant, args.target, first, cpu, args.seed),
-                         "validation": parts(info, seller, "validation", args.variant, args.target, first, cpu, args.seed),
-                         "test": parts(info, seller, "test", args.variant, args.target, first, cpu, args.seed)}
+        tables = None
+        if hx:
+            torch.manual_seed(args.seed)
+            tables = HarexRecommender(config, vocab_size=info["vocab_size"]).local_tokens.to(device)
+            info["z"] = info["z"][:, :0]  # hx never reads z: keep none of it on the device
+        info["z"], info["tokens"], info["keep"] = (info[k].to(device) for k in ("z", "tokens", "keep"))
+        # Without relations everything stays on the device; relation snapshots move per turn.
+        place = None if config.relation else device
+        local[seller] = {"tables": tables,
+                         **{role: parts(info, seller, role, args.variant, args.target, first, place, args.seed)
+                            for role in ("train", "validation", "test")}}
+
+    def turn(s):
+        if s["tables"] is not None:
+            model.local_tokens = s["tables"]
+        return model
+
+    def placed(seller_parts):
+        return on_device(seller_parts, device) if config.relation else seller_parts
 
     best, history, discarded = None, [], 0
     started = time.perf_counter()
     for rnd in range(args.rounds):
-        deltas = []
-        for i, s in enumerate(local.values()):
-            with staged(s["model"], device) as model:
-                deltas.append(local_round(model, global_shared, on_device(s["train"], device), args.local_epochs,
-                                          args.batch_size, args.lr, args.seed * 100000 + rnd * 1000 + i))
+        deltas = [local_round(turn(s), global_shared, placed(s["train"]), args.local_epochs, args.batch_size,
+                              args.lr, args.seed * 100000 + rnd * 1000 + i) for i, s in enumerate(local.values())]
         mean = aggregate_uniform(deltas)
         if mean is None:
             discarded += 1
             continue
         global_shared = {k: (v + mean[k] if k in mean else v) for k, v in global_shared.items()}
+        if (rnd + 1) % args.val_every and rnd + 1 != args.rounds:
+            continue
         total, count = 0.0, 0
         for s in local.values():
             n = sum(len(p.examples) for _, p in s["validation"])
-            with staged(s["model"], device) as model:
-                model.load_state_dict(global_shared, strict=False)
-                loss = validation_loss(model, [p for _, p in on_device(s["validation"], device)], seed=args.seed)
+            turn(s).load_state_dict(global_shared, strict=False)
+            loss = validation_loss(model, [p for _, p in placed(s["validation"])], seed=args.seed)
             if loss is not None:
                 total, count = total + loss * n, count + n  # only the sum and count leave the loop
         val = total / count if count else None
         history.append([rnd + 1, val])
         if val is not None and (best is None or val < best["val"]):
             best = {"round": rnd + 1, "val": val, "shared": {k: v.clone() for k, v in global_shared.items()},
-                    "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
-                              for sid, s in local.items()}}
+                    "local": {sid: local_tables(turn(s)) for sid, s in local.items()}}
         if (rnd + 1) % 10 == 0:
             print("round %d val %.4f best %d (%.4f) %.0fs" % (rnd + 1, val, best["round"], best["val"],
                                                             time.perf_counter() - started), flush=True)
 
     # The first run has a fixed round count (evaluation.md §5), so the last round is the result.
     # The best aggregate-validation round is reported beside it as an auxiliary.
-    final = {"shared": global_shared,
-             "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
-                       for sid, s in local.items()}}
+    final = {"shared": global_shared, "local": {sid: local_tables(turn(s)) for sid, s in local.items()}}
     # Runs started in the same second must not share a folder.
     out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
@@ -183,10 +186,9 @@ def main(argv=None):
     for which, state in (("final_round", final), ("best_round", best)):
         arms = new_arms((arm, "popularity", "P-TopFreq"))
         for sid, s in local.items():
-            with staged(s["model"], device) as model:
-                model.load_state_dict(state["shared"], strict=False)
-                model.load_state_dict(state["local"][sid], strict=False)
-                evaluate(model, sellers[sid], on_device(s["test"], device), args.target, arms, arm)
+            turn(s).load_state_dict(state["shared"], strict=False)
+            model.load_state_dict(state["local"][sid], strict=False)
+            evaluate(model, sellers[sid], placed(s["test"]), args.target, arms, arm)
         record["metrics"][which] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
     record["metrics"]["primary"] = "final_round"
     record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],

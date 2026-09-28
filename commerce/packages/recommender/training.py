@@ -50,8 +50,7 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     positives = torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples], device=device)
     negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
-    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool,
-                           device=device)
+    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
     negatives = negatives.to(device)
     pos_scores = (q * model.score_side(e[positives])).sum(-1) / model.score_scale
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
@@ -80,10 +79,13 @@ def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig
             continue
         optimizer.zero_grad()
         loss.backward()
-        norms.append(float(torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_norm)))
+        norms.append(torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_norm))
         optimizer.step()
-        losses.append(float(loss.detach()))
+        losses.append(loss.detach())
     model.eval()
+    # Read back once at the end: a read per step makes every step wait for the device.
+    losses = torch.stack(losses).tolist() if losses else []
+    norms = torch.stack(norms).tolist() if norms else []
     return {"steps": len(losses), "skipped_batches": skipped,
             "loss_mean": sum(losses) / len(losses) if losses else None,
             "loss_last": losses[-1] if losses else None,
@@ -101,9 +103,9 @@ def validation_loss(model: Recommender, sellers: Sequence[SellerData], *, n_nega
         rng = random.Random("%d:%s" % (seed, seller.seller_id))
         for start in range(0, len(seller.examples), batch_size):
             loss, used = batch_loss(model, seller, seller.examples[start:start + batch_size], n_negatives, rng)
-            total += float(loss) * used
+            total = total + loss * used
             count += used
-    return total / count if count else None
+    return float(total) / count if count else None
 
 
 @torch.no_grad()

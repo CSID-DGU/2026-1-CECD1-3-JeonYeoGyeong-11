@@ -193,13 +193,18 @@ def sampled_softmax_loss(positive: torch.Tensor, negatives: torch.Tensor,
     positive (B,), negatives (B, N), negative_mask (B, N) True where a negative is
     allowed, i.e. not in that example's target set. An example with no allowed
     negative is skipped and not counted.
+
+    The mask may stay on the CPU where it was built: the count then needs no wait
+    on the device. A skipped row keeps only its positive, so its loss is exactly 0.
     """
-    logits = torch.cat([positive.unsqueeze(1), negatives.masked_fill(~negative_mask, float("-inf"))], dim=1)
     usable = negative_mask.any(dim=1)
-    if not usable.any():
+    used = int(usable.sum())
+    if used == 0:
         return positive.sum() * 0.0, 0
-    per_example = -F.log_softmax(logits[usable], dim=1)[:, 0]
-    return per_example.mean(), int(usable.sum())
+    mask = negative_mask.to(negatives.device)
+    logits = torch.cat([positive.unsqueeze(1), negatives.masked_fill(~mask, float("-inf"))], dim=1)
+    per_example = -F.log_softmax(logits, dim=1)[:, 0] * usable.to(logits.device, logits.dtype)
+    return per_example.sum() / used, used
 
 
 def config_record(config: ModelConfig) -> dict:

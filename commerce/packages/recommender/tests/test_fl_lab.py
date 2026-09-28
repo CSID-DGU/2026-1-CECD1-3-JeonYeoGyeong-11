@@ -1,9 +1,10 @@
+import copy
 import dataclasses
 import unittest
 
 import torch
 
-from commerce.evaluation.fl_lab import aggregate_uniform, local_round, staged
+from commerce.evaluation.fl_lab import aggregate_uniform, local_round
 from commerce.evaluation.harex_compare import shuffled_relations
 from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.relations import RelationTensors
@@ -49,6 +50,21 @@ class GlocalRound(unittest.TestCase):
         for m, before in zip(models, tokens_before):
             self.assertFalse(torch.equal(m.local_tokens.weight, before))  # trained locally, kept locally
 
+    def test_one_model_with_swapped_tables_equals_a_model_per_seller(self):
+        torch.manual_seed(0)
+        models = [HarexRecommender(TINY, vocab_size=v) for _, v in self.sellers]
+        global_shared = {k: v.detach().clone() for k, v in models[0].shared_state().items()}
+        one = copy.deepcopy(models[0])
+        tables = [copy.deepcopy(m.local_tokens) for m in models]
+        expected = [local_round(m, global_shared, [(0, d)], 1, 16, 3e-3, i)
+                    for i, (m, (d, _)) in enumerate(zip(models, self.sellers))]
+        for i, (d, _) in enumerate(self.sellers):
+            one.local_tokens = tables[i]
+            delta = local_round(one, global_shared, [(0, d)], 1, 16, 3e-3, i)
+            for key, value in expected[i].items():
+                torch.testing.assert_close(delta[key], value)
+            torch.testing.assert_close(tables[i].weight, models[i].local_tokens.weight)
+
     def test_a_seller_without_examples_cannot_complete(self):
         torch.manual_seed(0)
         data, vocab_size = self.sellers[0]
@@ -86,12 +102,3 @@ class ShuffleControl(unittest.TestCase):
         self.assertFalse(torch.equal(again.features, shuffled_relations(original, "t", seed=0).features))
         self.assertFalse(torch.equal(again.features, shuffled_relations(original, "s", seed=1).features))
 
-
-class Staging(unittest.TestCase):
-    def test_the_model_is_back_on_the_cpu_even_after_an_error(self):
-        _, vocab = with_tokens(seller_data())
-        model = HarexRecommender(TINY, vocab_size=len(vocab))
-        with self.assertRaises(RuntimeError):
-            with staged(model, torch.device("cpu")):
-                raise RuntimeError("a failing round")
-        self.assertTrue(all(p.device.type == "cpu" for p in model.parameters()))

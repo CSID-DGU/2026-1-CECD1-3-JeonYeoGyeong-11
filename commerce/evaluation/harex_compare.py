@@ -218,7 +218,9 @@ def with_target(examples, target, first):
 
 
 def parts(info, seller, role, variant, target, first, device, seed=0):
-    """Training and validation see the catalog without held-out items; test ranks the whole catalog."""
+    """Training and validation see the catalog without held-out items; test ranks the whole catalog.
+
+    device None leaves every tensor where info keeps it."""
     config = architecture(variant)
     test = role == "test"
     whole = test or len(info["train_items"]) == len(info["items"])
@@ -234,7 +236,7 @@ def parts(info, seller, role, variant, target, first, device, seed=0):
         if variant.endswith(SHUFFLED):
             relations = shuffled_relations(relations, seller, seed)
         data = SellerData(seller, items, z, with_target(examples, target, first), relations, tokens)
-        out.append((bucket, seller_on(data, device)))
+        out.append((bucket, data if device is None else seller_on(data, device)))
     return out
 
 
