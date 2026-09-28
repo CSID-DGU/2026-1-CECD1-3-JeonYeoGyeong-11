@@ -10,7 +10,7 @@ from commerce.packages.recommender.examples import customer_examples
 from commerce.packages.recommender.model import (
     ARCHITECTURES, ModelConfig, TextOnlyRecommender, history_batch, sampled_softmax_loss,
 )
-from commerce.packages.recommender.tests import visits_of
+from commerce.packages.recommender.tests import item_id, visits_of
 from commerce.packages.recommender.training import (
     SellerData, TrainConfig, batch_loss, catalog_scores, train, validation_loss,
 )
@@ -31,7 +31,7 @@ def seller_data(customers=24, seed=0) -> SellerData:
         examples += customer_examples(visits, range(1, len(visits) + 1))
     generator = torch.Generator().manual_seed(seed)
     z = torch.nn.functional.normalize(torch.randn(N_ITEMS, TINY.d_text, generator=generator), dim=-1)
-    return SellerData("ic-client-990101", tuple("ic-p-%d" % i for i in range(1, N_ITEMS + 1)), z, examples)
+    return SellerData("ic-client-990101", tuple(item_id(i) for i in range(1, N_ITEMS + 1)), z, examples)
 
 
 def digest(model) -> str:
@@ -169,6 +169,6 @@ class Training(unittest.TestCase):
         torch.manual_seed(0)
         model = TextOnlyRecommender(TINY)
         before = digest(model)
-        empty = SellerData("ic-client-990101", ("ic-p-1",), torch.zeros(1, TINY.d_text), [])
+        empty = SellerData("ic-client-990101", (item_id(1),), torch.zeros(1, TINY.d_text), [])
         log = train(model, [empty], TrainConfig(steps=5))
         self.assertEqual((log["steps"], digest(model)), (0, before))
