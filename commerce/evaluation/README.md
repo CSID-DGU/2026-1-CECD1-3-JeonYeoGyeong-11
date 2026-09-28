@@ -1,5 +1,5 @@
 # 화면 없는 모델 실험 · B
 
-현재 학습 실행기는 미구현이다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
+현재 학습 실행기는 미구현이다. `encoder_probe.py`는 frozen 인코더 후보를 같은 입력으로 비교한다. 결과와 선택은 [NLP 인코더 선정](../../docs/design/nlp-encoder.md)에 있다. `e_g0.py`는 E-G0(텍스트만 기준선의 소형 첫 실행)이다. `scoring.py`는 A의 `metrics/`가 들어오기 전까지 쓰는 같은 정의의 임시 채점이며, 그 결과는 A 모듈로 다시 채점한 뒤 보고한다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
 작업 순서는 [B 카드](../../docs/team/tasks/B.md)를 따른다. 손실 함수와 예제별 특징 cutoff는 본 학습 전에 확정한다([열린 구현 항목](../../docs/design/open-questions.md)).
 산출물은 이 디렉터리의 Git 제외 `data/`, `cache/`, `runs/`, `outputs/`에 둔다. 집계 core는 C에게서 제공받으며 그 API는 선정 후 공동 확정한다. 모델 학습이 서비스 startup에서 실행되게 하지 않는다.
