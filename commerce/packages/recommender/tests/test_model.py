@@ -8,8 +8,10 @@ import torch
 
 from commerce.packages.recommender.examples import customer_examples
 from commerce.packages.recommender.model import (
-    ARCHITECTURES, ModelConfig, TextOnlyRecommender, history_batch, sampled_softmax_loss,
+    ARCHITECTURES, ModelConfig, TextOnlyRecommender, TextRelationRecommender, build_model, history_batch,
+    sampled_softmax_loss,
 )
+from commerce.packages.recommender.relations import build_relations
 from commerce.packages.recommender.tests import visits_of
 from commerce.packages.recommender.training import (
     SellerData, TrainConfig, batch_loss, catalog_scores, train, validation_loss,
@@ -17,21 +19,29 @@ from commerce.packages.recommender.training import (
 
 TINY = ModelConfig("test.tiny", "text_only", d_text=8, d_relation=4, d_model=16, n_layers=1, n_heads=2,
                    d_ffn=32, mlp_hidden=16, dropout=0.0)
+TINY_REL = ModelConfig("test.tiny_rel", "text_relation", d_text=8, d_relation=4, d_model=16, n_layers=1,
+                       n_heads=2, d_ffn=32, mlp_hidden=16, dropout=0.0, d_time=4)
 N_ITEMS = 30
 
 
-def seller_data(customers=24, seed=0) -> SellerData:
-    """Each customer keeps buying from a personal favourite set, so the history predicts the target."""
+def seller_data(customers=24, seed=0, relations=False) -> SellerData:
+    """Each customer keeps buying from a personal favourite set, so the history predicts the target.
+
+    Item N_ITEMS is never sold, so with relations it has no neighbour."""
     rng = random.Random(seed)
-    examples = []
+    examples, all_visits = [], {}
     for c in range(customers):
-        favourites = rng.sample(range(1, N_ITEMS + 1), 3)
-        baskets = [rng.sample(favourites, 2) + [rng.randint(1, N_ITEMS)] for _ in range(8)]
+        favourites = rng.sample(range(1, N_ITEMS), 3)
+        baskets = [rng.sample(favourites, 2) + [rng.randint(1, N_ITEMS - 1)] for _ in range(8)]
         visits = visits_of("99%04d" % c, baskets)
+        all_visits[c] = visits
         examples += customer_examples(visits, range(1, len(visits) + 1))
     generator = torch.Generator().manual_seed(seed)
     z = torch.nn.functional.normalize(torch.randn(N_ITEMS, TINY.d_text, generator=generator), dim=-1)
-    return SellerData("ic-client-990101", tuple("ic-p-%d" % i for i in range(1, N_ITEMS + 1)), z, examples)
+    data = SellerData("ic-client-990101", tuple("ic-p-%d" % i for i in range(1, N_ITEMS + 1)), z, examples)
+    if relations:
+        data.relations = build_relations(all_visits, data.row_of, N_ITEMS)
+    return data
 
 
 def digest(model) -> str:
@@ -76,10 +86,12 @@ class Loss(unittest.TestCase):
 
 class Architecture(unittest.TestCase):
     def test_registered_versions_do_not_drift(self):
+        shared = {"d_text": 384, "d_relation": 64, "d_model": 64, "n_layers": 2, "n_heads": 4, "d_ffn": 256,
+                  "mlp_hidden": 128, "dropout": 0.1, "max_visits": 10, "max_items": 32}
         self.assertEqual(asdict(ARCHITECTURES["text_only.v1"]), {
-            "architecture_version": "text_only.v1", "model_variant": "text_only", "d_text": 384,
-            "d_relation": 64, "d_model": 64, "n_layers": 2, "n_heads": 4, "d_ffn": 256, "mlp_hidden": 128,
-            "dropout": 0.1, "max_visits": 10, "max_items": 32})
+            "architecture_version": "text_only.v1", "model_variant": "text_only", "d_time": None, **shared})
+        self.assertEqual(asdict(ARCHITECTURES["text_relation.v1"]), {
+            "architecture_version": "text_relation.v1", "model_variant": "text_relation", "d_time": 16, **shared})
 
     def test_six_shared_groups_and_no_item_axis(self):
         torch.manual_seed(0)
@@ -172,3 +184,69 @@ class Training(unittest.TestCase):
         empty = SellerData("ic-client-990101", ("ic-p-1",), torch.zeros(1, TINY.d_text), [])
         log = train(model, [empty], TrainConfig(steps=5))
         self.assertEqual((log["steps"], digest(model)), (0, before))
+
+
+class RelationModel(unittest.TestCase):
+    def setUp(self):
+        torch.manual_seed(0)
+        self.model = TextRelationRecommender(TINY_REL).eval()
+        self.data = seller_data(relations=True)
+
+    def test_variants_and_their_inputs(self):
+        self.assertIsInstance(build_model(ARCHITECTURES["text_relation.v1"]), TextRelationRecommender)
+        self.assertIsInstance(build_model(ARCHITECTURES["text_only.v1"]), TextOnlyRecommender)
+        with self.assertRaises(ValueError):
+            self.model.item_repr(self.data.z)
+        with self.assertRaises(ValueError):
+            TextOnlyRecommender(TINY).item_repr(self.data.z, self.data.relations)
+        with self.assertRaises(ValueError):
+            TextOnlyRecommender(TINY_REL)
+
+    def test_every_one_of_nine_groups_gets_a_gradient(self):
+        self.model.train()
+        loss, used = batch_loss(self.model, self.data, self.data.examples[:16], 10, random.Random(0))
+        self.assertGreater(used, 0)
+        loss.backward()
+        self.assertEqual(len(TextRelationRecommender.GROUPS), 9)
+        for group in TextRelationRecommender.GROUPS:
+            grads = [p.grad for n, p in self.model.named_parameters() if n.startswith(group + ".")]
+            self.assertTrue(any(g is not None and g.abs().sum() > 0 for g in grads), group)
+
+    def test_an_item_without_neighbours_gets_l_zero(self):
+        never_sold = N_ITEMS - 1
+        self.assertFalse(bool(self.data.relations.has_neighbor[never_sold]))
+        l = self.model.relation_repr(self.data.z, self.data.relations)
+        self.assertEqual(float(l[never_sold].abs().sum()), 0.0)
+        e = self.model.item_repr(self.data.z, self.data.relations)
+        plain = self.model.fusion(torch.cat([self.data.z, torch.zeros(N_ITEMS, TINY_REL.d_relation)], dim=-1))
+        torch.testing.assert_close(e[never_sold], plain[never_sold])
+        self.assertGreater(float(l[self.data.relations.has_neighbor].abs().sum()), 0.0)
+
+    def test_l_reads_the_neighbours_text_and_nothing_else(self):
+        c = 0
+        neighbours = {j for j in self.data.relations.neighbor[c].tolist() if j >= 0}
+        outsider = next(j for j in range(N_ITEMS) if j not in neighbours and j != c)
+        base = self.model.relation_repr(self.data.z, self.data.relations)[c]
+        moved = self.data.z.clone()
+        moved[outsider] += 1.0
+        torch.testing.assert_close(self.model.relation_repr(moved, self.data.relations)[c], base)
+        moved[next(iter(neighbours))] += 1.0
+        self.assertFalse(torch.allclose(self.model.relation_repr(moved, self.data.relations)[c], base))
+
+    def test_training_runs_and_stays_finite(self):
+        log = train(self.model, [self.data], TrainConfig(steps=20, batch_size=16, n_negatives=10, lr=3e-3))
+        self.assertEqual(log["steps"], 20)
+        self.assertTrue(math.isfinite(log["loss_mean"]))
+        self.assertTrue(torch.isfinite(catalog_scores(self.model, self.data, self.data.examples[:4])).all())
+
+
+class FairStart(unittest.TestCase):
+    def test_shared_groups_start_identical_in_both_variants(self):
+        # comparison.md §4: relation-only initialisation must not move the shared starting point.
+        torch.manual_seed(7)
+        plain = TextOnlyRecommender(ARCHITECTURES["text_only.v1"])
+        torch.manual_seed(7)
+        related = TextRelationRecommender(ARCHITECTURES["text_relation.v1"])
+        related_state = related.state_dict()
+        for name, tensor in plain.state_dict().items():
+            self.assertTrue(torch.equal(tensor, related_state[name]), name)

@@ -23,7 +23,7 @@ def run(verbose: bool = False) -> int:
     result = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(suite)
     if not result.wasSuccessful() or result.testsRun == 0:
         return 1
-    print("b2 구현 항목 통과: tests=%d (frozen 인코더·해시·z cache, 예제·replay, text_only 손실·공유 층 gradient)"
+    print("b2 구현 항목 통과: tests=%d (frozen 인코더·해시·z cache, 예제·replay, 두 variant·관계·손실·공유 층 gradient)"
           % result.testsRun)
     for item in REMAINING:
         print("남은 b2 항목: %s" % item)

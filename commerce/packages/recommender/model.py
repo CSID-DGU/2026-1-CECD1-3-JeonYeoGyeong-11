@@ -1,13 +1,17 @@
-"""text_only recommender core (model.md §3·§6, comparison.md §2).
+"""Recommender core for both variants (model.md §3·§6, comparison.md §2).
 
-    e[c] = fusion(z[c], l = 0)                      l is a fixed zero for text_only
+    e[c] = fusion(z[c], l[c])        text_only: l = 0 from the start
+    l[c] = 0 if c has no neighbour else relation_pool(mean_j relation_mlp(R[c, j], q[c->j], q[j->c], z[j]))
+    q[c->j] = sum over gap bins of share(bin) * time_mlp(bin)       = mean_d time_mlp(d)
     b[v] = basket_encoder(mean of e over visit v's items)
     h[u] = sequence(b + seq_time_pos(recency, gap bits))   at the most recent visit
     score[u, c] = query_proj(h[u]) . scorer(e[c])
 
-Module names are the shared groups; text_only has six of the nine. There is no
-item-ID embedding or item bias: an item is its text vector. Candidate e keeps
-its gradient because e is recomputed from z for the whole seller catalog.
+Module names are the shared groups: text_relation has nine, text_only the six
+without time_mlp, relation_mlp and relation_pool. There is no item-ID embedding
+or item bias: an item is its text vector plus, for text_relation, what its local
+neighbours look like. Candidate e keeps its gradient because e is recomputed for
+the whole seller catalog.
 """
 from dataclasses import asdict, dataclass
 import math
@@ -18,6 +22,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from commerce.packages.recommender.examples import Example
+from commerce.packages.recommender.relations import REL_FEATURES, RelationTensors, bin_inputs
 
 GAP_CAP_DAYS = 30.0
 
@@ -36,11 +41,13 @@ class ModelConfig:
     dropout: float = 0.1
     max_visits: int = 10
     max_items: int = 32
+    d_time: int | None = None  # time_mlp width; text_relation only
 
 
 # Immutable registry (model-lab.md §6): a version never changes meaning once used.
 ARCHITECTURES = {
     "text_only.v1": ModelConfig("text_only.v1", "text_only"),
+    "text_relation.v1": ModelConfig("text_relation.v1", "text_relation", d_time=16),
 }
 
 
@@ -48,13 +55,19 @@ def architecture(version: str) -> ModelConfig:
     return ARCHITECTURES[version]
 
 
-class TextOnlyRecommender(nn.Module):
+def build_model(config: ModelConfig) -> "Recommender":
+    return {"text_only": TextOnlyRecommender, "text_relation": TextRelationRecommender}[config.model_variant](config)
+
+
+class Recommender(nn.Module):
+    """The six groups both variants share; subclasses define item_repr."""
     GROUPS = ("fusion", "basket_encoder", "seq_time_pos", "sequence", "query_proj", "scorer")
+    VARIANT = ""
 
     def __init__(self, config: ModelConfig):
         super().__init__()
-        if config.model_variant != "text_only":
-            raise ValueError("this module is the text_only variant")
+        if config.model_variant != self.VARIANT:
+            raise ValueError("config is for %s, this module is %s" % (config.model_variant, self.VARIANT))
         self.config = config
         d = config.d_model
         self.fusion = nn.Sequential(nn.Linear(config.d_text + config.d_relation, d), nn.LayerNorm(d))
@@ -70,9 +83,8 @@ class TextOnlyRecommender(nn.Module):
         # gradient and would only drift with rounding noise.
         self.scorer = nn.Linear(d, d, bias=False)
 
-    def item_repr(self, z: torch.Tensor) -> torch.Tensor:
-        zero_l = z.new_zeros(*z.shape[:-1], self.config.d_relation)
-        return self.fusion(torch.cat([z, zero_l], dim=-1))
+    def item_repr(self, z: torch.Tensor, relations: RelationTensors | None = None) -> torch.Tensor:
+        raise NotImplementedError
 
     def query(self, e: torch.Tensor, batch: "HistoryBatch") -> torch.Tensor:
         items = e[batch.item_index.clamp(min=0)] * batch.item_mask.unsqueeze(-1)
@@ -84,6 +96,50 @@ class TextOnlyRecommender(nn.Module):
 
     def score(self, q: torch.Tensor, e: torch.Tensor) -> torch.Tensor:
         return q @ self.scorer(e).T / math.sqrt(self.config.d_model)
+
+
+class TextOnlyRecommender(Recommender):
+    VARIANT = "text_only"
+
+    def item_repr(self, z: torch.Tensor, relations: RelationTensors | None = None) -> torch.Tensor:
+        if relations is not None:
+            raise ValueError("text_only takes no relations")
+        zero_l = z.new_zeros(*z.shape[:-1], self.config.d_relation)
+        return self.fusion(torch.cat([z, zero_l], dim=-1))
+
+
+class TextRelationRecommender(Recommender):
+    GROUPS = Recommender.GROUPS + ("time_mlp", "relation_mlp", "relation_pool")
+    VARIANT = "text_relation"
+
+    def __init__(self, config: ModelConfig):
+        super().__init__(config)
+        t, h, r = config.d_time, config.mlp_hidden, config.d_relation
+        self.time_mlp = nn.Sequential(nn.Linear(2, t), nn.GELU(), nn.Linear(t, t))
+        # One MLP over [pair features, q[c->j], q[j->c], z[j]]; its first layer is split so the
+        # z[j] part is computed once per item instead of once per pair.
+        self.relation_mlp = nn.ModuleDict({"pair": nn.Linear(REL_FEATURES + 2 * t, h),
+                                           "text": nn.Linear(config.d_text, h, bias=False),
+                                           "out": nn.Linear(h, r)})
+        self.relation_pool = nn.Sequential(nn.Linear(r, r), nn.GELU(), nn.Linear(r, r))
+        self.register_buffer("time_bins", bin_inputs(), persistent=False)
+
+    def relation_repr(self, z: torch.Tensor, relations: RelationTensors) -> torch.Tensor:
+        times = self.time_mlp(self.time_bins)  # (bins, d_time)
+        forward = relations.time_forward.float() @ times  # mean over that pair's gaps
+        backward = relations.time_backward.float() @ times
+        pair = self.relation_mlp["pair"](torch.cat([relations.features, forward, backward], dim=-1))
+        text = self.relation_mlp["text"](z)[relations.neighbor.clamp(min=0)]
+        per_pair = self.relation_mlp["out"](F.gelu(pair + text))
+        mask = (relations.neighbor >= 0).unsqueeze(-1).to(per_pair.dtype)
+        pooled = self.relation_pool((per_pair * mask).sum(1) / mask.sum(1).clamp(min=1))
+        # No neighbour means l = 0 by an explicit branch, not by hoping the MLP maps 0 to 0.
+        return torch.where(relations.has_neighbor.unsqueeze(-1), pooled, torch.zeros_like(pooled))
+
+    def item_repr(self, z: torch.Tensor, relations: RelationTensors | None = None) -> torch.Tensor:
+        if relations is None:
+            raise ValueError("text_relation needs the seller's relations")
+        return self.fusion(torch.cat([z, self.relation_repr(z, relations)], dim=-1))
 
 
 @dataclass
