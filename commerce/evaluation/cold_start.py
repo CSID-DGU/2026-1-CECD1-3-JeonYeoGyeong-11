@@ -81,7 +81,7 @@ def score_run(folder, record, sellers, first, device):
 
 def local_reference(args, sellers, first, variant, target, device):
     arm = "%s local_only" % variant
-    arms = new_arms((arm,))
+    arms = new_arms((arm, "popularity", "P-TopFreq"))  # evaluate scores the baselines beside it
     training = {}
     for sid, info in sellers.items():
         train_parts = parts(info, sid, "train", variant, target, first, device, args.seed)
