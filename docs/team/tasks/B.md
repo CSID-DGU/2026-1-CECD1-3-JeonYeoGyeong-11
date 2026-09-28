@@ -21,7 +21,7 @@
 5. E-G0 텍스트만 기준선과 시간/메모리/절단률을 먼저 측정한다.
 
 첫 산출물: b1, NLP 선택 기록, b2의 freeze/해시 부분, 로컬 기준선. NLP 선택 기록은 `docs/design/` 아래 새 문서(B 소유)에 두고, [모델 경계](../../design/model.md)에 반영할 결론만 따로 PR로 올린다. model.md는 CODEOWNERS 경로다.
-384차원·32토큰은 후보값이다. 실제 확정 전 manifest의 fixture 숫자를 실모델 크기로 복사하지 않는다.
+인코더는 MiniLM-L12·64토큰·384차원으로 정했다([NLP 인코더 선정](../../design/nlp-encoder.md)). 계약 fixture의 manifest 숫자는 형태 확인용이므로 실모델 크기로 보지 않는다.
 
 ## A에게 제공
 seller별 open_runtime와 ingest_purchase_event / upsert_catalog_item / predict_local / compare_local.
