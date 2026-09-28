@@ -1,0 +1,156 @@
+"""federated_lab_sim (model-lab.md §4, D0020) of the D0022 variants: an UNPROTECTED FL simulation.
+
+    python -m commerce.evaluation.fl_lab --instacart-dir fedcommerce/data/instacart --variant T_hx
+
+Each round every seller starts from the same global shared weights, trains
+--local-epochs on its own data with a fresh AdamW (GCI: one epoch per round,
+batch 128) and returns shared_delta = after - before. A seller's word-token
+table (hx) stays with it and is never aggregated, as in GCI's glocalization.
+The round is kept only if every seller completed; then the global model adds
+the uniform mean of the deltas (D0017). aggregate_uniform is a TEMPORARY copy
+of that rule until C's aggregation core lands (working-agreement §8, D3); swap
+it in then and check the result is the same.
+
+The run has a fixed number of rounds (evaluation.md §5). The round kept for
+testing is the one with the lowest validation loss summed over all sellers and
+divided by the total example count: an aggregate, never a per-seller value.
+Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
+"""
+import argparse
+import copy
+import dataclasses
+from datetime import datetime, timezone
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import time
+
+import torch
+
+from commerce.evaluation.encoder_probe import peak_memory_mb
+from commerce.evaluation.harex_compare import TARGETS, build, evaluate, parts
+from commerce.evaluation.scoring import MacroAverager
+from commerce.packages.recommender.harex import HAREX_ARCHITECTURES, HarexRecommender
+from commerce.packages.recommender.training import TrainConfig, train, validation_loss
+
+
+def aggregate_uniform(deltas: list[dict[str, torch.Tensor] | None]) -> dict[str, torch.Tensor] | None:
+    """TEMPORARY stand-in for C's aggregation core: all complete or discard, then the uniform mean."""
+    if not deltas or any(d is None for d in deltas):
+        return None
+    keys = set(deltas[0])
+    if any(set(d) != keys for d in deltas):
+        raise ValueError("sellers returned different tensor sets")
+    return {k: torch.stack([d[k] for d in deltas]).mean(0) for k in keys}
+
+
+def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
+                lr: float, seed: int) -> dict[str, torch.Tensor] | None:
+    model.load_state_dict(global_shared, strict=False)  # local_tokens keep the seller's own values
+    before = {k: v.detach().clone() for k, v in model.shared_state().items()}
+    n = sum(len(p.examples) for _, p in train_parts)
+    if n == 0:
+        return None  # nothing to learn from: the round cannot complete
+    steps = max(1, math.ceil(n / batch_size) * epochs)
+    train(model, [p for _, p in train_parts], TrainConfig(steps=steps, batch_size=batch_size, lr=lr, seed=seed))
+    after = model.shared_state()
+    return {k: (after[k] - before[k]) for k in before if before[k].is_floating_point()}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
+    parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
+    parser.add_argument("--variant", required=True, choices=["T_hx", "R_hx", "T_lm", "R_lm"])
+    parser.add_argument("--target", default="basket", choices=TARGETS)
+    parser.add_argument("--sellers", type=int, default=5)
+    parser.add_argument("--rounds", type=int, default=300)
+    parser.add_argument("--local-epochs", type=int, default=1)
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--threads", type=int, default=8)
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
+    args = parser.parse_args(argv)
+    args.variants = [args.variant]
+    torch.set_num_threads(args.threads)
+    device = torch.device(args.device)
+    config = HAREX_ARCHITECTURES["harex.%s.v1" % args.variant]
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    record = {"run": "D0022 federated_lab_sim", "mode": "비보호 FL 시뮬레이션 (unprotected FL simulation, D0020)",
+              "aggregation": "temporary uniform mean, all complete or discard (stand-in for C's core)",
+              "started_at": stamp, "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
+              "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device),
+                          "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
+                          "cpu_count": os.cpu_count()},
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
+                         "temporary aggregation", "temporary scoring"]}
+    sellers, first = build(args, record)
+
+    # One model object per seller carries its local token table; all share the global weights.
+    torch.manual_seed(args.seed)
+    template = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"]
+                                if config.text == "hx" else None)
+    global_shared = {k: v.detach().clone().to(device) for k, v in template.shared_state().items()}
+    local = {}
+    for seller, info in sellers.items():
+        torch.manual_seed(args.seed)
+        model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None).to(device)
+        model.load_state_dict(global_shared, strict=False)
+        local[seller] = {"model": model,
+                         "train": parts(info, seller, "train", args.variant, args.target, first, device),
+                         "validation": parts(info, seller, "validation", args.variant, args.target, first, device),
+                         "test": parts(info, seller, "test", args.variant, args.target, first, device)}
+
+    best, history, discarded = None, [], 0
+    started = time.perf_counter()
+    for rnd in range(args.rounds):
+        deltas = [local_round(s["model"], global_shared, s["train"], args.local_epochs, args.batch_size, args.lr,
+                              args.seed * 100000 + rnd * 1000 + i) for i, s in enumerate(local.values())]
+        mean = aggregate_uniform(deltas)
+        if mean is None:
+            discarded += 1
+            continue
+        global_shared = {k: (v + mean[k] if k in mean else v) for k, v in global_shared.items()}
+        total, count = 0.0, 0
+        for s in local.values():
+            s["model"].load_state_dict(global_shared, strict=False)
+            n = sum(len(p.examples) for _, p in s["validation"])
+            loss = validation_loss(s["model"], [p for _, p in s["validation"]], seed=args.seed)
+            if loss is not None:
+                total, count = total + loss * n, count + n  # only the sum and count leave the loop
+        val = total / count if count else None
+        history.append([rnd + 1, val])
+        if val is not None and (best is None or val < best["val"]):
+            best = {"round": rnd + 1, "val": val, "shared": {k: v.clone() for k, v in global_shared.items()},
+                    "local": {sid: {k: v.clone() for k, v in s["model"].state_dict().items() if k.startswith("local_")}
+                              for sid, s in local.items()}}
+        if (rnd + 1) % 10 == 0:
+            print("round %d val %.4f best %d (%.4f)" % (rnd + 1, val, best["round"], best["val"]), flush=True)
+
+    arm = "%s FL" % args.variant
+    arms = {name: {p: MacroAverager() for p in ("all", "repeat", "explore")} for name in (arm, "popularity", "P-TopFreq")}
+    for sid, s in local.items():
+        s["model"].load_state_dict(best["shared"], strict=False)
+        s["model"].load_state_dict(best["local"][sid], strict=False)
+        evaluate(s["model"], sellers[sid], s["test"], args.target, arms, arm)
+    record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],
+                          "best_val_loss_aggregate": best["val"], "history": history,
+                          "seconds": round(time.perf_counter() - started, 1)}
+    record["metrics"] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
+    record["peak_memory_mb"] = peak_memory_mb()
+    out = args.out_dir / stamp
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps({name: {k: round(v, 4) for k, v in record["metrics"][name]["all"]["macro"].items()
+                             if k in ("ndcg@10", "recall@20", "hr@10")} for name in record["metrics"]}, indent=2))
+    print("best round %d of %d, discarded %d -> %s" % (best["round"], args.rounds, discarded, out))
+
+
+if __name__ == "__main__":
+    main()
