@@ -54,7 +54,7 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     # F.embedding: a batch repeats popular answers, and its backward sums them without atomics.
     pos_scores = (q * model.score_side(torch.nn.functional.embedding(positives, e))).sum(-1) / model.score_scale
     # D0023: a model may add per-query scores over the catalog (the repeat path); 0 without one.
-    extra = model.extra_scores(q, examples, seller) if getattr(model, "has_extra", False) else None
+    extra = model.extra_scores(q, e, examples, seller) if getattr(model, "has_extra", False) else None
     if extra is not None:
         pos_scores = pos_scores + extra.gather(1, positives.unsqueeze(1)).squeeze(1)
     if n_negatives <= 0 or n_negatives >= len(seller.items):
@@ -136,7 +136,7 @@ def catalog_scores(model: Recommender, seller: SellerData, examples: Sequence[Ex
         q = model.encode_queries(e, chunk, seller)
         scores = model.score(q, e)
         if getattr(model, "has_extra", False):
-            scores = scores + model.extra_scores(q, chunk, seller)
+            scores = scores + model.extra_scores(q, e, chunk, seller)
         rows.append(scores.cpu())
     return torch.cat(rows) if rows else torch.zeros((0, len(seller.items)))
 

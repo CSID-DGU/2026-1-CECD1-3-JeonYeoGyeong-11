@@ -54,15 +54,21 @@ class HarexConfig:
     # HAREX comparison, which keeps it off as GCI did, D0022).
     repeat: bool = False
     repeat_hidden: int = 32
+    # rep2: the path also reads the item's own representation, so how often a kind of item is
+    # bought again (milk weekly, spices rarely) is learnt from its text, without an item ID.
+    repeat_item: bool = False
+    repeat_item_dim: int = 16
 
 
 # Immutable registry (model-lab.md §6).
-HAREX_ARCHITECTURES = {version: HarexConfig(version, text, relation, repeat=repeat)
-                       for version, text, relation, repeat in (
-    ("harex.T_hx.v1", "hx", False, False), ("harex.R_hx.v1", "hx", True, False),
-    ("harex.T_lm.v1", "lm", False, False), ("harex.R_lm.v1", "lm", True, False),
-    ("harex.T_hx_rep.v1", "hx", False, True), ("harex.R_hx_rep.v1", "hx", True, True),
-    ("harex.T_lm_rep.v1", "lm", False, True), ("harex.R_lm_rep.v1", "lm", True, True),
+HAREX_ARCHITECTURES = {version: HarexConfig(version, text, relation, repeat=repeat, repeat_item=item)
+                       for version, text, relation, repeat, item in (
+    ("harex.T_hx.v1", "hx", False, False, False), ("harex.R_hx.v1", "hx", True, False, False),
+    ("harex.T_lm.v1", "lm", False, False, False), ("harex.R_lm.v1", "lm", True, False, False),
+    ("harex.T_hx_rep.v1", "hx", False, True, False), ("harex.R_hx_rep.v1", "hx", True, True, False),
+    ("harex.T_lm_rep.v1", "lm", False, True, False), ("harex.R_lm_rep.v1", "lm", True, True, False),
+    ("harex.T_hx_rep2.v1", "hx", False, True, True), ("harex.R_hx_rep2.v1", "hx", True, True, True),
+    ("harex.T_lm_rep2.v1", "lm", False, True, True), ("harex.R_lm_rep2.v1", "lm", True, True, True),
 )}
 # Per (example, item the customer bought before): log1p(count), count over earlier visits,
 # and the recency bin: the last L visits one by one, then "earlier" (L = examples.L_VISITS).
@@ -169,19 +175,24 @@ class HarexRecommender(nn.Module):
             self.register_buffer("time_bins", bin_inputs(), persistent=False)
         if config.repeat:
             # Made last, so every other group starts from the weights the same seed gives without it.
-            self.repeat_mlp = nn.Sequential(nn.Linear(REPEAT_FEATURES, config.repeat_hidden), nn.GELU(),
+            width = REPEAT_FEATURES + (config.repeat_item_dim if config.repeat_item else 0)
+            self.repeat_mlp = nn.Sequential(nn.Linear(width, config.repeat_hidden), nn.GELU(),
                                             nn.Linear(config.repeat_hidden, 1))
             self.repeat_gate = nn.Linear(d, 1)
+            if config.repeat_item:
+                self.repeat_item = nn.Linear(d, config.repeat_item_dim)
 
     @property
     def has_extra(self) -> bool:
         return self.config.repeat
 
-    def extra_scores(self, q: torch.Tensor, examples: Sequence[Example], seller) -> torch.Tensor:
+    def extra_scores(self, q: torch.Tensor, e: torch.Tensor, examples: Sequence[Example], seller) -> torch.Tensor:
         """(B, C) repeat scores: gate(q) * mlp(features) on the customer's earlier purchases, 0 elsewhere."""
         index, values = repeat_features(examples, seller.row_of)
         index, values = to_device(index, q.device), to_device(values, q.device)
         mask = (index >= 0).to(q.dtype)
+        if self.config.repeat_item:
+            values = torch.cat([values, self.repeat_item(F.embedding(index.clamp(min=0), e))], dim=-1)
         per_item = self.repeat_mlp(values).squeeze(-1) * mask
         gate = F.softplus(self.repeat_gate(q))  # (B, 1): how much this query leans on repeats
         out = torch.zeros(q.shape[0], len(seller.items), device=q.device, dtype=q.dtype)

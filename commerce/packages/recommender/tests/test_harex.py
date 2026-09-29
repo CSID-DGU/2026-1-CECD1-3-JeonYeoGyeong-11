@@ -60,10 +60,13 @@ class Variants(unittest.TestCase):
 
     def test_registry(self):
         base = ["harex.R_hx.v1", "harex.R_lm.v1", "harex.T_hx.v1", "harex.T_lm.v1"]
-        self.assertEqual(sorted(HAREX_ARCHITECTURES), sorted(base + [v.replace(".v1", "_rep.v1") for v in base]))
+        self.assertEqual(sorted(HAREX_ARCHITECTURES), sorted(
+            base + [v.replace(".v1", suffix) for v in base for suffix in ("_rep.v1", "_rep2.v1")]))
         # D0022's comparison keeps the repeat path off; D0023's service configuration turns it on.
         self.assertFalse(any(HAREX_ARCHITECTURES[v].repeat for v in base))
         self.assertTrue(all(HAREX_ARCHITECTURES[v.replace(".v1", "_rep.v1")].repeat for v in base))
+        self.assertTrue(all(HAREX_ARCHITECTURES[v.replace(".v1", "_rep2.v1")].repeat_item for v in base))
+        self.assertFalse(any(HAREX_ARCHITECTURES[v.replace(".v1", "_rep.v1")].repeat_item for v in base))
         gci = HAREX_ARCHITECTURES["harex.T_hx.v1"]
         self.assertEqual((gci.n_layers, gci.d_model, gci.n_heads, gci.d_ffn, gci.dropout), (1, 128, 4, 256, 0.2))
 
@@ -158,9 +161,9 @@ class RepeatPath(unittest.TestCase):
         self.data, self.vocab = with_tokens(seller_data())
         self.examples = self.data.examples[:8]
 
-    def model(self, repeat, seed=0):
+    def model(self, repeat, seed=0, item=False):
         torch.manual_seed(seed)
-        return HarexRecommender(dataclasses.replace(TINY, repeat=repeat), vocab_size=len(self.vocab))
+        return HarexRecommender(dataclasses.replace(TINY, repeat=repeat, repeat_item=item), vocab_size=len(self.vocab))
 
     def test_features_from_the_customers_own_earlier_visits(self):
         index, values = repeat_features(self.examples, self.data.row_of)
@@ -177,16 +180,23 @@ class RepeatPath(unittest.TestCase):
         self.assertEqual(int((index[0] >= 0).sum()), len(example.prior_counts))
 
     def test_only_earlier_purchases_get_a_repeat_score(self):
-        model = self.model(True).eval()
-        with torch.no_grad():
-            e = model.encode_items(self.data)
-            q = model.encode_queries(e, self.examples, self.data)
-            extra = model.extra_scores(q, self.examples, self.data)
-        for row, example in enumerate(self.examples):
-            bought = {self.data.row_of[i] for i in example.prior_counts}
-            for col in range(len(self.data.items)):
-                if col not in bought:
-                    self.assertEqual(float(extra[row, col]), 0.0)
+        for item in (False, True):
+            model = self.model(True, item=item).eval()
+            with torch.no_grad():
+                e = model.encode_items(self.data)
+                q = model.encode_queries(e, self.examples, self.data)
+                extra = model.extra_scores(q, e, self.examples, self.data)
+            for row, example in enumerate(self.examples):
+                bought = {self.data.row_of[i] for i in example.prior_counts}
+                for col in range(len(self.data.items)):
+                    if col not in bought:
+                        self.assertEqual(float(extra[row, col]), 0.0)
+
+    def test_rep2_reads_the_items_own_representation(self):
+        model = self.model(True, item=True)
+        loss, _ = batch_loss(model, self.data, self.examples, 20, random.Random(0))
+        loss.backward()
+        self.assertGreater(float(model.repeat_item.weight.grad.abs().sum()), 0.0)
 
     def test_other_groups_start_as_without_the_path_and_the_path_learns(self):
         plain, repeat = self.model(False, seed=5), self.model(True, seed=5)
