@@ -86,6 +86,9 @@ def main(argv=None):
     parser.add_argument("--rounds", type=int, default=300)
     parser.add_argument("--local-epochs", type=int, default=1)
     parser.add_argument("--val-every", type=int, default=5)  # and always the last round
+    # GCI's early stopping (patience 20 rounds on the validation loss), for --protocol gci only:
+    # evaluation.md §5 keeps our own first FL runs at a fixed round count.
+    parser.add_argument("--patience-rounds", type=int, default=0)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
@@ -99,6 +102,8 @@ def main(argv=None):
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
     args = parser.parse_args(argv)
     args.variants = [args.variant]
+    if args.patience_rounds and args.protocol != "gci":
+        raise SystemExit("--patience-rounds reproduces GCI; our own first FL runs keep a fixed round count")
     torch.set_num_threads(args.threads)
     device = torch.device(args.device)
     config = architecture(args.variant)
@@ -185,6 +190,10 @@ def main(argv=None):
         if (rnd + 1) % 10 == 0:
             print("round %d val %.4f best %d (%.4f) %.0fs" % (rnd + 1, val, best["round"], best["val"],
                                                             time.perf_counter() - started), flush=True)
+        if args.patience_rounds and rnd + 1 - best["round"] >= args.patience_rounds:
+            print("early stop at round %d, best %d" % (rnd + 1, best["round"]), flush=True)
+            break
+    rounds_run = rnd + 1
 
     # The first run has a fixed round count (evaluation.md §5), so the last round is the result.
     # The best aggregate-validation round is reported beside it as an auxiliary.
@@ -207,11 +216,12 @@ def main(argv=None):
             model.load_state_dict(state["local"][sid], strict=False)
             evaluate(model, sellers[sid], placed(s["test"]), args.target, arms, arm)
         record["metrics"][which] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
-    record["metrics"]["primary"] = "final_round"
+    # GCI reports its early-stopped model; our own runs report the last of a fixed round count.
+    record["metrics"]["primary"] = "best_round" if args.patience_rounds else "final_round"
     record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],
                           "best_val_loss_aggregate": best["val"], "history": history,
                           # Best round in the last tenth: the curve was still falling, so run longer.
-                          "plateaued": best["round"] <= 0.9 * args.rounds,
+                          "plateaued": best["round"] <= 0.9 * rounds_run, "rounds_run": rounds_run,
                           "seconds": round(time.perf_counter() - started, 1)}
     record["peak_memory_mb"] = peak_memory_mb()
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")

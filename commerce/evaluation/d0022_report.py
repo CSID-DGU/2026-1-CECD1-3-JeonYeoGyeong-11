@@ -184,14 +184,15 @@ def main(argv=None):
 
 
 def gci_table(fl, local):
-    out = ["### HAREX 재현 조건(추가 범위) — 상품 단위 5개 창·무작위 분할, 판매자 macro, seed 평균\n",
+    out = ["### HAREX 재현 조건(추가 범위) — 상품 단위 5개 창·무작위 분할, FL은 GCI처럼 조기 종료한 모델, 판매자 macro, seed 평균\n",
            "| 모델 | FL HR@10 | FL NDCG@10 | 단독 학습 HR@10 | 단독 학습 NDCG@10 |",
            "| --- | --- | --- | --- | --- |"]
 
     def mean(rows, metric):
         return fmt(float(np.mean([macro(x, metric) for x in rows]))) if rows else ""
     for variant in ("T_hx", "R_hx", "T_lm", "R_lm"):
-        f = [r["metrics"]["final_round"]["%s FL" % variant]["all"] for r in fl if r["settings"]["variant"] == variant]
+        f = [r["metrics"][r["metrics"].get("primary", "final_round")]["%s FL" % variant]["all"]
+             for r in fl if r["settings"]["variant"] == variant]
         l = [res["metrics"][arm]["all"] for r in local for v, res in r["results"].get("basket", {}).items()
              if v == variant for arm in res["metrics"] if arm.startswith(variant)]
         if f or l:
