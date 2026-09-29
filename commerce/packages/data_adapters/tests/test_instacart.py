@@ -6,7 +6,7 @@ import unittest
 
 from commerce.packages.contracts.ids import purchase_event_id
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
-from commerce.packages.data_adapters.instacart import first_in_cart, load_assignment, load_instacart
+from commerce.packages.data_adapters.instacart import cart_orders, first_in_cart, load_assignment, load_instacart
 from commerce.packages.data_adapters.tests import INSTACART_SMALL
 from commerce.packages.data_adapters.text import (
     audit_texts, build_product_text, catalog_item_fields, instacart_fields,
@@ -82,6 +82,10 @@ class CartOrder(unittest.TestCase):
         first = first_in_cart(INSTACART_SMALL, [990001002, 990002002, 990001005])
         # 990001002 lists 990002 twice then 990007; 990001005 is an official train order with no prior lines.
         self.assertEqual(first, {990001002: 990002, 990002002: 990004})
+
+    def test_whole_cart_in_order_with_duplicates_once(self):
+        carts = cart_orders(INSTACART_SMALL, [990001002])
+        self.assertEqual(carts, {990001002: [990002, 990007]})
 
 
 class CatalogAndText(unittest.TestCase):

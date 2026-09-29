@@ -23,10 +23,11 @@ def parts(value):
             "cnew": result(value / 3)}
 
 
-def fl_record(variant, seed, value, frac=0.0):
+def fl_record(variant, seed, value, frac=0.0, protocol="next_visit"):
     metrics = {"%s FL" % variant: parts(value), "popularity": parts(0.1), "P-TopFreq": parts(0.4)}
     return {"run": "D0022 federated_lab_sim",
-            "settings": {"variant": variant, "target": "basket", "seed": seed, "holdout_frac": frac},
+            "settings": {"variant": variant, "target": "basket", "seed": seed, "holdout_frac": frac,
+                         "protocol": protocol},
             "metrics": {"final_round": metrics, "best_round": metrics, "primary": "final_round"},
             "training": {"best_round": 480, "plateaued": True}}
 
@@ -48,6 +49,7 @@ class Report(unittest.TestCase):
         with tempfile.TemporaryDirectory() as root:
             records = [fl_record(v, s, x) for v, x in (("T_hx", 0.12), ("R_hx", 0.15)) for s in (0, 1, 2)]
             records.append(fl_record("R_hx", 0, 0.14, frac=0.1))
+            records.append(fl_record("T_hx", 0, 0.5, protocol="gci"))  # must stay out of the main tables
             for i, record in enumerate(records):
                 folder = Path(root) / str(i)
                 folder.mkdir()
@@ -59,6 +61,9 @@ class Report(unittest.TestCase):
         self.assertIn("| R_hx | FL | 3 | 0.1750 |", text)
         self.assertIn("| 1차 대비 | R_hx − T_hx | 3 | +0.0300 | [+0.0300, +0.0300] | R_hx가 높다 |", text)
         self.assertIn("### 콜드스타트", text)
+        self.assertIn("| T_hx | FL | 3 | 0.1450 |", text)  # the gci run did not join the seed mean
+        self.assertIn("### HAREX 재현 조건", text)
+        self.assertIn("| T_hx | 0.5000 | 0.5250 |", text)
 
 
 if __name__ == "__main__":

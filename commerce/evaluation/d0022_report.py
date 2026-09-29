@@ -6,8 +6,10 @@ Reads fl_lab records (the last round is the result, evaluation.md §5),
 harex_compare records (local_only) and cold_start records. The first contrast
 (evaluation.md §4) is R_hx - T_hx NDCG@10 over FL sellers: per seller the mean
 over the seeds both variants ran, then a seller-level paired bootstrap 95%
-interval. An interval that holds 0 is written "차이를 확인하지 못했다". Tables
-hold aggregates only, so they can go into a PR once C has checked them.
+interval. An interval that holds 0 is written "차이를 확인하지 못했다". Runs
+under GCI's conditions (--protocol gci) get their own table next to the paper's
+HR@10 and never enter the main ones. Tables hold aggregates only, so they can
+go into a PR once C has checked them.
 """
 import argparse
 import json
@@ -16,6 +18,9 @@ from pathlib import Path
 import numpy as np
 
 METRICS = ("ndcg@10", "recall@20", "hr@10")
+# GCI Table 4, HR@10: (local, glocal FL) per client.
+GCI_PAPER = {"BBQ 1": (0.443, 0.478), "BBQ 2": (0.455, 0.522), "Ulsan Pedal 1": (0.110, 0.147),
+             "Ulsan Pedal 2": (0.117, 0.140)}
 
 
 def per_seller(result: dict, metric: str) -> list[float]:
@@ -62,6 +67,10 @@ def main(argv=None):
     parser.add_argument("--runs", type=Path, default=Path("commerce/evaluation/runs"))
     args = parser.parse_args(argv)
     fl, local, cold = load(args.runs)
+    gci_fl = [r for r in fl if r["settings"].get("protocol") == "gci"]
+    gci_local = [r for r in local if r["settings"].get("protocol") == "gci"]
+    fl = [r for r in fl if r["settings"].get("protocol", "next_visit") == "next_visit"]
+    local = [r for r in local if r["settings"].get("protocol", "next_visit") == "next_visit"]
     out = []
 
     # FL runs by (target, holdout, variant) -> {seed: record}
@@ -132,7 +141,7 @@ def main(argv=None):
             lines.append("| %s | %s − %s | %d | %+.4f | [%+.4f, %+.4f] | %s |" % (
                 label, a, b, len(seeds), diff, low, high, judged))
         if lines:
-            out.append("| 비교 | 차이 | seed | NDCG@10 차이 | 판매자 bootstrap 95%% | 판정 |")
+            out.append("| 비교 | 차이 | seed | NDCG@10 차이 | 판매자 bootstrap 95% | 판정 |")
             out.append("| --- | --- | --- | --- | --- | --- |")
             out += lines
             out.append("")
@@ -169,7 +178,35 @@ def main(argv=None):
                 cell(loc["metrics"]["all"]) if loc else "",
                 cell(a0_new["final_round"]["%s FL A-0" % variant]["cnew"]) if a0_new else ""))
         out.append("")
+    if gci_fl or gci_local:
+        out += gci_table(gci_fl, gci_local)
     print("\n".join(out))
+
+
+def gci_table(fl, local):
+    out = ["### HAREX 재현 조건(추가 범위) — 상품 단위 5개 창·무작위 분할, 판매자 macro, seed 평균\n",
+           "| 모델 | FL HR@10 | FL NDCG@10 | 단독 학습 HR@10 | 단독 학습 NDCG@10 |",
+           "| --- | --- | --- | --- | --- |"]
+
+    def mean(rows, metric):
+        return fmt(float(np.mean([macro(x, metric) for x in rows]))) if rows else ""
+    for variant in ("T_hx", "R_hx", "T_lm", "R_lm"):
+        f = [r["metrics"]["final_round"]["%s FL" % variant]["all"] for r in fl if r["settings"]["variant"] == variant]
+        l = [res["metrics"][arm]["all"] for r in local for v, res in r["results"].get("basket", {}).items()
+             if v == variant for arm in res["metrics"] if arm.startswith(variant)]
+        if f or l:
+            out.append("| %s | %s | %s | %s | %s |" % (variant, mean(f, "hr@10"), mean(f, "ndcg@10"),
+                                                      mean(l, "hr@10"), mean(l, "ndcg@10")))
+    base = fl[0]["metrics"]["final_round"] if fl else None
+    if base:
+        for name in ("popularity", "P-TopFreq"):
+            out.append("| %s | %s | %s | | |" % (name, fmt(macro(base[name]["all"], "hr@10")),
+                                                fmt(macro(base[name]["all"], "ndcg@10"))))
+    out.append("")
+    out.append("GCI 논문 Table 4의 HR@10(단독 학습 / Glocal FL): " + ", ".join(
+        "%s %.3f / %.3f" % (name, a, b) for name, (a, b) in GCI_PAPER.items()))
+    out.append("")
+    return out
 
 
 if __name__ == "__main__":

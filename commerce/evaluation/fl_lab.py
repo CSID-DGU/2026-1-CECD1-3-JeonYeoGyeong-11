@@ -92,6 +92,8 @@ def main(argv=None):
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
     parser.add_argument("--holdout-seed", type=int, default=0)
+    # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
@@ -111,7 +113,14 @@ def main(argv=None):
               "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
                          "temporary aggregation", "temporary scoring"]
               + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
-    sellers, first = build(args, record)
+    if args.protocol == "gci":
+        if args.target != "basket":
+            raise SystemExit("--protocol gci has one label per unit: use --target basket")
+        from commerce.evaluation.gci_protocol import build as gci_build
+        record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
+        sellers, first = gci_build(args, record)
+    else:
+        sellers, first = build(args, record)
 
     # One model on the device; a seller's own part is its hx token table, made with the same
     # seed as a model of its own would make it.

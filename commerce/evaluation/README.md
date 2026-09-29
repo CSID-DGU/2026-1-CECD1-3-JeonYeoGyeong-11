@@ -4,6 +4,7 @@
 - `harex_compare.py`: 네 상품 표현과 관계 셔플 대조를 local_only로 판매자마다 검증 손실이 멈출 때까지 학습·평가한다. `--holdout-frac`이면 C-new다.
 - `fl_lab.py`: 같은 variant의 federated_lab_sim(비보호 FL 시뮬레이션, D0020). 라운드 수를 고정하고 마지막 라운드가 결과다. 집계는 C core가 들어오기 전까지 같은 규칙의 임시 균등 평균이다. 공유 가중치를 기록 옆에 저장한다.
 - `cold_start.py`: 저장된 공유 가중치로 학습에 참여하지 않은 보류 판매자(A-0)를 로컬 갱신 없이 평가한다.
+- `gci_protocol.py`: GCI 논문의 평가 조건(상품 단위 5개 창, 무작위 분할). `--protocol gci`로 두 실행기에 쓰는 추가 범위 재현이며 본 결과를 대신하지 않는다.
 - `d0022_report.py`: 실행 기록을 모아 결과표와 1차 대비의 판매자 단위 paired bootstrap 구간을 Markdown으로 낸다.
 
 `scoring.py`는 A의 `metrics/`가 들어오기 전까지 쓰는 같은 정의의 임시 채점이며, 그 결과는 A 모듈로 다시 채점한 뒤 보고한다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
