@@ -106,6 +106,7 @@ def main(argv=None):
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--negatives", type=int, default=200)  # as harex_compare: 0 is the whole catalog
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
