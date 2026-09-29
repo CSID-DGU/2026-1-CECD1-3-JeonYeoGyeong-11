@@ -125,3 +125,24 @@ class Variants(unittest.TestCase):
                 self.assertLess(validation_loss(model, [data], n_negatives=10), before)
                 scores = catalog_scores(model, data, data.examples[:3])
                 self.assertEqual(tuple(scores.shape), (3, N_ITEMS))
+
+
+class WholeCatalogLoss(unittest.TestCase):
+    def test_every_item_outside_the_targets_is_a_negative(self):
+        data, vocab = with_tokens(seller_data())
+        torch.manual_seed(0)
+        model = HarexRecommender(TINY, vocab_size=len(vocab)).eval()
+        examples = data.examples[:6]
+        with torch.no_grad():
+            loss, used = batch_loss(model, data, examples, 0, random.Random(0))
+            e = model.encode_items(data)
+            scores = model.score(model.encode_queries(e, examples, data), e)
+        rng = random.Random(0)
+        expected = []
+        for row, ex in enumerate(examples):
+            targets = {data.row_of[i] for i in ex.target_items}
+            positive = data.row_of[rng.choice(sorted(ex.target_items))]
+            others = [scores[row, j] for j in range(len(data.items)) if j not in targets]
+            expected.append(float(torch.logsumexp(torch.stack([scores[row, positive]] + others), 0) - scores[row, positive]))
+        self.assertEqual(used, len(examples))
+        self.assertAlmostEqual(float(loss), sum(expected) / len(expected), places=5)

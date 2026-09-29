@@ -36,7 +36,7 @@ class SellerData:
 class TrainConfig:
     steps: int = 40
     batch_size: int = 64
-    n_negatives: int = 200
+    n_negatives: int = 200  # 0: every catalog item (GCI's softmax runs over its whole vocabulary)
     lr: float = 1e-3
     weight_decay: float = 0.01
     clip_norm: float = 1.0
@@ -50,12 +50,18 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     device = e.device
     positives = to_device(torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples]),
                           device)
-    negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
-    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
-    negatives = to_device(negatives, device)
     # F.embedding: a batch repeats popular answers, and its backward sums them without atomics.
     pos_scores = (q * model.score_side(torch.nn.functional.embedding(positives, e))).sum(-1) / model.score_scale
+    if n_negatives <= 0 or n_negatives >= len(seller.items):
+        # The whole catalog: every item outside the example's target set is a negative.
+        allowed = torch.ones(len(examples), len(seller.items), dtype=torch.bool)
+        for row, t in enumerate(targets):
+            allowed[row, sorted(t)] = False
+        return sampled_softmax_loss(pos_scores, model.score(q, e), allowed)
+    negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
+    allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
+    negatives = to_device(negatives, device)
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
 
 

@@ -247,7 +247,7 @@ def fit(args, info, train_parts, val_parts, variant, device):
     config = architecture(variant)
     torch.manual_seed(args.seed)
     model = HarexRecommender(config, vocab_size=info["vocab_size"] if config.text == "hx" else None).to(device)
-    base = TrainConfig(steps=args.eval_every, batch_size=args.batch_size, lr=args.lr)
+    base = TrainConfig(steps=args.eval_every, batch_size=args.batch_size, lr=args.lr, n_negatives=args.negatives)
     optimizer = torch.optim.AdamW(model.parameters(), lr=base.lr, weight_decay=base.weight_decay)
     best, best_loss, best_step, since, history, step = None, None, 0, 0, [], 0
     started = time.perf_counter()
@@ -255,7 +255,7 @@ def fit(args, info, train_parts, val_parts, variant, device):
         log = train(model, [p for _, p in train_parts], dataclasses.replace(base, seed=args.seed * 100000 + step),
                     optimizer)
         step += args.eval_every
-        val = validation_loss(model, [p for _, p in val_parts], seed=args.seed)
+        val = validation_loss(model, [p for _, p in val_parts], n_negatives=args.negatives, seed=args.seed)
         history.append([step, log["loss_mean"], val])
         if val is not None and (best_loss is None or val < best_loss - 1e-4):
             best, best_loss, best_step, since = copy.deepcopy(model.state_dict()), val, step, 0
@@ -301,6 +301,7 @@ def main(argv=None):
     parser.add_argument("--eval-every", type=int, default=100)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)  # GCI: BATCH_SIZE
+    parser.add_argument("--negatives", type=int, default=200)  # 0: the whole catalog
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split-seed", type=int, default=0)

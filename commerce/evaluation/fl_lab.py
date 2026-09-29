@@ -63,14 +63,15 @@ def local_tables(model):
 
 
 def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
-                lr: float, seed: int) -> dict[str, torch.Tensor] | None:
+                lr: float, seed: int, negatives: int = 200) -> dict[str, torch.Tensor] | None:
     model.load_state_dict(global_shared, strict=False)  # local_tokens keep the seller's own values
     before = {k: v.detach().clone() for k, v in model.shared_state().items()}
     n = sum(len(p.examples) for _, p in train_parts)
     if n == 0:
         return None  # nothing to learn from: the round cannot complete
     steps = max(1, math.ceil(n / batch_size) * epochs)
-    train(model, [p for _, p in train_parts], TrainConfig(steps=steps, batch_size=batch_size, lr=lr, seed=seed))
+    train(model, [p for _, p in train_parts],
+          TrainConfig(steps=steps, batch_size=batch_size, lr=lr, seed=seed, n_negatives=negatives))
     after = model.shared_state()
     return {k: (after[k] - before[k]) for k in before if before[k].is_floating_point()}
 
@@ -90,6 +91,7 @@ def main(argv=None):
     # evaluation.md §5 keeps our own first FL runs at a fixed round count.
     parser.add_argument("--patience-rounds", type=int, default=0)
     parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--negatives", type=int, default=200)  # 0: the whole catalog, as GCI's full softmax
     parser.add_argument("--lr", type=float, default=1e-3)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--split-seed", type=int, default=0)
@@ -167,7 +169,8 @@ def main(argv=None):
     started = time.perf_counter()
     for rnd in range(args.rounds):
         deltas = [local_round(turn(s), global_shared, placed(s["train"]), args.local_epochs, args.batch_size,
-                              args.lr, args.seed * 100000 + rnd * 1000 + i) for i, s in enumerate(local.values())]
+                              args.lr, args.seed * 100000 + rnd * 1000 + i, args.negatives)
+                  for i, s in enumerate(local.values())]
         mean = aggregate_uniform(deltas)
         if mean is None:
             discarded += 1
@@ -179,7 +182,8 @@ def main(argv=None):
         for s in local.values():
             n = sum(len(p.examples) for _, p in s["validation"])
             turn(s).load_state_dict(global_shared, strict=False)
-            loss = validation_loss(model, [p for _, p in placed(s["validation"])], seed=args.seed)
+            loss = validation_loss(model, [p for _, p in placed(s["validation"])], n_negatives=args.negatives,
+                                   seed=args.seed)
             if loss is not None:
                 total, count = total + loss * n, count + n  # only the sum and count leave the loop
         val = total / count if count else None
