@@ -58,7 +58,8 @@ from commerce.packages.recommender.training import (
 )
 from commerce.packages.recommender.z_cache import ZCache
 
-VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm", "R_hx_shuffled")
+VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm", "R_hx_shuffled",
+            "T_hx_rep", "R_hx_rep", "T_lm_rep", "R_lm_rep")  # _rep: D0023 service configuration
 TARGETS = ("basket", "next_item")
 SHUFFLED = "_shuffled"
 PARTS = ("all", "repeat", "explore", "cnew")

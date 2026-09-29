@@ -50,13 +50,56 @@ class HarexConfig:
     d_relation: int = 64
     mlp_hidden: int = 128
     d_time: int = 16
+    # D0023 service configuration: a repeat-purchase path next to the item scores (not the
+    # HAREX comparison, which keeps it off as GCI did, D0022).
+    repeat: bool = False
+    repeat_hidden: int = 32
 
 
 # Immutable registry (model-lab.md §6).
-HAREX_ARCHITECTURES = {version: HarexConfig(version, text, relation) for version, text, relation in (
-    ("harex.T_hx.v1", "hx", False), ("harex.R_hx.v1", "hx", True),
-    ("harex.T_lm.v1", "lm", False), ("harex.R_lm.v1", "lm", True),
+HAREX_ARCHITECTURES = {version: HarexConfig(version, text, relation, repeat=repeat)
+                       for version, text, relation, repeat in (
+    ("harex.T_hx.v1", "hx", False, False), ("harex.R_hx.v1", "hx", True, False),
+    ("harex.T_lm.v1", "lm", False, False), ("harex.R_lm.v1", "lm", True, False),
+    ("harex.T_hx_rep.v1", "hx", False, True), ("harex.R_hx_rep.v1", "hx", True, True),
+    ("harex.T_lm_rep.v1", "lm", False, True), ("harex.R_lm_rep.v1", "lm", True, True),
 )}
+# Per (example, item the customer bought before): log1p(count), count over earlier visits,
+# and the recency bin: the last L visits one by one, then "earlier" (L = examples.L_VISITS).
+RECENCY_BINS = 11
+REPEAT_FEATURES = 2 + RECENCY_BINS
+
+
+def repeat_features(examples: Sequence[Example], row_of: dict[str, int]) -> tuple[torch.Tensor, torch.Tensor]:
+    """(B, M) catalog rows of each example's earlier purchases (-1 pads) and their (B, M, F) features.
+
+    Read from the example alone: prior_counts covers every earlier visit, history the last ones.
+    """
+    rows, feats = [], []
+    for example in examples:
+        n_prior = max(1, example.target_position - 1)
+        last = {}
+        for back, visit in enumerate(reversed(example.history), start=1):
+            for item in visit.items:
+                last.setdefault(item, back)
+        r, f = [], []
+        for item, count in sorted(example.prior_counts.items()):
+            if item not in row_of:
+                continue
+            recency = [0.0] * RECENCY_BINS
+            recency[min(last.get(item, RECENCY_BINS), RECENCY_BINS) - 1] = 1.0
+            r.append(row_of[item])
+            f.append([math.log1p(count), count / n_prior] + recency)
+        rows.append(r)
+        feats.append(f)
+    width = max(1, max(len(r) for r in rows))
+    index = torch.full((len(examples), width), -1, dtype=torch.long)
+    values = torch.zeros(len(examples), width, REPEAT_FEATURES)
+    for i, (r, f) in enumerate(zip(rows, feats)):
+        if r:
+            index[i, :len(r)] = torch.tensor(r, dtype=torch.long)
+            values[i, :len(r)] = torch.tensor(f)
+    return index, values
 PAD, UNKNOWN = 0, 1
 
 
@@ -124,6 +167,25 @@ class HarexRecommender(nn.Module):
                                                "out": nn.Linear(h, r)})
             self.relation_pool = nn.Sequential(nn.Linear(r, r), nn.GELU(), nn.Linear(r, r))
             self.register_buffer("time_bins", bin_inputs(), persistent=False)
+        if config.repeat:
+            # Made last, so every other group starts from the weights the same seed gives without it.
+            self.repeat_mlp = nn.Sequential(nn.Linear(REPEAT_FEATURES, config.repeat_hidden), nn.GELU(),
+                                            nn.Linear(config.repeat_hidden, 1))
+            self.repeat_gate = nn.Linear(d, 1)
+
+    @property
+    def has_extra(self) -> bool:
+        return self.config.repeat
+
+    def extra_scores(self, q: torch.Tensor, examples: Sequence[Example], seller) -> torch.Tensor:
+        """(B, C) repeat scores: gate(q) * mlp(features) on the customer's earlier purchases, 0 elsewhere."""
+        index, values = repeat_features(examples, seller.row_of)
+        index, values = to_device(index, q.device), to_device(values, q.device)
+        mask = (index >= 0).to(q.dtype)
+        per_item = self.repeat_mlp(values).squeeze(-1) * mask
+        gate = F.softplus(self.repeat_gate(q))  # (B, 1): how much this query leans on repeats
+        out = torch.zeros(q.shape[0], len(seller.items), device=q.device, dtype=q.dtype)
+        return out.scatter_add(1, index.clamp(min=0), gate * per_item)
 
     @property
     def device(self) -> torch.device:

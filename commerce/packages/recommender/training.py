@@ -53,16 +53,23 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
     targets = [{seller.row_of[i] for i in ex.target_items} for ex in examples]
     # F.embedding: a batch repeats popular answers, and its backward sums them without atomics.
     pos_scores = (q * model.score_side(torch.nn.functional.embedding(positives, e))).sum(-1) / model.score_scale
+    # D0023: a model may add per-query scores over the catalog (the repeat path); 0 without one.
+    extra = model.extra_scores(q, examples, seller) if getattr(model, "has_extra", False) else None
+    if extra is not None:
+        pos_scores = pos_scores + extra.gather(1, positives.unsqueeze(1)).squeeze(1)
     if n_negatives <= 0 or n_negatives >= len(seller.items):
         # The whole catalog: every item outside the example's target set is a negative.
         allowed = torch.ones(len(examples), len(seller.items), dtype=torch.bool)
         for row, t in enumerate(targets):
             allowed[row, sorted(t)] = False
-        return sampled_softmax_loss(pos_scores, model.score(q, e), allowed)
+        neg_scores = model.score(q, e)
+        return sampled_softmax_loss(pos_scores, neg_scores if extra is None else neg_scores + extra, allowed)
     negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
     allowed = torch.tensor([[int(n) not in t for n in negatives.tolist()] for t in targets], dtype=torch.bool)
     negatives = to_device(negatives, device)
-    return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
+    neg_scores = model.score(q, e[negatives])
+    return sampled_softmax_loss(pos_scores, neg_scores if extra is None else neg_scores + extra[:, negatives],
+                                allowed)
 
 
 def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig,
@@ -123,8 +130,14 @@ def catalog_scores(model: Recommender, seller: SellerData, examples: Sequence[Ex
     """(len(examples), C) scores over the seller's whole catalog, rows in seller.items order."""
     model.eval()
     e = model.encode_items(seller)
-    rows = [model.score(model.encode_queries(e, examples[s:s + batch_size], seller), e).cpu()
-            for s in range(0, len(examples), batch_size)]
+    rows = []
+    for s in range(0, len(examples), batch_size):
+        chunk = examples[s:s + batch_size]
+        q = model.encode_queries(e, chunk, seller)
+        scores = model.score(q, e)
+        if getattr(model, "has_extra", False):
+            scores = scores + model.extra_scores(q, chunk, seller)
+        rows.append(scores.cpu())
     return torch.cat(rows) if rows else torch.zeros((0, len(seller.items)))
 
 

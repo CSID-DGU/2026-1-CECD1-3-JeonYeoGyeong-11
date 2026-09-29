@@ -7,7 +7,8 @@ import unittest
 import torch
 
 from commerce.packages.recommender.harex import (
-    HAREX_ARCHITECTURES, PAD, UNKNOWN, HarexConfig, HarexRecommender, WordVocabulary, item_sequences, word_tokens,
+    HAREX_ARCHITECTURES, PAD, UNKNOWN, HarexConfig, HarexRecommender, WordVocabulary, item_sequences, repeat_features,
+    word_tokens,
 )
 from commerce.packages.recommender.tests.test_model import N_ITEMS, seller_data
 from commerce.packages.recommender.training import TrainConfig, batch_loss, catalog_scores, train, validation_loss
@@ -58,7 +59,11 @@ class Variants(unittest.TestCase):
         return HarexRecommender(config, vocab_size=len(self.vocab) if text == "hx" else None)
 
     def test_registry(self):
-        self.assertEqual(sorted(HAREX_ARCHITECTURES), ["harex.R_hx.v1", "harex.R_lm.v1", "harex.T_hx.v1", "harex.T_lm.v1"])
+        base = ["harex.R_hx.v1", "harex.R_lm.v1", "harex.T_hx.v1", "harex.T_lm.v1"]
+        self.assertEqual(sorted(HAREX_ARCHITECTURES), sorted(base + [v.replace(".v1", "_rep.v1") for v in base]))
+        # D0022's comparison keeps the repeat path off; D0023's service configuration turns it on.
+        self.assertFalse(any(HAREX_ARCHITECTURES[v].repeat for v in base))
+        self.assertTrue(all(HAREX_ARCHITECTURES[v.replace(".v1", "_rep.v1")].repeat for v in base))
         gci = HAREX_ARCHITECTURES["harex.T_hx.v1"]
         self.assertEqual((gci.n_layers, gci.d_model, gci.n_heads, gci.d_ffn, gci.dropout), (1, 128, 4, 256, 0.2))
 
@@ -146,3 +151,51 @@ class WholeCatalogLoss(unittest.TestCase):
             expected.append(float(torch.logsumexp(torch.stack([scores[row, positive]] + others), 0) - scores[row, positive]))
         self.assertEqual(used, len(examples))
         self.assertAlmostEqual(float(loss), sum(expected) / len(expected), places=5)
+
+
+class RepeatPath(unittest.TestCase):
+    def setUp(self):
+        self.data, self.vocab = with_tokens(seller_data())
+        self.examples = self.data.examples[:8]
+
+    def model(self, repeat, seed=0):
+        torch.manual_seed(seed)
+        return HarexRecommender(dataclasses.replace(TINY, repeat=repeat), vocab_size=len(self.vocab))
+
+    def test_features_from_the_customers_own_earlier_visits(self):
+        index, values = repeat_features(self.examples, self.data.row_of)
+        example = self.examples[0]
+        last_items = set(example.history[-1].items)
+        for col in range(index.shape[1]):
+            row = int(index[0, col])
+            if row < 0:
+                continue
+            item = self.data.items[row]
+            self.assertIn(item, example.prior_counts)
+            self.assertAlmostEqual(float(values[0, col, 0]), math.log1p(example.prior_counts[item]), places=5)
+            self.assertEqual(float(values[0, col, 2]), 1.0 if item in last_items else 0.0)  # bought on the last visit
+        self.assertEqual(int((index[0] >= 0).sum()), len(example.prior_counts))
+
+    def test_only_earlier_purchases_get_a_repeat_score(self):
+        model = self.model(True).eval()
+        with torch.no_grad():
+            e = model.encode_items(self.data)
+            q = model.encode_queries(e, self.examples, self.data)
+            extra = model.extra_scores(q, self.examples, self.data)
+        for row, example in enumerate(self.examples):
+            bought = {self.data.row_of[i] for i in example.prior_counts}
+            for col in range(len(self.data.items)):
+                if col not in bought:
+                    self.assertEqual(float(extra[row, col]), 0.0)
+
+    def test_other_groups_start_as_without_the_path_and_the_path_learns(self):
+        plain, repeat = self.model(False, seed=5), self.model(True, seed=5)
+        state = repeat.state_dict()
+        for name, tensor in plain.state_dict().items():
+            self.assertTrue(torch.equal(tensor, state[name]), name)
+        loss, _ = batch_loss(repeat, self.data, self.examples, 20, random.Random(0))
+        loss.backward()
+        self.assertGreater(float(repeat.repeat_mlp[0].weight.grad.abs().sum()), 0.0)
+        self.assertGreater(float(repeat.repeat_gate.weight.grad.abs().sum()), 0.0)
+        scores = catalog_scores(repeat, self.data, self.examples)
+        self.assertEqual(tuple(scores.shape), (len(self.examples), len(self.data.items)))
