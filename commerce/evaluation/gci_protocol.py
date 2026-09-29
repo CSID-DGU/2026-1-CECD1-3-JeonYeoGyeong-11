@@ -16,6 +16,11 @@ label may sit in the same order as its inputs, which the main evaluation rules
 out (evaluation.md §2), so these numbers only answer "what would the paper's
 conditions give" and never replace the main results.
 
+--menu-size N narrows everything to a BBQ-like menu: the N products bought most
+often in the train period (each customer's first floor(0.7 n) orders) over all
+chosen sellers, shared by every seller as BBQ's clients share one menu. Each
+customer's sequence keeps only menu items before units are cut.
+
 R variants read one relation snapshot built from the seller's orders that hold
 no validation or test label, so no label reaches a model through a relation;
 time relations are then counted between the orders that remain. Popularity
@@ -23,6 +28,7 @@ counts the training labels; P-TopFreq counts the customer's items before the
 label in the sequence.
 """
 from collections import Counter
+import dataclasses
 import random
 import time
 
@@ -32,7 +38,7 @@ from commerce.evaluation.e_g0 import STAND_IN_TARGETS
 from commerce.evaluation.encoder_probe import CANDIDATES
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
-from commerce.packages.data_adapters.instacart import cart_orders, item_id, load_instacart
+from commerce.packages.data_adapters.instacart import cart_orders, item_id, load_instacart, train_cutoff
 from commerce.packages.data_adapters.text import catalog_item_text
 from commerce.packages.recommender.examples import Example, HistoryVisit
 from commerce.packages.recommender.harex import HAREX_ARCHITECTURES, WordVocabulary
@@ -59,14 +65,31 @@ class LabelCounts:
         return self._counts
 
 
-def seller_units(seller, visits, carts, seed):
+def menu_items(visits_by_seller, carts, size):
+    """The `size` products bought most in the train period over all sellers (ties: item id)."""
+    counts = Counter()
+    for visits in visits_by_seller.values():
+        for vs in visits.values():
+            for v in vs[:train_cutoff(len(vs))]:
+                counts.update(item_id(p) for p in carts[int(v.basket.basket_id_local.rsplit("-", 1)[1])])
+    return {item for item, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:size]}
+
+
+def keep_items(visits, menu):
+    """The visits with only menu items; a visit left empty keeps its place and time."""
+    return [dataclasses.replace(v, basket=dataclasses.replace(
+        v.basket, items=tuple(i for i in v.basket.items if i.item_id_local in menu))) for v in visits]
+
+
+def seller_units(seller, visits, carts, seed, menu=None):
     """Examples per role from one seller's customers, and the orders that hold a held-back label."""
     rng = random.Random("%d:%s" % (seed, seller))
     grouped = {("train", 0): [], ("validation", 0): [], ("test", 0): []}
     held_orders, label_counts = set(), Counter()
     for customer in sorted(visits):
         sequence = [(item_id(product), v.basket.basket_id_local) for v in visits[customer]
-                    for product in carts[int(v.basket.basket_id_local.rsplit("-", 1)[1])]]
+                    for product in carts[int(v.basket.basket_id_local.rsplit("-", 1)[1])]
+                    if menu is None or item_id(product) in menu]
         for p in unit_starts(len(sequence)):
             inputs, (label, order) = sequence[p:p + UNIT - 1], sequence[p + UNIT - 1]
             draw = rng.random()
@@ -115,19 +138,26 @@ def build(args, record):
     args.z_cache.parent.mkdir(parents=True, exist_ok=True)
     cache = ZCache(args.z_cache, FrozenTextEncoder(model_dir, spec), model_dir)
     need_relations = any(v.startswith("R_") for v in args.variants)
+    all_visits = {seller: {cust: customer_visits(bs) for cust, bs in customers.items()}
+                  for seller, customers in by_seller.items()}
+    menu = menu_items(all_visits, carts, args.menu_size) if getattr(args, "menu_size", 0) else None
+    record["data"]["menu_size"] = len(menu) if menu else None
 
     sellers = {}
     counts = {"examples": {r: 0 for r in ("train", "validation", "test")}, "catalog_items": 0,
               "orders_left_out_of_relations": 0}
     for seller, customers in sorted(by_seller.items()):
-        items = tuple(c["item_id_local"] for c in catalogs[seller])
+        catalog = [c for c in catalogs[seller] if menu is None or c["item_id_local"] in menu]
+        items = tuple(c["item_id_local"] for c in catalog)
         row_of = {item: row for row, item in enumerate(items)}
-        texts = [catalog_item_text(c) for c in catalogs[seller]]
+        texts = [catalog_item_text(c) for c in catalog]
         z = torch.from_numpy(cache.vectors(texts).copy())
         vocab = WordVocabulary(texts)
         tokens = vocab.encode(texts, HAREX_ARCHITECTURES["harex.T_hx.v1"].max_tokens)
-        visits = {cust: customer_visits(bs) for cust, bs in customers.items()}
-        grouped, held_orders, label_counts = seller_units(seller, visits, carts, args.split_seed)
+        visits = all_visits[seller]
+        if menu is not None:
+            visits = {cust: keep_items(vs, menu) for cust, vs in visits.items()}
+        grouped, held_orders, label_counts = seller_units(seller, visits, carts, args.split_seed, menu)
         snapshots = {}
         if need_relations:
             snapshots = {0: build_relations(relation_visits(visits, held_orders), row_of, len(items))}

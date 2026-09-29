@@ -1,7 +1,7 @@
 from collections import Counter
 import unittest
 
-from commerce.evaluation.gci_protocol import relation_visits, seller_units, unit_starts
+from commerce.evaluation.gci_protocol import menu_items, relation_visits, seller_units, unit_starts
 from commerce.packages.recommender.tests import SELLER, item_id, visits_of
 
 # One customer, ten visits of three items; the cart order is the order written here.
@@ -65,3 +65,19 @@ class Split(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Menu(unittest.TestCase):
+    def test_menu_is_the_most_bought_in_the_train_period(self):
+        # Ten visits: train = first 7. Item 1 in every visit, item 2 in the first 7, item 3 only after.
+        baskets = [[1, 2] if v < 7 else [1, 3, 3 + v] for v in range(10)]
+        visits, carts = customer(baskets)
+        menu = menu_items({"s": visits}, carts, 2)
+        self.assertEqual(menu, {item_id(1), item_id(2)})
+
+    def test_units_keep_only_menu_items(self):
+        visits, carts = customer()
+        menu = {item_id(n) for n in range(1, 31) if n % 3}  # drops every third item
+        grouped, _, _ = seller_units(SELLER, visits, carts, 0, menu)
+        for e in (e for ex in grouped.values() for e in ex):
+            self.assertLessEqual({v.items[0] for v in e.history} | set(e.target_items), menu)

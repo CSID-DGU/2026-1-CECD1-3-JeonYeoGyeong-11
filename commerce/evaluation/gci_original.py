@@ -43,7 +43,7 @@ import torch.nn.functional as F
 
 from commerce.evaluation.e_g0 import STAND_IN_TARGETS
 from commerce.evaluation.encoder_probe import peak_memory_mb
-from commerce.evaluation.gci_protocol import seller_units
+from commerce.evaluation.gci_protocol import menu_items, seller_units
 from commerce.evaluation.harex_compare import code_version
 from commerce.evaluation.scoring import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
 from commerce.packages.data_adapters.assignment import assign_clients
@@ -244,15 +244,18 @@ def build_clients(args, record):
         by_seller.setdefault(b.seller_id, {}).setdefault(b.customer_id_local, []).append(b)
     for item in sample.catalog_items:
         catalogs.setdefault(item["seller_id"], []).append(item)
+    all_visits = {seller: {cust: customer_visits(bs) for cust, bs in customers.items()}
+                  for seller, customers in by_seller.items()}
+    menu = menu_items(all_visits, carts, args.menu_size) if args.menu_size else None
     clients = []
     for k in range(args.clients):
         members = ["ic-client-%d" % c for c in chosen[k * args.sellers_per_client:(k + 1) * args.sellers_per_client]]
         text_of, grouped = {}, {"train": [], "validation": [], "test": []}
         for seller in members:
             for item in catalogs[seller]:
-                text_of.setdefault(item["item_id_local"], pair_text(item))
-            visits = {cust: customer_visits(bs) for cust, bs in by_seller[seller].items()}
-            units, _, _ = seller_units(seller, visits, carts, args.split_seed)
+                if menu is None or item["item_id_local"] in menu:
+                    text_of.setdefault(item["item_id_local"], pair_text(item))
+            units, _, _ = seller_units(seller, all_visits[seller], carts, args.split_seed, menu)
             for (role, _), examples in units.items():
                 grouped[role] += examples
         items = sorted(text_of)
@@ -260,6 +263,7 @@ def build_clients(args, record):
                         "row_of": {item: row for row, item in enumerate(items)},
                         "texts": [text_of[i] for i in items], "text_of": text_of, "grouped": grouped})
     record["data"] = {"assignment": split.record, "adapter_report": sample.report,
+                      "menu_size": len(menu) if menu else None,
                       "clients": [{"name": c["name"], "sellers": c["sellers"], "catalog_items": len(c["items"]),
                                    "units": {r: len(x) for r, x in c["grouped"].items()}} for c in clients],
                       "seconds": round(time.perf_counter() - started, 1)}
@@ -343,6 +347,8 @@ def main(argv=None):
     parser.add_argument("--mode", required=True, choices=("local", "fl", "shared"))
     parser.add_argument("--clients", type=int, default=4)
     parser.add_argument("--sellers-per-client", type=int, default=5)
+    # BBQ-like: one small shared menu (gci_protocol.menu_items); 0 keeps every product.
+    parser.add_argument("--menu-size", type=int, default=0)
     parser.add_argument("--rounds", type=int, default=500)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -361,6 +367,7 @@ def main(argv=None):
               "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device)},
               "labels": ["HAREX reproduction (added scope, evaluation.md §4)", "GCI's own model on Instacart",
                          "item-level units, random split", "early stopping as in GCI"]
+              + (["BBQ-like menu of the %d most bought products" % args.menu_size] if args.menu_size else [])
               + (["data-shared training is not FL"] if args.mode == "shared" else [])
               + (["unprotected FL simulation"] if args.mode == "fl" else [])}
     clients = build_clients(args, record)
@@ -440,7 +447,8 @@ def main(argv=None):
     record["seconds"] = round(time.perf_counter() - started, 1)
     record["metrics"] = {name: a.result() for name, a in arms.items()}
     record["peak_memory_mb"] = peak_memory_mb()
-    out = args.out_dir / ("%s_%s_s%d_%d" % (stamp, args.mode, args.seed, os.getpid()))
+    out = args.out_dir / ("%s_%s%s_s%d_%d" % (stamp, args.mode, "_menu%d" % args.menu_size if args.menu_size else "",
+                                               args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     summary = {name: {"macro": {k: round(v, 4) for k, v in r["macro"].items()},

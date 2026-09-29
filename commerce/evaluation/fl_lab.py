@@ -99,6 +99,7 @@ def main(argv=None):
     parser.add_argument("--holdout-seed", type=int, default=0)
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
     parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
