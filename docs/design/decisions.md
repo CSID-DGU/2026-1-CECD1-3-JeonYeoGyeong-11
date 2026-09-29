@@ -46,6 +46,26 @@ text_only와 text_relation을 각각 학습하고 global/personalized를 비교�
 
 근거: "참여·이탈 하한"과 "직접 설계 금지"가 모호하게 남아 있으면 이탈 복구가 필요한 가장 비싼 선택지로 끌려간다. 전원 완료 규칙이 이미 정해져 있으므로 복구 없는 구현으로 충분하다. [아키텍처](architecture.md) §3, [인터페이스](interfaces.md) §7.
 
+## D0022 · HAREX(GCI) 계열 공통 뼈대에서 상품 표현만 바꾼 비교
+
+- **비교의 뜻.** 협력 기업 HAREX(㈜하렉스인포텍)의 GCI 엔진(Lee et al., AAAI-24)과 같은 계열의 공통 뼈대를 모든 variant가 똑같이 쓰고, **상품 표현(아이템 임베딩)만** 바꾼다. 뼈대는 상품·고객 ID 없이 최근 구매 상품 시퀀스를 1층 Transformer(d_model 128, 4 heads, FFN 256, dropout 0.2)로 읽는다. 학습은 validation 손실의 patience 기반 조기 종료로 수렴시킨다.
+- **재구매 특징은 뼈대에 넣지 않는다.** 고객별 구매 횟수·최근성 같은 반복 구매 신호나 이력 복사 경로를 점수에 더하지 않는다. GCI가 이런 장치 없이 성능을 보였으므로, 우리 방식도 같은 조건에서 보여야 HAREX 기준과 비교가 된다. 개인 구매 빈도(P-TopFreq)는 evaluation.md §4대로 기준선으로만 보고하고, 그와의 격차는 이 뼈대의 한계로 적는다.
+- **출력은 D0017대로 후보 점수화다.** GCI의 상품명 생성과 Jaccard 매칭 대신, 판매자의 실제 후보 상품 표현을 공통 함수로 점수화한다. 없는 상품명은 나오지 않는다.
+- **상품 표현 2×2.**
+
+  | | 텍스트만 (T) | 텍스트 + 로컬 구매 관계 (R) |
+  | --- | --- | --- |
+  | GCI식 단어 토큰(hx) | T_hx: HAREX 기준 | R_hx: 우리 방식 추가 |
+  | 사전학습 인코더(lm, `nlp-encoder.md`, #18) | T_lm: 새 토큰 임베딩 | R_lm |
+
+  - hx는 상품명을 띄어쓰기로 나눈 단어 토큰을 판매자별 embedding으로 학습한다. GCI의 glocalization처럼 어휘에 매인 이 embedding은 판매자 로컬에 두고 FL에서 뺀다. 나머지 공통 층은 D0019대로 공유한다.
+  - R은 [모델 경계](model.md) §3의 로컬 관계(고객·장바구니·방향별 시간)로 만든 l을 더한다.
+- **예측 타깃.** 1차는 evaluation.md §1대로 다음 방문의 상품 집합이다. 보조로 HAREX식 "다음 상품 1개"를 둔다. 다음 방문에서 장바구니에 처음 담은 상품을 이전 방문들만으로 맞히는 것이며, HR@10으로 잰다. 같은 장바구니의 일부로 나머지를 맞히는 문제로 바꾸지 않는다(evaluation.md §2).
+- **1차 대비.** Instacart FL cohort에서 R_hx와 T_hx의 NDCG@10, 판매자 macro 평균, 판매자 단위 paired bootstrap이다. T_lm↔T_hx(특히 신상품 C-new·신규 판매자 A-0), R_lm↔T_lm은 보조다. 지표·cohort·판정 문장은 evaluation.md §4를 그대로 쓴다.
+- **이미 본 결과.** 이 결정 전에 lm 계열의 이전 뼈대로 판매자 5곳 local_only pilot(E-G0)을 돌려 T와 R의 수치를 봤다. 1차 대비(hx, FL cohort)의 결과는 아직 보지 않았다.
+
+근거: 과제의 원 모델이 HAREX GCI이므로, 같은 계열 뼈대에서 상품 표현만 바꿔야 "우리 방식이 무엇을 더했는가"가 드러난다. 사전학습 인코더는 처음 보는 상품과 판매자도 표현할 수 있어 그 자체로 콜드스타트 대응이라 별도 축으로 둔다. [비교](comparison.md), [평가](evaluation.md), GCI 논문(https://ojs.aaai.org/index.php/AAAI/article/view/30309).
+
 ## 초기 공통 코드에서 고정한 경계
 
 PR #3은 공통 import·Protocol·dataclass·예외를 정하고, A lifespan이 판매자 runtime 하나를 만들고 C client에 같은 runtime/jobs를 주입하도록 했다. runtime은 동기 API, start/stop은 async이며 학습 작업은 판매자별 단일 background 실행기로 보낸다. worker는 판매자당 1개다.
