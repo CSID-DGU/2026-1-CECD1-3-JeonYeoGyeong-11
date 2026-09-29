@@ -126,8 +126,10 @@ def main(argv=None):
             torch.manual_seed(args.seed)
             tables = HarexRecommender(config, vocab_size=info["vocab_size"]).local_tokens  # on the CPU
             info["z"] = info["z"][:, :0]  # hx never reads z: keep none of it on the device
-        info["z"], info["tokens"], info["keep"] = (info[k].to(device) for k in ("z", "tokens", "keep"))
-        # Without relations everything stays on the device; relation snapshots move per turn.
+        # Without relations everything stays on the device. With relations the seller's parts,
+        # z included, move per turn: 100 sellers' z on the device next to other runs ran out of memory.
+        if not config.relation:
+            info["z"], info["tokens"], info["keep"] = (info[k].to(device) for k in ("z", "tokens", "keep"))
         place = None if config.relation else device
         local[seller] = {"tables": tables,
                          **{role: parts(info, seller, role, args.variant, args.target, first, place, args.seed)

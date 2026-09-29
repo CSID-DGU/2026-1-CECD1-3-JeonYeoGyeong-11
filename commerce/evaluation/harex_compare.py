@@ -225,8 +225,11 @@ def parts(info, seller, role, variant, target, first, device, seed=0):
     test = role == "test"
     whole = test or len(info["train_items"]) == len(info["items"])
     items = info["items"] if test else info["train_items"]
-    z = info["z"] if whole else info["z"][info["keep"]]
-    tokens = None if config.text != "hx" else info["tokens"] if whole else info["tokens"][info["keep"]]
+    if not whole and "train_z" not in info:
+        # One reduced copy for the training and validation parts alike.
+        info["train_z"], info["train_tokens"] = info["z"][info["keep"]], info["tokens"][info["keep"]]
+    z = info["z"] if whole else info["train_z"]
+    tokens = None if config.text != "hx" else info["tokens"] if whole else info["train_tokens"]
     snapshots = info["test_snapshots" if test else "train_snapshots"]
     out = []
     for (r, bucket), examples in sorted(info["grouped"].items()):
