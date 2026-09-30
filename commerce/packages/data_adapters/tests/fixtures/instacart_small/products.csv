@@ -1,0 +1,12 @@
+product_id,product_name,aisle_id,department_id
+990001,Fixture Farm Oat Drink Original 1 L,990001,990001
+990002,Fixture Farm Oat Drink Original 2 L,990001,990001
+990003,Fixture Farm Almond Drink Unsweetened 946 ml,990001,990001
+990004,Fixture Farm Almond Drink Sweetened 946 ml,990001,990001
+990005,Fixture Farm Greek Style Yogurt 1.5 kg,990002,990001
+990006,Fixture Farm Whole Milk 1/2 gal,990003,990001
+990007,Fixture Bakehouse Café Crème Biscuits 200 g,990004,990002
+990008,  Fixture   Fizz  Lime	Sparkling Water 12 x 355 ml ,990005,990002
+990009,Fixture Mystery Item,990006,990003
+990010,Fixture Farm Oat Drink Original 1 L,990001,990001
+990011,Fixture Pantry Rice Crackers,990004,990002
