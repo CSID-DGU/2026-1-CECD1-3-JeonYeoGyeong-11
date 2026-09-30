@@ -8,7 +8,9 @@ harex_compare records (local_only) and cold_start records. The first contrast
 over the seeds both variants ran, then a seller-level paired bootstrap 95%
 interval. An interval that holds 0 is written "차이를 확인하지 못했다". Runs
 under GCI's conditions (--protocol gci) get their own table next to the paper's
-HR@10 and never enter the main ones. Tables hold aggregates only, so they can
+HR@10 and never enter the main ones. Runs under different data or loss settings
+(seller count, seller size, menu, negatives) get separate tables, so a small-seller
+run never joins a 1,040-order seed mean. Tables hold aggregates only, so they can
 go into a PR once C has checked them.
 """
 import argparse
@@ -21,6 +23,26 @@ METRICS = ("ndcg@10", "recall@20", "hr@10")
 # GCI Table 4, HR@10: (local, glocal FL) per client.
 GCI_PAPER = {"BBQ 1": (0.443, 0.478), "BBQ 2": (0.455, 0.522), "Ulsan Pedal 1": (0.110, 0.147),
              "Ulsan Pedal 2": (0.117, 0.140)}
+
+
+def condition(settings: dict) -> tuple:
+    """(sellers, train orders per seller, menu size, negatives): what one table holds fixed.
+    Records written before a flag existed ran at its default."""
+    return (settings.get("sellers", 100), settings.get("seller_size", 0), settings.get("menu_size", 0),
+            settings.get("negatives", 200))
+
+
+MAIN = condition({})
+
+
+def condition_label(cond: tuple) -> str:
+    sellers, size, menu, negatives = cond
+    parts = ["판매자 %d곳" % sellers, "train 주문 %s건" % ("{:,}".format(size) if size else "1,040")]
+    if menu:
+        parts.append("메뉴 %d개" % menu)
+    if negatives != 200:
+        parts.append("전체 상품 softmax" if negatives == 0 else "음성 %d개" % negatives)
+    return ", ".join(parts)
 
 
 def per_seller(result: dict, metric: str) -> list[float]:
@@ -73,30 +95,32 @@ def main(argv=None):
     local = [r for r in local if r["settings"].get("protocol", "next_visit") == "next_visit"]
     out = []
 
-    # FL runs by (target, holdout, variant) -> {seed: record}
+    # FL runs by (condition, target, holdout, variant) -> {seed: record}
     runs = {}
     for record in fl:
         s = record["settings"]
-        key = (s["target"], s.get("holdout_frac", 0.0), s["variant"])
+        key = (condition(s), s["target"], s.get("holdout_frac", 0.0), s["variant"])
         runs.setdefault(key, {})[s["seed"]] = record
     locals_ = {}
     for record in local:
         s = record["settings"]
         for target, variants in record["results"].items():
             for variant, res in variants.items():
-                key = (target, s.get("holdout_frac", 0.0), variant)
+                key = (condition(s), target, s.get("holdout_frac", 0.0), variant)
                 locals_.setdefault(key, {})[s["seed"]] = res
 
-    for target in ("basket", "next_item"):
-        keys = sorted(k for k in runs if k[0] == target and k[1] == 0.0)
+    # The pre-registered condition first, then the others (small sellers, pilots) in their own tables.
+    conditions = sorted({k[0] for k in runs}, key=lambda c: (c != MAIN, c))
+    for cond, target in ((c, t) for c in conditions for t in ("basket", "next_item")):
+        keys = sorted(k for k in runs if k[0] == cond and k[1] == target and k[2] == 0.0)
         if not keys:
             continue
-        out.append("### %s — 판매자 100곳, 판매자 macro, 마지막 라운드(seed 평균)\n" % target)
+        out.append("### %s — %s, 판매자 macro, 마지막 라운드(seed 평균)\n" % (target, condition_label(cond)))
         out.append("| 모델 | 방식 | seed | NDCG@10 | Recall@20 | HR@10 | 재구매 NDCG@10 | 첫 구매 NDCG@10 | 최적 라운드 | 수렴 |")
         out.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
         baselines = None
         for key in keys:
-            variant = key[2]
+            variant = key[3]
             seeds = runs[key]
             arm = "%s FL" % variant
             rows = [r["metrics"]["final_round"] for r in seeds.values()]
@@ -130,7 +154,7 @@ def main(argv=None):
                  ("T_lm", "T_hx", "보조"), ("R_lm", "T_lm", "보조")]
         lines = []
         for a, b, label in pairs:
-            ka, kb = (target, 0.0, a), (target, 0.0, b)
+            ka, kb = (cond, target, 0.0, a), (cond, target, 0.0, b)
             if ka not in runs or kb not in runs:
                 continue
             seeds = sorted(set(runs[ka]) & set(runs[kb]))
@@ -147,44 +171,50 @@ def main(argv=None):
             out.append("")
 
     # Cold start: C-new at the cohort (FL runs trained with a holdout) and A-0 at held-out sellers.
-    cnew = sorted(k for k in runs if k[1] > 0)
+    cnew = sorted(k for k in runs if k[0] == MAIN and k[2] > 0)
     if cnew or cold:
-        out.append("### 콜드스타트 — NDCG@10 (Recall@20), 판매자 macro\n")
+        out.append("### 콜드스타트 — %s, NDCG@10 (Recall@20), 판매자 macro, seed 평균\n" % condition_label(MAIN))
         out.append("| 모델 | 기존 매장 전체 | 기존 매장·처음 보는 상품(C-new) | 신규 매장(A-0) | 신규 매장 단독 학습 | 신규 매장·처음 보는 상품 |")
         out.append("| --- | --- | --- | --- | --- | --- |")
         cold_runs, cold_local = {}, {}
         for record in cold:
             for group in record["groups"]:
                 for r in group["runs"]:
-                    cold_runs[(r["target"], r["holdout_frac"], r["variant"])] = r
+                    cold_runs.setdefault((r["target"], r["holdout_frac"], r["variant"]), {})[r.get("seed", 0)] = r
                 for r in group["local"]:
                     cold_local[(r["target"], group["holdout_frac"], r["variant"])] = r
 
-        def cell(result):
-            n, r = macro(result, "ndcg@10"), macro(result, "recall@20")
-            return "" if n is None else "%.4f (%.4f)" % (n, r)
+        def cell(results):
+            results = [x for x in results if macro(x, "ndcg@10") is not None]
+            if not results:
+                return ""
+            return "%.4f (%.4f)" % tuple(np.mean([macro(x, m) for x in results]) for m in ("ndcg@10", "recall@20"))
         for variant in ("T_hx", "R_hx", "T_lm", "R_lm"):
-            base = runs.get(("basket", 0.0, variant), {}).get(0)
-            held = next((runs[k][0] for k in cnew if k[0] == "basket" and k[2] == variant and 0 in runs[k]), None)
-            a0 = cold_runs.get(("basket", 0.0, variant))
-            a0_new = next((v for k, v in cold_runs.items() if k[0] == "basket" and k[1] > 0 and k[2] == variant), None)
-            loc = cold_local.get(("basket", 0.0, variant))
             arm = "%s FL" % variant
+            base = runs.get((MAIN, "basket", 0.0, variant), {}).values()
+            held = [r for k in cnew if k[1] == "basket" and k[3] == variant for r in runs[k].values()]
+            a0 = cold_runs.get(("basket", 0.0, variant), {}).values()
+            a0_new = [r for k, v in cold_runs.items() if k[0] == "basket" and k[1] > 0 and k[2] == variant
+                      for r in v.values()]
+            loc = cold_local.get(("basket", 0.0, variant))
             out.append("| %s | %s | %s | %s | %s | %s |" % (
                 variant,
-                cell(base["metrics"]["final_round"][arm]["all"]) if base else "",
-                cell(held["metrics"]["final_round"][arm]["cnew"]) if held else "",
-                cell(a0["final_round"]["%s FL A-0" % variant]["all"]) if a0 else "",
-                cell(loc["metrics"]["all"]) if loc else "",
-                cell(a0_new["final_round"]["%s FL A-0" % variant]["cnew"]) if a0_new else ""))
+                cell(r["metrics"]["final_round"][arm]["all"] for r in base),
+                cell(r["metrics"]["final_round"][arm]["cnew"] for r in held),
+                cell(r["final_round"]["%s FL A-0" % variant]["all"] for r in a0),
+                cell([loc["metrics"]["all"]] if loc else []),
+                cell(r["final_round"]["%s FL A-0" % variant]["cnew"] for r in a0_new)))
         out.append("")
-    if gci_fl or gci_local:
-        out += gci_table(gci_fl, gci_local)
+    for cond in sorted({condition(r["settings"]) for r in gci_fl + gci_local}):
+        out += gci_table([r for r in gci_fl if condition(r["settings"]) == cond],
+                         [r for r in gci_local if condition(r["settings"]) == cond], cond)
     print("\n".join(out))
 
 
-def gci_table(fl, local):
-    out = ["### HAREX 재현 조건(추가 범위) — 상품 단위 5개 창·무작위 분할, FL은 GCI처럼 조기 종료한 모델, 판매자 macro, seed 평균\n",
+def gci_table(fl, local, cond=MAIN):
+    kind = "BBQ 유사" if cond[2] else "울산페달식(전체 상품)"
+    out = ["### HAREX 재현 조건(추가 범위), %s — %s, 상품 단위 5개 창·무작위 분할, FL은 GCI처럼 조기 종료한 모델, "
+           "판매자 macro, seed 평균\n" % (kind, condition_label(cond)),
            "| 모델 | FL HR@10 | FL NDCG@10 | 단독 학습 HR@10 | 단독 학습 NDCG@10 |",
            "| --- | --- | --- | --- | --- |"]
 

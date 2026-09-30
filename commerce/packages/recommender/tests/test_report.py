@@ -23,11 +23,11 @@ def parts(value):
             "cnew": result(value / 3)}
 
 
-def fl_record(variant, seed, value, frac=0.0, protocol="next_visit"):
+def fl_record(variant, seed, value, frac=0.0, protocol="next_visit", **settings):
     metrics = {"%s FL" % variant: parts(value), "popularity": parts(0.1), "P-TopFreq": parts(0.4)}
     return {"run": "D0022 federated_lab_sim",
             "settings": {"variant": variant, "target": "basket", "seed": seed, "holdout_frac": frac,
-                         "protocol": protocol},
+                         "protocol": protocol, **settings},
             "metrics": {"final_round": metrics, "best_round": metrics, "primary": "final_round"},
             "training": {"best_round": 480, "plateaued": True}}
 
@@ -50,6 +50,8 @@ class Report(unittest.TestCase):
             records = [fl_record(v, s, x) for v, x in (("T_hx", 0.12), ("R_hx", 0.15)) for s in (0, 1, 2)]
             records.append(fl_record("R_hx", 0, 0.14, frac=0.1))
             records.append(fl_record("T_hx", 0, 0.5, protocol="gci"))  # must stay out of the main tables
+            records.append(fl_record("T_hx", 0, 0.3, protocol="gci", menu_size=200))  # its own gci table
+            records.append(fl_record("T_hx", 0, 0.9, seller_size=200))  # small sellers: their own table
             for i, record in enumerate(records):
                 folder = Path(root) / str(i)
                 folder.mkdir()
@@ -63,7 +65,12 @@ class Report(unittest.TestCase):
         self.assertIn("### 콜드스타트", text)
         self.assertIn("| T_hx | FL | 3 | 0.1450 |", text)  # the gci run did not join the seed mean
         self.assertIn("### HAREX 재현 조건", text)
-        self.assertIn("| T_hx | 0.5000 | 0.5250 |", text)
+        self.assertIn("| T_hx | 0.5000 | 0.5250 |", text)  # the Ulsan-like mean holds no BBQ-like run
+        self.assertIn("메뉴 200개", text)
+        self.assertIn("| T_hx | 0.3000 | 0.3250 |", text)
+        self.assertIn("### basket — 판매자 100곳, train 주문 200건", text)
+        self.assertIn("| T_hx | FL | 1 | 0.9250 |", text)
+        self.assertLess(text.index("train 주문 1,040건"), text.index("train 주문 200건"))  # the main one first
 
 
 if __name__ == "__main__":
