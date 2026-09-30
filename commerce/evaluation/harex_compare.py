@@ -69,6 +69,12 @@ PARTS = ("all", "repeat", "explore", "cnew")
 HELD_OUT_TARGETS = {990201 + k: 1040 for k in range(20)}
 
 
+def cohort_targets(args) -> dict[int, int]:
+    """Client id -> train orders. --seller-size shrinks every stand-in seller, e.g. to a small shop."""
+    size = getattr(args, "seller_size", 0)
+    return {client: size for client in STAND_IN_TARGETS} if size else STAND_IN_TARGETS
+
+
 def held_out_item(item: str, frac: float, seed: int) -> bool:
     """C-new membership from the seed and the item ID alone, never from purchase counts."""
     digest = hashlib.sha256(("%d\x00%s" % (seed, item)).encode("utf-8")).digest()
@@ -111,9 +117,11 @@ def build(args, record, held_out=False):
     """The cohort's sellers, or with held_out the A-0 sellers none of its customers belong to."""
     started = time.perf_counter()
     # The cohort is fixed in advance (evaluation.md §5): --seed varies the model, not the sellers.
-    split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.split_seed)
-    chosen = sorted(STAND_IN_TARGETS)[:args.sellers]
-    record["data"] = {"assignment": split.record, "stand_in_targets": "100 x 1,040 train orders"}
+    targets = cohort_targets(args)
+    split = assign_clients(args.instacart_dir, targets, alpha=0.25, seed=args.split_seed)
+    chosen = sorted(targets)[:args.sellers]
+    record["data"] = {"assignment": split.record,
+                      "stand_in_targets": "100 x %d train orders" % next(iter(targets.values()))}
     if held_out:
         split = assign_clients(args.instacart_dir, HELD_OUT_TARGETS, alpha=0.25, seed=args.split_seed,
                                exclude=set(split.clients))
@@ -309,6 +317,7 @@ def main(argv=None):
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
     parser.add_argument("--holdout-seed", type=int, default=0)
+    parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
     parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu

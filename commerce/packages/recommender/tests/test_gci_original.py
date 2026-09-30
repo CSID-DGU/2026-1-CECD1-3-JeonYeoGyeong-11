@@ -3,8 +3,8 @@ import unittest
 import torch
 
 from commerce.evaluation.gci_original import (
-    END, LOCAL, PAD, SEP, SPECIAL, START, Catalog, GCIModel, Vocabulary, beam_search, source_tokens, target_tokens,
-    ten_items, warmup_schedule,
+    END, LOCAL, PAD, SEP, SPECIAL, START, Catalog, GCIModel, Vocabulary, beam_search, client_groups, source_tokens,
+    target_tokens, ten_items, warmup_schedule,
 )
 
 
@@ -78,3 +78,32 @@ class Beam(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Federation(unittest.TestCase):
+    def args(self, **kw):
+        import argparse
+        base = dict(clients=4, sellers_per_client=5, menu_size=0, menu_clients=0, menu_sellers_per_client=10)
+        base.update(kw)
+        return argparse.Namespace(**base)
+
+    def test_mixed_federation_like_the_papers_table_4(self):
+        groups = client_groups(self.args(menu_size=200, menu_clients=2))
+        self.assertEqual(groups, [(10, True), (10, True), (5, False), (5, False)])
+
+    def test_alike_clients_by_default(self):
+        self.assertEqual(client_groups(self.args()), [(5, False)] * 4)
+        self.assertEqual(client_groups(self.args(menu_size=200)), [(5, True)] * 4)
+        with self.assertRaises(SystemExit):
+            client_groups(self.args(menu_clients=2))
+
+
+class SellerSize(unittest.TestCase):
+    def test_small_sellers_keep_the_cohort_ids(self):
+        import argparse
+        from commerce.evaluation.e_g0 import STAND_IN_TARGETS
+        from commerce.evaluation.harex_compare import cohort_targets
+        self.assertIs(cohort_targets(argparse.Namespace(seller_size=0)), STAND_IN_TARGETS)
+        small = cohort_targets(argparse.Namespace(seller_size=200))
+        self.assertEqual(sorted(small), sorted(STAND_IN_TARGETS))
+        self.assertEqual(set(small.values()), {200})

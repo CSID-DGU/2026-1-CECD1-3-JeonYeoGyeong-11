@@ -41,10 +41,9 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-from commerce.evaluation.e_g0 import STAND_IN_TARGETS
 from commerce.evaluation.encoder_probe import peak_memory_mb
 from commerce.evaluation.gci_protocol import menu_items, seller_units
-from commerce.evaluation.harex_compare import code_version
+from commerce.evaluation.harex_compare import code_version, cohort_targets
 from commerce.evaluation.scoring import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
@@ -230,11 +229,25 @@ def ten_items(candidates, k=10):
     return chosen
 
 
+def client_groups(args):
+    """(seller count, on the menu) per client. --menu-clients M makes the first M clients BBQ-like
+    (the menu, menu_sellers_per_client sellers each) and the rest Ulsan-like, as GCI's Table 4 federates
+    two BBQ and two Ulsan Pedal clients; without it every client is alike."""
+    if not args.menu_clients:
+        return [(args.sellers_per_client, bool(args.menu_size))] * args.clients
+    if not args.menu_size:
+        raise SystemExit("--menu-clients needs --menu-size")
+    return [(args.menu_sellers_per_client, True)] * args.menu_clients + \
+        [(args.sellers_per_client, False)] * (args.clients - args.menu_clients)
+
+
 def build_clients(args, record):
-    """GCI-style clients: each joins sellers_per_client of our sellers, with one vocabulary and catalog."""
+    """GCI-style clients: each joins some of our sellers, with one vocabulary and catalog."""
     started = time.perf_counter()
-    split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.split_seed)
-    chosen = sorted(STAND_IN_TARGETS)[:args.clients * args.sellers_per_client]
+    targets = cohort_targets(args)
+    groups = client_groups(args)
+    split = assign_clients(args.instacart_dir, targets, alpha=0.25, seed=args.split_seed)
+    chosen = sorted(targets)[:sum(n for n, _ in groups)]
     users = {u: c for u, c in split.clients.items() if c in chosen}
     sample = load_instacart(args.instacart_dir, users)
     carts = cart_orders(args.instacart_dir, [int(e["basket_id_local"].rsplit("-", 1)[1]) for e in sample.events])
@@ -246,20 +259,27 @@ def build_clients(args, record):
         catalogs.setdefault(item["seller_id"], []).append(item)
     all_visits = {seller: {cust: customer_visits(bs) for cust, bs in customers.items()}
                   for seller, customers in by_seller.items()}
-    menu = menu_items(all_visits, carts, args.menu_size) if args.menu_size else None
+    members_of, start = [], 0
+    for n, on_menu in groups:
+        members_of.append((["ic-client-%d" % c for c in chosen[start:start + n]], on_menu))
+        start += n
+    # The menu comes from the BBQ-like clients' sellers only, as BBQ's menu is BBQ's own.
+    menu_sellers = {s for members, on_menu in members_of if on_menu for s in members}
+    menu = menu_items({s: all_visits[s] for s in menu_sellers}, carts, args.menu_size) if menu_sellers else None
     clients = []
-    for k in range(args.clients):
-        members = ["ic-client-%d" % c for c in chosen[k * args.sellers_per_client:(k + 1) * args.sellers_per_client]]
+    for k, (members, on_menu) in enumerate(members_of):
+        client_menu = menu if on_menu else None
         text_of, grouped = {}, {"train": [], "validation": [], "test": []}
         for seller in members:
             for item in catalogs[seller]:
-                if menu is None or item["item_id_local"] in menu:
+                if client_menu is None or item["item_id_local"] in client_menu:
                     text_of.setdefault(item["item_id_local"], pair_text(item))
-            units, _, _ = seller_units(seller, all_visits[seller], carts, args.split_seed, menu)
+            units, _, _ = seller_units(seller, all_visits[seller], carts, args.split_seed, client_menu)
             for (role, _), examples in units.items():
                 grouped[role] += examples
         items = sorted(text_of)
-        clients.append({"name": "client-%d" % (k + 1), "sellers": members, "items": items,
+        clients.append({"name": "client-%d%s" % (k + 1, "-menu" if on_menu else ""), "sellers": members,
+                        "items": items,
                         "row_of": {item: row for row, item in enumerate(items)},
                         "texts": [text_of[i] for i in items], "text_of": text_of, "grouped": grouped})
     record["data"] = {"assignment": split.record, "adapter_report": sample.report,
@@ -349,6 +369,9 @@ def main(argv=None):
     parser.add_argument("--sellers-per-client", type=int, default=5)
     # BBQ-like: one small shared menu (gci_protocol.menu_items); 0 keeps every product.
     parser.add_argument("--menu-size", type=int, default=0)
+    parser.add_argument("--menu-clients", type=int, default=0)  # a mixed federation: that many BBQ-like clients
+    parser.add_argument("--menu-sellers-per-client", type=int, default=10)
+    parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     parser.add_argument("--rounds", type=int, default=500)
     parser.add_argument("--patience", type=int, default=20)
     parser.add_argument("--batch-size", type=int, default=128)
@@ -368,6 +391,10 @@ def main(argv=None):
               "labels": ["HAREX reproduction (added scope, evaluation.md §4)", "GCI's own model on Instacart",
                          "item-level units, random split", "early stopping as in GCI"]
               + (["BBQ-like menu of the %d most bought products" % args.menu_size] if args.menu_size else [])
+              + (["mixed federation: %d BBQ-like and %d Ulsan-like clients" % (args.menu_clients,
+                                                                             args.clients - args.menu_clients)]
+                 if args.menu_clients else [])
+              + (["small sellers: %d train orders each" % args.seller_size] if args.seller_size else [])
               + (["data-shared training is not FL"] if args.mode == "shared" else [])
               + (["unprotected FL simulation"] if args.mode == "fl" else [])}
     clients = build_clients(args, record)
@@ -447,8 +474,9 @@ def main(argv=None):
     record["seconds"] = round(time.perf_counter() - started, 1)
     record["metrics"] = {name: a.result() for name, a in arms.items()}
     record["peak_memory_mb"] = peak_memory_mb()
-    out = args.out_dir / ("%s_%s%s_s%d_%d" % (stamp, args.mode, "_menu%d" % args.menu_size if args.menu_size else "",
-                                               args.seed, os.getpid()))
+    tag = ("_menu%d" % args.menu_size if args.menu_size else "") + ("_mixed" if args.menu_clients else "") + \
+        ("_size%d" % args.seller_size if args.seller_size else "")
+    out = args.out_dir / ("%s_%s%s_s%d_%d" % (stamp, args.mode, tag, args.seed, os.getpid()))
     out.mkdir(parents=True, exist_ok=True)
     (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
     summary = {name: {"macro": {k: round(v, 4) for k, v in r["macro"].items()},

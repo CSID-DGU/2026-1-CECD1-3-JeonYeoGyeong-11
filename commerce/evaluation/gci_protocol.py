@@ -34,7 +34,6 @@ import time
 
 import torch
 
-from commerce.evaluation.e_g0 import STAND_IN_TARGETS
 from commerce.evaluation.encoder_probe import CANDIDATES
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
@@ -117,8 +116,10 @@ def build(args, record):
     if getattr(args, "holdout_frac", 0.0):
         raise ValueError("the GCI conditions take no C-new holdout")
     started = time.perf_counter()
-    split = assign_clients(args.instacart_dir, STAND_IN_TARGETS, alpha=0.25, seed=args.split_seed)
-    chosen = sorted(STAND_IN_TARGETS)[:args.sellers]
+    from commerce.evaluation.harex_compare import cohort_targets
+    targets = cohort_targets(args)
+    split = assign_clients(args.instacart_dir, targets, alpha=0.25, seed=args.split_seed)
+    chosen = sorted(targets)[:args.sellers]
     users = {u: c for u, c in split.clients.items() if c in chosen}
     sample = load_instacart(args.instacart_dir, users)
     carts = cart_orders(args.instacart_dir, [int(e["basket_id_local"].rsplit("-", 1)[1]) for e in sample.events])

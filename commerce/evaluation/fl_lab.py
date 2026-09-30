@@ -97,6 +97,7 @@ def main(argv=None):
     parser.add_argument("--split-seed", type=int, default=0)
     parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
     parser.add_argument("--holdout-seed", type=int, default=0)
+    parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
     parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
