@@ -24,7 +24,8 @@ from commerce.packages.contracts.ports import RecommenderRuntime
 from commerce.packages.fl_client.lifecycle import FLClientConfig
 from commerce.packages.recommender.runtime import UnimplementedRuntime
 from commerce.services.central_api.main import app as central_app
-from commerce.services.fl_coordinator.main import app as coordinator_app
+from commerce.services.fl_coordinator.main import CoordinatorSettings, app as coordinator_app
+from commerce.services.fl_coordinator.main import create_app as create_coordinator_app
 from commerce.services.merchant_api.context import MerchantSettings, build_context
 from commerce.services.merchant_api.main import create_app
 
@@ -143,10 +144,19 @@ class NotYetImplemented(_TempSeller):
                 with TestClient(create_app(settings, context_factory=stub_context)):
                     self.fail("Enabled FL should not start before its implementation")
 
-    def test_coordinator_accepts_no_submissions_yet(self):
-        # c1 retires this with the synthetic submission route.
+    def test_protected_coordinator_fails_closed(self):
+        # g4 retires this. The synthetic routes are checked by gate c1 (test_c1_http.py).
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            settings = CoordinatorSettings(root / "registry", root / "auth.json", root / "rounds", mode="protected")
+            with self.assertRaises(FeatureNotImplemented):
+                create_coordinator_app(settings)
+
+    def test_unconfigured_coordinator_accepts_no_submissions(self):
+        # The launcher starts the coordinator without REGISTRY_DIR/AUTH_FILE/ROUND_STATE_DIR.
         with TestClient(coordinator_app) as client:
             self.assertEqual(client.post("/rounds/synthetic/submissions", json={}).status_code, 404)
+            self.assertFalse(client.get("/healthz").json()["ready"])
 
 
 if __name__ == "__main__":
