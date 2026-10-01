@@ -10,8 +10,8 @@ import unittest
 REMAINING = (
     "contract_error body of the 401 response (waits for OQ13; today 401 has an empty body)",
     "who opens rounds and when, with a fixed round count (trigger waits for OQ08)",
-    "FL client submission path and plaintext activation (waits for OQ17)",
-    "run_local integration: coordinator health order and shutdown",
+    "FLClient.start running synthetic_plaintext rounds for a seller (waits for OQ17)",
+    "run_local starting a configured coordinator and enabled clients (waits for OQ16)",
 )
 
 
