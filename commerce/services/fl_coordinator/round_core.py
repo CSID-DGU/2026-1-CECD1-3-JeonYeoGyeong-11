@@ -83,7 +83,7 @@ def _write_json(path: Path, obj) -> None:
     path.write_bytes(ids.canonical_json(obj))
 
 
-def _atomic_write(path: Path, data: bytes) -> None:
+def atomic_write(path: Path, data: bytes) -> None:
     fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as fp:
@@ -157,7 +157,7 @@ class ModelRegistry:
         except BaseException:
             shutil.rmtree(staging, ignore_errors=True)
             raise
-        _atomic_write(self._root / "latest", model_version.encode("ascii"))
+        atomic_write(self._root / "latest", model_version.encode("ascii"))
 
     def _load(self) -> None:
         if not self._root.is_dir():

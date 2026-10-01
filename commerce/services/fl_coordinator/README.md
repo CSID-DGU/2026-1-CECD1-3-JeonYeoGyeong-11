@@ -7,6 +7,8 @@ HTTP와 분리한 합성 집계 core는 있다: `round_core.py`(`ModelRegistry`,
 
 `ModelRegistry(root)`는 variant 하나의 `REGISTRY_DIR`에 release를 둔다. `<root>/<model_version>/`에 `weights.npz`·`manifest.json`·`release.json`·`provenance.json`을 쓰고, 임시 디렉터리에서 이름을 바꿔 넣은 뒤 `<root>/latest`를 마지막에 바꾼다. 기동할 때 모든 release의 해시·크기·manifest를 다시 검증하며, 하나라도 틀리면 `RegistryCorrupt`로 기동을 거부한다. `provenance.json`은 학습된 release·random init·FL 라운드를 구분하는 로컬 운영 기록이며 서빙하지 않는다.
 
+`service.Coordinator`는 variant 하나의 상태다. 운영자가 `open_round(cohort, RoundSettings(...))`로 라운드를 열며 cohort는 그때 고정된다. 열린 라운드는 한 번에 하나다. 누가 언제 라운드를 여는지(트리거)는 OQ08에서 정한다. `RoundLedger`는 `ROUND_STATE_DIR`에 라운드마다 상태·기준 모델·deadline·cohort 크기·결과 모델만 쓴다. delta·지표·비밀·참여자 ID는 쓰지 않는다. 재시작하면 열려 있던 라운드를 `discarded`로 기록하고 그 round_id는 다시 쓰지 않는다. `protected` 모드는 g4 전까지 생성 단계에서 `FeatureNotImplemented`로 실패한다.
+
 초기 release는 업로드 API 없이 coordinator 호스트에서 넣는다: `python -m commerce.services.fl_coordinator.import_release --registry <REGISTRY_DIR> --manifest <json> --weights <npz> --model-version <id> --kind trained|random_init`. B의 불변 architecture config 등록값과의 대조는 그 등록부가 생긴 뒤 추가한다.
 
 ## 합성 라운드 경로 초안
