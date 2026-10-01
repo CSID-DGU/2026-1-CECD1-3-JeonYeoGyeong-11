@@ -134,6 +134,29 @@ class ScaffoldInvariants(_TempSeller):
             ContractError("NOT_IMPLEMENTED")
 
 
+class LauncherHosts(unittest.TestCase):
+    """run_local --check-hosts judges resolution only; it never assumes the OS resolves *.localhost."""
+
+    def test_only_names_resolving_to_loopback_alone_pass(self):
+        from commerce.deploy.run_local import check_hosts, host_names
+
+        answers = {
+            "central.localhost": ["127.0.0.1"], "coordinator.localhost": ["::1", "127.0.0.1"],
+            "merchant-1.localhost": ["127.0.0.1", "192.0.2.10"], "merchant-2.localhost": [],
+        }
+
+        def resolve(name, _port):
+            if name not in answers:
+                raise OSError("unresolved")
+            return [(None, None, None, None, (address, 0)) for address in answers[name]]
+
+        self.assertEqual(host_names(3)[2:], ["merchant-1.localhost", "merchant-2.localhost", "merchant-3.localhost"])
+        self.assertEqual(dict(check_hosts(host_names(3), resolve)), {
+            "central.localhost": True, "coordinator.localhost": True,
+            "merchant-1.localhost": False, "merchant-2.localhost": False, "merchant-3.localhost": False,
+        })
+
+
 class NotYetImplemented(_TempSeller):
     def test_enabled_fl_fails_closed_in_both_modes(self):
         # c1 retires synthetic_plaintext once OQ17 is decided; g4 retires protected.
