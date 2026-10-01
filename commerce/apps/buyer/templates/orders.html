@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">주문내역</h1>
+
+<form method="get" action="/buyer/{{ seller_id }}/orders" style="margin-bottom:16px;">
+  <label class="field">내 고객 ID
+    <input type="text" name="customer_id_local" value="{{ customer_id_local }}">
+  </label>
+  <button class="btn secondary" type="submit">조회</button>
+</form>
+
+<table>
+  <thead>
+    <tr><th>주문번호</th><th>주문상품</th><th>금액</th><th>상태</th></tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td>{{ order.order_id[:8] }}</td>
+      <td>{% for item in order['items'] %}{{ item.item_id_local }} x{{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</td>
+      <td>{{ "{:,}".format(order.total_amount) }}원</td>
+      <td>
+        <span class="badge {{ 'default' if order.status == 'accepted' else 'muted' }}">
+          {{ status_labels[order.status] }}
+        </span>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="muted-note">주문 내역이 없습니다.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

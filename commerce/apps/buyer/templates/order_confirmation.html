@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">주문이 접수되었습니다</h1>
+
+<div class="card">
+  <p>주문번호: <strong>{{ order.order_id[:8] }}</strong></p>
+  <p>{% for item in order['items'] %}{{ item.item_id_local }} x{{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</p>
+  <p class="price-now">{{ "{:,}".format(order.total_amount) }}원</p>
+</div>
+
+<h2 class="section-title">처리 흐름</h2>
+<div class="flow">
+  <div class="step active">
+    <div class="step-title">주문 접수</div>
+    <div class="step-desc">판매자에게 주문이 전달되었습니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-title">매장 로컬 기록</div>
+    <div class="step-desc">이 매장의 구매 기록으로 저장됩니다.</div>
+  </div>
+  <div class="step">
+    <div class="step-title">매장 로컬 학습</div>
+    <div class="step-desc">매장 데이터로 추천 모델이 갱신됩니다. (모델 연동 준비 중)</div>
+  </div>
+  <div class="step">
+    <div class="step-title">공유 모델 반영</div>
+    <div class="step-desc">여러 매장의 학습 결과가 모여 공유 모델에 반영됩니다. (연동 준비 중)</div>
+  </div>
+</div>
+
+<a class="btn secondary" href="/buyer/{{ seller_id }}/orders">주문내역 보기</a>
+{% endblock %}

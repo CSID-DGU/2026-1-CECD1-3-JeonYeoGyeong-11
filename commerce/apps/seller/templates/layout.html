@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "판매자 대시보드" }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-switcher">
+    <div class="tabs">
+      <a class="tab" href="/buyer/{{ seller_id }}/">고객용 앱</a>
+      <a class="tab active" href="/seller/{{ seller_id }}/overview">판매자용 앱</a>
+    </div>
+    <div class="session">{{ seller_id }}</div>
+  </div>
+  <nav class="tab-nav">
+    <a href="/seller/{{ seller_id }}/overview" class="{{ 'active' if active_tab == 'overview' else '' }}">개요</a>
+    <a href="/seller/{{ seller_id }}/products" class="{{ 'active' if active_tab == 'products' else '' }}">상품 관리</a>
+    <a href="/seller/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">주문 관리</a>
+  </nav>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

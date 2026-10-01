@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">이번 매장 현황</h1>
+<div class="grid cols-3">
+  <div class="card">
+    <div class="stat-value">{{ product_count }}개</div>
+    <div class="stat-label">등록 상품 수</div>
+  </div>
+  <div class="card">
+    <div class="stat-value">{{ status_counts.requested + status_counts.accepted }}건</div>
+    <div class="stat-label">처리 대기 주문</div>
+  </div>
+  <div class="card">
+    <div class="stat-value">{{ status_counts.completed }}건</div>
+    <div class="stat-label">완료된 주문</div>
+  </div>
+</div>
+<p class="muted-note">
+  숫자는 실제 orders.sqlite/catalog 데이터를 그대로 센 것입니다. 재방문 확률 같은 예측 지표는
+  B(모델) 쪽 추천 런타임이 아직 구현되지 않아(UnimplementedRuntime) 여기 넣지 않았습니다.
+</p>
+{% endblock %}

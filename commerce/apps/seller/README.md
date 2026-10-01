@@ -1,6 +1,13 @@
 # 판매자 화면 · A
 
-판매자용 상품/주문 관리 템플릿·정적 파일 위치다. 현재 화면은 미구현이다.
+판매자용 개요/상품관리/주문관리 Jinja2 템플릿이다. 색상·카드·탭 UI는 팀의 기존 React 프로토타입(JYGfile)과 같은 시각 언어로 맞췄고, `../static/style.css`를 공유한다.
+
+- `templates/layout.html`: 앱 전환 탭(고객용/판매자용) + 개요·상품관리·주문관리 탭 네비게이션.
+- `templates/overview.html`: `orders.sqlite`에서 직접 센 등록 상품 수·처리 대기/완료 주문 수. ML 예측 지표(재방문 확률 등)는 B 추천 런타임이 아직 미구현(`UnimplementedRuntime`)이라 넣지 않았다.
+- `templates/products.html`: 상품 등록 폼 + 목록. `display_price_minor`는 화면 전용 필드로, `catalog_item.v1`에는 없다(계약에 가격 필드가 없어서 로컬 DB 컬럼으로만 둔 것; `orders_service.register_catalog_item` 참고).
+- `templates/orders.html`: 주문 목록 + 수락/완료 처리 폼. `status_version`을 hidden input으로 넘겨 조건부 갱신(동시 완료 시 1회만 성공)에 그대로 태운다.
+
+라우트는 `commerce/services/merchant_api/main.py`의 `/seller/{seller_id}/...` 경로들이다(JSON API인 `/sellers/{seller_id}/...`와는 별도). **호출자 인증이 없다** — main.py의 모듈 docstring과 OQ13/OQ15 참고. 실제 구매자/판매자 브라우저에 연결하기 전에 그 결정이 먼저 나야 한다.
 
 시작: `commerce/services/merchant_api/main.py`와 `context.py`. 작업 순서는 [A 카드](../../../docs/team/tasks/A.md)를 따른다. 경계: 완료 주문의 event/outbox 영속화는 A가 담당하고, 모델 학습 설정은 B/C 인터페이스를 사용한다.
 

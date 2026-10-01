@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block content %}
+{% if recommended %}
+<h2 class="section-title">
+  추천 상품
+  {% if recommendation_is_mock %}<span class="badge muted">임시 · 인기순위 기준</span>{% endif %}
+</h2>
+<div class="grid cols-4 product-grid">
+  {% for item in recommended %}
+  <a class="card" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
+    <div class="image-placeholder">이미지</div>
+    <p>{{ item.title_text }}</p>
+    <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span></div>
+  </a>
+  {% endfor %}
+</div>
+{% if recommendation_is_mock %}
+<p class="muted-note">
+  아직 B의 실제 추천 모델이 연결되지 않아, 이 매장에서 가장 많이 팔린 상품 순으로 임시로 보여주고 있습니다.
+</p>
+{% endif %}
+{% endif %}
+
+<h1 class="page-title">상품 둘러보기</h1>
+<div class="grid cols-4 product-grid">
+  {% for item in catalog %}
+  <a class="card" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
+    <div class="image-placeholder">이미지</div>
+    <p>{{ item.title_text }}</p>
+    <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span></div>
+  </a>
+  {% else %}
+  <p class="muted-note">아직 등록된 상품이 없습니다. 판매자용 앱에서 상품을 등록해보세요.</p>
+  {% endfor %}
+</div>
+{% endblock %}

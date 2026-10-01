@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">주문 관리</h1>
+
+<table>
+  <thead>
+    <tr><th>주문번호</th><th>고객</th><th>주문상품</th><th>금액</th><th>상태</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for order in orders %}
+    <tr>
+      <td>{{ order.order_id[:8] }}</td>
+      <td>{{ order.customer_id_local }}</td>
+      <td>{% for item in order['items'] %}{{ item.item_id_local }} x{{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</td>
+      <td>{{ "{:,}".format(order.total_amount) }}원</td>
+      <td>
+        <span class="badge {{ 'default' if order.status == 'accepted' else 'muted' }}">
+          {{ status_labels[order.status] }}
+        </span>
+      </td>
+      <td>
+        {% if order.status == 'requested' %}
+        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept">
+          <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+          <button class="btn secondary" type="submit">수락</button>
+        </form>
+        {% elif order.status == 'accepted' %}
+        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete">
+          <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+          <button class="btn secondary" type="submit">완료 처리</button>
+        </form>
+        {% else %}
+        <span class="muted-note">-</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted-note">아직 들어온 주문이 없습니다.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

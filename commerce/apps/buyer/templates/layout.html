@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title or "직거래 장터" }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-switcher">
+    <div class="tabs">
+      <a class="tab active" href="/buyer/{{ seller_id }}/">고객용 앱</a>
+      <a class="tab" href="/seller/{{ seller_id }}/overview">판매자용 앱</a>
+    </div>
+  </div>
+  <nav class="tab-nav">
+    <a href="/buyer/{{ seller_id }}/" class="{{ 'active' if active_tab == 'home' else '' }}">홈</a>
+    <a href="/buyer/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">주문내역</a>
+    <a href="/buyer/{{ seller_id }}/chat" class="{{ 'active' if active_tab == 'chat' else '' }}">챗봇</a>
+  </nav>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
