@@ -11,7 +11,7 @@ import numpy as np
 from commerce.packages.contracts import ids
 from commerce.packages.contracts.errors import ContractError
 from commerce.services.fl_coordinator.npz_payload import PayloadTooLarge, decode_npz, encode_npz
-from commerce.services.fl_coordinator.round_core import ModelRegistry, SyntheticRound, check_contract
+from commerce.services.fl_coordinator.round_core import ModelRegistry, SyntheticRound, aggregate_uniform, check_contract
 from commerce.tests.e2e import dummy_round as dummy
 
 SELLERS = ("seller-a", "seller-b", "seller-c")
@@ -208,6 +208,45 @@ class ManifestAndTensorChecks(_RoundCase):
         self.assertEqual(self.code(self.registry.register, "model-0", self.manifest, dummy.base_tensors(self.manifest)),
                          "ILLEGAL_STATE_TRANSITION")
         self.assertEqual(self.code(self.registry.release, "missing"), "NOT_FOUND")
+
+
+class LabAggregation(unittest.TestCase):
+    """aggregate_uniform is the entry point for B's lab runner (unprotected simulation, D0020)."""
+
+    def test_uniform_mean_when_everyone_completed(self):
+        mean = aggregate_uniform([{"w": np.array([1.0, 3.0])}, {"w": np.array([3.0, 5.0])}])
+        self.assertEqual(mean["w"].dtype, np.float32)
+        np.testing.assert_array_equal(mean["w"], [2.0, 4.0])
+
+    def test_one_missing_member_or_an_empty_cohort_discards(self):
+        self.assertIsNone(aggregate_uniform([{"w": np.ones(2)}, None]))
+        self.assertIsNone(aggregate_uniform([]))
+
+    def test_no_sample_weighting(self):
+        # three members: the mean of the three, whatever their data sizes were
+        mean = aggregate_uniform([{"w": np.array([0.0])}, {"w": np.array([0.0])}, {"w": np.array([3.0])}])
+        np.testing.assert_array_equal(mean["w"], [1.0])
+
+    def test_tensor_set_or_shape_disagreement_raises(self):
+        with self.assertRaises(ValueError):
+            aggregate_uniform([{"w": np.ones(1)}, {"v": np.ones(1)}])
+        with self.assertRaises(ValueError):
+            aggregate_uniform([{"w": np.ones(1)}, {"w": np.ones(2)}])
+
+    def test_round_core_uses_the_same_rule(self):
+        manifest = dummy.dummy_manifest()
+        registry = ModelRegistry()
+        registry.register("model-0", manifest, dummy.base_tensors(manifest))  # zero base
+        config = dummy.round_config(manifest, "model-0")
+        rnd = SyntheticRound(registry, config, SELLERS)
+        deltas = []
+        for seller in SELLERS:
+            result = dummy.DummyTrainer(seller, OFFSETS[seller]).train_round(dummy.base_tensors(manifest), config)
+            deltas.append(result.shared_delta)
+            rnd.submit(seller, *dummy.build_submission(seller, manifest, config, result))
+        expected = aggregate_uniform(deltas)
+        for name, array in registry.tensors(rnd.release["model_version"]).items():
+            np.testing.assert_array_equal(array, expected[name])
 
 
 class NpzRules(unittest.TestCase):

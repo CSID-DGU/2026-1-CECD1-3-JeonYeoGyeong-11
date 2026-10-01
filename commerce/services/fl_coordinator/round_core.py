@@ -45,6 +45,29 @@ def _specs_by_name(specs: Sequence[Mapping]) -> dict:
     return {spec["name"]: (tuple(spec["shape"]), spec["dtype"]) for spec in specs}
 
 
+def aggregate_uniform(deltas: Sequence[Mapping[str, object] | None]) -> TensorMap | None:
+    """The D0017 rule on its own: every member complete, else discard; then the plain mean.
+
+    One entry per pre-fixed cohort member. None marks a member without a completed delta,
+    so the whole round is discarded and None is returned, as for an empty cohort. Arrays
+    may be numpy arrays or detached CPU tensors. The mean is taken in float64 and returned
+    as float32; there is no sample weighting. Key or shape disagreement is a caller bug and
+    raises ValueError. B's lab runner calls this directly (D0018, D0020: not protected).
+    """
+    if not deltas or any(delta is None for delta in deltas):
+        return None
+    names = set(deltas[0])
+    if any(set(delta) != names for delta in deltas):
+        raise ValueError("deltas do not share one tensor set")
+    mean: TensorMap = {}
+    for name in sorted(names):
+        arrays = [np.asarray(delta[name], dtype=np.float64) for delta in deltas]
+        if any(array.shape != arrays[0].shape for array in arrays):
+            raise ValueError("tensor shapes differ across deltas")
+        mean[name] = np.mean(arrays, axis=0).astype(np.float32)
+    return mean
+
+
 class ModelRegistry:
     """Immutable releases. The descriptor and latest pointer are published after the weights."""
 
@@ -214,9 +237,9 @@ class SyntheticRound:
 
     def _aggregate(self) -> None:
         base = self._registry.tensors(self.config["model_version"])
-        mean = {name: np.mean([slot.delta[name].astype(np.float64) for slot in self._slots.values()], axis=0)
-                for name in base}
-        new = {name: (base[name].astype(np.float64) + mean[name]).astype(np.float32) for name in base}
+        mean = aggregate_uniform([slot.delta for slot in self._slots.values()])
+        new = {name: (base[name].astype(np.float64) + mean[name].astype(np.float64)).astype(np.float32)
+               for name in base}
         weights_sha = hashlib.sha256(encode_npz(new)).hexdigest()
         version = "model-" + hashlib.sha256(
             ids.canonical_json([self.config["model_version"], self.round_id, weights_sha])).hexdigest()[:16]
