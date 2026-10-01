@@ -1,19 +1,26 @@
-"""Synthetic FL round core: model registry, one round, uniform mean. No HTTP, no disk.
+"""Synthetic FL round core: model registry, one round, uniform mean. No HTTP.
 
 Invariants are in docs/design/interfaces.md §5-6 (D0017): the cohort is fixed before
 the round; either every member submits a completed, valid delta before the deadline
 and the plain mean is added to the base model, or the whole round is discarded and
-the last model stays. No sample weighting, no late carry-over. State is in memory
-only, so a restart discards a running round and no individual delta is ever written.
+the last model stays. No sample weighting, no late carry-over. Round state is in
+memory only, so a restart discards a running round and no individual delta is ever
+written. Only released models reach the disk (ModelRegistry with a root).
 
 One registry and one round object serve one model variant. A registry pins the
 manifest_hash of its first release, so two variants cannot share a latest pointer.
 """
+import contextlib
 import hashlib
+import json
+import os
 import re
+import shutil
+import tempfile
 import time
 from datetime import datetime, timezone
 from functools import lru_cache
+from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
 import numpy as np
@@ -68,16 +75,49 @@ def aggregate_uniform(deltas: Sequence[Mapping[str, object] | None]) -> TensorMa
     return mean
 
 
-class ModelRegistry:
-    """Immutable releases. The descriptor and latest pointer are published after the weights."""
+class RegistryCorrupt(RuntimeError):
+    """A REGISTRY_DIR that does not verify. The coordinator refuses to start rather than serve it."""
 
-    def __init__(self):
+
+def _write_json(path: Path, obj) -> None:
+    path.write_bytes(ids.canonical_json(obj))
+
+
+def _atomic_write(path: Path, data: bytes) -> None:
+    fd, tmp = tempfile.mkstemp(prefix=".tmp-", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as fp:
+            fp.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp)
+        raise
+
+
+class ModelRegistry:
+    """Immutable releases. The descriptor and latest pointer are published after the weights.
+
+    With `root` (REGISTRY_DIR, one directory per variant) each release is written to
+    `<root>/<model_version>/` through a staging directory that is renamed into place,
+    and `<root>/latest` is replaced last, so a crash never exposes a partial release.
+    `provenance.json` is a local operations record (trained, random init, FL round);
+    it is never served and is not part of model_release.v1.
+    """
+
+    def __init__(self, root: Path | str | None = None):
         self._releases: dict[str, tuple[Payload, Payload, bytes]] = {}
         self._latest: str | None = None
         self._manifest_hash: str | None = None
+        self._root = None if root is None else Path(root)
+        if self._root is not None:
+            self._load()
 
-    def register(self, model_version: str, manifest: Payload, tensors: TensorMap) -> Payload:
+    def register(self, model_version: str, manifest: Payload, tensors: TensorMap, *,
+                 provenance: Mapping | None = None) -> Payload:
         check_contract("shared_model_manifest.v1", manifest)
+        if not SAFE_ID.fullmatch(model_version):
+            raise ContractError("SCHEMA_INVALID", "/model_version")
         if manifest["manifest_hash"] != ids.manifest_hash(manifest):
             raise ContractError("MANIFEST_MISMATCH", "/manifest_hash")
         if self._manifest_hash not in (None, manifest["manifest_hash"]):
@@ -94,10 +134,76 @@ class ModelRegistry:
             "weights_sha256": hashlib.sha256(weights).hexdigest(), "weights_size_bytes": len(weights),
         }
         check_contract("model_release.v1", descriptor)
+        if self._root is not None:
+            self._persist(model_version, descriptor, manifest, weights, provenance)
         self._releases[model_version] = (descriptor, dict(manifest), weights)
         self._manifest_hash = manifest["manifest_hash"]
         self._latest = model_version  # published last
         return dict(descriptor)
+
+    def _persist(self, model_version: str, descriptor: Payload, manifest: Payload, weights: bytes,
+                 provenance: Mapping | None) -> None:
+        self._root.mkdir(parents=True, exist_ok=True)
+        final = self._root / model_version
+        if final.exists():
+            raise ContractError("ILLEGAL_STATE_TRANSITION")
+        staging = Path(tempfile.mkdtemp(prefix=".staging-", dir=self._root))
+        try:
+            (staging / "weights.npz").write_bytes(weights)
+            _write_json(staging / "manifest.json", manifest)
+            _write_json(staging / "provenance.json", dict(provenance or {"source": "unspecified"}))
+            _write_json(staging / "release.json", descriptor)
+            os.replace(staging, final)
+        except BaseException:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise
+        _atomic_write(self._root / "latest", model_version.encode("ascii"))
+
+    def _load(self) -> None:
+        if not self._root.is_dir():
+            return
+        for entry in sorted(self._root.iterdir()):
+            if entry.name.startswith("."):
+                # leftovers of an interrupted publish: never visible, safe to drop
+                if entry.name.startswith(".staging-"):
+                    shutil.rmtree(entry, ignore_errors=True)
+                elif entry.name.startswith(".tmp-"):
+                    entry.unlink(missing_ok=True)
+                continue
+            if entry.name == "latest":
+                continue
+            try:
+                descriptor = json.loads((entry / "release.json").read_bytes())
+                manifest = json.loads((entry / "manifest.json").read_bytes())
+                weights = (entry / "weights.npz").read_bytes()
+                check_contract("model_release.v1", descriptor)
+                check_contract("shared_model_manifest.v1", manifest)
+                decode_npz(weights, manifest["tensors"])
+            except (OSError, ValueError, ContractError) as exc:
+                raise RegistryCorrupt("release %s does not verify" % entry.name) from exc
+            if (descriptor["model_version"] != entry.name
+                    or descriptor["weights_sha256"] != hashlib.sha256(weights).hexdigest()
+                    or descriptor["weights_size_bytes"] != len(weights)
+                    or descriptor["manifest_hash"] != manifest["manifest_hash"]
+                    or manifest["manifest_hash"] != ids.manifest_hash(manifest)):
+                raise RegistryCorrupt("release %s does not verify" % entry.name)
+            if self._manifest_hash not in (None, manifest["manifest_hash"]):
+                raise RegistryCorrupt("two manifests in one variant registry")
+            self._manifest_hash = manifest["manifest_hash"]
+            self._releases[entry.name] = (descriptor, manifest, weights)
+        latest = self._root / "latest"
+        if latest.exists():
+            name = latest.read_text(encoding="ascii").strip()
+            if name not in self._releases:
+                raise RegistryCorrupt("latest points to a missing release")
+            self._latest = name
+
+    def provenance(self, model_version: str) -> Payload:
+        """Local operations record of a persisted release; empty for an in-memory registry."""
+        self._entry(model_version)
+        if self._root is None:
+            return {}
+        return json.loads((self._root / model_version / "provenance.json").read_bytes())
 
     def latest(self) -> Payload | None:
         return None if self._latest is None else dict(self._releases[self._latest][0])
@@ -243,7 +349,9 @@ class SyntheticRound:
         weights_sha = hashlib.sha256(encode_npz(new)).hexdigest()
         version = "model-" + hashlib.sha256(
             ids.canonical_json([self.config["model_version"], self.round_id, weights_sha])).hexdigest()[:16]
-        self.release = self._registry.register(version, self._manifest, new)
+        self.release = self._registry.register(version, self._manifest, new, provenance={
+            "source": "fl_round", "mode": "synthetic_plaintext", "round_id": self.round_id,
+            "base_model_version": self.config["model_version"], "cohort_size": len(self.cohort)})
         self.state = "aggregated"
         for slot in self._slots.values():
             slot.delta = None

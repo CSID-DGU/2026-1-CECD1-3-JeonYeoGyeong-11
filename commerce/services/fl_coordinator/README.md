@@ -5,6 +5,10 @@ HTTP와 분리한 합성 집계 core는 있다: `round_core.py`(`ModelRegistry`,
 작업 순서는 [C 카드](../../../docs/team/tasks/C.md)를 따른다. 첫 라운드 경로는 생성 합성 텐서만 쓴다.
 집계 core는 웹 앱과 분리해 B의 `commerce/evaluation/`에서도 재사용한다. B의 실험실 실행기는 `round_core.aggregate_uniform(deltas)`를 직접 부른다. 입력은 고정 cohort 순서의 delta 목록이며, 미완료 참여자는 `None`으로 넣는다. 반환값은 float32 균등 평균이고, 하나라도 `None`이거나 목록이 비면 `None`(라운드 폐기)이다. 결과는 비보호 FL 시뮬레이션이다(D0020). 보호 프로토콜 미확정 상태에서 실데이터 경로를 활성화하지 않는다.
 
+`ModelRegistry(root)`는 variant 하나의 `REGISTRY_DIR`에 release를 둔다. `<root>/<model_version>/`에 `weights.npz`·`manifest.json`·`release.json`·`provenance.json`을 쓰고, 임시 디렉터리에서 이름을 바꿔 넣은 뒤 `<root>/latest`를 마지막에 바꾼다. 기동할 때 모든 release의 해시·크기·manifest를 다시 검증하며, 하나라도 틀리면 `RegistryCorrupt`로 기동을 거부한다. `provenance.json`은 학습된 release·random init·FL 라운드를 구분하는 로컬 운영 기록이며 서빙하지 않는다.
+
+초기 release는 업로드 API 없이 coordinator 호스트에서 넣는다: `python -m commerce.services.fl_coordinator.import_release --registry <REGISTRY_DIR> --manifest <json> --weights <npz> --model-version <id> --kind trained|random_init`. B의 불변 architecture config 등록값과의 대조는 그 등록부가 생긴 뒤 추가한다.
+
 ## 합성 라운드 경로 초안
 
 C가 구현하면서 바꿔도 되는 초안이다. 지켜야 할 불변식은 [인터페이스](../../../docs/design/interfaces.md) §6에 있다.

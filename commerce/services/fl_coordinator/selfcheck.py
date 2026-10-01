@@ -9,7 +9,7 @@ import unittest
 
 REMAINING = (
     "HTTP routes and Bearer seller auth over this core (auth failure code waits for OQ13)",
-    "coordinator-side persistence of releases (REGISTRY_DIR) and the pre-fixed cohort setting",
+    "the pre-fixed cohort setting and round state across a coordinator restart",
     "FL client submission path and plaintext activation (waits for OQ17)",
     "run_local integration: coordinator health order and shutdown",
 )
