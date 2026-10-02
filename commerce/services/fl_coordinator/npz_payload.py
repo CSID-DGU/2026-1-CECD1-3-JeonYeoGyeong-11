@@ -46,6 +46,8 @@ def decode_npz(data: bytes, specs: Sequence[Mapping], *, max_nbytes: int = MAX_P
     """Return the arrays of `data`, which must be exactly the float32 tensors of `specs`."""
     if len(data) > max_nbytes:
         raise PayloadTooLarge("payload exceeds the transfer limit")
+    if any(spec.get("dtype", "float32") != "float32" for spec in specs):
+        raise ContractError("TENSOR_SET_MISMATCH")  # this path is float32 only (interfaces.md §5)
     expected = {spec["name"]: tuple(spec["shape"]) for spec in specs}
     try:
         archive = zipfile.ZipFile(io.BytesIO(data))

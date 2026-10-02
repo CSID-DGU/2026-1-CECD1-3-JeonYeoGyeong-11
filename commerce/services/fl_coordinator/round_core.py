@@ -9,6 +9,7 @@ only, so a restart discards a running round and no individual delta is ever writ
 One registry and one round object serve one model variant. A registry pins the
 manifest_hash of its first release, so two variants cannot share a latest pointer.
 """
+import copy
 import hashlib
 import re
 import time
@@ -55,6 +56,9 @@ class ModelRegistry:
 
     def register(self, model_version: str, manifest: Payload, tensors: TensorMap) -> Payload:
         check_contract("shared_model_manifest.v1", manifest)
+        if any(spec["dtype"] != "float32" for spec in manifest["tensors"]):
+            # the schema allows more dtypes; this path is float32 only (interfaces.md §5)
+            raise ContractError("TENSOR_SET_MISMATCH", "/tensors")
         if manifest["manifest_hash"] != ids.manifest_hash(manifest):
             raise ContractError("MANIFEST_MISMATCH", "/manifest_hash")
         if self._manifest_hash not in (None, manifest["manifest_hash"]):
@@ -71,7 +75,7 @@ class ModelRegistry:
             "weights_sha256": hashlib.sha256(weights).hexdigest(), "weights_size_bytes": len(weights),
         }
         check_contract("model_release.v1", descriptor)
-        self._releases[model_version] = (descriptor, dict(manifest), weights)
+        self._releases[model_version] = (descriptor, copy.deepcopy(manifest), weights)
         self._manifest_hash = manifest["manifest_hash"]
         self._latest = model_version  # published last
         return dict(descriptor)
@@ -83,7 +87,7 @@ class ModelRegistry:
         return dict(self._entry(model_version)[0])
 
     def manifest(self, model_version: str) -> Payload:
-        return dict(self._entry(model_version)[1])
+        return copy.deepcopy(self._entry(model_version)[1])  # the nested tensor list must not be shared
 
     def weights(self, model_version: str) -> bytes:
         return self._entry(model_version)[2]
@@ -147,6 +151,11 @@ class SyntheticRound:
         self.expire()
         if seller_id not in self.cohort:
             raise ContractError("FORBIDDEN")
+        # validate before hashing: canonical_json refuses NaN/Infinity with a bare ValueError
+        check_contract("round_submission.v1", submission)
+        if not isinstance(payload, (bytes, bytearray)):
+            raise ContractError("SCHEMA_INVALID")
+        payload = bytes(payload)
         digest = hashlib.sha256(ids.canonical_json(submission) + b"\0" + payload).hexdigest()
         slot = self._slots.get(seller_id)
         if slot is not None:
@@ -161,7 +170,11 @@ class SyntheticRound:
         if not completed:
             self._discard()
         elif len(self._slots) == len(self.cohort):
-            self._aggregate()
+            try:
+                self._aggregate()
+            except BaseException:
+                self._discard()  # never leave a full, open round holding deltas
+                raise
         return self.result(seller_id)
 
     def result(self, seller_id: str) -> Payload:
@@ -216,7 +229,11 @@ class SyntheticRound:
         base = self._registry.tensors(self.config["model_version"])
         mean = {name: np.mean([slot.delta[name].astype(np.float64) for slot in self._slots.values()], axis=0)
                 for name in base}
-        new = {name: (base[name].astype(np.float64) + mean[name]).astype(np.float32) for name in base}
+        with np.errstate(over="ignore"):
+            new = {name: (base[name].astype(np.float64) + mean[name]).astype(np.float32) for name in base}
+        if not all(np.isfinite(array).all() for array in new.values()):
+            self._discard()  # float32 overflow: no valid model to publish, keep the last one
+            return
         weights_sha = hashlib.sha256(encode_npz(new)).hexdigest()
         version = "model-" + hashlib.sha256(
             ids.canonical_json([self.config["model_version"], self.round_id, weights_sha])).hexdigest()[:16]

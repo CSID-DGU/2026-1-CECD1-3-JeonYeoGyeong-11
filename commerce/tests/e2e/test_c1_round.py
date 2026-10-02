@@ -210,6 +210,63 @@ class ManifestAndTensorChecks(_RoundCase):
         self.assertEqual(self.code(self.registry.release, "missing"), "NOT_FOUND")
 
 
+class FailureModes(_RoundCase):
+    def test_float32_overflow_discards_the_round_instead_of_publishing(self):
+        huge = {name: np.full(array.shape, 3e38, np.float32) for name, array in dummy.base_tensors(self.manifest).items()}
+        self.registry = ModelRegistry()
+        self.registry.register("model-0", self.manifest, huge)
+        rnd = self.new_round()
+        for seller in SELLERS:
+            ack = rnd.submit(seller, *self.submission(seller, offset=3e38))
+        self.assertEqual(ack["disposition"], "round_discarded")
+        self.assertEqual(rnd.state, "discarded")
+        self.assertTrue(all(slot.delta is None for slot in rnd._slots.values()))
+        self.assertEqual(self.registry.latest()["model_version"], "model-0")
+
+    def test_an_unexpected_aggregation_error_still_closes_the_round(self):
+        rnd = self.new_round()
+        for seller in SELLERS[:-1]:
+            rnd.submit(seller, *self.submission(seller))
+
+        def broken(*_args, **_kwargs):
+            raise RuntimeError("disk full")
+
+        self.registry.register = broken
+        with self.assertRaises(RuntimeError):
+            rnd.submit(SELLERS[-1], *self.submission(SELLERS[-1]))
+        self.assertEqual(rnd.state, "discarded")
+        self.assertTrue(all(slot.delta is None for slot in rnd._slots.values()))
+        self.assertEqual(rnd.result(SELLERS[-1])["disposition"], "round_discarded")
+
+    def test_non_finite_or_non_json_submission_is_a_contract_error(self):
+        rnd = self.new_round()
+        submission, payload = self.submission("seller-a")
+        nan = copy.deepcopy(submission)
+        nan["aggregate_metrics"]["loss_mean"] = float("nan")
+        self.assertEqual(self.code(rnd.submit, "seller-a", nan, payload), "SCHEMA_INVALID")
+        self.assertEqual(self.code(rnd.submit, "seller-a", submission, "not bytes"), "SCHEMA_INVALID")
+        self.assertEqual(rnd.submit("seller-a", submission, payload)["disposition"], "accepted_on_time")
+
+    def test_only_float32_manifests_are_registered_or_decoded(self):
+        other = copy.deepcopy(self.manifest)
+        other["tensors"][0]["dtype"] = "int64"
+        other["manifest_hash"] = ids.manifest_hash(other)
+        self.assertEqual(self.code(ModelRegistry().register, "model-i", other, dummy.base_tensors(self.manifest)),
+                         "TENSOR_SET_MISMATCH")
+        self.assertEqual(self.code(decode_npz, encode_npz(dummy.base_tensors(self.manifest)), other["tensors"]),
+                         "TENSOR_SET_MISMATCH")
+
+    def test_a_registered_release_cannot_be_changed_through_a_manifest_reference(self):
+        original = copy.deepcopy(self.manifest)
+        registry = ModelRegistry()
+        registry.register("model-0", original, dummy.base_tensors(original))
+        original["tensors"].append({"name": "shared.extra", "shape": [1], "dtype": "float32"})
+        returned = registry.manifest("model-0")
+        returned["tensors"].clear()
+        self.assertEqual(registry.manifest("model-0"), self.manifest)
+        self.assertEqual(sorted(registry.tensors("model-0")), sorted(spec["name"] for spec in self.manifest["tensors"]))
+
+
 class NpzRules(unittest.TestCase):
     def setUp(self):
         self.specs = dummy.dummy_manifest()["tensors"]
