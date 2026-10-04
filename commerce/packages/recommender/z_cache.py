@@ -27,10 +27,12 @@ def preprocessing_version(sources: Sequence[Path] = PREPROCESSING_SOURCES) -> st
 
 
 class ZCache:
-    def __init__(self, path: str | Path, encoder: FrozenTextEncoder, model_dir: str | Path, *,
-                 preprocessing: str | None = None):
+    def __init__(self, path: str | Path, encoder: FrozenTextEncoder, model_dir: str | Path | None, *,
+                 preprocessing: str | None = None, text_artifact_hash: str | None = None):
+        """encoder needs .dim and .encode(texts). A caller that has hashed the artifact already
+        (the seller runtime) passes text_artifact_hash and no model_dir."""
         self.encoder = encoder
-        self.text_artifact_hash = artifact_hash(model_dir, encoder.spec)
+        self.text_artifact_hash = text_artifact_hash or artifact_hash(model_dir, encoder.spec)
         self.preprocessing_version = preprocessing or preprocessing_version()
         # Several runs share one cache: a writer waits for the others instead of failing at once.
         self._db = sqlite3.connect(str(path), timeout=300)

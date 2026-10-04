@@ -7,6 +7,8 @@
 - `gci_protocol.py`: GCI 논문의 평가 조건(상품 단위 5개 창, 무작위 분할). `--protocol gci`로 두 실행기에 쓰는 추가 범위 재현이며 본 결과를 대신하지 않는다.
 - `gci_original.py`: GCI 원 모델(상품명 생성 + Jaccard 매칭, glocal FL)을 같은 조건에서 재현한다. 단독 학습·FL·데이터 통합 학습을 논문 Table 4처럼 낸다. 추가 범위다.
 - `d0022_report.py`: 실행 기록을 모아 결과표와 1차 대비의 판매자 단위 paired bootstrap 구간을 Markdown으로 낸다.
+- `release_bundle.py`: lm 계열 FL 실행의 공유 가중치를 서비스 첫 release 폴더(release.json·manifest.json·weights.npz와 출처 provenance.json)로 만든다. 실행의 텍스트 artifact·전처리가 지금 코드와 다르면 거부한다.
+- `service_check.py`: 보류 판매자를 실제 판매자 runtime에 넣어(카탈로그·마지막 방문 전까지의 이벤트) release 설치 전후의 추천을 마지막 방문으로 채점하고 지연을 잰다. 서비스 경로 점검이며 D0022 표가 아니다.
 
 `scoring.py`는 A의 `metrics/`가 들어오기 전까지 쓰는 같은 정의의 임시 채점이며, 그 결과는 A 모듈로 다시 채점한 뒤 보고한다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
 작업 순서는 [B 카드](../../docs/team/tasks/B.md)를 따른다. 손실 함수와 예제별 특징 cutoff는 본 학습 전에 확정한다([열린 구현 항목](../../docs/design/open-questions.md)).
