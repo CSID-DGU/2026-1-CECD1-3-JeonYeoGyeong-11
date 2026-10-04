@@ -5,7 +5,9 @@ fixed seed, never from Dunnhumby or Instacart. Three cohort sellers sell the sam
 kind of grocery catalog; a fourth seller (NEW_SELLER) has its own catalog that
 shares no product with them and takes no part in any round (C card: "미참여·
 비중복 카탈로그의 네 번째 판매자"). Baskets repeat favourite items and fixed
-pairs, so the relation tables are not empty.
+pairs, so the relation tables are not empty, and most baskets hold the seller's
+staples, a pattern every customer shares, so personalization has something to
+learn that also holds for its validation customers.
 
 For CI the runtime opens with TINY_ARCHITECTURES and FakeText (a hash vector per
 text) instead of the 384-wide MiniLM; the API and file layout are the real ones.
@@ -41,6 +43,7 @@ HOUSEHOLD = ["주방세제 1L", "키친타월 4롤", "수세미 3개", "지퍼�
 # Pairs bought together, and an item bought the visit after another (relation inputs).
 PAIRS = [(0, 1), (3, 2), (5, 6), (8, 9), (12, 22)]
 NEXT = [(13, 14), (16, 17)]
+STAPLES = (0, 7)  # bought on most visits by every customer (milk and eggs, cleaner for the new seller)
 NEW_ITEM = "g3-item-new"  # listed, never bought until new_item_purchase() (G3 신상품 검사)
 
 TINY_ARCHITECTURES = {
@@ -109,6 +112,7 @@ def _seller(seller: str, names: list[str], category: str, prefix: str, customers
         previous = []
         for v in range(visits):
             items = set(favourite) | set(rng.sample(range(len(ids)), 2))
+            items |= {i for i in STAPLES if i < len(ids) and rng.random() < 0.8}
             for a, b in PAIRS:
                 if a < len(ids) and b < len(ids) and (a in items or rng.random() < 0.15):
                     items |= {a, b}
