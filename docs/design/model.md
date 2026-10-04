@@ -48,6 +48,8 @@ text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revis
 | shared.query_proj | 고객 query |
 | shared.scorer | 로컬 후보 상품 공통 점수 |
 
+**서비스 구조는 [결정](decisions.md) D0024를 따른다.** D0022 뼈대의 lm 표현(text_only = harex.T_lm.v1, text_relation = harex.R_lm.v1)이며, 공유 그룹은 text_proj·fusion·position·sequence·query_proj·scorer와 text_relation의 time_mlp·relation_mlp·relation_pool이다. 아래 표와 §6의 basket_encoder·seq_time_pos·d_model 64·2층은 초기 후보 구조로 남긴 기록이다. 그룹 수(6·9)와 관계 경로·개인화 대상은 같다.
+
 위 9개는 text_relation의 그룹이다. text_only는 time_mlp/relation_mlp/relation_pool을 제외한 6개를 사용하며 l=0인 Fusion을 처음부터 학습한다([모델 비교](comparison.md) §2). 이름은 그룹이며 실제 export는 shared.relation_mlp_l0_w처럼 평탄한 층별 키다. 텐서 key·shape·dtype은 variant별 B manifest로 고정하고 C는 해당 목록만 검증한다. 기본 shared dtype은 float32, 정규화는 LayerNorm. 고정 상품 ID별 출력행·공유 상품 ID embedding table은 쓰지 않는다.
 
     z[c] = frozen_text(build_product_text(c))
