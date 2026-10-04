@@ -10,10 +10,10 @@ architecture_version is the manifest's integer name for one registered config.
 A number never changes meaning once used; a changed config gets a new number.
 
 Tensors cross the boundary under flat names, shared.<state_dict key with dots as
-underscores>, in the model's own parameter order. Weight files are a canonical
-npz: stored (uncompressed) zip members in manifest order with fixed timestamps,
-so the same tensors always give the same bytes and weights_sha256 can be checked
-from the tensors alone.
+underscores>, in the model's own parameter order. B writes its weight files as a
+canonical npz: stored (uncompressed) zip members in manifest order with fixed
+timestamps, so the same tensors always give the same bytes. A file C serves may
+be encoded otherwise; C's client checks those bytes before install_release.
 """
 from dataclasses import dataclass
 import hashlib

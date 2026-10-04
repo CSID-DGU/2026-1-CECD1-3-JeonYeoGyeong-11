@@ -5,8 +5,9 @@ seller's job thread calls train_round and install_release through C's client.
 
 - Features: feature_store.FeatureStore (features.sqlite) is the only ledger. The
   frozen text vectors z live in the same file (z_cache).
-- Models: models/base/{variant}/{model_version}/ holds release.json, manifest.json
-  and weights.npz; models/base/{variant}/CURRENT names the serving base. A release
+- Models: models/base/{variant}/{model_version}/ holds release.json, manifest.json,
+  weights.npz (B's canonical copy) and local.json (that copy's hash);
+  models/base/{variant}/CURRENT names the serving base. A release
   is written to a temporary directory, renamed into place, and only then made
   CURRENT and swapped in memory, so a failure leaves the old base serving.
 - Serving: a request pins one snapshot and one model handle when it starts.
@@ -293,9 +294,11 @@ class SellerRuntime:
         folder = self._base_dir(variant) / version
         release = json.loads((folder / "release.json").read_text(encoding="utf-8"))
         manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+        local = json.loads((folder / "local.json").read_text(encoding="utf-8"))
         data = (folder / "weights.npz").read_bytes()
-        if release.get("model_version") != version or len(data) != release["weights_size_bytes"] \
-                or _sha256(data) != release["weights_sha256"]:
+        # The file is B's own canonical copy; local.json holds its hash (release.weights_sha256
+        # names the bytes C served, which B never sees).
+        if release.get("model_version") != version or _sha256(data) != local["weights_sha256"]:
             raise ContractError("MANIFEST_MISMATCH", "/weights_sha256")
         self._check_manifest(variant, manifest, release)
         tensors = read_npz(data, manifest)
@@ -315,6 +318,9 @@ class SellerRuntime:
 
     def install_release(self, release: Payload, manifest: Payload, tensors: TensorMap, *,
                         model_variant: ModelVariant = "text_relation") -> None:
+        """Install decoded release tensors. C's fl_client (verify_release) has already checked the
+        downloaded bytes against release.weights_sha256; B checks the descriptor and manifest
+        against its own package and every tensor's name, shape, dtype and finiteness."""
         check_payload("model_release.v1", release)
         check_payload("shared_model_manifest.v1", manifest)
         arch = self._arch(model_variant)
@@ -322,8 +328,6 @@ class SellerRuntime:
         tensors = {name: np.asarray(array) for name, array in tensors.items()}
         check_tensors(manifest, tensors)
         data = canonical_npz(tensors, [t["name"] for t in manifest["tensors"]])
-        if len(data) != release["weights_size_bytes"] or _sha256(data) != release["weights_sha256"]:
-            raise ContractError("MANIFEST_MISMATCH", "/weights_sha256")
         version = release["model_version"]
         base_dir = self._base_dir(model_variant)
         final = base_dir / version
@@ -345,6 +349,7 @@ class SellerRuntime:
                     (staging / "weights.npz").write_bytes(data)
                     (staging / "manifest.json").write_bytes(canonical_json(manifest))
                     (staging / "release.json").write_bytes(canonical_json(release))
+                    (staging / "local.json").write_bytes(canonical_json({"weights_sha256": _sha256(data)}))
                     os.replace(staging, final)
                 except BaseException:
                     shutil.rmtree(staging, ignore_errors=True)

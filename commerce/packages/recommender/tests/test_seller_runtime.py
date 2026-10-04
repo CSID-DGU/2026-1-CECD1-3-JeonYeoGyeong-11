@@ -301,9 +301,9 @@ class ReleaseTest(Base):
         bad[name].flat[0] = np.nan
         with self.assertRaises(ContractError):
             self.runtime.install_release(release, manifest, bad, model_variant="text_relation")
-        wrong_hash = dict(release, weights_sha256="0" * 64)
+        wrong_manifest = dict(release, manifest_hash="0" * 64)
         with self.assertRaises(ContractError) as caught:
-            self.runtime.install_release(wrong_hash, manifest, tensors, model_variant="text_relation")
+            self.runtime.install_release(wrong_manifest, manifest, tensors, model_variant="text_relation")
         self.assertEqual(caught.exception.code, "MANIFEST_MISMATCH")
         missing = {k: v for k, v in tensors.items() if k != name}
         with self.assertRaises(ContractError) as caught:
@@ -311,6 +311,25 @@ class ReleaseTest(Base):
         self.assertEqual(caught.exception.code, "TENSOR_SET_MISMATCH")
         self.assertEqual(self.runtime.predict_local(request("cust-04", late)), served)
         self.assertEqual(self.open().predict_local(request("cust-04", late)), served)
+
+    def test_a_release_c_encoded_with_np_savez_installs(self):
+        """C's registry writes np.savez bytes and its client checks them; B gets the decoded tensors."""
+        import io
+        self.fill()
+        _, manifest, tensors = release_for(self.runtime, "text_relation", "base-c")
+        buffer = io.BytesIO()
+        np.savez(buffer, **tensors)
+        data = buffer.getvalue()
+        release = {"schema_version": "model_release.v1", "model_version": "base-c",
+                   "manifest_hash": manifest["manifest_hash"], "weights_sha256": hashlib.sha256(data).hexdigest(),
+                   "weights_size_bytes": len(data)}
+        with np.load(io.BytesIO(data), allow_pickle=False) as archive:
+            decoded = {k: archive[k] for k in archive.files}
+        self.runtime.install_release(release, manifest, decoded, model_variant="text_relation")
+        self.runtime.install_release(release, manifest, decoded, model_variant="text_relation")  # repeated
+        late = START + timedelta(days=60)
+        self.assertEqual(self.runtime.predict_local(request("cust-02", late))["model_version"], "base-c")
+        self.assertEqual(self.open().predict_local(request("cust-02", late))["model_version"], "base-c")
 
     def test_a_release_for_the_other_variant_is_rejected(self):
         release, manifest, tensors = release_for(self.runtime, "text_only", "base-1")
