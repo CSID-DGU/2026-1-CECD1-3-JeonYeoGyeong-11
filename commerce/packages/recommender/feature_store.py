@@ -13,13 +13,16 @@ normal return means the change is durable (A then marks its outbox row delivered
   local_data_ref pins for a training round.
 
 Each call opens its own connection: A's request threads and the seller's job
-thread share the store, and sqlite3 connections are per thread.
+thread share the store, and sqlite3 connections are per thread. Nothing at an
+epoch ever changes, so the latest snapshot read is kept and reused until the
+epoch moves.
 """
 from contextlib import contextmanager
 from dataclasses import dataclass
 import json
 from pathlib import Path
 import sqlite3
+import threading
 from typing import Iterator
 
 from commerce.packages.contracts.errors import ContractError
@@ -50,6 +53,8 @@ class FeatureStore:
         self.path = Path(path)
         self.seller_id = seller_id
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.Lock()
+        self._last: Snapshot | None = None
         with self._connect() as db:
             db.execute("PRAGMA journal_mode=WAL")
             for statement in SCHEMA:
@@ -155,6 +160,11 @@ class FeatureStore:
             elif not 0 <= epoch <= current:
                 db.execute("ROLLBACK")
                 raise ContractError("NOT_FOUND")
+            with self._lock:
+                last = self._last
+            if last is not None and last.epoch == epoch:
+                db.execute("COMMIT")
+                return last
             events = db.execute("SELECT body FROM events WHERE epoch <= ? ORDER BY epoch", (epoch,)).fetchall()
             rows = db.execute(
                 "SELECT c.item_id_local, c.body FROM catalog_versions c JOIN ("
@@ -163,4 +173,8 @@ class FeatureStore:
                 (epoch,)).fetchall()
             db.execute("COMMIT")
         baskets = tuple(basket_from_event(json.loads(body)) for (body,) in events)
-        return Snapshot(epoch, baskets, {item_id: json.loads(body) for item_id, body in rows})
+        snap = Snapshot(epoch, baskets, {item_id: json.loads(body) for item_id, body in rows})
+        with self._lock:
+            if self._last is None or self._last.epoch <= epoch:
+                self._last = snap
+        return snap
