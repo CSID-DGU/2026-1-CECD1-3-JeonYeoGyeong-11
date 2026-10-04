@@ -29,7 +29,8 @@ Instacart는 prior만 사용한다. 공식 train/test를 이 프로젝트의 시
 | --- | --- | --- |
 | The Complete Journey 원출처 안내 | [dunnhumby Source Files](https://www.dunnhumby.com/source-files/) | 2년·2,500가구로 소개하는 원자료 안내. 아래 R 배포판과 동일 파일·기간이라고 가정하지 않는다 |
 | 현재 Dunnhumby 분석의 배포판 | [completejourney 공식 문서](https://bradleyboehmke.github.io/completejourney/)·[관리자 저장소](https://github.com/bradleyboehmke/completejourney) | 기존 분석 기록은 이 R 배포판을 사용했다고 명시한다. 배포판은 출처를 84.51°로 밝히며 1년·2,469가구를 설명한다 |
-| Instacart 2017 | [기존 공식 대회 주소](https://www.kaggle.com/c/instacart-market-basket-analysis/data)·[현재 Kaggle Market Basket Analysis 데이터 페이지](https://www.kaggle.com/competitions/basket-analysis/data) | 기존 기록에는 미러 검증이 있으나 정확한 취득 미러 URL·버전은 미확인이다. 이번 확인에서 기존 주소의 본문을 읽지 못했고 현재 페이지의 다운로드 가능 여부·이용 조건도 확인하지 못했다. B가 계정으로 접근해 실제 취득 경로를 기록한다 |
+| Instacart 2017 원출처 | [Instacart 공개 글](https://tech.instacart.com/3-million-instacart-orders-open-sourced-d40d29ead6f2)·[기존 공식 대회 주소](https://www.kaggle.com/c/instacart-market-basket-analysis/data)·[현재 대회 페이지](https://www.kaggle.com/competitions/basket-analysis/data) | 원 조건은 "as-is, 비상업적 사용"이다. 2026-09-28 확인: 대회 페이지의 데이터는 호스트 요청으로 삭제돼 `sample_submission.csv`만 남았고, Instacart의 원 배포 주소는 404/403이다 |
+| 현재 Instacart 분석의 배포판 | [Kaggle 미러 psparks/instacart-market-basket-analysis](https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis) Version 1 | 2026-09-28에 `archive.zip`(207,073,669 B)을 받았다. 올린 사람의 CC0 표시는 원 제공자의 허락이 아니므로 원 조건을 따른다. 파일별 크기·SHA-256은 Git 제외 실행 기록에 있다. 행 수(orders 3,421,083 / prior lines 32,434,489 / products 49,688)와 파일 크기가 이전 기록과 같다. 이전 파일의 해시 기록이 없어 같은 파일인지는 확정하지 않았다 |
 
 Complete Journey는 `transactions_sample`을 전체 데이터 대신 사용하지 않는다. 관리자 문서의 [get_transactions()](https://bradleyboehmke.github.io/completejourney/reference/get_transactions.html)와 [products](https://bradleyboehmke.github.io/completejourney/reference/products.html)를 기준으로 준비하고, 사용한 패키지 버전·저장소 commit 또는 실제 다운로드 URL을 고정한다. 공식 CSV 원본을 받았다면 기존 R 파일과의 변환·기간 차이를 확인하고 이전 분석 수치를 그대로 재사용하지 않는다.
 
@@ -77,7 +78,7 @@ Instacart 첫 주문의 누적 상대일은 0, 이후 days_since_prior_order를 
 
 - NFC·공백 정리, 결측 필드는 생략. 모든 필드가 비면 오류/격리하고 빈 벡터를 성공으로 반환하지 않는다.
 - 한국어와 영어, 규격의 소수·분수·단위를 보존한다. 비ASCII 삭제 금지. 소문자화는 선택 인코더 규칙에 따른다.
-- null을 문자열 "nan"/"None"으로 만들지 않는다.
+- null을 문자열 "nan"/"None"으로 만들지 않는다. Instacart의 aisle·department 이름 `missing`(aisle 100·department 21, 같은 1,258개 상품)은 원자료의 결측 표시이므로 결측으로 생략한다.
 - 원문·정규화 후·token truncation 후의 중복률, 결측률, 한국어 보존을 측정한다.
 - 마커는 기본 tokenizer의 일반 문자열로 처리한다. 새 special token을 frozen 모델에 임의 추가하지 않는다.
 - 정확한 checkpoint/revision, tokenizer, pooling, 길이·차원은 [모델 경계](model.md) §2의 B 산출물이다.
