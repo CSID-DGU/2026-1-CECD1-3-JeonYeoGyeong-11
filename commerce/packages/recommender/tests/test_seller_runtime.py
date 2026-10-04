@@ -576,6 +576,19 @@ class PersonalizationTest(Base):
         with self.assertRaises(ValueError):
             self.personalize(unknown_key=1)
 
+    def test_the_config_seed_never_picks_the_validation_customers(self):
+        from commerce.packages.recommender.seller_runtime import PERSONAL_SPLIT_SEED
+        seen = []
+        original = self.runtime.training_parts
+
+        def spy(epoch, variant, run_seed):
+            seen.append(run_seed)
+            return original(epoch, variant, run_seed)
+        self.runtime.training_parts = spy
+        self.personalize(seed=11)
+        self.personalize(variant="text_only", seed=12)
+        self.assertEqual(seen, [PERSONAL_SPLIT_SEED, PERSONAL_SPLIT_SEED])
+
     def test_compare_pins_one_snapshot_and_reports_each_arm(self):
         self.personalize(variant="text_relation")
         self.personalize(variant="text_only", lr=0.0)  # rejected: T-P says why

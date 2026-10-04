@@ -128,7 +128,7 @@ def _seller(seller: str, names: list[str], category: str, prefix: str, customers
 
 
 def scenario() -> Scenario:
-    sellers = {s: _seller(s, GROCERY, "식품", "%s-item" % s.rsplit("-", 1)[1], customers=12, visits=7,
+    sellers = {s: _seller(s, GROCERY, "식품", "%s-item" % s.rsplit("-", 1)[1], customers=30, visits=7,
                           seed=10 + k, with_new_item=True) for k, s in enumerate(COHORT)}
     sellers[NEW_SELLER] = _seller(NEW_SELLER, HOUSEHOLD, "생활용품", "new-item", customers=6, visits=4, seed=99,
                                   with_new_item=False)

@@ -72,7 +72,10 @@ VALIDATION_SHARE = 10  # one customer in ten (model.md §6)
 WEIGHT_DECAY = 0.01
 CLIP_NORM = 1.0
 # Personalization starting values; the same for both variants (model.md §8.1). Keys of
-# personal_config override them; any other key is an error.
+# personal_config override them; any other key is an error. "seed" drives the training
+# randomness only: the validation customers come from PERSONAL_SPLIT_SEED, fixed per
+# seller, so no config can pick the customers its own result is judged on.
+PERSONAL_SPLIT_SEED = 0
 DEFAULT_PERSONAL = {"steps": 40, "batch_size": 64, "lr": 1e-3, "n_neg": 200, "seed": 0,
                     "min_train_examples": 20, "min_val_examples": 5}
 ARMS = (("T-G", "text_only", "global"), ("R-G", "text_relation", "global"),
@@ -644,7 +647,7 @@ class SellerRuntime:
             if base is None:
                 raise ContractError("NOT_FOUND")
             version = base.model_version
-            train_parts, val_parts = self.training_parts(epoch, model_variant, config["seed"])
+            train_parts, val_parts = self.training_parts(epoch, model_variant, PERSONAL_SPLIT_SEED)
             n_train = sum(len(p.examples) for p in train_parts)
             n_val = sum(len(p.examples) for p in val_parts)
             if n_train < config["min_train_examples"] or n_val < config["min_val_examples"] or config["steps"] == 0:
@@ -652,13 +655,13 @@ class SellerRuntime:
                 return PersonalizationResult("skipped", "insufficient_data", version, None)
             model = build_model(arch.config)
             load_shared(model, base.tensors)
-            base_loss = validation_loss(model, val_parts, n_negatives=config["n_neg"], seed=config["seed"])
+            base_loss = validation_loss(model, val_parts, n_negatives=config["n_neg"], seed=PERSONAL_SPLIT_SEED)
             train(model, train_parts, TrainConfig(steps=config["steps"], batch_size=config["batch_size"],
                                                   n_negatives=config["n_neg"], lr=float(config["lr"]),
                                                   weight_decay=WEIGHT_DECAY, clip_norm=CLIP_NORM,
                                                   seed=config["seed"]), only=PERSONAL_GROUPS)
             model.eval()
-            personal_loss = validation_loss(model, val_parts, n_negatives=config["n_neg"], seed=config["seed"])
+            personal_loss = validation_loss(model, val_parts, n_negatives=config["n_neg"], seed=PERSONAL_SPLIT_SEED)
             after = shared_tensors(model)
             moved = tuple("shared.%s_" % group for group in PERSONAL_GROUPS)
             for name, array in base.tensors.items():  # only the two groups may have moved
