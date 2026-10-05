@@ -60,4 +60,5 @@ def open_runtime(seller_id: str, feature_db_path: str | Path, model_dir: str | P
         raise ValueError("seller_id is required")
     # Imported here: the stub and the scaffold gate must not need torch.
     from commerce.packages.recommender.seller_runtime import SellerRuntime
-    return SellerRuntime(seller_id, Path(feature_db_path), Path(model_dir))
+    # warm: z, relations and e are computed in the background, not on the first request.
+    return SellerRuntime(seller_id, Path(feature_db_path), Path(model_dir), warm=True)

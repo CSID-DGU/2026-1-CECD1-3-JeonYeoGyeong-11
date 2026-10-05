@@ -13,6 +13,10 @@ visit is then the answer to one predict_local call, first with no release
 installed (local popularity fallback), then after install_release of each
 variant. HR@10 and Recall@20 are macro over the customers.
 
+The runtime opens with warm=True as open_runtime does: after the ledger is in
+and after each install, the check waits for the background warm-up and records
+how long it took, so latency_ms_first is the first request a customer would see.
+
 This checks the whole service path on real data; it is not the D0022 table: one
 answer per customer, the last visit, relations from the whole ledger. Latency
 is wall-clock per call on this machine.
@@ -49,18 +53,25 @@ def check_seller(seller: str, events: list, catalog: list, text: FrozenText, rel
         ledger.extend(own[:-1])
     out = {"seller": seller, "customers": len(answers), "ledger_events": len(ledger), "catalog_items": len(catalog)}
     with tempfile.TemporaryDirectory() as tmp:
-        runtime = SellerRuntime(seller, Path(tmp) / "features.sqlite", Path(tmp) / "models", text=text)
+        runtime = SellerRuntime(seller, Path(tmp) / "features.sqlite", Path(tmp) / "models", text=text, warm=True)
         started = time.perf_counter()
         for seq, item in enumerate(catalog, start=1):
             runtime.upsert_catalog_item(item, seq)
         for event in ledger:
             runtime.ingest_purchase_event(event)
         out["ingest_seconds"] = round(time.perf_counter() - started, 1)
+        started = time.perf_counter()
+        runtime.wait_warm()
+        out["warm_after_ingest_seconds"] = round(time.perf_counter() - started, 1)
         arms = [("popularity", None)] + [(variant, folder) for variant, folder in releases.items()]
         for name, folder in arms:
+            warm_seconds = None
             if folder is not None:
                 release, manifest, tensors = load_bundle(folder)
                 runtime.install_release(release, manifest, tensors, model_variant=name)
+                started = time.perf_counter()
+                runtime.wait_warm()
+                warm_seconds = round(time.perf_counter() - started, 1)
             variant = name if folder is not None else "text_only"
             hits, recalls, waits, fallbacks = [], [], [], defaultdict(int)
             for customer, answer in sorted(answers.items()):
@@ -77,7 +88,9 @@ def check_seller(seller: str, events: list, catalog: list, text: FrozenText, rel
                          "fallback": dict(fallbacks),
                          "latency_ms_mean": round(1000 * statistics.fmean(waits), 1),
                          "latency_ms_first": round(1000 * waits[0], 1),
-                         "latency_ms_p95": round(1000 * sorted(waits)[int(0.95 * (len(waits) - 1))], 1)}
+                         "latency_ms_p95": round(1000 * sorted(waits)[int(0.95 * (len(waits) - 1))], 1),
+                         "warm_after_install_seconds": warm_seconds}
+        runtime.close()
     return out
 
 

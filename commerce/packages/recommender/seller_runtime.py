@@ -21,6 +21,12 @@ seller's job thread calls train_round and install_release through C's client.
   with that base; a new base serves without it until personalized again.
 - compare_local pins one snapshot, one candidate set and both variants' handles,
   then fills T-G, R-G, T-P, R-P or says why an arm is unavailable.
+- Warm-up (warm=True, which open_runtime sets): a background thread computes the
+  catalog's z, the whole-ledger relations and each installed base's e for the
+  current epoch, after opening and after every new event, catalog version or
+  release (pokes within WARM_DEBOUNCE seconds are coalesced). A request that
+  arrives meanwhile waits for that computation instead of repeating it, so the
+  first recommendation does not pay for encoding the whole catalog.
 
 Instacart-style relative-time baskets carry no calendar: the whole relative
 ledger counts as earlier than any live as_of. Absolute-time baskets count only
@@ -66,6 +72,7 @@ from commerce.packages.recommender.training import SellerData, TrainConfig, trai
 from commerce.packages.recommender.z_cache import ZCache, preprocessing_version
 
 VARIANTS: tuple[ModelVariant, ...] = ("text_only", "text_relation")
+WARM_DEBOUNCE = 0.3  # seconds without a new change before the warm-up runs
 DEFAULT_TOP_N = 10
 FALLBACK_MODEL_VERSION = "popularity.local"  # recommendation.model_version when no base is installed
 VALIDATION_SHARE = 10  # one customer in ten (model.md §6)
@@ -110,6 +117,15 @@ class Catalog:
     items: tuple[str, ...]  # items with a product text, sorted; row i of z
     z: torch.Tensor
     active: frozenset[str]  # listing_status active, with or without a text
+
+
+@dataclass
+class Prepared:
+    """Whole-ledger inputs at one epoch: every basket counts (none is at or after as_of)."""
+    epoch: int
+    catalog: Catalog
+    visits: dict[str, list[Visit]]
+    relations: RelationTensors | None = None  # built on the first text_relation use
 
 
 def _sha256(data: bytes) -> str:
@@ -193,7 +209,8 @@ class SellerRuntime:
     def __init__(self, seller_id: str, feature_db_path: str | Path, model_dir: str | Path, *,
                  text=None, encoder_dir: str | Path | None = None,
                  architectures: Mapping[int, HarexConfig] = SERVICE_ARCHITECTURES,
-                 variants: Mapping[int, str] = VARIANT_OF_ARCHITECTURE):
+                 variants: Mapping[int, str] = VARIANT_OF_ARCHITECTURE, warm: bool = False,
+                 clock=lambda: datetime.now(timezone.utc)):
         if not seller_id:
             raise ValueError("seller_id is required")
         self._seller_id = seller_id
@@ -211,11 +228,22 @@ class SellerRuntime:
         self.load_errors: dict[str, str] = {}  # variant -> why its CURRENT base did not load
         self._manifests: dict[str, Payload] = {}
         self._catalog_cache: Catalog | None = None
-        self._relation_cache: dict[int, RelationTensors] = {}  # epoch -> whole-ledger relations
+        self._prepared: Prepared | None = None
         self._e_cache: dict[tuple[str, str, int], torch.Tensor] = {}
+        self._compute = threading.RLock()  # one z / relation / e computation at a time
+        self._clock = clock  # the warm-up's "now": live requests use as_of = now
         for variant in VARIANTS:
             self._handles[variant] = self._load_current(variant)
             self._personal[variant] = self._load_personal(variant, self._handles[variant])
+        self._wake = threading.Event()
+        self._idle = threading.Event()
+        self._idle.set()
+        self._closing = False
+        self._warmer = None
+        if warm:
+            self._warmer = threading.Thread(target=self._warm_loop, name="b-warm-%s" % seller_id, daemon=True)
+            self._warmer.start()
+            self._poke()
 
     @property
     def seller_id(self) -> str:
@@ -238,6 +266,13 @@ class SellerRuntime:
         with self._state:
             if self._catalog_cache is not None and self._catalog_cache.epoch == snap.epoch:
                 return self._catalog_cache
+        with self._compute:
+            return self._encode_catalog(snap)
+
+    def _encode_catalog(self, snap: Snapshot) -> Catalog:
+        with self._state:
+            if self._catalog_cache is not None and self._catalog_cache.epoch == snap.epoch:
+                return self._catalog_cache  # another thread finished it while this one waited
         texts = {}
         for item_id, item in sorted(snap.catalog.items()):
             try:
@@ -270,10 +305,12 @@ class SellerRuntime:
     # ------------------------------------------------------------------ A: ledger
 
     def ingest_purchase_event(self, event: Payload) -> None:
-        self.store.ingest_event(event)
+        if self.store.ingest_event(event):
+            self._poke()
 
     def upsert_catalog_item(self, item: Payload, source_seq: int) -> None:
-        self.store.upsert_item(item, source_seq)
+        if self.store.upsert_item(item, source_seq):
+            self._poke()
 
     # ------------------------------------------------------------------ models on disk
 
@@ -365,6 +402,7 @@ class SellerRuntime:
             self._personal[model_variant] = self._load_personal(model_variant, handle)
             self.load_errors.pop(model_variant, None)
             self._e_cache = {k: v for k, v in self._e_cache.items() if k[0] != model_variant}
+        self._poke()
 
     def export_shared_state(self, *, model_variant: ModelVariant = "text_relation") -> TensorMap:
         self._arch(model_variant)
@@ -386,45 +424,72 @@ class SellerRuntime:
                 raise ContractError("NOT_FOUND", "/candidate_item_ids/%d" % index)
         return [i for i in ids if i in active]
 
-    def _relations(self, snap: Snapshot, catalog: Catalog, visits: Mapping[str, Sequence[Visit]],
-                   whole: bool) -> RelationTensors:
-        if whole:
+    def _prepare(self, snap: Snapshot, need_relations: bool) -> Prepared:
+        """The whole-ledger inputs of snap's epoch, computed once and shared by requests and warm-up."""
+        with self._state:
+            prepared = self._prepared
+        if prepared is None or prepared.epoch != snap.epoch:
+            with self._compute:
+                with self._state:
+                    prepared = self._prepared
+                if prepared is None or prepared.epoch != snap.epoch:
+                    catalog = self._catalog(snap)
+                    prepared = Prepared(snap.epoch, catalog, _visits(snap.baskets, set(catalog.items)))
+                    with self._state:
+                        if self._prepared is None or self._prepared.epoch <= snap.epoch:
+                            self._prepared = prepared
+        if need_relations and prepared.relations is None:
+            with self._compute:
+                if prepared.relations is None:
+                    row_of = {item: row for row, item in enumerate(prepared.catalog.items)}
+                    prepared.relations = build_relations(prepared.visits, row_of, len(prepared.catalog.items))
+        return prepared
+
+    @torch.no_grad()
+    def _item_vectors(self, arch: ServiceArchitecture, handle: ModelHandle, epoch: int, catalog: Catalog,
+                      relations: RelationTensors | None, whole: bool) -> torch.Tensor:
+        """e of every catalog item under the base; cached per variant, base and epoch for whole ledgers."""
+        key = (arch.variant, handle.model_version, epoch)
+        data = SellerData(self.seller_id, catalog.items, catalog.z, [], relations)
+        if not whole:
+            return handle.model.encode_items(data)
+        with self._state:
+            e = self._e_cache.get(key)
+        if e is not None:
+            return e
+        with self._compute:
             with self._state:
-                cached = self._relation_cache.get(snap.epoch)
-            if cached is not None:
-                return cached
-        row_of = {item: row for row, item in enumerate(catalog.items)}
-        relations = build_relations(visits, row_of, len(catalog.items))
-        if whole:
-            with self._state:
-                self._relation_cache = {snap.epoch: relations}
-        return relations
+                e = self._e_cache.get(key)
+            if e is None:
+                e = handle.model.encode_items(data)  # personalization never changes e (model.md §7)
+                with self._state:
+                    self._e_cache = {k: v for k, v in self._e_cache.items() if k[0] != arch.variant}
+                    self._e_cache[key] = e
+        return e
 
     @torch.no_grad()
     def _model_scores(self, arch: ServiceArchitecture, handle: ModelHandle, model: HarexRecommender,
-                      snap: Snapshot, catalog: Catalog, before: Sequence[LocalBasket], customer: str
-                      ) -> dict[str, float] | None:
+                      snap: Snapshot, before: Sequence[LocalBasket], customer: str) -> dict[str, float] | None:
         """Scores over the catalog for one customer, or None when the customer has nothing to read."""
-        known = set(catalog.items)
-        visits = _visits(before, known)
+        whole = len(before) == len(snap.baskets)
+        if whole:
+            prepared = self._prepare(snap, arch.config.relation)
+            catalog, visits, relations = prepared.catalog, prepared.visits, prepared.relations
+        else:
+            catalog = self._catalog(snap)
+            visits = _visits(before, set(catalog.items))
+            relations = None
+            if arch.config.relation:
+                row_of = {item: row for row, item in enumerate(catalog.items)}
+                relations = build_relations(visits, row_of, len(catalog.items))
         own = visits.get(customer)
         if not own:
             return None
         example = query_example(own)
         if not any(v.items for v in example.history):
             return None
-        whole = len(before) == len(snap.baskets)
-        relations = self._relations(snap, catalog, visits, whole) if arch.config.relation else None
+        e = self._item_vectors(arch, handle, snap.epoch, catalog, relations, whole)
         data = SellerData(self.seller_id, catalog.items, catalog.z, [example], relations)
-        key = (arch.variant, handle.model_version, snap.epoch)
-        with self._state:
-            e = self._e_cache.get(key) if whole else None
-        if e is None:
-            e = handle.model.encode_items(data)  # personalization never changes e (model.md §7)
-            if whole:
-                with self._state:
-                    self._e_cache = {k: v for k, v in self._e_cache.items() if k[0] != arch.variant}
-                    self._e_cache[key] = e
         q = model.encode_queries(e, [example], data)
         scores = model.score(q, e)[0]
         if not torch.isfinite(scores).all():
@@ -462,7 +527,7 @@ class SellerRuntime:
         elif not before:
             fallback = "no_seller_history"
         else:
-            scores = self._model_scores(arch, handle, model, snap, self._catalog(snap), before, customer)
+            scores = self._model_scores(arch, handle, model, snap, before, customer)
             if scores is None:
                 fallback = "no_customer_history"
         if fallback is not None:
@@ -492,6 +557,63 @@ class SellerRuntime:
         candidates = self._candidates(request, snap)
         top_n = request["top_n"] if request["top_n"] is not None else DEFAULT_TOP_N
         return self._recommend(request, snap, arch, handle, model, version, candidates, top_n)
+
+    # ------------------------------------------------------------------ warm-up
+
+    def _poke(self) -> None:
+        if self._warmer is not None:
+            self._idle.clear()
+            self._wake.set()
+
+    def _warm_loop(self) -> None:
+        while True:
+            self._wake.wait()
+            while True:  # let a burst of changes settle first
+                self._wake.clear()
+                if self._closing:
+                    return
+                if not self._wake.wait(WARM_DEBOUNCE):
+                    break
+            try:
+                self.warm_up()
+            except Exception as error:  # a request then computes what it needs itself
+                self.load_errors["warm"] = "%s: %s" % (type(error).__name__, error)
+            if not self._wake.is_set():
+                self._idle.set()
+
+    def warm_up(self) -> None:
+        """Compute z, relations and every installed base's e for the current epoch now."""
+        snap = self.store.snapshot()
+        if not snap.catalog:
+            return
+        try:
+            self._frozen_text()
+        except FileNotFoundError:
+            return  # no frozen encoder installed: nothing can be scored yet
+        with self._state:
+            handles = [(variant, handle) for variant, handle in self._handles.items() if handle is not None]
+        now = self._clock()
+        if not handles or not all(_before(b, now) for b in snap.baskets):
+            self._catalog(snap)  # z at least; requests with a later cut compute the rest themselves
+            return
+        prepared = self._prepare(snap, any(self._arch(v).config.relation for v, _ in handles))
+        for variant, handle in handles:
+            arch = self._arch(variant)
+            self._item_vectors(arch, handle, snap.epoch, prepared.catalog,
+                               prepared.relations if arch.config.relation else None, True)
+
+    def wait_warm(self, timeout: float | None = None) -> bool:
+        """True once the warm-up has caught up with every change so far (always True without warm=True)."""
+        return self._idle.wait(timeout)
+
+    def close(self) -> None:
+        """Stop the warm-up thread; the runtime still answers, computing on demand."""
+        if self._warmer is not None:
+            self._closing = True
+            self._wake.set()
+            self._warmer.join(timeout=30)
+            self._warmer = None
+            self._idle.set()
 
     # ------------------------------------------------------------------ C: training
 

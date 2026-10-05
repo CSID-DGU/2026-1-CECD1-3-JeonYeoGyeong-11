@@ -473,6 +473,79 @@ class TrainRoundTest(Base):
         self.assertEqual(planned_steps(0, config), 0)
 
 
+class WarmUpTest(Base):
+    """open_runtime's warm=True: the first request finds z, relations and e already computed."""
+
+    def tearDown(self):
+        for runtime in getattr(self, "warm_runtimes", []):
+            runtime.close()  # stop the thread before the folder goes
+        super().tearDown()
+
+    def open_warm(self) -> SellerRuntime:
+        runtime = SellerRuntime(SELLER, self.root / "features.sqlite", self.root / "models", text=self.text,
+                                architectures=TINY, warm=True, clock=lambda: START + timedelta(days=90))
+        self.warm_runtimes = getattr(self, "warm_runtimes", []) + [runtime]
+        return runtime
+
+    def test_the_first_request_after_warm_up_computes_nothing(self):
+        self.fill()
+        self.install(version="base-1")
+        warm = self.open_warm()
+        self.assertTrue(warm.wait_warm(30))
+        key = ("text_relation", "base-1", warm.store.feature_epoch)
+        self.assertIn(key, warm._e_cache)
+        cached, calls = warm._e_cache[key], self.text.calls
+        served = warm.predict_local(request("cust-03", START + timedelta(days=60)))
+        self.assertIsNone(served["fallback_reason"])
+        self.assertEqual(self.text.calls, calls)  # no text encoded on the request
+        self.assertIs(warm._e_cache[key], cached)  # e not recomputed either
+        self.assertEqual(served, self.open().predict_local(request("cust-03", START + timedelta(days=60))))
+
+    def test_a_new_event_or_release_is_warmed_again(self):
+        self.fill()
+        warm = self.open_warm()
+        self.assertTrue(warm.wait_warm(30))
+        release, manifest, tensors = release_for(warm, "text_only", "base-t")
+        warm.install_release(release, manifest, tensors, model_variant="text_only")
+        self.assertTrue(warm.wait_warm(30))
+        self.assertIn(("text_only", "base-t", warm.store.feature_epoch), warm._e_cache)
+        warm.ingest_purchase_event(event("cust-00", "late-1", START + timedelta(days=50), [1, 2]))
+        self.assertTrue(warm.wait_warm(30))
+        self.assertIn(("text_only", "base-t", warm.store.feature_epoch), warm._e_cache)
+
+    def test_without_warm_there_is_no_thread_and_close_is_safe(self):
+        self.assertIsNone(self.runtime._warmer)
+        self.assertTrue(self.runtime.wait_warm(0))
+        self.runtime.close()
+        warm = self.open_warm()
+        warm.close()
+        self.assertIsNone(warm._warmer)
+        self.fill(runtime=warm)  # still answers, computing on demand
+        self.assertEqual(warm.predict_local(request("cust-01", START + timedelta(days=60)))["fallback_reason"],
+                         "no_shared_model")
+
+    def test_events_after_now_leave_the_rest_to_the_request(self):
+        self.fill()
+        self.install(version="base-1")
+        early = SellerRuntime(SELLER, self.root / "features.sqlite", self.root / "models", text=self.text,
+                              architectures=TINY, warm=True, clock=lambda: START + timedelta(days=10))
+        self.warm_runtimes = [early]
+        self.assertTrue(early.wait_warm(30))
+        self.assertEqual(early._e_cache, {})  # z only: a live request cuts the ledger at its own as_of
+        self.assertIsNotNone(early._catalog_cache)
+
+    def test_open_runtime_warms_and_copes_without_an_encoder(self):
+        from commerce.packages.recommender.runtime import open_runtime
+        runtime = open_runtime(SELLER, self.root / "f2.sqlite", self.root / "m2")
+        self.warm_runtimes = [runtime]
+        self.assertIsNotNone(runtime._warmer)
+        self.fill(runtime=runtime)
+        self.assertTrue(runtime.wait_warm(30))
+        self.assertNotIn("warm", runtime.load_errors)
+        self.assertEqual(runtime.predict_local(request("cust-01", START + timedelta(days=60)))["fallback_reason"],
+                         "no_shared_model")
+
+
 class BundleTest(Base):
     def test_a_lab_run_becomes_an_installable_release(self):
         import json
