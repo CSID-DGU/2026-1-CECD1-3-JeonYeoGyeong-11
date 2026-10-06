@@ -8,3 +8,7 @@ httpx>=0.27,<1
 # templates for commerce/apps/buyer/, commerce/apps/seller/.
 jinja2>=3.1,<4
 python-multipart>=0.0.9,<1
+# B: frozen text encoder and recommender model. The CPU index keeps CUDA wheels out (OQ18).
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch>=2.13,<2.14
+transformers>=5.17,<6
