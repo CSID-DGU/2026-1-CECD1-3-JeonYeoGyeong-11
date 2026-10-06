@@ -32,6 +32,24 @@ COLUMNS = {
 MISSING_LABEL = "missing"
 
 
+def train_cutoff(n_prior: int) -> int:
+    """Last train order_number of a customer with n prior orders: floor(0.7 n) (evaluation.md §2)."""
+    return 7 * n_prior // 10  # integer form: 0.7 * n in floats can land just below an integer
+
+
+def validation_cutoff(n_prior: int) -> int:
+    """Last validation order_number: floor(0.8 n). Later orders are test."""
+    return 8 * n_prior // 10
+
+
+def split_role(order_number: int, n_prior: int) -> str:
+    if not 1 <= order_number <= n_prior:
+        raise ValueError("order_number outside 1..n")
+    if order_number <= train_cutoff(n_prior):
+        return "train"
+    return "validation" if order_number <= validation_cutoff(n_prior) else "test"
+
+
 def seller_id(client_id: int) -> str:
     return "ic-client-%d" % client_id
 
@@ -67,7 +85,7 @@ def load_assignment(path: str | Path) -> dict[int, int]:
     return assignment
 
 
-def _rows(data_dir: Path, name: str) -> Iterator[dict[str, str]]:
+def read_table(data_dir: Path, name: str) -> Iterator[dict[str, str]]:
     with open(data_dir / name, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         absent = [c for c in COLUMNS[name] if c not in (reader.fieldnames or ())]
@@ -94,16 +112,16 @@ def load_instacart(data_dir: str | Path, assignment: Mapping[int, int]) -> Insta
         "line_rows", "lines_kept", "duplicate_lines_merged",
     ), 0)
 
-    aisles = {int(r["aisle_id"]): _label(r["aisle"]) for r in _rows(data_dir, "aisles.csv")}
+    aisles = {int(r["aisle_id"]): _label(r["aisle"]) for r in read_table(data_dir, "aisles.csv")}
     departments = {int(r["department_id"]): _label(r["department"])
-                   for r in _rows(data_dir, "departments.csv")}
+                   for r in read_table(data_dir, "departments.csv")}
     products = {int(r["product_id"]): (r["product_name"], aisles[int(r["aisle_id"])],
                                        departments[int(r["department_id"])])
-                for r in _rows(data_dir, "products.csv")}
+                for r in read_table(data_dir, "products.csv")}
 
     # order_id -> (user_id, order_number, raw days_since_prior_order)
     orders: dict[int, tuple[int, int, str]] = {}
-    for r in _rows(data_dir, "orders.csv"):
+    for r in read_table(data_dir, "orders.csv"):
         report["order_rows"] += 1
         if r["eval_set"] != "prior":
             report["orders_not_prior"] += 1
@@ -115,7 +133,7 @@ def load_instacart(data_dir: str | Path, assignment: Mapping[int, int]) -> Insta
     report["prior_orders"] = len(orders)
 
     lines: dict[int, set[int]] = {order: set() for order in orders}
-    for r in _rows(data_dir, "order_products__prior.csv"):
+    for r in read_table(data_dir, "order_products__prior.csv"):
         report["line_rows"] += 1
         order, product = int(r["order_id"]), int(r["product_id"])
         if order not in lines:
