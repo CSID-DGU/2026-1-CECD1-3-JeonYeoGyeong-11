@@ -349,6 +349,28 @@ def get_recommendations_for_display(
     }
 
 
+def deliver_all_pending(conn: sqlite3.Connection, *, seller_id: str, runtime: RecommenderRuntime) -> None:
+    """Retry the whole outbox once: catalog first, so B knows an item before an
+    event that names it. Called at app startup (interfaces.md §2: a restart
+    redelivers what was committed but not acknowledged) -- which also hands B
+    every order the demo seed wrote while no runtime was attached."""
+    deliver_pending_catalog_items(conn, seller_id=seller_id, runtime=runtime)
+    deliver_pending_purchase_events(conn, seller_id=seller_id, runtime=runtime)
+
+
+def delivery_summary(conn: sqlite3.Connection, *, seller_id: str) -> dict[str, dict[str, int]]:
+    """kind -> {"pending", "delivered", "quarantined"} counts, for the seller dashboard."""
+    counts = db.count_outbox(conn, seller_id)
+    return {
+        kind: {status: counts.get((kind, status), 0) for status in ("pending", "delivered", "quarantined")}
+        for kind in ("catalog_item", "purchase_event")
+    }
+
+
+def purchase_event_status_by_order(conn: sqlite3.Connection, *, seller_id: str) -> dict[str, str]:
+    return db.purchase_event_status_by_order(conn, seller_id)
+
+
 _FALLBACK_LABELS = {
     "no_shared_model": "공유 모델 준비 전 · 매장 인기순",
     "no_seller_history": "판매 이력 부족 · 매장 인기순",

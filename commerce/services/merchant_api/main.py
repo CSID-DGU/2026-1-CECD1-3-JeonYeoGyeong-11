@@ -17,6 +17,7 @@ state-changing form of a logged-in user carries a session-bound CSRF token
 never from the form. OQ13's error-code question and OQ15 stay open.
 """
 import asyncio
+import logging
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -36,6 +37,7 @@ from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
+_log = logging.getLogger(__name__)
 
 
 def _csrf_context(cookie_name: str):
@@ -141,6 +143,20 @@ class LoginRequired(Exception):
         self.login_url = login_url
 
 
+def _redeliver_outbox(context: MerchantContext) -> None:
+    """Hand B whatever was committed but never acknowledged (interfaces.md §2),
+    including everything the demo seed wrote with no runtime attached. A
+    recommender failure here is logged, never a reason not to start."""
+    try:
+        conn = orders_db.connect(context.merchant_db_path)
+        try:
+            orders_service.deliver_all_pending(conn, seller_id=context.seller_id, runtime=context.runtime)
+        finally:
+            conn.close()
+    except Exception as exc:
+        _log.warning("startup outbox redelivery failed: %s", exc)
+
+
 def settings_from_env() -> MerchantSettings:
     enabled = os.environ.get("FL_ENABLED", "false").lower()
     if enabled not in ("true", "false"):
@@ -187,6 +203,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     async def lifespan(app: FastAPI):
         context = context_factory(settings if settings is not None else settings_from_env())
         app.state.merchant = context
+        await asyncio.to_thread(_redeliver_outbox, context)
         try:
             await context.fl_client.start()
             yield
@@ -376,9 +393,18 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         status_counts = {"requested": 0, "accepted": 0, "completed": 0, "cancelled": 0}
         for order in orders:
             status_counts[order["status"]] += 1
+        context: MerchantContext = request.app.state.merchant
+        # A probe for the dashboard only: a customer with no history, so B
+        # answers with its model if one is installed, or says why it cannot.
+        probe = orders_service.get_recommendations_for_display(
+            conn, seller_id=seller_id, customer_id_local="dashboard-probe", runtime=context.runtime,
+        )
         return _seller_templates.TemplateResponse(request, "overview.html", {
             "seller_id": seller_id, "active_tab": "overview", "staff": staff,
             "product_count": len(catalog), "status_counts": status_counts,
+            "model_connected": probe["model_version"] != orders_service.MOCK_MODEL_VERSION,
+            "model_version": probe["model_version"], "model_fallback": probe.get("fallback_reason"),
+            "delivery": orders_service.delivery_summary(conn, seller_id=seller_id),
         })
 
     @app.get("/seller/{seller_id}/products")
@@ -409,6 +435,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         return _seller_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
             "status_labels": _STATUS_LABELS, "staff": staff, "titles": _catalog_titles(conn, seller_id),
+            "delivery_by_order": orders_service.purchase_event_status_by_order(conn, seller_id=seller_id),
         })
 
     def seller_transition_screen(seller_id: str, order_id: str, action: str, request: Request, conn, expected_status_version: int):
@@ -432,6 +459,13 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         expected_status_version: int = Form(...),
     ):
         return seller_transition_screen(seller_id, order_id, "complete", request, conn, expected_status_version)
+
+    @app.post("/seller/{seller_id}/orders/{order_id}/cancel")
+    def seller_cancel_order(
+        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller_form),
+        expected_status_version: int = Form(...),
+    ):
+        return seller_transition_screen(seller_id, order_id, "cancel", request, conn, expected_status_version)
 
     # --- Seller model comparison (comparison.md §5, A card "모델 비교 화면") -----
 

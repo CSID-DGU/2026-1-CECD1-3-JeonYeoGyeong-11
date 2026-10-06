@@ -252,3 +252,24 @@ def mark_outbox_quarantined(conn: sqlite3.Connection, seller_id: str, kind: str,
         "UPDATE outbox SET status = 'quarantined', last_error = ? WHERE seller_id = ? AND kind = ? AND ref_id = ?",
         (error, seller_id, kind, ref_id),
     )
+
+
+def count_outbox(conn: sqlite3.Connection, seller_id: str) -> dict[tuple[str, str], int]:
+    """(kind, status) -> row count, for the seller dashboard."""
+    rows = conn.execute(
+        "SELECT kind, status, COUNT(*) AS n FROM outbox WHERE seller_id = ? GROUP BY kind, status", (seller_id,)
+    ).fetchall()
+    return {(r["kind"], r["status"]): r["n"] for r in rows}
+
+
+def purchase_event_status_by_order(conn: sqlite3.Connection, seller_id: str) -> dict[str, str]:
+    """order_id -> outbox status of that order's purchase_event (completed orders only)."""
+    rows = conn.execute(
+        """
+        SELECT pe.order_id, o.status FROM purchase_events pe
+        JOIN outbox o ON o.seller_id = pe.seller_id AND o.kind = 'purchase_event' AND o.ref_id = pe.purchase_event_id
+        WHERE pe.seller_id = ?
+        """,
+        (seller_id,),
+    ).fetchall()
+    return {r["order_id"]: r["status"] for r in rows}

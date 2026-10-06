@@ -203,6 +203,77 @@ class ScreenTest(unittest.TestCase):
         self.assertTrue(r.headers["location"].endswith("/login"))
 
 
+    # --- dashboard and cancel ----------------------------------------------------
+
+    def test_overview_says_whether_a_real_model_answers(self):
+        self._seller_with_product()
+        self.assertIn("미연결", self.client.get(f"/seller/{SELLER}/overview").text)
+        self.runtime.recommendation = _recommendation([], fallback_reason="no_shared_model", model_version="popularity.local")
+        self.assertIn("연결됨 · 모델 준비 중", self.client.get(f"/seller/{SELLER}/overview").text)
+        self.runtime.recommendation = _recommendation(["sku-fish"])
+        self.assertIn("실제 모델로 추천 중", self.client.get(f"/seller/{SELLER}/overview").text)
+
+    def test_seller_can_cancel_a_requested_order_with_csrf(self):
+        self._seller_with_product()
+        conn = orders_db.connect(self.db_path)
+        self.addCleanup(conn.close)
+        from commerce.services.merchant_api import orders_service
+        order = orders_service.place_order(conn, seller_id=SELLER, customer_id_local="cust-9", idempotency_key="k1",
+                                           items=[{"item_id_local": "sku-fish", "quantity": 1, "unit_price_minor": 15000}],
+                                           currency="KRW")
+        path = f"/seller/{SELLER}/orders/{order['order_id']}/cancel"
+        self.assertEqual(self.client.post(path, data={"expected_status_version": "1"}).status_code, 403)
+        token = self._csrf(f"/seller/{SELLER}/orders")
+        r = self.client.post(path, data={"expected_status_version": "1", "csrf_token": token})
+        self.assertEqual(r.status_code, 303, r.text)
+        self.assertEqual(orders_service.get_order(conn, seller_id=SELLER, order_id=order["order_id"])["status"], "cancelled")
+
+
+class StartupRedeliveryTest(unittest.TestCase):
+    """Orders written while no runtime was attached (the demo seed) reach B when the app starts."""
+
+    def _app(self, root: Path, runtime):
+        settings = MerchantSettings(seller_id=SELLER, feature_db_path=root / "features.sqlite",
+                                    model_dir=root / "models", merchant_db_path=root / "orders.sqlite")
+        return create_app(settings, context_factory=lambda s: build_context(s, runtime_factory=lambda *a: runtime))
+
+    def _seeded_root(self) -> Path:
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name)
+        from commerce.services.merchant_api import seed_demo_data
+        import contextlib, io
+        conn = orders_db.connect(root / "orders.sqlite")
+        with contextlib.redirect_stdout(io.StringIO()):
+            seed_demo_data.seed(conn, SELLER)
+        conn.close()
+        return root
+
+    def test_seeded_orders_and_catalog_are_delivered_at_startup(self):
+        root = self._seeded_root()
+        runtime = ScriptedRuntime(SELLER)
+        with TestClient(self._app(root, runtime)):
+            pass
+        conn = orders_db.connect(root / "orders.sqlite")
+        self.addCleanup(conn.close)
+        completed = conn.execute("SELECT COUNT(*) FROM orders WHERE status = 'completed'").fetchone()[0]
+        self.assertGreater(completed, 0)
+        self.assertEqual(len(runtime.ingested_events), completed)
+        self.assertEqual(len(runtime.catalog), 6)
+        pending = conn.execute("SELECT COUNT(*) FROM outbox WHERE status = 'pending'").fetchone()[0]
+        self.assertEqual(pending, 0)
+
+    def test_app_still_starts_when_the_recommender_is_down(self):
+        from commerce.services.merchant_api.tests.fakes import AlwaysFailingRuntime
+        root = self._seeded_root()
+        with TestClient(self._app(root, AlwaysFailingRuntime(SELLER))) as client:
+            self.assertEqual(client.get("/healthz").status_code, 200)
+        conn = orders_db.connect(root / "orders.sqlite")
+        self.addCleanup(conn.close)
+        self.assertGreater(conn.execute("SELECT COUNT(*) FROM outbox WHERE status = 'pending'").fetchone()[0], 0,
+                           "nothing is marked delivered when B never acknowledged")
+
+
 class SessionSecretTest(unittest.TestCase):
     def tearDown(self):
         importlib.reload(session)  # back to a random per-process key
