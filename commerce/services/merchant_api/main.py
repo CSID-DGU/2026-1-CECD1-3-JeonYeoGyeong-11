@@ -19,6 +19,7 @@ never from the form. OQ13's error-code question and OQ15 stay open.
 import asyncio
 import logging
 import os
+import threading
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -143,10 +144,20 @@ class LoginRequired(Exception):
         self.login_url = login_url
 
 
+_REDELIVERY_JOIN_SECONDS = 60
+# Tables that share orders.sqlite with the order domain; created once per file (orders_db.connect).
+_SCREEN_SCHEMAS = (social_db.ensure_schema, accounts_db.ensure_schema, cart_db.ensure_schema)
+
+
 def _redeliver_outbox(context: MerchantContext) -> None:
     """Hand B whatever was committed but never acknowledged (interfaces.md §2),
     including everything the demo seed wrote with no runtime attached. A
-    recommender failure here is logged, never a reason not to start."""
+    recommender failure here is logged, never a reason not to start.
+
+    Runs on a background thread (see lifespan): B commits each event on its
+    own, so a few hundred seeded orders take tens of seconds, and the app must
+    answer /healthz and serve pages meanwhile. Request paths that deliver
+    concurrently are safe: B accepts an identical redelivery as success."""
     try:
         conn = orders_db.connect(context.merchant_db_path)
         try:
@@ -203,7 +214,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     async def lifespan(app: FastAPI):
         context = context_factory(settings if settings is not None else settings_from_env())
         app.state.merchant = context
-        await asyncio.to_thread(_redeliver_outbox, context)
+        redelivery = threading.Thread(target=_redeliver_outbox, args=(context,), name="outbox-redelivery", daemon=True)
+        redelivery.start()
         try:
             await context.fl_client.start()
             yield
@@ -211,6 +223,9 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             try:
                 await context.fl_client.stop()
             finally:
+                # Let a redelivery in progress finish its current batch; a daemon
+                # thread never keeps the process alive past this.
+                await asyncio.to_thread(redelivery.join, _REDELIVERY_JOIN_SECONDS)
                 await asyncio.to_thread(context.jobs.close)
                 del app.state.merchant
 
@@ -227,10 +242,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     def get_conn(request: Request):
         context: MerchantContext = request.app.state.merchant
-        conn = orders_db.connect(context.merchant_db_path)
-        social_db.ensure_schema(conn)
-        accounts_db.ensure_schema(conn)
-        cart_db.ensure_schema(conn)
+        conn = orders_db.connect(context.merchant_db_path, schemas=_SCREEN_SCHEMAS)
         try:
             yield conn
         finally:

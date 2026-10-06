@@ -37,6 +37,29 @@ class OrdersServiceTest(unittest.TestCase):
             items=items or _items(("sku-milk", 2, 3200)), currency="KRW",
         )
 
+    def test_concurrent_first_connections_do_not_lock_each_other_out(self):
+        # The startup redelivery thread and a request may open a brand-new file
+        # at the same moment; first-time setup used to fail one of them with
+        # "database is locked" and leak its half-opened handle.
+        import threading
+        errors = []
+        for attempt in range(5):
+            path = Path(self.tmp.name) / ("fresh-%d.sqlite" % attempt)
+            barrier = threading.Barrier(6)
+
+            def open_it():
+                try:
+                    barrier.wait()
+                    db.connect(path).close()
+                except Exception as exc:  # collected, then asserted below
+                    errors.append(exc)
+            threads = [threading.Thread(target=open_it) for _ in range(6)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+        self.assertEqual(errors, [])
+
     def test_delivery_marks_are_committed_not_just_visible_on_this_connection(self):
         # A web request closes its connection when it ends; an uncommitted
         # "delivered" mark is rolled back then, and every later request

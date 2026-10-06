@@ -263,6 +263,25 @@ class StartupRedeliveryTest(unittest.TestCase):
         pending = conn.execute("SELECT COUNT(*) FROM outbox WHERE status = 'pending'").fetchone()[0]
         self.assertEqual(pending, 0)
 
+    def test_startup_redelivery_does_not_block_serving(self):
+        # B commits each event on its own; hundreds of seeded orders take tens of
+        # seconds. The app must answer while that runs in the background.
+        import threading
+        root = self._seeded_root()
+        release = threading.Event()
+
+        class SlowRuntime(ScriptedRuntime):
+            def ingest_purchase_event(self, event):
+                release.wait(10)
+                super().ingest_purchase_event(event)
+
+        runtime = SlowRuntime(SELLER)
+        with TestClient(self._app(root, runtime)) as client:
+            self.assertEqual(client.get("/healthz").status_code, 200)
+            self.assertEqual(runtime.ingested_events, {}, "B is still blocked, yet the app answered")
+            release.set()
+        self.assertGreater(len(runtime.ingested_events), 0, "shutdown waited for the redelivery to finish")
+
     def test_app_still_starts_when_the_recommender_is_down(self):
         from commerce.services.merchant_api.tests.fakes import AlwaysFailingRuntime
         root = self._seeded_root()

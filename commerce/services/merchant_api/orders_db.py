@@ -8,19 +8,44 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 
-def connect(db_path: Path) -> sqlite3.Connection:
+_BUSY_TIMEOUT_SECONDS = 10
+# First-time setup (WAL switch, CREATE TABLE IF NOT EXISTS) takes a write lock
+# even when nothing changes, and SQLite answers "database is locked" at once,
+# without waiting, when two connections do it together -- e.g. the startup
+# redelivery thread and a request. So each file is set up once per process,
+# one connection at a time, and later connections skip straight to use.
+_setup_lock = threading.Lock()
+_setup_done: dict[str, set[Callable[[sqlite3.Connection], None]]] = {}
+
+
+def connect(db_path: Path, *, schemas: Iterable[Callable[[sqlite3.Connection], None]] = ()) -> sqlite3.Connection:
+    """Open orders.sqlite. `schemas` are other A modules' ensure_schema functions
+    for tables that live in the same file (social_db, accounts_db, cart_db)."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     # Default isolation_level ("") keeps sqlite3's implicit transaction handling,
     # so `with conn:` in orders_service.py commits/rolls back atomically (§2 durable write).
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    ensure_schema(conn)
+    conn = sqlite3.connect(str(db_path), timeout=_BUSY_TIMEOUT_SECONDS)
+    try:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        wanted = {ensure_schema, *schemas}
+        key = str(db_path.resolve())
+        if not wanted <= _setup_done.get(key, set()):
+            with _setup_lock:
+                done = _setup_done.setdefault(key, set())
+                if not done:
+                    conn.execute("PRAGMA journal_mode = WAL")  # persists in the file
+                for setup in wanted - done:
+                    setup(conn)
+                    done.add(setup)
+    except BaseException:
+        conn.close()  # never leave a half-opened handle holding the file
+        raise
     return conn
 
 
