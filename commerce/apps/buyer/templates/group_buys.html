@@ -20,7 +20,7 @@
   {% if gb.status == 'open' %}
   {% if customer %}
   <form method="post" action="/buyer/{{ seller_id }}/group-buys/{{ gb.group_buy_id }}/join"
-        style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;">
+        style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <label class="field" style="flex:1">수량
       <input type="number" name="quantity" value="1" min="1" required>
     </label>

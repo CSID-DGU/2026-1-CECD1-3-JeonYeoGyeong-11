@@ -4,7 +4,7 @@
 
 <div class="card">
   <h2 class="section-title">새 공동구매 만들기</h2>
-  <form method="post" action="/seller/{{ seller_id }}/group-buys" style="display:flex;flex-direction:column;gap:12px;">
+  <form method="post" action="/seller/{{ seller_id }}/group-buys" style="display:flex;flex-direction:column;gap:12px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <label class="field">상품 ID (상품관리에 등록된 item_id_local)
       <input type="text" name="item_id_local" required>
     </label>

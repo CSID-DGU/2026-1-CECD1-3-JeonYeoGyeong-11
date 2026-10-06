@@ -4,7 +4,7 @@
 
 <div class="card">
   <h2 class="section-title">새 상품 등록</h2>
-  <form method="post" action="/seller/{{ seller_id }}/products" style="display:flex;flex-direction:column;gap:12px;">
+  <form method="post" action="/seller/{{ seller_id }}/products" style="display:flex;flex-direction:column;gap:12px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <label class="field">상품명
       <input type="text" name="title_text" required>
     </label>

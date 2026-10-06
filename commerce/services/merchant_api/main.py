@@ -7,15 +7,14 @@ human decisions (docs/design/open-questions.md), kept for local/integration
 testing only.
 
 The screen routes under /buyer/{seller_id}/... and /seller/{seller_id}/...
-now DO check caller identity via signed session cookies (accounts_service.py,
+check caller identity via signed session cookies (accounts_service.py,
 session.py): every /seller/... route except signup/login requires a verified
 seller_accounts login, and every buyer action that needs an identity (placing
 an order, joining a group-buy, messaging, viewing order history) requires a
-customer login. Browsing (catalog, feed, group-buy listing) stays open. This
-still isn't the full OQ13 answer -- there's no CSRF token per form yet (only
-SameSite=Lax cookies), and sessions don't survive a server restart (random
-per-process secret, session.py) -- but it closes the "anyone can act as any
-seller_id" gap the rest of this docstring used to describe as wide open.
+customer login. Browsing (catalog, feed, group-buy listing) stays open. Every
+state-changing form of a logged-in user carries a session-bound CSRF token
+(require_*_form). Prices come from the server's catalog or group-buy row,
+never from the form. OQ13's error-code question and OQ15 stay open.
 """
 import asyncio
 import os
@@ -37,12 +36,19 @@ from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
-_seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"))
-_buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"))
 
-# Screens below render the same domain layer as the JSON routes but are meant
-# for local/manual browsing only -- they carry the same "no caller auth yet"
-# caveat as the module docstring (OQ13/OQ15).
+
+def _csrf_context(cookie_name: str):
+    def processor(request: Request) -> dict:
+        return {"csrf_token": session.csrf_token(request.cookies.get(cookie_name))}
+    return processor
+
+
+_seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"),
+                                    context_processors=[_csrf_context(session.SELLER_COOKIE)])
+_buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
+                                   context_processors=[_csrf_context(session.CUSTOMER_COOKIE)])
+
 _STATUS_LABELS = {"requested": "접수", "accepted": "처리중", "completed": "완료", "cancelled": "취소"}
 
 
@@ -71,6 +77,15 @@ def _price_chart_points(history: list[dict]) -> Optional[str]:
 
 # interfaces.md §8 HTTP mapping. Codes this service cannot yet produce (manifest/
 # tensor/round codes are B<->C only) are omitted rather than guessed.
+# ComparisonArm.unavailable_reason (contracts/types.py UnavailableReason) -> screen text.
+_UNAVAILABLE_LABELS = {
+    "model_not_ready": "공유 모델이 아직 설치되지 않음",
+    "personalization_not_ready": "이 매장의 개인화를 아직 실행하지 않음",
+    "insufficient_data": "개인화에 필요한 이력이 부족함",
+    "validation_rejected": "개인화 결과가 검증에서 공통 모델보다 낫지 않아 쓰지 않음",
+    "base_mismatch": "개인화가 현재 공통 모델과 다른 버전에서 만들어짐",
+}
+
 _HTTP_STATUS_BY_CODE = {
     "SCHEMA_INVALID": 422,
     "UNKNOWN_FIELD": 422,
@@ -196,6 +211,19 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         account = current_seller_staff(seller_id, request)
         if account is None:
             raise LoginRequired(f"/seller/{seller_id}/login")
+        return account
+
+    # POST forms of a logged-in user: login plus a CSRF token bound to that session cookie.
+    def require_customer_form(seller_id: str, request: Request, csrf_token: Optional[str] = Form(None)) -> dict:
+        account = require_customer(seller_id, request)
+        if not session.check_csrf(request.cookies.get(session.CUSTOMER_COOKIE), csrf_token):
+            raise ContractError("FORBIDDEN", "/csrf_token")
+        return account
+
+    def require_seller_form(seller_id: str, request: Request, csrf_token: Optional[str] = Form(None)) -> dict:
+        account = require_seller(seller_id, request)
+        if not session.check_csrf(request.cookies.get(session.SELLER_COOKIE), csrf_token):
+            raise ContractError("FORBIDDEN", "/csrf_token")
         return account
 
     @app.get("/healthz")
@@ -333,7 +361,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/products")
     def seller_create_product(
-        seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
+        seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller_form),
         title_text: str = Form(...), display_price_minor: int = Form(...),
         item_id_local: str = Form(...),
     ):
@@ -362,17 +390,39 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/orders/{order_id}/accept")
     def seller_accept_order(
-        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
+        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller_form),
         expected_status_version: int = Form(...),
     ):
         return seller_transition_screen(seller_id, order_id, "accept", request, conn, expected_status_version)
 
     @app.post("/seller/{seller_id}/orders/{order_id}/complete")
     def seller_complete_order(
-        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
+        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller_form),
         expected_status_version: int = Form(...),
     ):
         return seller_transition_screen(seller_id, order_id, "complete", request, conn, expected_status_version)
+
+    # --- Seller model comparison (comparison.md §5, A card "모델 비교 화면") -----
+
+    @app.get("/seller/{seller_id}/compare")
+    def seller_compare(
+        seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
+        customer_id_local: Optional[str] = None,
+    ):
+        context: MerchantContext = request.app.state.merchant
+        result = None
+        if customer_id_local:
+            result = orders_service.get_comparison_for_display(
+                conn, seller_id=seller_id, customer_id_local=customer_id_local, runtime=context.runtime,
+            )
+        titles = {item["item_id_local"]: item["title_text"]
+                  for item in orders_service.list_catalog_for_display(conn, seller_id=seller_id)}
+        return _seller_templates.TemplateResponse(request, "compare.html", {
+            "seller_id": seller_id, "active_tab": "compare", "staff": staff,
+            "customers": accounts_db.list_customers(conn, seller_id),
+            "customer_id_local": customer_id_local, "result": result, "titles": titles,
+            "unavailable_labels": _UNAVAILABLE_LABELS,
+        })
 
     # --- Seller social screens (M25 DM, M26/M27 feed, M29 group-buy, M30 price) --
 
@@ -392,7 +442,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         })
 
     @app.post("/seller/{seller_id}/messages/{customer_id_local}")
-    def seller_send_message(seller_id: str, customer_id_local: str, conn=Depends(get_conn), staff=Depends(require_seller), body: str = Form(...)):
+    def seller_send_message(seller_id: str, customer_id_local: str, conn=Depends(get_conn), staff=Depends(require_seller_form), body: str = Form(...)):
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer_id_local, sender="seller", body=body)
         return RedirectResponse(f"/seller/{seller_id}/messages/{customer_id_local}", status_code=303)
 
@@ -405,7 +455,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/feed")
     def seller_create_post(
-        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller), kind: str = Form(...),
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller_form), kind: str = Form(...),
         title: str = Form(...), body: str = Form(None),
     ):
         social_service.create_post(conn, seller_id=seller_id, kind=kind, title=title, body=body)
@@ -420,7 +470,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/group-buys")
     def seller_create_group_buy(
-        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller), item_id_local: str = Form(...),
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller_form), item_id_local: str = Form(...),
         target_quantity: int = Form(...), unit_price_minor: int = Form(...), deadline_at: str = Form(...),
     ):
         social_service.create_group_buy(
@@ -442,7 +492,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/prices")
     def seller_record_price(
-        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller),
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller_form),
         item_id_local: str = Form(...), price_minor: int = Form(...),
     ):
         social_service.record_price(conn, seller_id=seller_id, item_id_local=item_id_local, price_minor=price_minor)
@@ -526,7 +576,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         return _buyer_templates.TemplateResponse(request, "home.html", {
             "seller_id": seller_id, "active_tab": "home", "catalog": catalog, "customer": customer,
             "recommended": recommended,
-            "recommendation_is_mock": recommendation["model_version"] == orders_service.MOCK_MODEL_VERSION,
+            "recommendation_label": orders_service.recommendation_label(recommendation),
         })
 
     @app.get("/buyer/{seller_id}/items/{item_id_local}")
@@ -542,9 +592,16 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/buyer/{seller_id}/orders")
     def buyer_place_order(
-        seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer),
-        item_id_local: str = Form(...), unit_price_minor: int = Form(...), quantity: int = Form(...),
+        seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer_form),
+        item_id_local: str = Form(...), quantity: int = Form(...),
     ):
+        # The price is the server's catalog price; the form only says which item and how many.
+        item = orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local)
+        if item is None or item["listing_status"] != "active":
+            raise ContractError("NOT_FOUND", "/item_id_local")
+        if quantity < 1:
+            raise ContractError("SCHEMA_INVALID", "/quantity")
+        unit_price_minor = item["display_price_minor"]
         order = orders_service.place_order(
             conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
             idempotency_key=uuid.uuid4().hex,
@@ -582,7 +639,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         })
 
     @app.post("/buyer/{seller_id}/messages")
-    def buyer_send_message(seller_id: str, conn=Depends(get_conn), customer=Depends(require_customer), body: str = Form(...)):
+    def buyer_send_message(seller_id: str, conn=Depends(get_conn), customer=Depends(require_customer_form), body: str = Form(...)):
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"], sender="customer", body=body)
         return RedirectResponse(f"/buyer/{seller_id}/messages", status_code=303)
 
@@ -602,7 +659,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/buyer/{seller_id}/group-buys/{group_buy_id}/join")
     def buyer_join_group_buy(
-        seller_id: str, group_buy_id: str, conn=Depends(get_conn), customer=Depends(require_customer),
+        seller_id: str, group_buy_id: str, conn=Depends(get_conn), customer=Depends(require_customer_form),
         quantity: int = Form(...),
     ):
         social_service.join_group_buy(

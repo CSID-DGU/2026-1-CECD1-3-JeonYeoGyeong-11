@@ -29,6 +29,7 @@
     <a href="/seller/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">피드</a>
     <a href="/seller/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">공동구매</a>
     <a href="/seller/{{ seller_id }}/prices" class="{{ 'active' if active_tab == 'prices' else '' }}">시세 입력</a>
+    <a href="/seller/{{ seller_id }}/compare" class="{{ 'active' if active_tab == 'compare' else '' }}">모델 비교</a>
   </nav>
   <main class="page">
     {% block content %}{% endblock %}

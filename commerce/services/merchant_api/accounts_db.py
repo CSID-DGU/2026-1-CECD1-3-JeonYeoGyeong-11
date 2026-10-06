@@ -58,6 +58,15 @@ def fetch_customer(conn: sqlite3.Connection, seller_id: str, customer_id_local: 
     return dict(row) if row else None
 
 
+def list_customers(conn: sqlite3.Connection, seller_id: str) -> list[dict[str, Any]]:
+    """IDs and display names only -- never the password columns."""
+    rows = conn.execute(
+        "SELECT customer_id_local, display_name FROM customers WHERE seller_id = ? ORDER BY customer_id_local",
+        (seller_id,),
+    ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def insert_seller_account(conn: sqlite3.Connection, seller_id: str, username: str, display_name: str,
                            password_hash: str, password_salt: str, business_reg_no: str,
                            business_verified: bool, business_verification_mode: str, created_at: str) -> None:

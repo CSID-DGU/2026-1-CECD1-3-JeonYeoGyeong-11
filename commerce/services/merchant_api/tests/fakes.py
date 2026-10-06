@@ -74,6 +74,36 @@ class FakeRecommenderRuntime:
         raise FeatureNotImplemented("fake: comparison snapshot")
 
 
+class ScriptedRuntime(FakeRecommenderRuntime):
+    """Answers predict_local/compare_local with whatever a test sets, or raises it.
+
+    `recommendation`/`comparison` may be a value to return or an exception to
+    raise; left as None they keep the parent's FeatureNotImplemented.
+    """
+
+    def __init__(self, seller_id: str, *args, **kwargs):
+        super().__init__(seller_id, *args, **kwargs)
+        self.recommendation: Any = None
+        self.comparison: Any = None
+        self.requests: list[Payload] = []
+
+    def predict_local(self, request: Payload, *, model_variant: ModelVariant = "text_relation", mode: ServingMode = "auto") -> Payload:
+        self.requests.append(request)
+        if self.recommendation is None:
+            return super().predict_local(request)
+        if isinstance(self.recommendation, BaseException):
+            raise self.recommendation
+        return self.recommendation
+
+    def compare_local(self, request: Payload) -> ComparisonResult:
+        self.requests.append(request)
+        if self.comparison is None:
+            return super().compare_local(request)
+        if isinstance(self.comparison, BaseException):
+            raise self.comparison
+        return self.comparison
+
+
 class AlwaysFailingRuntime(FakeRecommenderRuntime):
     """Simulates B being unreachable: every call raises, nothing is ever delivered."""
 

@@ -20,12 +20,12 @@
       </td>
       <td>
         {% if order.status == 'requested' %}
-        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept">
+        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
           <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
           <button class="btn secondary" type="submit">수락</button>
         </form>
         {% elif order.status == 'accepted' %}
-        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete">
+        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
           <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
           <button class="btn secondary" type="submit">완료 처리</button>
         </form>

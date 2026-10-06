@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import logging
 import sqlite3
 import uuid
 from typing import Any, Optional
@@ -30,6 +31,8 @@ from commerce.services.merchant_api import orders_db as db
 # wire enum value; only a local tag so callers/templates can tell a mock
 # ranking apart from a real B model_version string.
 MOCK_MODEL_VERSION = "mock-p-topfreq-v1"
+
+_log = logging.getLogger(__name__)
 
 # interfaces.md §2 table, "live" row.
 _LIVE_SOURCE = "live"
@@ -290,26 +293,34 @@ def get_recommendations_for_display(
 ) -> dict[str, Any]:
     """Buyer-screen recommendation slot (A card "B의 실제 추천을 화면에 연결한다").
 
-    Tries B's real `predict_local` first; while it raises `FeatureNotImplemented`
-    (the current `UnimplementedRuntime` stub), falls back to the P-TopFreq
-    non-model baseline this module already owns for evaluation
+    Tries B's real `predict_local` first. B's own fallback (no installed base,
+    no seller/customer history) comes back as a normal recommendation with
+    `is_cold_start`/`fallback_reason` set; `recommendation_label` turns that
+    into the screen badge. Only when B cannot answer at all -- the
+    `UnimplementedRuntime` stub's `FeatureNotImplemented`, or any other failure
+    -- does this fall back to A's P-TopFreq non-model baseline
     (`commerce.evaluation.metrics.ranking.p_topfreq_ranking`), tagged
-    `is_cold_start`/`fallback_reason` so screens can label it as not-the-real-model.
-    Swapping in a real B runtime later needs no caller change: this only stops
-    hitting the except branch once predict_local stops raising.
+    MOCK_MODEL_VERSION. A buyer page never fails because the recommender did.
+
+    Pending catalog deliveries are retried first, and candidates are left to B
+    (`candidate_item_ids=None`, B's active catalog mirror): an explicit
+    candidate B has not received yet is NOT_FOUND on B's side, which would
+    otherwise take down the whole slot. B's answer is returned unchanged; the
+    screen drops any item missing from A's own catalog when it renders.
     """
     active_items = [
         item["item_id_local"] for item in db.list_catalog_items(conn, seller_id)
         if item["listing_status"] == "active"
     ]
-    request = build_recommendation_request(
-        seller_id, customer_id_local, candidate_item_ids=active_items or None, top_n=top_n,
-    )
+    request = build_recommendation_request(seller_id, customer_id_local, candidate_item_ids=None, top_n=top_n)
     if runtime is not None:
+        deliver_pending_catalog_items(conn, seller_id=seller_id, runtime=runtime)
         try:
             return runtime.predict_local(request)
         except FeatureNotImplemented:
             pass
+        except Exception as exc:  # recommender failure must not break the buyer page
+            _log.warning("predict_local failed, using A baseline: %s", exc)
 
     seller_counts: dict[str, int] = {}
     for order in db.list_orders(conn, seller_id):
@@ -330,6 +341,49 @@ def get_recommendations_for_display(
         "fallback_reason": "no_shared_model",
         "items": [{"item_id_local": item_id, "score": score} for item_id, score in ranked],
     }
+
+
+_FALLBACK_LABELS = {
+    "no_shared_model": "공유 모델 준비 전 · 매장 인기순",
+    "no_seller_history": "판매 이력 부족 · 매장 인기순",
+    "no_customer_history": "첫 방문 고객 · 매장 인기순",
+}
+
+
+def recommendation_label(recommendation: dict[str, Any]) -> Optional[str]:
+    """Badge text for a recommendation that is not a model ranking, or None for a real one.
+
+    Covers both A's own baseline (MOCK_MODEL_VERSION) and B's fallback, which
+    reports itself through is_cold_start/fallback_reason (interfaces.md §4)
+    rather than through a special model_version.
+    """
+    if recommendation["model_version"] == MOCK_MODEL_VERSION:
+        return "임시 · 추천 모델 미연결, 인기순"
+    if recommendation.get("fallback_reason"):
+        return _FALLBACK_LABELS.get(recommendation["fallback_reason"], "대체 추천 · 매장 인기순")
+    return None
+
+
+def get_comparison_for_display(
+    conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str,
+    top_n: int = 5, runtime: Optional[RecommenderRuntime] = None,
+) -> Optional[Any]:
+    """One B compare_local call for the seller's comparison screen (comparison.md §5).
+
+    A sends exactly one request and computes nothing model-side; B pins the
+    snapshot, candidates and handles for all four arms. Returns None while B
+    cannot compare at all (stub), so the screen can say so instead of
+    inventing arms. Permission/request errors propagate (interfaces.md §4.1:
+    they reject the comparison, they are not "unavailable").
+    """
+    if runtime is None:
+        return None
+    deliver_pending_catalog_items(conn, seller_id=seller_id, runtime=runtime)
+    request = build_recommendation_request(seller_id, customer_id_local, candidate_item_ids=None, top_n=top_n)
+    try:
+        return runtime.compare_local(request)
+    except FeatureNotImplemented:
+        return None
 
 
 def deliver_pending_catalog_items(conn: sqlite3.Connection, *, seller_id: str, runtime: RecommenderRuntime) -> None:

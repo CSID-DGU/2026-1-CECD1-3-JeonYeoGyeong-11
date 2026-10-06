@@ -10,7 +10,7 @@
   <p class="muted-note">아직 대화가 없습니다.</p>
   {% endfor %}
 </div>
-<form method="post" action="/seller/{{ seller_id }}/messages/{{ customer_id_local }}" style="display:flex;gap:8px;">
+<form method="post" action="/seller/{{ seller_id }}/messages/{{ customer_id_local }}" style="display:flex;gap:8px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
   <input type="text" name="body" placeholder="답장 보내기" required>
   <button class="btn primary" type="submit">전송</button>
 </form>

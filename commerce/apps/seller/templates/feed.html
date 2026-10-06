@@ -4,7 +4,7 @@
 
 <div class="card">
   <h2 class="section-title">새 소식 올리기</h2>
-  <form method="post" action="/seller/{{ seller_id }}/feed" style="display:flex;flex-direction:column;gap:12px;">
+  <form method="post" action="/seller/{{ seller_id }}/feed" style="display:flex;flex-direction:column;gap:12px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <div style="display:flex;gap:12px;">
       <label class="field" style="flex:1">종류
         <select name="kind">

@@ -3,7 +3,7 @@
 {% if recommended %}
 <h2 class="section-title">
   추천 상품
-  {% if recommendation_is_mock %}<span class="badge muted">임시 · 인기순위 기준</span>{% endif %}
+  {% if recommendation_label %}<span class="badge muted">{{ recommendation_label }}</span>{% endif %}
 </h2>
 <div class="grid cols-4 product-grid">
   {% for item in recommended %}
@@ -14,9 +14,9 @@
   </a>
   {% endfor %}
 </div>
-{% if recommendation_is_mock %}
+{% if recommendation_label %}
 <p class="muted-note">
-  아직 B의 실제 추천 모델이 연결되지 않아, 이 매장에서 가장 많이 팔린 상품 순으로 임시로 보여주고 있습니다.
+  아직 이 고객에게 맞춘 모델 추천을 낼 수 없어, 이 매장에서 많이 팔린 상품 순으로 보여주고 있습니다.
 </p>
 {% endif %}
 {% endif %}

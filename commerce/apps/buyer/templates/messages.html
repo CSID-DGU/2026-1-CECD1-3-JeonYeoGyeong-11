@@ -10,7 +10,7 @@
   <p class="muted-note">아직 대화가 없습니다. 먼저 말을 걸어보세요.</p>
   {% endfor %}
 </div>
-<form method="post" action="/buyer/{{ seller_id }}/messages" style="display:flex;gap:8px;">
+<form method="post" action="/buyer/{{ seller_id }}/messages" style="display:flex;gap:8px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
   <input type="text" name="body" placeholder="메시지 입력" required>
   <button class="btn primary" type="submit">전송</button>
 </form>

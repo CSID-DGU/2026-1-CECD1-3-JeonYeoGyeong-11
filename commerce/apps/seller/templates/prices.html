@@ -3,7 +3,7 @@
 <h1 class="page-title">오늘의 시세 입력</h1>
 
 <div class="card">
-  <form method="post" action="/seller/{{ seller_id }}/prices" style="display:flex;gap:12px;align-items:flex-end;">
+  <form method="post" action="/seller/{{ seller_id }}/prices" style="display:flex;gap:12px;align-items:flex-end;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <label class="field" style="flex:1">상품
       <select name="item_id_local">
         {% for item in catalog %}

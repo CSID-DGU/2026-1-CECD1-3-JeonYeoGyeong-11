@@ -5,8 +5,10 @@ Exit codes follow gate.py's convention: 0 all done, 3 partial (remaining items
 printed), 1 failure, 2 the check itself is broken.
 
 Deliberately NOT covered here (remaining, pending open human decisions):
-- Caller authentication / cookie scope (OQ13, OQ15): no route in main.py checks
-  who is allowed to act as a given seller_id yet.
+- Caller authentication / cookie scope (OQ13, OQ15): the screen routes check a
+  session login and a CSRF token (tests/test_screens.py), but the JSON routes
+  under /sellers/... still have no caller auth, and OQ13's error code and
+  OQ15 are open human decisions.
 - g2 (real B runtime wired in): B's runtime is still UnimplementedRuntime; this
   selfcheck injects its own FakeRecommenderRuntime test double instead.
 """
@@ -84,7 +86,7 @@ def _check_unit_tests(verbose: bool) -> unittest.TestResult:
 
 
 REMAINING = [
-    "쿠키/세션 인증 범위(OQ13, OQ15 결정 대기 — 현재 라우트는 호출자 인증이 없음)",
+    "쿠키/세션 인증 범위(OQ13, OQ15 결정 대기 — 화면은 로그인·CSRF 확인, JSON /sellers/... 라우트는 아직 호출자 인증 없음)",
     "B 실제 추천 연결(g2) — FakeRecommenderRuntime 더블로만 검증됨",
 ]
 
