@@ -1,30 +1,26 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="grid" style="grid-template-columns: 1fr 1fr; gap:24px;">
-  <div class="image-placeholder" style="min-height:280px;">이미지</div>
-  <div style="display:flex;flex-direction:column;gap:12px;">
-    <h1 class="page-title">{{ item.title_text }}</h1>
-    <p class="muted-note">판매자: {{ seller_id }}</p>
-    <p class="price-now" style="font-size:24px;">{{ "{:,}".format(item.display_price_minor) }}원</p>
-    {% if customer %}
-    <form method="post" action="/buyer/{{ seller_id }}/orders" style="display:flex;flex-direction:column;gap:12px;max-width:320px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-      <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}">
-      <label class="field">수량
-        <input type="number" name="quantity" value="1" min="1" required>
-      </label>
-      <button class="btn primary" type="submit">바로 주문하기</button>
-    </form>
-    {% else %}
-    <p class="muted-note">주문하려면 <a href="/buyer/{{ seller_id }}/login" style="color:var(--accent);">로그인</a>이 필요합니다.</p>
-    {% endif %}
-    <p class="muted-note">
-      장바구니에 여러 상품을 모아 담는 기능은 아직 계약(schema)에 없어서, 지금은 상품 하나를
-      바로 주문하는 방식으로 되어 있습니다.
-    </p>
+<div class="detail">
+  {%- set emoji = product_emoji(item.category_path) %}
+  <div class="thumb lg{{ ' emoji' if emoji }}" aria-hidden="true">{{ emoji or item.title_text[:1] }}</div>
+  <div class="detail-info">
+    <div class="seller-row">
+      <span class="avatar" aria-hidden="true">{{ seller_id[:1] | upper }}</span>
+      <div class="grow">
+        <p class="list-title">{{ seller_id }}</p>
+        <p class="list-sub">이 매장에서 직접 판매하는 상품</p>
+      </div>
+    </div>
+    <div class="stack">
+      {% if item.category_path %}<p class="product-meta">{{ item.category_path | join(' · ') }}</p>{% endif %}
+      <h1 class="page-title">{{ item.title_text }}</h1>
+      <p class="price-now lg">{{ "{:,}".format(item.display_price_minor) }}원</p>
+    </div>
+
     {% if price_chart_points %}
-    <div>
+    <div class="card">
       <h2 class="section-title">최근 시세</h2>
-      <svg class="price-chart" viewBox="0 0 300 80" preserveAspectRatio="none">
+      <svg class="price-chart" viewBox="0 0 300 80" preserveAspectRatio="none" role="img" aria-label="최근 시세 그래프">
         <polyline points="{{ price_chart_points }}"></polyline>
       </svg>
       <div class="progress-label">
@@ -33,6 +29,23 @@
       </div>
     </div>
     {% endif %}
+
+    {% if customer %}
+    <form class="buy-bar" method="post" action="/buyer/{{ seller_id }}/orders"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}">
+      <label class="field">수량
+        <input type="number" name="quantity" value="1" min="1" required>
+      </label>
+      <button class="btn primary" type="submit">바로 주문하기</button>
+    </form>
+    {% else %}
+    <div class="buy-bar">
+      <a class="btn primary" href="/buyer/{{ seller_id }}/login">로그인하고 주문하기</a>
+    </div>
+    {% endif %}
+    <p class="muted-note">
+      장바구니에 여러 상품을 모아 담는 기능은 아직 없어서, 지금은 상품 하나를 바로 주문하는 방식입니다.
+    </p>
   </div>
 </div>
 {% endblock %}

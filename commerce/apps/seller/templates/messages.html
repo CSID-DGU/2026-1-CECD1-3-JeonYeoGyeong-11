@@ -1,15 +1,23 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="page-title">고객 쪽지</h1>
-<div class="card" style="padding:0;">
-  {% for thread in threads %}
-  <a class="card" style="display:block;border:none;border-bottom:1px solid var(--border);border-radius:0;"
-     href="/seller/{{ seller_id }}/messages/{{ thread.customer_id_local }}">
-    <strong>{{ thread.customer_id_local }}</strong>
-    <p class="muted-note">{{ '나: ' if thread.last_sender == 'seller' else '' }}{{ thread.last_body }}</p>
-  </a>
-  {% else %}
-  <p class="muted-note" style="padding:16px;">아직 온 쪽지가 없습니다.</p>
-  {% endfor %}
+<div class="page-head">
+  <h1 class="page-title">고객 쪽지</h1>
+  <p>고객이 보낸 문의에 답장해 주세요.</p>
+</div>
+<div class="card flush">
+  <div class="list">
+    {% for thread in threads %}
+    <a class="list-item" href="/seller/{{ seller_id }}/messages/{{ thread.customer_id_local }}">
+      <span class="avatar" aria-hidden="true">{{ thread.customer_id_local[5:6] | upper }}</span>
+      <div class="grow">
+        <p class="list-title">{{ thread.customer_id_local }}</p>
+        <p class="list-sub">{{ '나: ' if thread.last_sender == 'seller' else '' }}{{ thread.last_body }}</p>
+      </div>
+      {% if thread.last_sender == 'customer' %}<span class="badge warn">답장 필요</span>{% endif %}
+    </a>
+    {% else %}
+    <div class="empty">아직 온 쪽지가 없습니다.</div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}

@@ -1,37 +1,46 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="page-title">공동구매</h1>
-{% for gb in group_buys %}
-<div class="card">
-  <div style="display:flex;justify-content:space-between;">
-    <strong>{{ gb.item_id_local }}</strong>
-    <span class="badge {{ 'default' if gb.status == 'open' else 'muted' }}">
-      {{ {'open': '진행중', 'succeeded': '성사', 'failed': '미달'}[gb.status] }}
-    </span>
+<div class="page-head">
+  <h1 class="page-title">공동구매</h1>
+  <p>목표 수량이 모이면 바로 성사되고, 참여한 수량만큼 주문이 만들어집니다.</p>
+</div>
+{% if group_buys %}
+<div class="grid cols-2">
+  {% for gb in group_buys %}
+  {% set percent = (100 * gb.joined_quantity / gb.target_quantity) | round(0, 'floor') | int if gb.target_quantity else 0 %}
+  <div class="card stack">
+    <div class="row between">
+      <span class="list-title">{{ titles.get(gb.item_id_local, gb.item_id_local) }}</span>
+      <span class="badge {{ {'open': 'brand', 'succeeded': 'solid', 'failed': 'muted'}[gb.status] }}">
+        {{ {'open': '진행중', 'succeeded': '성사', 'failed': '미달'}[gb.status] }}
+      </span>
+    </div>
+    <p class="price-now lg">{{ "{:,}".format(gb.unit_price_minor) }}원</p>
+    <div>
+      <div class="progress-bar" role="progressbar" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar-fill" style="width: {{ [percent, 100] | min }}%;"></div>
+      </div>
+      <div class="progress-label">
+        <span>{{ gb.joined_quantity }} / {{ gb.target_quantity }}개 모임</span>
+        <span>마감 {{ gb.deadline_at[:10] }}</span>
+      </div>
+    </div>
+    {% if gb.status == 'open' %}
+    {% if customer %}
+    <form class="inline-form" method="post" action="/buyer/{{ seller_id }}/group-buys/{{ gb.group_buy_id }}/join"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <label class="field">수량
+        <input type="number" name="quantity" value="1" min="1" required>
+      </label>
+      <button class="btn primary" type="submit">참여하기</button>
+    </form>
+    {% else %}
+    <p class="muted-note">참여하려면 <a href="/buyer/{{ seller_id }}/login">로그인</a>이 필요합니다.</p>
+    {% endif %}
+    {% endif %}
   </div>
-  <p class="price-now">{{ "{:,}".format(gb.unit_price_minor) }}원</p>
-  <div class="progress-bar">
-    <div class="progress-bar-fill" style="width: {{ (100 * gb.joined_quantity / gb.target_quantity) | round(0, 'floor') | int if gb.target_quantity else 0 }}%;"></div>
-  </div>
-  <div class="progress-label">
-    <span>{{ gb.joined_quantity }} / {{ gb.target_quantity }}개</span>
-    <span>마감 {{ gb.deadline_at[:10] }}</span>
-  </div>
-  {% if gb.status == 'open' %}
-  {% if customer %}
-  <form method="post" action="/buyer/{{ seller_id }}/group-buys/{{ gb.group_buy_id }}/join"
-        style="display:flex;gap:8px;margin-top:12px;align-items:flex-end;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-    <label class="field" style="flex:1">수량
-      <input type="number" name="quantity" value="1" min="1" required>
-    </label>
-    <button class="btn primary" type="submit">참여하기</button>
-  </form>
-  {% else %}
-  <p class="muted-note" style="margin-top:8px;">참여하려면 <a href="/buyer/{{ seller_id }}/login" style="color:var(--accent);">로그인</a>이 필요합니다.</p>
-  {% endif %}
-  {% endif %}
+  {% endfor %}
 </div>
 {% else %}
-<p class="muted-note">진행 중인 공동구매가 없습니다.</p>
-{% endfor %}
+<div class="card empty">진행 중인 공동구매가 없습니다.</div>
+{% endif %}
 {% endblock %}

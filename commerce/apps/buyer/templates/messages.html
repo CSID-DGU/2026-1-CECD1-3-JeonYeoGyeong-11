@@ -1,17 +1,25 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="page-title">판매자에게 쪽지 보내기</h1>
-<div class="card">
-  {% for m in messages %}
-  <div class="chat-row {{ 'me' if m.sender == 'customer' else '' }}">
-    <div class="chat-bubble {{ 'me' if m.sender == 'customer' else 'them' }}">{{ m.body }}</div>
+<div class="narrow-inner stack-lg">
+  <div class="page-head">
+    <h1 class="page-title">판매자와 쪽지</h1>
+    <p>재고·픽업·배송 문의를 판매자에게 바로 보낼 수 있어요.</p>
   </div>
-  {% else %}
-  <p class="muted-note">아직 대화가 없습니다. 먼저 말을 걸어보세요.</p>
-  {% endfor %}
+  <div class="card flush">
+    <div class="chat">
+      {% for m in messages %}
+      <div class="chat-row {{ 'me' if m.sender == 'customer' else '' }}">
+        <div class="chat-bubble {{ 'me' if m.sender == 'customer' else 'them' }}">{{ m.body }}</div>
+      </div>
+      {% else %}
+      <div class="empty">아직 대화가 없습니다. 먼저 말을 걸어 보세요.</div>
+      {% endfor %}
+    </div>
+    <form class="composer" method="post" action="/buyer/{{ seller_id }}/messages"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <input type="text" name="body" placeholder="메시지 입력" aria-label="메시지" required>
+      <button class="btn primary" type="submit">전송</button>
+    </form>
+  </div>
+  <p class="muted-note">자동 응답이 필요하면 <a href="/buyer/{{ seller_id }}/chat">챗봇 상담</a>을 이용해 보세요.</p>
 </div>
-<form method="post" action="/buyer/{{ seller_id }}/messages" style="display:flex;gap:8px;"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-  <input type="text" name="body" placeholder="메시지 입력" required>
-  <button class="btn primary" type="submit">전송</button>
-</form>
 {% endblock %}

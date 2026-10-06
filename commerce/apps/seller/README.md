@@ -1,6 +1,6 @@
 # 판매자 화면 · A
 
-판매자용 개요/상품관리/주문관리 Jinja2 템플릿이다. 색상·카드·탭 UI는 팀의 기존 React 프로토타입(JYGfile)과 같은 시각 언어로 맞췄고, `../static/style.css`를 공유한다.
+판매자용 개요/상품관리/주문관리 Jinja2 템플릿이다. 디자인은 플랫폼 이름(임시 "오이OO", `main.py`의 `BRAND_NAME` 한 곳에서 바꾼다)에 맞춘 은은한 오이 초록 계열이다. 색·모서리·간격은 `../static/style.css` 맨 위의 토큰(CSS 변수)으로만 정하고 템플릿에는 inline style을 쓰지 않는다(진행률 막대 폭만 예외). 글꼴은 Pretendard(OFL)를 jsDelivr CDN에서 불러오고, 실패하면 시스템 글꼴로 대체된다. 로고 `../static/logo.svg`와 아이콘은 직접 그린 SVG이고, 상품 사진이 없어 썸네일은 카테고리별 이모지(`main.py`의 `_product_emoji`) 또는 상품명 첫 글자로 보인다. 판매자 화면은 PC에서 왼쪽 세로 메뉴, 960px 이하에서 가로 스크롤 메뉴로 바뀐다.
 
 - `templates/layout.html`: 앱 전환 탭(고객용/판매자용) + 개요·상품관리·주문관리 탭 네비게이션.
 - `templates/overview.html`: `orders.sqlite`에서 직접 센 등록 상품 수·처리 대기/완료 주문 수. ML 예측 지표(재방문 확률 등)는 B 추천 런타임이 아직 미구현(`UnimplementedRuntime`)이라 넣지 않았다.

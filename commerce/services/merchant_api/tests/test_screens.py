@@ -73,6 +73,21 @@ class ScreenTest(unittest.TestCase):
         })
         self.assertEqual(r.status_code, 303, r.text)
 
+    # --- branding ----------------------------------------------------------------
+
+    def test_brand_name_comes_from_one_constant_on_both_apps(self):
+        from commerce.services.merchant_api import main
+        self._seller_with_product()
+        self.assertIn(main.BRAND_NAME, self.client.get(f"/seller/{SELLER}/overview").text)
+        self.assertIn(main.BRAND_NAME, self.client.get(f"/buyer/{SELLER}/").text)
+
+    def test_thumbnail_emoji_follows_the_most_specific_category(self):
+        from commerce.services.merchant_api.main import _product_emoji
+        self.assertEqual(_product_emoji(["식품", "유제품", "우유"]), "🥛")
+        self.assertEqual(_product_emoji(["수산", "생선"]), "🐟")
+        self.assertIsNone(_product_emoji(None))
+        self.assertIsNone(_product_emoji(["기타"]))
+
     # --- CSRF ------------------------------------------------------------------
 
     def test_seller_form_without_csrf_token_is_rejected(self):

@@ -49,6 +49,31 @@ _seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templa
 _buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
                                    context_processors=[_csrf_context(session.CUSTOMER_COOKIE)])
 
+# Platform name shown on every screen. Placeholder until the team settles the
+# "OO" part; change it here only.
+BRAND_NAME = "오이OO"
+
+# There are no product photos yet; thumbnails show an emoji picked from the
+# catalog category (first match wins, most specific first), or the title's
+# first letter when nothing matches.
+_CATEGORY_EMOJI = (
+    ("우유", "🥛"), ("계란", "🥚"), ("유제품", "🧀"), ("생선", "🐟"), ("수산", "🐟"),
+    ("커피", "☕"), ("음료", "🧃"), ("빵", "🍞"), ("베이커리", "🥐"), ("과일", "🍊"),
+    ("채소", "🥬"), ("쌀", "🍚"), ("축산", "🥩"), ("농산", "🌽"),
+)
+
+
+def _product_emoji(category_path: Optional[list[str]]) -> Optional[str]:
+    for keyword, emoji in _CATEGORY_EMOJI:
+        if keyword in (category_path or []):
+            return emoji
+    return None
+
+
+for _templates in (_seller_templates, _buyer_templates):
+    _templates.env.globals["brand_name"] = BRAND_NAME
+    _templates.env.globals["product_emoji"] = _product_emoji
+
 _STATUS_LABELS = {"requested": "접수", "accepted": "처리중", "completed": "완료", "cancelled": "취소"}
 
 
@@ -56,6 +81,12 @@ def _with_total(order: dict) -> dict:
     """Screen-only total_amount, derived from order items (not part of commerce_order.v1)."""
     total = sum(item["quantity"] * item["unit_price_minor"] for item in order["items"])
     return {**order, "total_amount": total}
+
+
+def _catalog_titles(conn, seller_id: str) -> dict[str, str]:
+    """item_id_local -> title_text, so screens show product names instead of IDs."""
+    return {item["item_id_local"]: item["title_text"]
+            for item in orders_service.list_catalog_for_display(conn, seller_id=seller_id)}
 
 
 def _price_chart_points(history: list[dict]) -> Optional[str]:
@@ -377,7 +408,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         orders = [_with_total(o) for o in orders_service.list_orders(conn, seller_id=seller_id)]
         return _seller_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
-            "status_labels": _STATUS_LABELS, "staff": staff,
+            "status_labels": _STATUS_LABELS, "staff": staff, "titles": _catalog_titles(conn, seller_id),
         })
 
     def seller_transition_screen(seller_id: str, order_id: str, action: str, request: Request, conn, expected_status_version: int):
@@ -415,8 +446,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             result = orders_service.get_comparison_for_display(
                 conn, seller_id=seller_id, customer_id_local=customer_id_local, runtime=context.runtime,
             )
-        titles = {item["item_id_local"]: item["title_text"]
-                  for item in orders_service.list_catalog_for_display(conn, seller_id=seller_id)}
+        titles = _catalog_titles(conn, seller_id)
         return _seller_templates.TemplateResponse(request, "compare.html", {
             "seller_id": seller_id, "active_tab": "compare", "staff": staff,
             "customers": accounts_db.list_customers(conn, seller_id),
@@ -468,6 +498,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
         return _seller_templates.TemplateResponse(request, "group_buys.html", {
             "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "staff": staff,
+            "titles": _catalog_titles(conn, seller_id),
         })
 
     @app.post("/seller/{seller_id}/group-buys")
@@ -612,6 +643,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         )
         return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
             "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
+            "titles": _catalog_titles(conn, seller_id),
         })
 
     @app.get("/buyer/{seller_id}/orders")
@@ -622,7 +654,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         ]
         return _buyer_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
-            "status_labels": _STATUS_LABELS, "customer": customer,
+            "status_labels": _STATUS_LABELS, "customer": customer, "titles": _catalog_titles(conn, seller_id),
         })
 
     @app.get("/buyer/{seller_id}/chat")
@@ -657,6 +689,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
         return _buyer_templates.TemplateResponse(request, "group_buys.html", {
             "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "customer": customer,
+            "titles": _catalog_titles(conn, seller_id),
         })
 
     @app.post("/buyer/{seller_id}/group-buys/{group_buy_id}/join")

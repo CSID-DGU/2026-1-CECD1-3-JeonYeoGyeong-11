@@ -1,36 +1,63 @@
+{%- macro icon(name) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'home' -%}<path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19z"/>
+{%- elif name == 'feed' -%}<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 9h8M8 12.5h8M8 16h5"/>
+{%- elif name == 'group' -%}<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15.5 14.7c2.3-.3 4.3 1 5 3.8"/>
+{%- elif name == 'message' -%}<path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6.5L6 20.5V17a3 3 0 0 1-2-2.8z"/>
+{%- elif name == 'orders' -%}<path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z"/><path d="M9 8.5h6M9 12.5h6"/>
+{%- elif name == 'spark' -%}<path d="M12 4l1.7 4.6L18.5 10l-4.8 1.6L12 16.5l-1.7-4.9L5.5 10l4.8-1.4z"/><path d="M18.5 16v3M17 17.5h3"/>
+{%- endif -%}
+</svg>
+{%- endmacro -%}
 <!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title or "직거래 장터" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>{{ title or brand_name }}</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-  <div class="app-switcher">
-    <div class="tabs">
-      <a class="tab active" href="/buyer/{{ seller_id }}/">고객용 앱</a>
-      <a class="tab" href="/seller/{{ seller_id }}/overview">판매자용 앱</a>
-    </div>
-    <div class="session">
-      {% if customer %}
-        {{ customer.display_name }}님 · <a href="/buyer/{{ seller_id }}/logout" style="text-decoration:underline;">로그아웃</a>
-      {% else %}
-        <a href="/buyer/{{ seller_id }}/login" style="text-decoration:underline;">로그인</a> ·
-        <a href="/buyer/{{ seller_id }}/signup" style="text-decoration:underline;">회원가입</a>
-      {% endif %}
-    </div>
+<body class="has-tabbar">
+  <div class="demo-bar">
+    <span>데모 화면</span>
+    <a class="active" href="/buyer/{{ seller_id }}/">구매자</a>
+    <a href="/seller/{{ seller_id }}/overview">판매자</a>
   </div>
-  <nav class="tab-nav">
-    <a href="/buyer/{{ seller_id }}/" class="{{ 'active' if active_tab == 'home' else '' }}">홈</a>
-    <a href="/buyer/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">피드</a>
-    <a href="/buyer/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">공동구매</a>
-    <a href="/buyer/{{ seller_id }}/messages" class="{{ 'active' if active_tab == 'messages' else '' }}">쪽지</a>
-    <a href="/buyer/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">주문내역</a>
-    <a href="/buyer/{{ seller_id }}/chat" class="{{ 'active' if active_tab == 'chat' else '' }}">챗봇</a>
-  </nav>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/buyer/{{ seller_id }}/"><img src="/static/logo.svg" alt="">{{ brand_name }}</a>
+      <nav class="topnav">
+        <a href="/buyer/{{ seller_id }}/" class="{{ 'active' if active_tab == 'home' else '' }}">홈</a>
+        <a href="/buyer/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">소식</a>
+        <a href="/buyer/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">공동구매</a>
+        <a href="/buyer/{{ seller_id }}/messages" class="{{ 'active' if active_tab == 'messages' else '' }}">쪽지</a>
+        <a href="/buyer/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">주문내역</a>
+        <a href="/buyer/{{ seller_id }}/chat" class="{{ 'active' if active_tab == 'chat' else '' }}">챗봇</a>
+      </nav>
+      <div class="session">
+        {% if customer %}
+          <span class="avatar" aria-hidden="true">{{ customer.display_name[:1] }}</span>
+          <span class="name">{{ customer.display_name }}님</span>
+          <a href="/buyer/{{ seller_id }}/logout">로그아웃</a>
+        {% else %}
+          <a href="/buyer/{{ seller_id }}/login">로그인</a>
+          <a class="btn primary sm" href="/buyer/{{ seller_id }}/signup">회원가입</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
   <main class="page">
     {% block content %}{% endblock %}
   </main>
+  <nav class="tabbar" aria-label="주요 메뉴">
+    <a href="/buyer/{{ seller_id }}/" class="{{ 'active' if active_tab == 'home' else '' }}">{{ icon('home') }}홈</a>
+    <a href="/buyer/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">{{ icon('feed') }}소식</a>
+    <a href="/buyer/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">{{ icon('group') }}공동구매</a>
+    <a href="/buyer/{{ seller_id }}/messages" class="{{ 'active' if active_tab in ('messages', 'chat') else '' }}">{{ icon('message') }}쪽지</a>
+    <a href="/buyer/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">{{ icon('orders') }}주문내역</a>
+  </nav>
 </body>
 </html>

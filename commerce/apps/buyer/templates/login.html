@@ -1,19 +1,23 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="page-title">로그인</h1>
-<div class="card" style="max-width:360px;">
-  {% if error %}<p class="muted-note" style="color:#dc2626;">{{ error }}</p>{% endif %}
-  <form method="post" action="/buyer/{{ seller_id }}/login" style="display:flex;flex-direction:column;gap:12px;">
-    <label class="field">아이디
-      <input type="text" name="customer_id_local" required>
-    </label>
-    <label class="field">비밀번호
-      <input type="password" name="password" required>
-    </label>
-    <button class="btn primary block" type="submit">로그인</button>
-  </form>
-  <p class="muted-note" style="margin-top:12px;">
-    계정이 없으신가요? <a href="/buyer/{{ seller_id }}/signup" style="color:var(--accent);">회원가입</a>
-  </p>
+<div class="auth">
+  <div class="auth-head">
+    <img src="/static/logo.svg" alt="">
+    <h1 class="page-title">{{ brand_name }}에 로그인</h1>
+    <p>이 매장에서 쓰는 계정으로 로그인해 주세요.</p>
+  </div>
+  <div class="card">
+    <form class="form" method="post" action="/buyer/{{ seller_id }}/login">
+      {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+      <label class="field">아이디
+        <input type="text" name="customer_id_local" autocomplete="username" required>
+      </label>
+      <label class="field">비밀번호
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn primary block" type="submit">로그인</button>
+    </form>
+  </div>
+  <p class="muted-note auth-foot">계정이 없으신가요? <a href="/buyer/{{ seller_id }}/signup">회원가입</a></p>
 </div>
 {% endblock %}

@@ -1,42 +1,45 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1 class="page-title">주문 관리</h1>
+<div class="page-head">
+  <h1 class="page-title">주문 관리</h1>
+  <p>접수된 주문을 수락하고, 전달이 끝나면 완료 처리해 주세요. 완료된 주문만 추천 모델 학습에 쓰입니다.</p>
+</div>
 
-<table>
-  <thead>
-    <tr><th>주문번호</th><th>고객</th><th>주문상품</th><th>금액</th><th>상태</th><th></th></tr>
-  </thead>
-  <tbody>
-    {% for order in orders %}
-    <tr>
-      <td>{{ order.order_id[:8] }}</td>
-      <td>{{ order.customer_id_local }}</td>
-      <td>{% for item in order['items'] %}{{ item.item_id_local }} x{{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</td>
-      <td>{{ "{:,}".format(order.total_amount) }}원</td>
-      <td>
-        <span class="badge {{ 'default' if order.status == 'accepted' else 'muted' }}">
-          {{ status_labels[order.status] }}
-        </span>
-      </td>
-      <td>
-        {% if order.status == 'requested' %}
-        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-          <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
-          <button class="btn secondary" type="submit">수락</button>
-        </form>
-        {% elif order.status == 'accepted' %}
-        <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-          <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
-          <button class="btn secondary" type="submit">완료 처리</button>
-        </form>
-        {% else %}
-        <span class="muted-note">-</span>
-        {% endif %}
-      </td>
-    </tr>
-    {% else %}
-    <tr><td colspan="6" class="muted-note">아직 들어온 주문이 없습니다.</td></tr>
-    {% endfor %}
-  </tbody>
-</table>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>주문</th><th>고객</th><th>상품</th><th class="num">금액</th><th>상태</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td><span class="mono">{{ order.order_id[:8] }}</span><p class="list-sub">{{ order.created_at[:10] }}</p></td>
+        <td>{{ order.customer_id_local }}</td>
+        <td>{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</td>
+        <td class="num">{{ "{:,}".format(order.total_amount) }}원</td>
+        <td>
+          <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">
+            {{ status_labels[order.status] }}
+          </span>
+        </td>
+        <td>
+          {% if order.status == 'requested' %}
+          <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+            <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+            <button class="btn secondary sm" type="submit">수락</button>
+          </form>
+          {% elif order.status == 'accepted' %}
+          <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+            <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+            <button class="btn primary sm" type="submit">완료 처리</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6"><div class="empty">아직 들어온 주문이 없습니다.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
