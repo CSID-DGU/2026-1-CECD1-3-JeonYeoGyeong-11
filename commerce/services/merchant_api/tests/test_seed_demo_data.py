@@ -45,7 +45,7 @@ class SeedDemoDataTest(unittest.TestCase):
         root = Path(self.tmp.name) / "merchant_1"
         environ = {"MERCHANT_ID": "merchant-1", "FEATURE_DB_PATH": str(root / "features.sqlite")}
         with mock.patch.dict(os.environ, environ, clear=True), contextlib.redirect_stdout(io.StringIO()):
-            seed_demo_data.main()
+            seed_demo_data.main([])
         conn = orders_db.connect(root / "orders.sqlite")
         self.addCleanup(conn.close)
         sellers = {r[0] for r in conn.execute("SELECT DISTINCT seller_id FROM orders")}
@@ -56,8 +56,42 @@ class SeedDemoDataTest(unittest.TestCase):
         for environ in ({"MERCHANT_DB_PATH": db_path}, {"MERCHANT_ID": "merchant-1"}):
             with mock.patch.dict(os.environ, environ, clear=True), \
                     self.assertRaises(SystemExit, msg=str(environ)), contextlib.redirect_stderr(io.StringIO()):
-                seed_demo_data.main()
+                seed_demo_data.main([])
         self.assertFalse((Path(self.tmp.name) / "x").exists(), "nothing is created on refusal")
+
+    def _bulk(self, customers=10):
+        with contextlib.redirect_stdout(io.StringIO()):
+            seed_demo_data.seed(self.conn, SELLER)
+            seed_demo_data.seed_bulk(self.conn, SELLER, customers=customers)
+
+    def test_bulk_runs_on_top_of_the_base_seed_and_is_idempotent(self):
+        self._bulk()
+        first = self._counts()
+        self._bulk()
+        self.assertEqual(self._counts(), first)
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) FROM catalog_items").fetchone()[0],
+                         6 + len(seed_demo_data._BULK_PRODUCTS))
+        self.assertGreater(first["orders"], 50)
+
+    def test_bulk_customers_lean_towards_their_pattern(self):
+        self._bulk(customers=15)
+        pattern_items = {i: set(p[1]) for i, p in enumerate(seed_demo_data._BULK_PATTERNS)}
+        for customer_id, _, pattern in seed_demo_data.bulk_customers(15):
+            bought = [item["item_id_local"] for order in orders_db.list_orders(self.conn, SELLER)
+                      if order["customer_id_local"] == customer_id for item in order["items"]]
+            in_pattern = sum(1 for i in bought if i in pattern_items[pattern])
+            self.assertGreater(in_pattern, len(bought) / 2, customer_id)
+
+    def test_bulk_events_carry_the_backdated_completion_time(self):
+        self._bulk()
+        rows = self.conn.execute(
+            "SELECT o.completed_at, pe.payload_json FROM orders o JOIN purchase_events pe "
+            "ON pe.seller_id = o.seller_id AND pe.order_id = o.order_id WHERE o.idempotency_key LIKE 'bulk-%'"
+        ).fetchall()
+        self.assertTrue(rows)
+        import json
+        for completed_at, payload in rows:
+            self.assertEqual(json.loads(payload)["time"]["value"], completed_at)
 
     def test_no_duplicate_idempotency_keys(self):
         seed_demo_data.seed(self.conn, SELLER)

@@ -7,7 +7,7 @@ rather than needing two live people to click through it).
 
 Usage (the same MERCHANT_ID / FEATURE_DB_PATH / MERCHANT_DB_PATH the app reads):
     MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite \
-        python -m commerce.services.merchant_api.seed_demo_data
+        python -m commerce.services.merchant_api.seed_demo_data [--bulk 40]
 
 Safe to re-run: existing accounts/products are skipped, not duplicated.
 Dates are backdated by directly setting orders.created_at/completed_at after
@@ -19,7 +19,9 @@ service layer untouched.
 """
 from __future__ import annotations
 
+import argparse
 import datetime as dt
+import json
 import os
 import random
 import sys
@@ -210,9 +212,156 @@ def seed(conn, seller_id: str) -> None:
     print("price history: 14 days for %d items" % len(_PRODUCTS[:3]))
 
 
-def main() -> None:
+# --- bulk mode: enough structured history for a recommender to show something ---
+#
+# The base seed above draws items uniformly, so no customer has a taste a model
+# could pick up, and 6 products make "top 10" the whole catalog. Bulk mode adds
+# a larger catalog and customers who each lean towards one shopping pattern
+# (with repeat purchases and some exploration). It never changes what seed()
+# writes, and every key it uses starts with "bulk-", so it can run on top of
+# an already seeded DB, and again without duplicating anything.
+
+_BULK_PRODUCTS = [
+    # item, title, price, category_path
+    ("bulk-milk-2", "저지방 우유 900ml", 2900, ["식품", "유제품", "우유"]),
+    ("bulk-yogurt", "플레인 요거트 450g", 3900, ["식품", "유제품"]),
+    ("bulk-cheese", "슬라이스 치즈 10매", 4500, ["식품", "유제품"]),
+    ("bulk-egg-30", "유정란 30구", 15900, ["식품", "축산", "계란"]),
+    ("bulk-bagel", "통밀 베이글 4입", 6500, ["식품", "베이커리", "빵"]),
+    ("bulk-croissant", "버터 크루아상 3입", 7200, ["식품", "베이커리"]),
+    ("bulk-granola", "수제 그래놀라 300g", 8900, ["식품", "베이커리"]),
+    ("bulk-mackerel", "손질 고등어 2손", 9800, ["수산", "생선"]),
+    ("bulk-squid", "제주 한치 500g", 16000, ["수산"]),
+    ("bulk-abalone", "완도 활전복 5미", 22000, ["수산"]),
+    ("bulk-seaweed", "기장 생미역 1kg", 6000, ["수산"]),
+    ("bulk-shrimp", "새우살 300g", 11000, ["수산"]),
+    ("bulk-bean-1", "에티오피아 원두 200g", 13500, ["식품", "음료", "커피"]),
+    ("bulk-bean-2", "콜롬비아 원두 200g", 12500, ["식품", "음료", "커피"]),
+    ("bulk-coldbrew", "콜드브루 원액 500ml", 9900, ["식품", "음료", "커피"]),
+    ("bulk-tea", "제주 녹차 티백 20입", 7500, ["식품", "음료"]),
+    ("bulk-juice", "착즙 감귤 주스 1L", 6800, ["식품", "음료"]),
+    ("bulk-hallabong", "한라봉 2kg", 24000, ["농산", "과일"]),
+    ("bulk-apple", "부사 사과 3kg", 21000, ["농산", "과일"]),
+    ("bulk-strawberry", "설향 딸기 500g", 12900, ["농산", "과일"]),
+    ("bulk-tomato", "대저 토마토 1kg", 9900, ["농산", "채소"]),
+    ("bulk-lettuce", "유기농 상추 200g", 3200, ["농산", "채소"]),
+    ("bulk-cucumber", "백오이 5입", 4800, ["농산", "채소"]),
+    ("bulk-potato", "감자 2kg", 7900, ["농산", "채소"]),
+    ("bulk-rice", "제주 쌀 4kg", 19800, ["농산", "쌀"]),
+    ("bulk-pork", "흑돼지 오겹살 500g", 18900, ["식품", "축산"]),
+    ("bulk-beef", "한우 국거리 300g", 21900, ["식품", "축산"]),
+    ("bulk-chicken", "무항생제 닭가슴살 1kg", 12900, ["식품", "축산"]),
+]
+
+# Each pattern: (name, item weights). Items outside a pattern still get a small weight (exploration).
+_BULK_PATTERNS = [
+    ("아침 장보기", {"sku-milk": 5, "bulk-milk-2": 3, "sku-egg": 4, "bulk-egg-30": 2, "sku-bread": 4,
+                  "bulk-bagel": 3, "bulk-yogurt": 3, "bulk-granola": 2, "bulk-cheese": 2, "bulk-juice": 2}),
+    ("수산물 단골", {"sku-fish": 5, "bulk-mackerel": 4, "bulk-squid": 3, "bulk-abalone": 2, "bulk-seaweed": 3,
+                  "bulk-shrimp": 3, "bulk-rice": 1}),
+    ("커피 애호가", {"sku-coffee": 5, "bulk-bean-1": 4, "bulk-bean-2": 4, "bulk-coldbrew": 3, "bulk-tea": 2,
+                  "bulk-croissant": 3, "sku-milk": 2}),
+    ("과일·채소", {"sku-orange": 4, "bulk-hallabong": 3, "bulk-apple": 3, "bulk-strawberry": 3, "bulk-tomato": 3,
+                 "bulk-lettuce": 3, "bulk-cucumber": 3, "bulk-potato": 2, "bulk-juice": 2}),
+    ("고기 집밥", {"bulk-pork": 5, "bulk-beef": 3, "bulk-chicken": 4, "bulk-lettuce": 4, "bulk-rice": 3,
+                "bulk-potato": 2, "sku-egg": 2, "bulk-cucumber": 2}),
+]
+
+_FAMILY = ["김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권"]
+_GIVEN = ["서준", "하윤", "도윤", "서연", "시우", "지우", "하준", "수아", "지호", "지유", "예준", "채원",
+          "유준", "다은", "주원", "소율", "건우", "예린", "현우", "윤서"]
+
+
+def bulk_customers(count: int) -> list[tuple[str, str, int]]:
+    """(customer_id_local, display_name, pattern index), the same list every call for the same count."""
+    rng = random.Random(7)
+    return [("bulk-cust-%03d" % (n + 1), rng.choice(_FAMILY) + rng.choice(_GIVEN), n % len(_BULK_PATTERNS))
+            for n in range(count)]
+
+
+def _backdate_event(conn, seller_id: str, order_id: str, completed_at: str) -> None:
+    """Give a just-written, not yet delivered purchase_event its backdated time,
+    so B sees the visits in their real order (only rows this run created)."""
+    row = conn.execute("SELECT purchase_event_id, payload_json FROM purchase_events WHERE seller_id = ? AND order_id = ?",
+                       (seller_id, order_id)).fetchone()
+    if row is None:
+        return
+    payload = json.loads(row["payload_json"])
+    payload["time"] = {"kind": "absolute", "value": completed_at}
+    body = json.dumps(payload, ensure_ascii=False)
+    conn.execute("UPDATE purchase_events SET payload_json = ? WHERE seller_id = ? AND purchase_event_id = ?",
+                 (body, seller_id, row["purchase_event_id"]))
+    conn.execute("UPDATE outbox SET payload_json = ? WHERE seller_id = ? AND kind = 'purchase_event' AND ref_id = ? "
+                 "AND status = 'pending'", (body, seller_id, row["purchase_event_id"]))
+
+
+def seed_bulk(conn, seller_id: str, customers: int = 40, days: int = 60) -> None:
+    """Add the bulk catalog, `customers` patterned customers and `days` of their orders."""
+    rng = random.Random(2026)
+    orders_db.ensure_schema(conn)
+    accounts_db.ensure_schema(conn)
+    for item_id, title, price, category_path in _BULK_PRODUCTS:
+        if orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id) is None:
+            orders_service.register_catalog_item(conn, seller_id=seller_id, item_id_local=item_id, title_text=title,
+                                                 category_path=category_path, display_price_minor=price)
+    prices = {item["item_id_local"]: item["display_price_minor"]
+              for item in orders_service.list_catalog_for_display(conn, seller_id=seller_id)}
+    all_items = sorted(prices)
+
+    created = 0
+    for customer_id, display_name, pattern_index in bulk_customers(customers):
+        if accounts_db.fetch_customer(conn, seller_id, customer_id) is None:
+            accounts_service.signup_customer(conn, seller_id=seller_id, customer_id_local=customer_id,
+                                             display_name=display_name, password=_DEMO_PASSWORD)
+        weights = {item: 0.3 for item in all_items}  # exploration
+        weights.update({k: v for k, v in _BULK_PATTERNS[pattern_index][1].items() if k in prices})
+        favourites = rng.sample(sorted(_BULK_PATTERNS[pattern_index][1]), k=2)  # repeat buys
+        visit_days = sorted(rng.sample(range(1, days + 1), k=rng.randint(3, 10)), reverse=True)
+        for visit, days_ago in enumerate(visit_days):
+            basket: dict[str, int] = {}
+            for item in rng.choices(list(weights), weights=list(weights.values()), k=rng.randint(1, 4)):
+                basket[item] = basket.get(item, 0) + 1
+            if rng.random() < 0.6:
+                fav = rng.choice(favourites)
+                if fav in prices:
+                    basket[fav] = basket.get(fav, 0) + 1
+            stage = rng.choices(["completed", "accepted", "requested", "cancelled"], weights=[16, 2, 1, 1])[0]
+            # Visits older than a few days are all settled; only recent ones may still be open.
+            if days_ago > 3 and stage in ("accepted", "requested"):
+                stage = "completed"
+            order = orders_service.place_order(
+                conn, seller_id=seller_id, customer_id_local=customer_id,
+                idempotency_key="bulk-%s-%d" % (customer_id, visit),
+                items=[{"item_id_local": i, "quantity": q, "unit_price_minor": prices[i]} for i, q in sorted(basket.items())],
+                currency="KRW",
+            )
+            if order["status"] != "requested" or order["status_version"] != 1:
+                continue  # already progressed by an earlier run
+            created += 1
+            if stage in ("accepted", "completed"):
+                orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"],
+                                                action="accept", expected_status_version=1)
+            if stage == "completed":
+                orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"],
+                                                action="complete", expected_status_version=2)
+            if stage == "cancelled":
+                orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"],
+                                                action="cancel", expected_status_version=1)
+            completed_at = _days_ago(days_ago) if stage == "completed" else None  # what _backdate_order writes
+            _backdate_order(conn, seller_id, order["order_id"], days_ago, days_ago if completed_at else None)
+            if completed_at:
+                _backdate_event(conn, seller_id, order["order_id"], completed_at)
+    print("bulk: %d products, %d customers, %d new orders over %d days"
+          % (len(_BULK_PRODUCTS), customers, created, days))
+
+
+def main(argv: list[str] | None = None) -> None:
     # Same environment as the app (main.settings_from_env), so the seed always
     # lands in the DB and under the seller_id the app will actually serve.
+    parser = argparse.ArgumentParser(description="Fill a seller's orders.sqlite with synthetic demo activity.")
+    parser.add_argument("--bulk", type=int, metavar="N", default=0,
+                        help="also add the larger catalog and N patterned customers with %d days of orders" % 60)
+    args = parser.parse_args(argv)
     seller_id = os.environ.get("MERCHANT_ID")
     if not seller_id:
         print("Set MERCHANT_ID (e.g. merchant-1, as run_local.py does) before running this.", file=sys.stderr)
@@ -228,6 +377,8 @@ def main() -> None:
     try:
         with conn:
             seed(conn, seller_id)
+            if args.bulk:
+                seed_bulk(conn, seller_id, customers=args.bulk)
     except AccountError as exc:
         print("seed aborted: %s" % exc, file=sys.stderr)
         raise SystemExit(1)
