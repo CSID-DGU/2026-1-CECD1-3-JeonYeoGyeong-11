@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">{{ customer_id_local }}님과의 대화</h1>
+<div class="card">
+  {% for m in messages %}
+  <div class="chat-row {{ 'me' if m.sender == 'seller' else '' }}">
+    <div class="chat-bubble {{ 'me' if m.sender == 'seller' else 'them' }}">{{ m.body }}</div>
+  </div>
+  {% else %}
+  <p class="muted-note">아직 대화가 없습니다.</p>
+  {% endfor %}
+</div>
+<form method="post" action="/seller/{{ seller_id }}/messages/{{ customer_id_local }}" style="display:flex;gap:8px;">
+  <input type="text" name="body" placeholder="답장 보내기" required>
+  <button class="btn primary" type="submit">전송</button>
+</form>
+{% endblock %}

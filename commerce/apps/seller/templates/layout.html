@@ -12,12 +12,23 @@
       <a class="tab" href="/buyer/{{ seller_id }}/">고객용 앱</a>
       <a class="tab active" href="/seller/{{ seller_id }}/overview">판매자용 앱</a>
     </div>
-    <div class="session">{{ seller_id }}</div>
+    <div class="session">
+      {% if staff %}
+        {{ staff.display_name }}님 · <a href="/seller/{{ seller_id }}/logout" style="text-decoration:underline;">로그아웃</a>
+      {% else %}
+        <a href="/seller/{{ seller_id }}/login" style="text-decoration:underline;">로그인</a> ·
+        <a href="/seller/{{ seller_id }}/signup" style="text-decoration:underline;">회원가입</a>
+      {% endif %}
+    </div>
   </div>
   <nav class="tab-nav">
     <a href="/seller/{{ seller_id }}/overview" class="{{ 'active' if active_tab == 'overview' else '' }}">개요</a>
     <a href="/seller/{{ seller_id }}/products" class="{{ 'active' if active_tab == 'products' else '' }}">상품 관리</a>
     <a href="/seller/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">주문 관리</a>
+    <a href="/seller/{{ seller_id }}/messages" class="{{ 'active' if active_tab == 'messages' else '' }}">쪽지</a>
+    <a href="/seller/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">피드</a>
+    <a href="/seller/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">공동구매</a>
+    <a href="/seller/{{ seller_id }}/prices" class="{{ 'active' if active_tab == 'prices' else '' }}">시세 입력</a>
   </nav>
   <main class="page">
     {% block content %}{% endblock %}

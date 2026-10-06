@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">판매자 로그인</h1>
+<div class="card" style="max-width:360px;">
+  {% if error %}<p class="muted-note" style="color:#dc2626;">{{ error }}</p>{% endif %}
+  <form method="post" action="/seller/{{ seller_id }}/login" style="display:flex;flex-direction:column;gap:12px;">
+    <label class="field">아이디
+      <input type="text" name="username" required>
+    </label>
+    <label class="field">비밀번호
+      <input type="password" name="password" required>
+    </label>
+    <button class="btn primary block" type="submit">로그인</button>
+  </form>
+  <p class="muted-note" style="margin-top:12px;">
+    계정이 없으신가요? <a href="/seller/{{ seller_id }}/signup" style="color:var(--accent);">회원가입</a>
+  </p>
+</div>
+{% endblock %}

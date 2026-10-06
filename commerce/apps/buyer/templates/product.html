@@ -6,21 +6,34 @@
     <h1 class="page-title">{{ item.title_text }}</h1>
     <p class="muted-note">판매자: {{ seller_id }}</p>
     <p class="price-now" style="font-size:24px;">{{ "{:,}".format(item.display_price_minor) }}원</p>
+    {% if customer %}
     <form method="post" action="/buyer/{{ seller_id }}/orders" style="display:flex;flex-direction:column;gap:12px;max-width:320px;">
       <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}">
       <input type="hidden" name="unit_price_minor" value="{{ item.display_price_minor }}">
       <label class="field">수량
         <input type="number" name="quantity" value="1" min="1" required>
       </label>
-      <label class="field">내 고객 ID
-        <input type="text" name="customer_id_local" value="guest-1" required>
-      </label>
       <button class="btn primary" type="submit">바로 주문하기</button>
     </form>
+    {% else %}
+    <p class="muted-note">주문하려면 <a href="/buyer/{{ seller_id }}/login" style="color:var(--accent);">로그인</a>이 필요합니다.</p>
+    {% endif %}
     <p class="muted-note">
       장바구니에 여러 상품을 모아 담는 기능은 아직 계약(schema)에 없어서, 지금은 상품 하나를
       바로 주문하는 방식으로 되어 있습니다.
     </p>
+    {% if price_chart_points %}
+    <div>
+      <h2 class="section-title">최근 시세</h2>
+      <svg class="price-chart" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <polyline points="{{ price_chart_points }}"></polyline>
+      </svg>
+      <div class="progress-label">
+        <span>{{ price_history[0].price_date }}</span>
+        <span>{{ price_history[-1].price_date }}</span>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

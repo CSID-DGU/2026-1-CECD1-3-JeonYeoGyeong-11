@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block content %}
+<h1 class="page-title">공동구매 관리</h1>
+
+<div class="card">
+  <h2 class="section-title">새 공동구매 만들기</h2>
+  <form method="post" action="/seller/{{ seller_id }}/group-buys" style="display:flex;flex-direction:column;gap:12px;">
+    <label class="field">상품 ID (상품관리에 등록된 item_id_local)
+      <input type="text" name="item_id_local" required>
+    </label>
+    <div style="display:flex;gap:12px;">
+      <label class="field" style="flex:1">목표 수량
+        <input type="number" name="target_quantity" min="1" required>
+      </label>
+      <label class="field" style="flex:1">공동구매 단가(원)
+        <input type="number" name="unit_price_minor" min="0" required>
+      </label>
+      <label class="field" style="flex:1">마감 시각 (UTC, 예: 2026-10-05T00:00:00.000000Z)
+        <input type="text" name="deadline_at" required>
+      </label>
+    </div>
+    <button class="btn primary" type="submit" style="align-self:flex-start;">만들기</button>
+  </form>
+</div>
+
+{% for gb in group_buys %}
+<div class="card">
+  <div style="display:flex;justify-content:space-between;">
+    <strong>{{ gb.item_id_local }}</strong>
+    <span class="badge {{ 'default' if gb.status == 'open' else 'muted' }}">
+      {{ {'open': '진행중', 'succeeded': '성사', 'failed': '미달'}[gb.status] }}
+    </span>
+  </div>
+  <div class="progress-bar" style="margin-top:8px;">
+    <div class="progress-bar-fill" style="width: {{ (100 * gb.joined_quantity / gb.target_quantity) | round(0, 'floor') | int if gb.target_quantity else 0 }}%;"></div>
+  </div>
+  <div class="progress-label">
+    <span>{{ gb.joined_quantity }} / {{ gb.target_quantity }}개</span>
+    <span>마감 {{ gb.deadline_at[:10] }}</span>
+  </div>
+</div>
+{% else %}
+<p class="muted-note">아직 만든 공동구매가 없습니다.</p>
+{% endfor %}
+{% endblock %}

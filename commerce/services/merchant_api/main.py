@@ -1,13 +1,21 @@
-"""Merchant app: health, lifecycle, and the order/catalog domain routes.
+"""Merchant app: health, lifecycle, order/catalog domain routes, and screens.
 
-Caller authentication is intentionally absent from every route below. Who is
-allowed to act as a given seller_id is exactly OQ13 (auth error code) and OQ15
-(order_id in seller-origin URLs), both open human decisions
-(docs/design/open-questions.md). A card: "그 결정 전에는 주문 상태 전이·
-transaction·outbox 같은 도메인 계층부터 만든다" -- so this module exposes the
-domain layer over HTTP for local/integration testing only. Do not point a real
-buyer or seller browser at these routes before OQ13/OQ15 land and a caller
-identity check is added here.
+The plain JSON routes under /sellers/{seller_id}/... have no caller
+authentication -- who is allowed to act as a given seller_id there is exactly
+OQ13 (auth error code) and OQ15 (order_id in seller-origin URLs), both open
+human decisions (docs/design/open-questions.md), kept for local/integration
+testing only.
+
+The screen routes under /buyer/{seller_id}/... and /seller/{seller_id}/...
+now DO check caller identity via signed session cookies (accounts_service.py,
+session.py): every /seller/... route except signup/login requires a verified
+seller_accounts login, and every buyer action that needs an identity (placing
+an order, joining a group-buy, messaging, viewing order history) requires a
+customer login. Browsing (catalog, feed, group-buy listing) stays open. This
+still isn't the full OQ13 answer -- there's no CSRF token per form yet (only
+SameSite=Lax cookies), and sessions don't survive a server restart (random
+per-process secret, session.py) -- but it closes the "anyone can act as any
+seller_id" gap the rest of this docstring used to describe as wide open.
 """
 import asyncio
 import os
@@ -24,7 +32,8 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
-from commerce.services.merchant_api import orders_db, orders_service
+from commerce.services.merchant_api import accounts_db, accounts_service, orders_db, orders_service, session, social_db, social_service
+from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
@@ -42,6 +51,24 @@ def _with_total(order: dict) -> dict:
     total = sum(item["quantity"] * item["unit_price_minor"] for item in order["items"])
     return {**order, "total_amount": total}
 
+
+def _price_chart_points(history: list[dict]) -> Optional[str]:
+    """SVG polyline 'x,y x,y ...' for M30's price sparkline, or None when there's
+    nothing to draw. Computed here, not in Jinja2, since point-scaling math is
+    awkward to express as template filters."""
+    if len(history) < 2:
+        return None
+    prices = [row["price_minor"] for row in history]
+    low, high = min(prices), max(prices)
+    span = (high - low) or 1
+    n = len(history)
+    points = []
+    for i, price in enumerate(prices):
+        x = i * (300 / (n - 1))
+        y = 75 - (price - low) / span * 70
+        points.append("%.1f,%.1f" % (x, y))
+    return " ".join(points)
+
 # interfaces.md §8 HTTP mapping. Codes this service cannot yet produce (manifest/
 # tensor/round codes are B<->C only) are omitted rather than guessed.
 _HTTP_STATUS_BY_CODE = {
@@ -58,6 +85,14 @@ _HTTP_STATUS_BY_CODE = {
     "FORBIDDEN": 403,
     "NOT_FOUND": 404,
 }
+
+
+class LoginRequired(Exception):
+    """Raised by require_customer/require_seller; the exception handler below
+    turns this into a redirect to the right login page instead of a 500."""
+
+    def __init__(self, login_url: str):
+        self.login_url = login_url
 
 
 def settings_from_env() -> MerchantSettings:
@@ -125,13 +160,43 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     async def handle_contract_error(request: Request, exc: ContractError):
         return JSONResponse(status_code=_HTTP_STATUS_BY_CODE.get(exc.code, 400), content=exc.to_payload())
 
+    @app.exception_handler(LoginRequired)
+    async def handle_login_required(request: Request, exc: "LoginRequired"):
+        return RedirectResponse(exc.login_url, status_code=303)
+
     def get_conn(request: Request):
         context: MerchantContext = request.app.state.merchant
         conn = orders_db.connect(context.merchant_db_path)
+        social_db.ensure_schema(conn)
+        accounts_db.ensure_schema(conn)
         try:
             yield conn
         finally:
             conn.close()
+
+    def current_customer(seller_id: str, request: Request) -> Optional[dict]:
+        account = session.unsign(request.cookies.get(session.CUSTOMER_COOKIE))
+        if account is None or account.get("seller_id") != seller_id or account.get("role") != "customer":
+            return None
+        return account
+
+    def require_customer(seller_id: str, request: Request) -> dict:
+        account = current_customer(seller_id, request)
+        if account is None:
+            raise LoginRequired(f"/buyer/{seller_id}/login")
+        return account
+
+    def current_seller_staff(seller_id: str, request: Request) -> Optional[dict]:
+        account = session.unsign(request.cookies.get(session.SELLER_COOKIE))
+        if account is None or account.get("seller_id") != seller_id or account.get("role") != "seller":
+            return None
+        return account
+
+    def require_seller(seller_id: str, request: Request) -> dict:
+        account = current_seller_staff(seller_id, request)
+        if account is None:
+            raise LoginRequired(f"/seller/{seller_id}/login")
+        return account
 
     @app.get("/healthz")
     def healthz():
@@ -185,30 +250,90 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         context: MerchantContext = request.app.state.merchant
         return RedirectResponse(f"/buyer/{context.seller_id}/")
 
+    # --- Seller auth (business-registration gated signup) ------------------
+
+    @app.get("/seller/{seller_id}/signup")
+    def seller_signup_form(seller_id: str, request: Request):
+        return _seller_templates.TemplateResponse(request, "signup.html", {
+            "seller_id": seller_id, "active_tab": "", "error": None, "form": {},
+        })
+
+    @app.post("/seller/{seller_id}/signup")
+    def seller_signup(
+        seller_id: str, request: Request, conn=Depends(get_conn),
+        username: str = Form(...), display_name: str = Form(...), password: str = Form(...),
+        business_reg_no: str = Form(...), business_open_date: str = Form(...), business_rep_name: str = Form(...),
+    ):
+        try:
+            accounts_service.signup_seller(
+                conn, seller_id=seller_id, username=username, display_name=display_name, password=password,
+                business_reg_no=business_reg_no, business_open_date=business_open_date,
+                business_rep_name=business_rep_name,
+            )
+        except AccountError as exc:
+            return _seller_templates.TemplateResponse(request, "signup.html", {
+                "seller_id": seller_id, "active_tab": "", "error": str(exc),
+                "form": {"username": username, "display_name": display_name, "business_reg_no": business_reg_no,
+                         "business_open_date": business_open_date, "business_rep_name": business_rep_name},
+            })
+        token = session.sign({"role": "seller", "seller_id": seller_id, "username": username, "display_name": display_name})
+        response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
+        response.set_cookie(session.SELLER_COOKIE, token, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/seller/{seller_id}/login")
+    def seller_login_form(seller_id: str, request: Request):
+        return _seller_templates.TemplateResponse(request, "login.html", {
+            "seller_id": seller_id, "active_tab": "", "error": None,
+        })
+
+    @app.post("/seller/{seller_id}/login")
+    def seller_login(
+        seller_id: str, request: Request, conn=Depends(get_conn),
+        username: str = Form(...), password: str = Form(...),
+    ):
+        try:
+            account = accounts_service.authenticate_seller(conn, seller_id=seller_id, username=username, password=password)
+        except AccountError as exc:
+            return _seller_templates.TemplateResponse(request, "login.html", {
+                "seller_id": seller_id, "active_tab": "", "error": str(exc),
+            })
+        token = session.sign({"role": "seller", "seller_id": seller_id, "username": username,
+                               "display_name": account["display_name"]})
+        response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
+        response.set_cookie(session.SELLER_COOKIE, token, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/seller/{seller_id}/logout")
+    def seller_logout(seller_id: str):
+        response = RedirectResponse(f"/seller/{seller_id}/login", status_code=303)
+        response.delete_cookie(session.SELLER_COOKIE)
+        return response
+
     # --- Seller screens ---------------------------------------------------
 
     @app.get("/seller/{seller_id}/overview")
-    def seller_overview(seller_id: str, request: Request, conn=Depends(get_conn)):
+    def seller_overview(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
         orders = orders_service.list_orders(conn, seller_id=seller_id)
         status_counts = {"requested": 0, "accepted": 0, "completed": 0, "cancelled": 0}
         for order in orders:
             status_counts[order["status"]] += 1
         return _seller_templates.TemplateResponse(request, "overview.html", {
-            "seller_id": seller_id, "active_tab": "overview",
+            "seller_id": seller_id, "active_tab": "overview", "staff": staff,
             "product_count": len(catalog), "status_counts": status_counts,
         })
 
     @app.get("/seller/{seller_id}/products")
-    def seller_products(seller_id: str, request: Request, conn=Depends(get_conn)):
+    def seller_products(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
         return _seller_templates.TemplateResponse(request, "products.html", {
-            "seller_id": seller_id, "active_tab": "products", "catalog": catalog,
+            "seller_id": seller_id, "active_tab": "products", "catalog": catalog, "staff": staff,
         })
 
     @app.post("/seller/{seller_id}/products")
     def seller_create_product(
-        seller_id: str, request: Request, conn=Depends(get_conn),
+        seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
         title_text: str = Form(...), display_price_minor: int = Form(...),
         item_id_local: str = Form(...),
     ):
@@ -220,11 +345,11 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         return RedirectResponse(f"/seller/{seller_id}/products", status_code=303)
 
     @app.get("/seller/{seller_id}/orders")
-    def seller_orders(seller_id: str, request: Request, conn=Depends(get_conn)):
+    def seller_orders(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
         orders = [_with_total(o) for o in orders_service.list_orders(conn, seller_id=seller_id)]
         return _seller_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
-            "status_labels": _STATUS_LABELS,
+            "status_labels": _STATUS_LABELS, "staff": staff,
         })
 
     def seller_transition_screen(seller_id: str, order_id: str, action: str, request: Request, conn, expected_status_version: int):
@@ -237,26 +362,161 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/orders/{order_id}/accept")
     def seller_accept_order(
-        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn),
+        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
         expected_status_version: int = Form(...),
     ):
         return seller_transition_screen(seller_id, order_id, "accept", request, conn, expected_status_version)
 
     @app.post("/seller/{seller_id}/orders/{order_id}/complete")
     def seller_complete_order(
-        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn),
+        seller_id: str, order_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller),
         expected_status_version: int = Form(...),
     ):
         return seller_transition_screen(seller_id, order_id, "complete", request, conn, expected_status_version)
 
+    # --- Seller social screens (M25 DM, M26/M27 feed, M29 group-buy, M30 price) --
+
+    @app.get("/seller/{seller_id}/messages")
+    def seller_messages(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
+        threads = social_service.list_threads(conn, seller_id=seller_id)
+        return _seller_templates.TemplateResponse(request, "messages.html", {
+            "seller_id": seller_id, "active_tab": "messages", "threads": threads, "staff": staff,
+        })
+
+    @app.get("/seller/{seller_id}/messages/{customer_id_local}")
+    def seller_message_thread(seller_id: str, customer_id_local: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
+        messages = social_service.list_thread_messages(conn, seller_id=seller_id, customer_id_local=customer_id_local)
+        return _seller_templates.TemplateResponse(request, "message_thread.html", {
+            "seller_id": seller_id, "active_tab": "messages", "staff": staff,
+            "customer_id_local": customer_id_local, "messages": messages,
+        })
+
+    @app.post("/seller/{seller_id}/messages/{customer_id_local}")
+    def seller_send_message(seller_id: str, customer_id_local: str, conn=Depends(get_conn), staff=Depends(require_seller), body: str = Form(...)):
+        social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer_id_local, sender="seller", body=body)
+        return RedirectResponse(f"/seller/{seller_id}/messages/{customer_id_local}", status_code=303)
+
+    @app.get("/seller/{seller_id}/feed")
+    def seller_feed(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
+        posts = social_service.list_feed(conn, seller_id=seller_id)
+        return _seller_templates.TemplateResponse(request, "feed.html", {
+            "seller_id": seller_id, "active_tab": "feed", "posts": posts, "staff": staff,
+        })
+
+    @app.post("/seller/{seller_id}/feed")
+    def seller_create_post(
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller), kind: str = Form(...),
+        title: str = Form(...), body: str = Form(None),
+    ):
+        social_service.create_post(conn, seller_id=seller_id, kind=kind, title=title, body=body)
+        return RedirectResponse(f"/seller/{seller_id}/feed", status_code=303)
+
+    @app.get("/seller/{seller_id}/group-buys")
+    def seller_group_buys(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
+        group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
+        return _seller_templates.TemplateResponse(request, "group_buys.html", {
+            "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "staff": staff,
+        })
+
+    @app.post("/seller/{seller_id}/group-buys")
+    def seller_create_group_buy(
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller), item_id_local: str = Form(...),
+        target_quantity: int = Form(...), unit_price_minor: int = Form(...), deadline_at: str = Form(...),
+    ):
+        social_service.create_group_buy(
+            conn, seller_id=seller_id, item_id_local=item_id_local, target_quantity=target_quantity,
+            unit_price_minor=unit_price_minor, deadline_at=deadline_at,
+        )
+        return RedirectResponse(f"/seller/{seller_id}/group-buys", status_code=303)
+
+    @app.get("/seller/{seller_id}/prices")
+    def seller_prices(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
+        catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
+        histories = {
+            item["item_id_local"]: social_service.get_price_history(conn, seller_id=seller_id, item_id_local=item["item_id_local"])
+            for item in catalog
+        }
+        return _seller_templates.TemplateResponse(request, "prices.html", {
+            "seller_id": seller_id, "active_tab": "prices", "catalog": catalog, "histories": histories, "staff": staff,
+        })
+
+    @app.post("/seller/{seller_id}/prices")
+    def seller_record_price(
+        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller),
+        item_id_local: str = Form(...), price_minor: int = Form(...),
+    ):
+        social_service.record_price(conn, seller_id=seller_id, item_id_local=item_id_local, price_minor=price_minor)
+        return RedirectResponse(f"/seller/{seller_id}/prices", status_code=303)
+
+    # --- Buyer auth ----------------------------------------------------------
+
+    @app.get("/buyer/{seller_id}/signup")
+    def buyer_signup_form(seller_id: str, request: Request):
+        return _buyer_templates.TemplateResponse(request, "signup.html", {
+            "seller_id": seller_id, "active_tab": "", "error": None, "form": {},
+        })
+
+    @app.post("/buyer/{seller_id}/signup")
+    def buyer_signup(
+        seller_id: str, request: Request, conn=Depends(get_conn),
+        customer_id_local: str = Form(...), display_name: str = Form(...), password: str = Form(...),
+    ):
+        try:
+            accounts_service.signup_customer(
+                conn, seller_id=seller_id, customer_id_local=customer_id_local,
+                display_name=display_name, password=password,
+            )
+        except AccountError as exc:
+            return _buyer_templates.TemplateResponse(request, "signup.html", {
+                "seller_id": seller_id, "active_tab": "", "error": str(exc),
+                "form": {"customer_id_local": customer_id_local, "display_name": display_name},
+            })
+        token = session.sign({"role": "customer", "seller_id": seller_id, "customer_id_local": customer_id_local,
+                               "display_name": display_name})
+        response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
+        response.set_cookie(session.CUSTOMER_COOKIE, token, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/buyer/{seller_id}/login")
+    def buyer_login_form(seller_id: str, request: Request):
+        return _buyer_templates.TemplateResponse(request, "login.html", {
+            "seller_id": seller_id, "active_tab": "", "error": None,
+        })
+
+    @app.post("/buyer/{seller_id}/login")
+    def buyer_login(
+        seller_id: str, request: Request, conn=Depends(get_conn),
+        customer_id_local: str = Form(...), password: str = Form(...),
+    ):
+        try:
+            account = accounts_service.authenticate_customer(
+                conn, seller_id=seller_id, customer_id_local=customer_id_local, password=password,
+            )
+        except AccountError as exc:
+            return _buyer_templates.TemplateResponse(request, "login.html", {
+                "seller_id": seller_id, "active_tab": "", "error": str(exc),
+            })
+        token = session.sign({"role": "customer", "seller_id": seller_id, "customer_id_local": customer_id_local,
+                               "display_name": account["display_name"]})
+        response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
+        response.set_cookie(session.CUSTOMER_COOKIE, token, httponly=True, samesite="lax")
+        return response
+
+    @app.get("/buyer/{seller_id}/logout")
+    def buyer_logout(seller_id: str):
+        response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
+        response.delete_cookie(session.CUSTOMER_COOKIE)
+        return response
+
     # --- Buyer screens -----------------------------------------------------
 
     @app.get("/buyer/{seller_id}/")
-    def buyer_home(seller_id: str, request: Request, conn=Depends(get_conn), customer_id_local: str = "guest-1"):
+    def buyer_home(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
         context: MerchantContext = request.app.state.merchant
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
         recommendation = orders_service.get_recommendations_for_display(
-            conn, seller_id=seller_id, customer_id_local=customer_id_local, runtime=context.runtime,
+            conn, seller_id=seller_id, customer_id_local=(customer["customer_id_local"] if customer else "guest"),
+            runtime=context.runtime,
         )
         catalog_by_id = {item["item_id_local"]: item for item in catalog}
         recommended = [
@@ -264,52 +524,92 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             if entry["item_id_local"] in catalog_by_id
         ]
         return _buyer_templates.TemplateResponse(request, "home.html", {
-            "seller_id": seller_id, "active_tab": "home", "catalog": catalog,
+            "seller_id": seller_id, "active_tab": "home", "catalog": catalog, "customer": customer,
             "recommended": recommended,
             "recommendation_is_mock": recommendation["model_version"] == orders_service.MOCK_MODEL_VERSION,
         })
 
     @app.get("/buyer/{seller_id}/items/{item_id_local}")
-    def buyer_item_detail(seller_id: str, item_id_local: str, request: Request, conn=Depends(get_conn)):
+    def buyer_item_detail(seller_id: str, item_id_local: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
         item = orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local)
         if item is None:
             raise ContractError("NOT_FOUND", "/item_id_local")
+        price_history = social_service.get_price_history(conn, seller_id=seller_id, item_id_local=item_id_local)
         return _buyer_templates.TemplateResponse(request, "product.html", {
-            "seller_id": seller_id, "active_tab": "home", "item": item,
+            "seller_id": seller_id, "active_tab": "home", "item": item, "price_history": price_history,
+            "price_chart_points": _price_chart_points(price_history), "customer": customer,
         })
 
     @app.post("/buyer/{seller_id}/orders")
     def buyer_place_order(
-        seller_id: str, request: Request, conn=Depends(get_conn),
-        item_id_local: str = Form(...), unit_price_minor: int = Form(...),
-        quantity: int = Form(...), customer_id_local: str = Form(...),
+        seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer),
+        item_id_local: str = Form(...), unit_price_minor: int = Form(...), quantity: int = Form(...),
     ):
         order = orders_service.place_order(
-            conn, seller_id=seller_id, customer_id_local=customer_id_local,
+            conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
             idempotency_key=uuid.uuid4().hex,
             items=[{"item_id_local": item_id_local, "quantity": quantity, "unit_price_minor": unit_price_minor}],
             currency="KRW",
         )
         return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
-            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order),
+            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
         })
 
     @app.get("/buyer/{seller_id}/orders")
-    def buyer_orders(seller_id: str, request: Request, conn=Depends(get_conn), customer_id_local: str = "guest-1"):
+    def buyer_orders(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
         orders = [
             _with_total(o) for o in
-            orders_service.list_orders_by_customer(conn, seller_id=seller_id, customer_id_local=customer_id_local)
+            orders_service.list_orders_by_customer(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"])
         ]
         return _buyer_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
-            "status_labels": _STATUS_LABELS, "customer_id_local": customer_id_local,
+            "status_labels": _STATUS_LABELS, "customer": customer,
         })
 
     @app.get("/buyer/{seller_id}/chat")
-    def buyer_chat(seller_id: str, request: Request):
+    def buyer_chat(seller_id: str, request: Request, customer=Depends(current_customer)):
         return _buyer_templates.TemplateResponse(request, "chat.html", {
-            "seller_id": seller_id, "active_tab": "chat",
+            "seller_id": seller_id, "active_tab": "chat", "customer": customer,
         })
+
+    # --- Buyer social screens (M25 DM, M26/M27 feed, M29 group-buy) ------------
+
+    @app.get("/buyer/{seller_id}/messages")
+    def buyer_messages(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
+        messages = social_service.list_thread_messages(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"])
+        return _buyer_templates.TemplateResponse(request, "messages.html", {
+            "seller_id": seller_id, "active_tab": "messages", "customer": customer, "messages": messages,
+        })
+
+    @app.post("/buyer/{seller_id}/messages")
+    def buyer_send_message(seller_id: str, conn=Depends(get_conn), customer=Depends(require_customer), body: str = Form(...)):
+        social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"], sender="customer", body=body)
+        return RedirectResponse(f"/buyer/{seller_id}/messages", status_code=303)
+
+    @app.get("/buyer/{seller_id}/feed")
+    def buyer_feed(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
+        posts = social_service.list_feed(conn, seller_id=seller_id)
+        return _buyer_templates.TemplateResponse(request, "feed.html", {
+            "seller_id": seller_id, "active_tab": "feed", "posts": posts, "customer": customer,
+        })
+
+    @app.get("/buyer/{seller_id}/group-buys")
+    def buyer_group_buys(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
+        group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
+        return _buyer_templates.TemplateResponse(request, "group_buys.html", {
+            "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "customer": customer,
+        })
+
+    @app.post("/buyer/{seller_id}/group-buys/{group_buy_id}/join")
+    def buyer_join_group_buy(
+        seller_id: str, group_buy_id: str, conn=Depends(get_conn), customer=Depends(require_customer),
+        quantity: int = Form(...),
+    ):
+        social_service.join_group_buy(
+            conn, seller_id=seller_id, group_buy_id=group_buy_id,
+            customer_id_local=customer["customer_id_local"], quantity=quantity,
+        )
+        return RedirectResponse(f"/buyer/{seller_id}/group-buys", status_code=303)
 
     return app
 

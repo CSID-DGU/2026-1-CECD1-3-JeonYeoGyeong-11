@@ -1,13 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
 <h1 class="page-title">주문내역</h1>
-
-<form method="get" action="/buyer/{{ seller_id }}/orders" style="margin-bottom:16px;">
-  <label class="field">내 고객 ID
-    <input type="text" name="customer_id_local" value="{{ customer_id_local }}">
-  </label>
-  <button class="btn secondary" type="submit">조회</button>
-</form>
+<p class="muted-note">{{ customer.display_name }}님의 주문입니다.</p>
 
 <table>
   <thead>
