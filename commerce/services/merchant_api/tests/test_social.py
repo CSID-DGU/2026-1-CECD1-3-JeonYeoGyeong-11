@@ -20,6 +20,9 @@ class SocialServiceTest(unittest.TestCase):
         self.conn = db.connect(Path(self.tmp.name) / "orders.sqlite")
         social_db.ensure_schema(self.conn)
         self.addCleanup(self.conn.close)
+        from commerce.services.merchant_api import orders_service
+        for item_id, title in (("sku-rice", "쌀 10kg"), ("sku-fish", "은갈치")):
+            orders_service.register_catalog_item(self.conn, seller_id=SELLER, item_id_local=item_id, title_text=title)
 
     # --- messages ------------------------------------------------------------
 
@@ -53,54 +56,51 @@ class SocialServiceTest(unittest.TestCase):
 
     # --- group buys --------------------------------------------------------------
 
-    def test_group_buy_succeeds_past_deadline_and_places_orders(self):
-        gb = svc.create_group_buy(
-            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=5,
-            unit_price_minor=10000, deadline_at="2000-01-01T00:00:00.000000Z",  # already past
+    def _group_buy(self, target_quantity: int) -> dict:
+        return svc.create_group_buy(
+            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=target_quantity,
+            unit_price_minor=10000, deadline_at="2999-01-01T00:00:00.000000Z",
         )
-        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                            customer_id_local="cust-1", quantity=3)
-        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                            customer_id_local="cust-2", quantity=2)
 
-        result = svc.list_group_buys(self.conn, seller_id=SELLER)
-        self.assertEqual(result[0]["status"], "succeeded")
-
-        from commerce.services.merchant_api import orders_service
-        cust1_orders = orders_service.list_orders_by_customer(self.conn, seller_id=SELLER, customer_id_local="cust-1")
-        self.assertEqual(len(cust1_orders), 1)
-        self.assertEqual(cust1_orders[0]["items"][0]["item_id_local"], "sku-rice")
-
-    def test_group_buy_fails_when_under_target_past_deadline(self):
-        gb = svc.create_group_buy(
-            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=10,
-            unit_price_minor=10000, deadline_at="2000-01-01T00:00:00.000000Z",
-        )
-        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                            customer_id_local="cust-1", quantity=1)
-        result = svc.list_group_buys(self.conn, seller_id=SELLER)
-        self.assertEqual(result[0]["status"], "failed")
+    def _expire(self, group_buy_id: str) -> None:
+        """The deadline passes (a group buy can only be created with a future one)."""
+        with self.conn:
+            self.conn.execute("UPDATE group_buys SET deadline_at = ? WHERE seller_id = ? AND group_buy_id = ?",
+                              ("2000-01-01T00:00:00.000000Z", SELLER, group_buy_id))
 
     def test_group_buy_succeeds_immediately_when_target_met_before_deadline(self):
-        gb = svc.create_group_buy(
-            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=2,
-            unit_price_minor=10000, deadline_at="2999-01-01T00:00:00.000000Z",  # far future
-        )
-        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                            customer_id_local="cust-1", quantity=1)
+        gb = self._group_buy(target_quantity=5)
+        first = svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
+                                   customer_id_local="cust-1", quantity=3)
+        self.assertEqual(first["status"], "open")
         result = svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                                     customer_id_local="cust-2", quantity=1)
+                                    customer_id_local="cust-2", quantity=2)
         self.assertEqual(result["status"], "succeeded")
 
         from commerce.services.merchant_api import orders_service
-        cust2_orders = orders_service.list_orders_by_customer(self.conn, seller_id=SELLER, customer_id_local="cust-2")
-        self.assertEqual(len(cust2_orders), 1)
+        for customer, quantity in (("cust-1", 3), ("cust-2", 2)):
+            (order,) = orders_service.list_orders_by_customer(self.conn, seller_id=SELLER, customer_id_local=customer)
+            self.assertEqual(order["items"], [{"item_id_local": "sku-rice", "quantity": quantity, "unit_price_minor": 10000}])
+
+    def test_group_buy_fails_when_under_target_past_deadline(self):
+        gb = self._group_buy(target_quantity=10)
+        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
+                            customer_id_local="cust-1", quantity=1)
+        self._expire(gb["group_buy_id"])
+        result = svc.list_group_buys(self.conn, seller_id=SELLER)
+        self.assertEqual(result[0]["status"], "failed")
+
+    def test_join_after_deadline_is_rejected_even_before_the_sweep(self):
+        gb = self._group_buy(target_quantity=1)
+        self._expire(gb["group_buy_id"])
+        with self.assertRaises(ContractError) as ctx:  # no list call has swept it yet
+            svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
+                                customer_id_local="cust-1", quantity=1)
+        self.assertEqual(ctx.exception.code, "ILLEGAL_STATE_TRANSITION")
+        self.assertEqual(svc.list_group_buys(self.conn, seller_id=SELLER)[0]["status"], "failed")
 
     def test_double_join_is_rejected(self):
-        gb = svc.create_group_buy(
-            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=10,
-            unit_price_minor=10000, deadline_at="2999-01-01T00:00:00.000000Z",  # far future, stays open
-        )
+        gb = self._group_buy(target_quantity=10)
         svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
                             customer_id_local="cust-1", quantity=1)
         with self.assertRaises(ContractError):
@@ -108,16 +108,32 @@ class SocialServiceTest(unittest.TestCase):
                                 customer_id_local="cust-1", quantity=1)
 
     def test_join_after_settlement_is_illegal(self):
-        gb = svc.create_group_buy(
-            self.conn, seller_id=SELLER, item_id_local="sku-rice", target_quantity=1,
-            unit_price_minor=10000, deadline_at="2000-01-01T00:00:00.000000Z",
-        )
-        svc.list_group_buys(self.conn, seller_id=SELLER)  # triggers settlement (under target -> failed)
+        gb = self._group_buy(target_quantity=1)
+        svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
+                            customer_id_local="cust-1", quantity=1)  # reaches target -> succeeded
         with self.assertRaises(ContractError):
             svc.join_group_buy(self.conn, seller_id=SELLER, group_buy_id=gb["group_buy_id"],
-                                customer_id_local="cust-1", quantity=1)
+                                customer_id_local="cust-2", quantity=1)
+
+    def test_group_buy_rejects_unknown_item_past_deadline_and_negative_price(self):
+        for kwargs in ({"item_id_local": "sku-none"}, {"deadline_at": "2000-01-01T00:00:00.000000Z"},
+                       {"unit_price_minor": -1}):
+            args = {"item_id_local": "sku-rice", "target_quantity": 2, "unit_price_minor": 10000,
+                    "deadline_at": "2999-01-01T00:00:00.000000Z", **kwargs}
+            with self.assertRaises(ContractError, msg=str(kwargs)):
+                svc.create_group_buy(self.conn, seller_id=SELLER, **args)
+
+    def test_unknown_post_kind_is_a_contract_error_not_a_crash(self):
+        with self.assertRaises(ContractError):
+            svc.create_post(self.conn, seller_id=SELLER, kind="podcast", title="x")
 
     # --- price history -------------------------------------------------------------
+
+    def test_price_for_unknown_item_or_negative_is_rejected(self):
+        with self.assertRaises(ContractError):
+            svc.record_price(self.conn, seller_id=SELLER, item_id_local="sku-none", price_minor=1000)
+        with self.assertRaises(ContractError):
+            svc.record_price(self.conn, seller_id=SELLER, item_id_local="sku-fish", price_minor=-1)
 
     def test_price_upsert_overwrites_same_day(self):
         svc.record_price(self.conn, seller_id=SELLER, item_id_local="sku-fish", price_minor=9000, price_date="2026-09-30")

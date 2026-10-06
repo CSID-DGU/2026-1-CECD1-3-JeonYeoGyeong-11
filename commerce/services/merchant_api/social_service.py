@@ -26,6 +26,11 @@ def _new_id() -> str:
 
 # --- messages (M25) ----------------------------------------------------------
 
+def _require_catalog_item(conn: sqlite3.Connection, seller_id: str, item_id_local: str) -> None:
+    if orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local) is None:
+        raise ContractError("NOT_FOUND", "/item_id_local")
+
+
 def send_message(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str,
                   sender: str, body: str) -> dict[str, Any]:
     if sender not in ("customer", "seller"):
@@ -55,7 +60,9 @@ def list_thread_messages(conn: sqlite3.Connection, *, seller_id: str, customer_i
 def create_post(conn: sqlite3.Connection, *, seller_id: str, kind: str, title: str,
                  body: Optional[str] = None, media_path: Optional[str] = None) -> dict[str, Any]:
     if kind not in ("article", "short_video"):
-        raise ValueError("kind must be 'article' or 'short_video'")
+        raise ContractError("INVALID_ENUM_VALUE", "/kind")
+    if not title.strip():
+        raise ContractError("MISSING_REQUIRED_FIELD", "/title")
     now = _now_iso()
     post = {
         "post_id": _new_id(), "seller_id": seller_id, "kind": kind, "title": title,
@@ -83,7 +90,12 @@ def create_group_buy(conn: sqlite3.Connection, *, seller_id: str, item_id_local:
                       target_quantity: int, unit_price_minor: int, deadline_at: str) -> dict[str, Any]:
     if target_quantity <= 0:
         raise ContractError("INVALID_TYPE", "/target_quantity")
+    if unit_price_minor < 0:
+        raise ContractError("INVALID_TYPE", "/unit_price_minor")
+    _require_catalog_item(conn, seller_id, item_id_local)
     now = _now_iso()
+    if deadline_at <= now:
+        raise ContractError("INVALID_TYPE", "/deadline_at")
     group_buy = {
         "group_buy_id": _new_id(), "seller_id": seller_id, "item_id_local": item_id_local,
         "target_quantity": target_quantity, "unit_price_minor": unit_price_minor,
@@ -112,6 +124,10 @@ def join_group_buy(conn: sqlite3.Connection, *, seller_id: str, group_buy_id: st
     group_buy = db.fetch_group_buy(conn, seller_id, group_buy_id)
     if group_buy is None:
         raise ContractError("NOT_FOUND", "/group_buy_id")
+    if group_buy["status"] == "open" and group_buy["deadline_at"] <= _now_iso():
+        # Past its deadline but not swept yet: settle it now instead of letting a late join in.
+        settle_due_group_buys(conn, seller_id=seller_id)
+        group_buy = db.fetch_group_buy(conn, seller_id, group_buy_id)
     if group_buy["status"] != "open":
         raise ContractError("ILLEGAL_STATE_TRANSITION", "/status")
     with conn:
@@ -171,6 +187,9 @@ def settle_due_group_buys(conn: sqlite3.Connection, *, seller_id: str) -> None:
 
 def record_price(conn: sqlite3.Connection, *, seller_id: str, item_id_local: str,
                   price_minor: int, price_date: Optional[str] = None) -> dict[str, Any]:
+    if price_minor < 0:
+        raise ContractError("INVALID_TYPE", "/price_minor")
+    _require_catalog_item(conn, seller_id, item_id_local)
     date = price_date or _now_iso()[:10]
     with conn:
         db.upsert_price(conn, seller_id, item_id_local, date, price_minor)

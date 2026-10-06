@@ -366,6 +366,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         item_id_local: str = Form(...),
     ):
         context: MerchantContext = request.app.state.merchant
+        if display_price_minor < 0:
+            raise ContractError("INVALID_TYPE", "/display_price_minor")
         orders_service.register_catalog_item(
             conn, seller_id=seller_id, item_id_local=item_id_local, title_text=title_text,
             display_price_minor=display_price_minor, runtime=context.runtime,
@@ -443,6 +445,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.post("/seller/{seller_id}/messages/{customer_id_local}")
     def seller_send_message(seller_id: str, customer_id_local: str, conn=Depends(get_conn), staff=Depends(require_seller_form), body: str = Form(...)):
+        if accounts_db.fetch_customer(conn, seller_id, customer_id_local) is None:
+            raise ContractError("NOT_FOUND", "/customer_id_local")
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer_id_local, sender="seller", body=body)
         return RedirectResponse(f"/seller/{seller_id}/messages/{customer_id_local}", status_code=303)
 
