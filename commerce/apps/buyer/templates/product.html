@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="detail">
-  {%- set emoji = product_emoji(item.category_path) %}
+  {%- set emoji = product_emoji(item.category_path, item.title_text) %}
   <div class="thumb lg{{ ' emoji' if emoji }}" aria-hidden="true">{{ emoji or item.title_text[:1] }}</div>
   <div class="detail-info">
     <div class="seller-row">

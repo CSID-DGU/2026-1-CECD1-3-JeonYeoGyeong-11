@@ -30,7 +30,7 @@
     </thead>
     <tbody>
       {% for item in catalog %}
-      {%- set emoji = product_emoji(item.category_path) %}
+      {%- set emoji = product_emoji(item.category_path, item.title_text) %}
       <tr>
         <td>
           <div class="row">

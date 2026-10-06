@@ -87,6 +87,8 @@ class ScreenTest(unittest.TestCase):
         self.assertEqual(_product_emoji(["수산", "생선"]), "🐟")
         self.assertIsNone(_product_emoji(None))
         self.assertIsNone(_product_emoji(["기타"]))
+        self.assertEqual(_product_emoji(["농산", "과일"], "설향 딸기 500g"), "🍓", "the title beats a coarse category")
+        self.assertEqual(_product_emoji(["농산", "과일"], "이름에 단서 없음"), "🍊")
 
     # --- CSRF ------------------------------------------------------------------
 

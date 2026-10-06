@@ -66,7 +66,21 @@ _CATEGORY_EMOJI = (
 )
 
 
-def _product_emoji(category_path: Optional[list[str]]) -> Optional[str]:
+# Checked against the title first: a category such as "과일" is too coarse to
+# tell strawberries from tangerines.
+_TITLE_EMOJI = (
+    ("딸기", "🍓"), ("사과", "🍎"), ("감귤", "🍊"), ("한라봉", "🍊"), ("토마토", "🍅"), ("상추", "🥬"),
+    ("오이", "🥒"), ("감자", "🥔"), ("고등어", "🐟"), ("갈치", "🐟"), ("한치", "🦑"), ("전복", "🐚"),
+    ("미역", "🌿"), ("새우", "🦐"), ("치즈", "🧀"), ("요거트", "🥣"), ("그래놀라", "🥣"), ("베이글", "🥯"),
+    ("크루아상", "🥐"), ("녹차", "🍵"), ("주스", "🧃"), ("콜드브루", "🧋"), ("오겹살", "🥓"), ("한우", "🥩"),
+    ("닭", "🍗"),
+)
+
+
+def _product_emoji(category_path: Optional[list[str]], title: Optional[str] = None) -> Optional[str]:
+    for keyword, emoji in _TITLE_EMOJI:
+        if title and keyword in title:
+            return emoji
     for keyword, emoji in _CATEGORY_EMOJI:
         if keyword in (category_path or []):
             return emoji

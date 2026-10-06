@@ -19,6 +19,8 @@
 - `seed_demo_data.py`: 데모용 시드 스크립트 — 판매자 계정 1개, 상품 6종, 고객 8명, 지난 30일에 걸쳐 분산된 주문 20여 건, DM 5건, 피드 4건, 공동구매 2건(진행중 1·성사 1), 상품 3종의 14일치 시세를 채운다. 실행: 앱과 같은 환경변수로 `MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite python -m commerce.services.merchant_api.seed_demo_data` (`MERCHANT_DB_PATH`가 있으면 그 경로, 없으면 `FEATURE_DB_PATH` 옆 `orders.sqlite` — 앱과 같은 `context.merchant_db_path_from_env` 규칙. `MERCHANT_ID`가 없으면 만들지 않고 멈춘다). 재실행해도 중복 생성하지 않는다(계정·주문 idempotency_key로 존재 확인). `tests/test_seed_demo_data.py`가 멱등성·중복 키 없음을 검사한다. `--bulk N`을 붙이면 상품 28종과 **취향이 있는** 고객 N명(아침 장보기·수산물·커피·과일채소·고기 집밥 다섯 패턴, 단골 재구매와 약간의 탐색), 60일치 주문을 더 만든다(`seed_bulk`). 기본 seed가 쓰는 내용은 바뀌지 않고 키가 모두 `bulk-`로 시작해서 이미 seed한 DB 위에 다시 돌려도 된다. 완료 주문의 purchase_event 시각도 과거 완료 시각으로 맞춘다(아직 B에 전달되지 않은 행만).
 - `simulate_activity.py`: 실행 중인 앱에 대한 실시간 데모 트래픽. seed 고객이 로그인 → 홈의 추천을 보고(기본 60%는 추천 상품) 바로 주문하거나 장바구니로 주문하고, 판매자가 수락·완료해 구매 이벤트가 B로 간다. 브라우저와 같은 폼·CSRF로 HTTP만 쓴다. 실행: `python -m commerce.services.merchant_api.simulate_activity --base http://127.0.0.1:8101 --seller merchant-1 --interval 3` (Ctrl+C로 중지). `tests/test_simulate_activity.py`.
 
+시연 순서(데이터 만들기·서버 켜기·발표 흐름·B 연결 확인)는 [DEMO.md](DEMO.md)에 있다.
+
 작업 순서는 [A 카드](../../../docs/team/tasks/A.md)를 따른다. 경계: event/outbox는 B ingest가 정상 반환한 뒤에만 전달 완료로 표시한다. 현재 B stub은 항상 미구현 예외를 내므로 delivered로 처리하면 안 된다.
 A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자당 1개이며 학습은 `context.jobs.submit(...)`으로 실행한다. 호출 예제는 [개발 안내](../../../docs/development.md)를 따른다.
 
