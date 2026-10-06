@@ -207,19 +207,25 @@ def deliver_pending_purchase_events(conn: sqlite3.Connection, *, seller_id: str,
     - Any other failure (including B's current FeatureNotImplemented stub)
       stays pending for the next call.
     """
+    # Each outcome is committed on its own (`with conn:`): an uncommitted mark is
+    # rolled back when the request's connection closes, and every later request
+    # would redeliver the whole outbox.
     for pending in db.fetch_pending_outbox(conn, seller_id, kind="purchase_event"):
         try:
             runtime.ingest_purchase_event(pending["payload"])
         except ContractError as exc:
-            if exc.code == "DUPLICATE_EVENT":
-                db.mark_outbox_quarantined(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
-            else:
-                db.mark_outbox_attempt(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
+            with conn:
+                if exc.code == "DUPLICATE_EVENT":
+                    db.mark_outbox_quarantined(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
+                else:
+                    db.mark_outbox_attempt(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
             continue
         except Exception as exc:  # B stub / transient failure: retry later.
-            db.mark_outbox_attempt(conn, seller_id, "purchase_event", pending["ref_id"], str(exc))
+            with conn:
+                db.mark_outbox_attempt(conn, seller_id, "purchase_event", pending["ref_id"], str(exc))
             continue
-        db.mark_outbox_delivered(conn, seller_id, "purchase_event", pending["ref_id"])
+        with conn:
+            db.mark_outbox_delivered(conn, seller_id, "purchase_event", pending["ref_id"])
 
 
 def register_catalog_item(
@@ -391,9 +397,11 @@ def deliver_pending_catalog_items(conn: sqlite3.Connection, *, seller_id: str, r
         try:
             runtime.upsert_catalog_item(pending["payload"], pending["source_seq"])
         except Exception as exc:  # B stub / transient failure: retry later.
-            db.mark_outbox_attempt(conn, seller_id, "catalog_item", pending["ref_id"], str(exc))
+            with conn:
+                db.mark_outbox_attempt(conn, seller_id, "catalog_item", pending["ref_id"], str(exc))
             continue
-        db.mark_outbox_delivered(conn, seller_id, "catalog_item", pending["ref_id"])
+        with conn:  # committed per item, as in deliver_pending_purchase_events
+            db.mark_outbox_delivered(conn, seller_id, "catalog_item", pending["ref_id"])
 
 
 def _to_commerce_order(order: dict[str, Any]) -> dict[str, Any]:

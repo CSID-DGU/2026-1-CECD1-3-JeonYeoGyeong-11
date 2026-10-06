@@ -37,6 +37,30 @@ class OrdersServiceTest(unittest.TestCase):
             items=items or _items(("sku-milk", 2, 3200)), currency="KRW",
         )
 
+    def test_delivery_marks_are_committed_not_just_visible_on_this_connection(self):
+        # A web request closes its connection when it ends; an uncommitted
+        # "delivered" mark is rolled back then, and every later request
+        # redelivers the whole outbox. Read the status through a second
+        # connection, which only sees committed rows.
+        svc.register_catalog_item(self.conn, seller_id=SELLER, item_id_local="sku-milk",
+                                  title_text="우유", runtime=self.runtime)
+        order = self._place()
+        svc.transition_order(self.conn, seller_id=SELLER, order_id=order["order_id"], action="accept", expected_status_version=1)
+        svc.transition_order(self.conn, seller_id=SELLER, order_id=order["order_id"], action="complete",
+                             expected_status_version=2, runtime=self.runtime)
+        other = db.connect(Path(self.tmp.name) / "orders.sqlite")
+        self.addCleanup(other.close)
+        statuses = dict(other.execute("SELECT kind, status FROM outbox WHERE seller_id = ?", (SELLER,)).fetchall())
+        self.assertEqual(statuses, {"catalog_item": "delivered", "purchase_event": "delivered"})
+
+        self.conn.close()  # the request ends
+        self.conn = db.connect(Path(self.tmp.name) / "orders.sqlite")
+        self.addCleanup(self.conn.close)
+        calls =(self.runtime.catalog_calls, self.runtime.ingest_calls)
+        svc.deliver_pending_catalog_items(self.conn, seller_id=SELLER, runtime=self.runtime)
+        svc.deliver_pending_purchase_events(self.conn, seller_id=SELLER, runtime=self.runtime)
+        self.assertEqual((self.runtime.catalog_calls, self.runtime.ingest_calls), calls, "nothing is redelivered")
+
     # --- creation & idempotency ------------------------------------------------
 
     def test_place_order_creates_requested_with_version_one(self):
