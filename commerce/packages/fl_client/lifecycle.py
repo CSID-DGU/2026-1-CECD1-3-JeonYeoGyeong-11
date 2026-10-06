@@ -1,7 +1,8 @@
 """Seller FL client lifecycle. protected fails closed (g4); synthetic_plaintext runs a round loop.
 
 synthetic_plaintext starts only with a coordinator URL, a seller token and a synthetic
-input attestation (D0025). The loop polls the coordinator: it installs a newer release
+input attestation (D0025). install_only (a seller outside every cohort, such as a new
+seller) needs no attestation: it only installs released models and never submits. The loop polls the coordinator: it installs a newer release
 first, then joins an open round of this seller's cohort after checking that the pinned
 snapshot is the attested synthetic input. A failed check submits nothing. Every B call
 goes through the injected seller jobs executor. Default config: disabled, protected.
@@ -30,6 +31,7 @@ class FLClientConfig:
     coordinator_url: str | None = None
     token: str | None = None
     synthetic_attestation: Path | None = None
+    install_only: bool = False  # receive releases, never join a round
     poll_seconds: float = 2.0
 
     def __post_init__(self):
@@ -41,7 +43,8 @@ class FLClientConfig:
             raise ValueError("poll_seconds must be positive")
 
     def __repr__(self):  # never print the token
-        return "FLClientConfig(enabled=%r, mode=%r, model_variant=%r)" % (self.enabled, self.mode, self.model_variant)
+        return "FLClientConfig(enabled=%r, mode=%r, model_variant=%r, install_only=%r)" % (
+            self.enabled, self.mode, self.model_variant, self.install_only)
 
 
 class FLClient:
@@ -63,12 +66,13 @@ class FLClient:
         if self.config.mode == "protected":
             raise FeatureNotImplemented("C: protected aggregation is not implemented (g4)")
         cfg = self.config
-        if not (cfg.coordinator_url and cfg.token and cfg.synthetic_attestation):
+        if not (cfg.coordinator_url and cfg.token and (cfg.install_only or cfg.synthetic_attestation)):
             # OQ17/D0025: plaintext rounds run only on attested synthetic input.
             raise FeatureNotImplemented("C: synthetic_plaintext needs a coordinator, a token and an attestation")
-        self._attestation = attestation.load_attestation(cfg.synthetic_attestation)
-        if self._attestation.seller_id != self.runtime.seller_id:
-            raise ValueError("the synthetic attestation is for another seller")
+        if not cfg.install_only:
+            self._attestation = attestation.load_attestation(cfg.synthetic_attestation)
+            if self._attestation.seller_id != self.runtime.seller_id:
+                raise ValueError("the synthetic attestation is for another seller")
         self._http = httpx.Client(base_url=cfg.coordinator_url, timeout=30.0)
         self._transport = CoordinatorTransport(self._http, cfg.token)
         self._task = asyncio.create_task(self._loop())
@@ -99,6 +103,8 @@ class FLClient:
             rounds.install_latest(self.runtime, self.jobs, transport, variant)
             self.installed = latest["model_version"]
             self.last_outcome = "installed:%s" % self.installed
+        if self.config.install_only:
+            return  # never trains, never submits
         config = transport.current_round()
         if config is None or config["round_id"] in self.joined:
             return

@@ -7,6 +7,7 @@ A가 제공한 B runtime과 동일한 jobs 객체를 사용한다. `await start(
 
 합성 라운드의 판매자 쪽 구성 요소다. `start()`가 synthetic_plaintext에서 폴링 루프(`tick`)로 쓴다: 더 새 release를 먼저 설치하고, 이 판매자의 열린 라운드에 한 번만 참여한다.
 
+- `install_only`: cohort 밖 판매자(신규 판매자 등)용 설치 전용 모드다. 확인 파일 없이 시작하며, 최신 release를 받아 설치만 하고 라운드에는 참여하지 않는다. 학습도 제출도 하지 않는다.
 - `attestation`: 합성 입력 확인 파일(`c.synthetic_attestation.v1`). 학습 직전 B runtime의 `snapshot_digest(local_data_ref)`가 파일의 내용 해시와 다르거나 runtime에 그 메서드가 없으면 `SyntheticInputRefused`로 아무것도 제출하지 않는다. `source` 필드는 보지 않는다.
 
 - `submission.build_submission`: B의 `TrainingResult.shared_delta`만으로 round_submission과 npz를 만든다.

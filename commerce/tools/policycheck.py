@@ -68,8 +68,9 @@ def _is_test(path: pathlib.Path) -> bool:
 def _check_fl_enablers(fail) -> int:
     """FLClientConfig에 상수 enabled=True나 synthetic_attestation을 넘기는 곳은 fl_demo.py뿐이다.
 
-    synthetic_plaintext는 확인 파일(synthetic_attestation)이 있어야만 돈다. 그래서 그 인자를
-    넘기는 곳이 FL을 실제로 켜는 곳이다. 거기서는 mode가 상수 "synthetic_plaintext"여야 한다.
+    synthetic_plaintext는 확인 파일(synthetic_attestation)이 있어야만 학습·제출한다. 그래서 그
+    인자를 넘기는 곳이 FL을 실제로 켜는 곳이다. 설치 전용(install_only)은 제출하지 않지만
+    coordinator에 접속하므로 같은 규칙으로 묶는다. 거기서는 mode가 상수 "synthetic_plaintext"여야 한다.
     판매자 앱의 환경변수 경로(FL_ENABLED)는 확인 파일을 넘기지 않으므로 켜도 시작이 거부된다.
     """
     checked = 0
@@ -83,8 +84,10 @@ def _check_fl_enablers(fail) -> int:
                 continue
             keywords = {k.arg: k.value for k in node.keywords if k.arg}
             enabled = keywords.get("enabled")
+            install_only = keywords.get("install_only")
             turns_on = ("synthetic_attestation" in keywords
-                        or (isinstance(enabled, ast.Constant) and enabled.value is True))
+                        or (isinstance(enabled, ast.Constant) and enabled.value is True)
+                        or (isinstance(install_only, ast.Constant) and install_only.value is True))
             if not turns_on:
                 continue
             checked += 1
@@ -93,8 +96,9 @@ def _check_fl_enablers(fail) -> int:
             if path != FL_DEMO:
                 fail(where, "FL을 켜는 FLClientConfig는 commerce/deploy/fl_demo.py에만 둔다(D0025)")
             elif not (isinstance(mode, ast.Constant) and mode.value == "synthetic_plaintext"
-                      and "synthetic_attestation" in keywords):
-                fail(where, "fl_demo.py의 FLClientConfig는 mode=\"synthetic_plaintext\"와 synthetic_attestation을 함께 쓴다")
+                      and ("synthetic_attestation" in keywords or "install_only" in keywords)):
+                fail(where, "fl_demo.py의 FLClientConfig는 mode=\"synthetic_plaintext\"와 "
+                            "synthetic_attestation(또는 설치 전용 install_only)을 함께 쓴다")
     return checked
 
 

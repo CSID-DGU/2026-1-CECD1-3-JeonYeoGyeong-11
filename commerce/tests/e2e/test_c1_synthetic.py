@@ -62,6 +62,34 @@ class _LoopCase(unittest.TestCase):
         return client
 
 
+class InstallOnly(_LoopCase):
+    """A seller outside the cohort (e.g. a new seller) receives releases and never submits."""
+
+    def install_only_client(self, seller):
+        jobs = SellerJobs()
+        self.addCleanup(jobs.close)
+        config = FLClientConfig(enabled=True, mode="synthetic_plaintext", model_variant="text_only",
+                                coordinator_url="http://testserver", token=self.tokens[seller], install_only=True)
+        client = FLClient(dummy.DummyRuntime(seller, self.manifest, OFFSETS[seller]), jobs, config)
+        client._transport = CoordinatorTransport(self.http, self.tokens[seller])
+        return client
+
+    def test_installs_and_never_joins_even_when_selected(self):
+        client = self.install_only_client("seller-a")
+        config = self.coordinator.open_round(SELLERS, RoundSettings(local_steps=1, batch_size=8, n_neg=8))
+        client.tick()
+        self.assertEqual(client.installed, "model-0")
+        self.assertEqual(client.runtime.serving, "model-0")
+        self.assertFalse({"train_round", "snapshot_digest", "get_local_data_ref"} & set(client.runtime.calls))
+        with self.assertRaises(Exception):  # nothing was submitted for this seller
+            client._transport.result(config["round_id"])
+
+    def test_starts_without_an_attestation(self):
+        client = self.install_only_client("seller-b")
+        asyncio.run(client.start())  # no attestation needed; the loop runs against http://testserver
+        asyncio.run(client.stop())
+
+
 class AttestedLoop(_LoopCase):
     def test_attested_sellers_install_then_join_and_the_round_aggregates(self):
         clients = [self.client(s) for s in SELLERS]
