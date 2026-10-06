@@ -12,7 +12,7 @@ REPO_ROOT = HERE.parents[2]
 
 REMAINING = (
     "variant별 shared_model_manifest와 실제 export(frozen·상품/고객축·optimizer 제외)",
-    "공유 층 gradient와 고정 검증 분할(val seed에 round_id 없음)",
+    "서비스 학습의 고정 검증 고객 9:1 분할(seed에 round_id 없음)",
     "개인화: query_proj·scorer만 학습, 공통 base 해시 불변, 옛 개인화 부착 거부",
     "release 설치의 해시 검증과 교체 실패 시 기존 서빙 유지",
 )
@@ -23,7 +23,8 @@ def run(verbose: bool = False) -> int:
     result = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(suite)
     if not result.wasSuccessful() or result.testsRun == 0:
         return 1
-    print("b2 구현 항목 통과: tests=%d (frozen 인코더·text_artifact_hash·z cache)" % result.testsRun)
+    print("b2 구현 항목 통과: tests=%d (frozen 인코더·해시·z cache, 예제·replay, text_only 손실·공유 층 gradient)"
+          % result.testsRun)
     for item in REMAINING:
         print("남은 b2 항목: %s" % item)
     return 3 if REMAINING else 0
