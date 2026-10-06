@@ -73,6 +73,9 @@ class DummyRuntime(UnimplementedRuntime):
         super().__init__(seller_id, Path("unused-features.sqlite"), Path("unused-models"))
         self.manifest, self.model_variant = manifest, model_variant
         self.trainer = DummyTrainer(seller_id, offset, completed=completed)
+        # A tiny generated ledger, so snapshot_digest (D0025) has content to hash.
+        self.event_ids = ["%s-event-%d" % (seller_id, n) for n in range(3)]
+        self.catalog = {"%s-item-%d" % (seller_id, n): {"title": "item %d" % n} for n in range(2)}
         self.installed: dict[str, tuple[str, TensorMap]] = {}  # model_version -> (weights hash, tensors)
         self.serving: str | None = None
         self.personal_tail = {name: np.full(spec["shape"], 99.0, np.float32) for name, spec in
@@ -86,6 +89,14 @@ class DummyRuntime(UnimplementedRuntime):
     def get_local_data_ref(self) -> str:
         self.calls.append("get_local_data_ref")
         return "synthetic:" + self.seller_id
+
+    def snapshot_digest(self, local_data_ref: str) -> str:
+        self.calls.append("snapshot_digest")
+        return ids.snapshot_digest(self.event_ids, self.catalog)
+
+    def expected_digest(self) -> str:
+        """What a generator that wrote exactly this ledger would attest."""
+        return ids.snapshot_digest(self.event_ids, self.catalog)
 
     def get_shared_manifest(self, *, model_variant: ModelVariant = "text_relation") -> Payload:
         self.calls.append("get_shared_manifest")
