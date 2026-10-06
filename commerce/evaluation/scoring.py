@@ -18,7 +18,7 @@ KS = (10, 20)
 
 
 def expected_metrics(scores: np.ndarray, relevant: Iterable[int], ks: Sequence[int] = KS) -> dict[str, float]:
-    """Recall@K and NDCG@K of one ranking over all candidates, ties at their expected value."""
+    """Recall@K, NDCG@K and HR@K of one ranking over all candidates, ties at their expected value."""
     relevant = set(relevant)
     if not relevant:
         raise ValueError("an example needs at least one relevant candidate")
@@ -41,7 +41,26 @@ def expected_metrics(scores: np.ndarray, relevant: Iterable[int], ks: Sequence[i
         ideal = sum(1.0 / math.log2(p + 2) for p in range(min(len(relevant), k)))
         out["recall@%d" % k] = hits / len(relevant)
         out["ndcg@%d" % k] = dcg / ideal
+        out["hr@%d" % k] = _hit_chance(order, ranked, relevant, k)
     return out
+
+
+def _hit_chance(order: np.ndarray, ranked: np.ndarray, relevant: set[int], k: int) -> float:
+    """HR@K: chance that at least one relevant candidate is in the top k, over every tie order."""
+    start = 0
+    while start < len(order) and start < k:
+        end = start
+        while end < len(order) and ranked[end] == ranked[start]:
+            end += 1
+        group = [int(i) for i in order[start:end]]
+        r = sum(1 for i in group if i in relevant)
+        slots = min(end, k) - start
+        if r and slots == len(group):
+            return 1.0
+        if r:  # the cut falls inside this tie group: 1 - C(m - r, s) / C(m, s)
+            return 1.0 - math.comb(len(group) - r, slots) / math.comb(len(group), slots)
+        start = end
+    return 0.0
 
 
 def popularity_scores(items: Sequence[str], seller_counts: Mapping[str, int]) -> np.ndarray:
