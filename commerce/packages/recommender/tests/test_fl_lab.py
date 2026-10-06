@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from commerce.evaluation.fl_lab import aggregate_uniform, local_round
+from commerce.evaluation.fl_lab import aggregate, local_round
 from commerce.evaluation.harex_compare import shuffled_relations
 from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.relations import RelationTensors
@@ -13,17 +13,30 @@ from commerce.packages.recommender.tests.test_model import seller_data
 
 
 class Aggregation(unittest.TestCase):
+    """The lab runner calls C's core (round_core.aggregate_uniform) through aggregate()."""
+
     def test_uniform_mean_when_everyone_completed(self):
-        mean = aggregate_uniform([{"w": torch.tensor([1.0, 3.0])}, {"w": torch.tensor([3.0, 5.0])}])
+        mean = aggregate([{"w": torch.tensor([1.0, 3.0])}, {"w": torch.tensor([3.0, 5.0])}], "cpu")
         torch.testing.assert_close(mean["w"], torch.tensor([2.0, 4.0]))
+        self.assertEqual(mean["w"].dtype, torch.float32)
 
     def test_a_missing_seller_discards_the_round(self):
-        self.assertIsNone(aggregate_uniform([{"w": torch.ones(2)}, None]))
-        self.assertIsNone(aggregate_uniform([]))
+        self.assertIsNone(aggregate([{"w": torch.ones(2)}, None], "cpu"))
+        self.assertIsNone(aggregate([], "cpu"))
 
     def test_different_tensor_sets_are_refused(self):
         with self.assertRaises(ValueError):
-            aggregate_uniform([{"w": torch.ones(1)}, {"v": torch.ones(1)}])
+            aggregate([{"w": torch.ones(1)}, {"v": torch.ones(1)}], "cpu")
+
+    def test_the_core_matches_the_former_float32_stand_in(self):
+        # Before C's core landed the runner took torch.stack(...).mean(0) in float32. The core
+        # averages in float64, so the two agree to float32 rounding, not bit for bit.
+        torch.manual_seed(0)
+        deltas = [{"a": torch.randn(64, 32) * 1e-3, "b": torch.randn(32)} for _ in range(100)]
+        mean = aggregate(deltas, "cpu")
+        for key in ("a", "b"):
+            torch.testing.assert_close(mean[key], torch.stack([d[key] for d in deltas]).mean(0),
+                                       rtol=1e-5, atol=1e-7)
 
 
 class GlocalRound(unittest.TestCase):
@@ -41,7 +54,8 @@ class GlocalRound(unittest.TestCase):
         deltas = [local_round(m, global_shared, [(0, d)], epochs=1, batch_size=16, lr=3e-3, seed=i)
                   for i, (m, (d, _)) in enumerate(zip(models, self.sellers))]
         self.assertFalse(any(k.startswith("local_tokens") for k in deltas[0]))
-        mean = aggregate_uniform(deltas)
+        self.assertTrue(all(v.device.type == "cpu" for d in deltas for v in d.values()))
+        mean = aggregate(deltas, "cpu")
         global_shared = {k: v + mean[k] for k, v in global_shared.items()}
         for m in models:
             m.load_state_dict(global_shared, strict=False)
