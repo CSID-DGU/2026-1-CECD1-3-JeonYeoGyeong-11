@@ -1,7 +1,7 @@
 """Training step, fixed validation loss and full-catalog scores (model.md §6).
 
-A batch always comes from one seller: candidates and negatives are that
-seller's catalog. train() on one seller's data is the local_only mode of
+A batch always comes from one seller and one relation snapshot: candidates and
+negatives are that seller's catalog, and e is computed once for the batch. train() on one seller's data is the local_only mode of
 model-lab.md §4. Passing several sellers pools them into one optimizer, which is
 none of the lab modes and never an FL result; FL keeps sellers apart and merges
 their deltas through C's aggregation core.
@@ -13,7 +13,8 @@ from typing import Sequence
 import torch
 
 from commerce.packages.recommender.examples import Example
-from commerce.packages.recommender.model import TextOnlyRecommender, history_batch, sampled_softmax_loss
+from commerce.packages.recommender.model import Recommender, history_batch, sampled_softmax_loss
+from commerce.packages.recommender.relations import RelationTensors
 
 
 @dataclass
@@ -22,6 +23,7 @@ class SellerData:
     items: tuple[str, ...]  # catalog; row i of z belongs to items[i]
     z: torch.Tensor  # (C, d_text) frozen text vectors
     examples: list[Example]
+    relations: RelationTensors | None = None  # text_relation: this snapshot's relations
     row_of: dict[str, int] = field(init=False)
 
     def __post_init__(self):
@@ -39,9 +41,9 @@ class TrainConfig:
     seed: int = 0
 
 
-def batch_loss(model: TextOnlyRecommender, seller: SellerData, examples: Sequence[Example],
+def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Example],
                n_negatives: int, rng: random.Random) -> tuple[torch.Tensor, int]:
-    e = model.item_repr(seller.z)
+    e = model.item_repr(seller.z, seller.relations)
     q = model.query(e, history_batch(examples, seller.row_of, model.config))
     positives = torch.tensor([seller.row_of[rng.choice(sorted(ex.target_items))] for ex in examples])
     negatives = torch.tensor(rng.sample(range(len(seller.items)), min(n_negatives, len(seller.items))))
@@ -51,7 +53,7 @@ def batch_loss(model: TextOnlyRecommender, seller: SellerData, examples: Sequenc
     return sampled_softmax_loss(pos_scores, model.score(q, e[negatives]), allowed)
 
 
-def train(model: TextOnlyRecommender, sellers: Sequence[SellerData], config: TrainConfig) -> dict:
+def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig) -> dict:
     """Run config.steps optimizer steps; a fresh AdamW every call, as every FL round does."""
     rng = random.Random(config.seed)
     torch.manual_seed(config.seed)
@@ -82,7 +84,7 @@ def train(model: TextOnlyRecommender, sellers: Sequence[SellerData], config: Tra
 
 
 @torch.no_grad()
-def validation_loss(model: TextOnlyRecommender, sellers: Sequence[SellerData], *, n_negatives: int = 200,
+def validation_loss(model: Recommender, sellers: Sequence[SellerData], *, n_negatives: int = 200,
                     batch_size: int = 256, seed: int = 0) -> float | None:
     """Mean loss over fixed validation examples. The seed never holds a round id,
     so every round sees the same positives and negatives (model.md §6)."""
@@ -98,11 +100,11 @@ def validation_loss(model: TextOnlyRecommender, sellers: Sequence[SellerData], *
 
 
 @torch.no_grad()
-def catalog_scores(model: TextOnlyRecommender, seller: SellerData, examples: Sequence[Example],
+def catalog_scores(model: Recommender, seller: SellerData, examples: Sequence[Example],
                    batch_size: int = 256) -> torch.Tensor:
     """(len(examples), C) scores over the seller's whole catalog, rows in seller.items order."""
     model.eval()
-    e = model.item_repr(seller.z)
+    e = model.item_repr(seller.z, seller.relations)
     rows = [model.score(model.query(e, history_batch(examples[s:s + batch_size], seller.row_of, model.config)), e)
             for s in range(0, len(examples), batch_size)]
     return torch.cat(rows) if rows else torch.zeros((0, len(seller.items)))

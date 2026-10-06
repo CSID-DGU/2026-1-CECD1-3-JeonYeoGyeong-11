@@ -15,9 +15,9 @@ import numpy as np
 from commerce.packages.contracts.ids import canonical_json
 from commerce.packages.recommender.text_encoder import FrozenTextEncoder, artifact_hash
 
-# Source files whose behaviour defines the encoder input. Relation definitions join
-# this list when they exist (model.md §2: preprocessing_version).
-PREPROCESSING_SOURCES = (Path(__file__).resolve().parents[1] / "data_adapters" / "text.py",)
+# The text builder and the relation definitions and constants (model.md §2: preprocessing_version).
+PREPROCESSING_SOURCES = (Path(__file__).resolve().parents[1] / "data_adapters" / "text.py",
+                         Path(__file__).resolve().parent / "relations.py")
 
 
 def preprocessing_version(sources: Sequence[Path] = PREPROCESSING_SOURCES) -> str:

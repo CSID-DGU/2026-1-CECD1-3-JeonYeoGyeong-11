@@ -12,6 +12,9 @@ data are never pooled into one optimizer. FL runs (federated_lab_sim) come with
 C's aggregation core. The training runs in chunks that each start a fresh
 AdamW, as FL rounds do. Scores come from scoring.py, a temporary copy of A's
 metric definitions.
+--variant picks text_only (T-G) or text_relation (R-G). Both variants see
+identical batches: examples are grouped by (seller, progress bucket) for both,
+and text_relation reads that bucket's relation snapshot.
 Everything is written under commerce/evaluation/runs/, which Git ignores.
 """
 import argparse
@@ -33,7 +36,8 @@ from commerce.packages.data_adapters.baskets import basket_from_event, customer_
 from commerce.packages.data_adapters.instacart import load_instacart, split_role
 from commerce.packages.data_adapters.text import catalog_item_text
 from commerce.packages.recommender.examples import customer_examples
-from commerce.packages.recommender.model import TextOnlyRecommender, architecture, config_record
+from commerce.packages.recommender.model import architecture, build_model, config_record
+from commerce.packages.recommender.relations import replay_relations
 from commerce.packages.recommender.replay import SellerReplay, progress_bucket
 from commerce.packages.recommender.text_encoder import FrozenTextEncoder
 from commerce.packages.recommender.training import (
@@ -71,20 +75,37 @@ def build(args, record):
     data = {"train": [], "validation": [], "test": []}
     context = {}  # seller -> (visits by customer, replay)
     counts = {"examples": {r: 0 for r in data}, "catalog_items": 0}
+    relation_stats, relation_seconds = [], 0.0
     for seller, customers in sorted(by_seller.items()):
-        items = [c["item_id_local"] for c in catalogs[seller]]
+        items = tuple(c["item_id_local"] for c in catalogs[seller])
+        row_of = {item: row for row, item in enumerate(items)}
         z = torch.from_numpy(cache.vectors([catalog_item_text(c) for c in catalogs[seller]]).copy())
         visits = {cust: customer_visits(baskets) for cust, baskets in customers.items()}
         context[seller] = (visits, SellerReplay(visits))
-        split_examples = {r: [] for r in data}
+        grouped = {}  # (role, bucket) -> examples
         for vs in visits.values():
             for example in customer_examples(vs, range(1, len(vs) + 1)):
-                split_examples[split_role(example.target_position, len(vs))].append(example)
-        for role in data:
-            data[role].append(SellerData(seller, tuple(items), z, split_examples[role]))
-            counts["examples"][role] += len(split_examples[role])
+                key = (split_role(example.target_position, len(vs)), progress_bucket(example.target_position, len(vs)))
+                grouped.setdefault(key, []).append(example)
+        snapshots = {}
+        for (role, bucket), examples in sorted(grouped.items()):
+            relations = None
+            if args.variant == "text_relation":
+                if bucket not in snapshots:
+                    t = time.perf_counter()
+                    snapshots[bucket] = replay_relations(visits, bucket, row_of, len(items))
+                    relation_seconds += time.perf_counter() - t
+                    r = snapshots[bucket]
+                    relation_stats.append({"seller": seller, "bucket": bucket,
+                                           "items_with_neighbours": round(float(r.has_neighbor.float().mean()), 4),
+                                           "neighbours_per_item": round(r.neighbors_per_item, 2)})
+                relations = snapshots[bucket]
+            data[role].append(SellerData(seller, items, z, examples, relations))
+            counts["examples"][role] += len(examples)
         counts["catalog_items"] += len(items)
     record["data"].update(counts)
+    if relation_stats:
+        record["relations"] = {"snapshots": relation_stats, "build_seconds": round(relation_seconds, 1)}
     record["encoder"] = {"spec": spec.__dict__, "text_artifact_hash": cache.text_artifact_hash,
                          "preprocessing_version": cache.preprocessing_version,
                          "texts_encoded_this_run": cache.encoded,
@@ -97,7 +118,7 @@ def build(args, record):
 def fit_seller(args, train_part, val_part):
     """local_only: one seller's model on that seller's data; its own validation picks the chunk."""
     torch.manual_seed(args.seed)  # every seller starts from the same weights
-    model = TextOnlyRecommender(architecture("text_only.v1"))
+    model = build_model(architecture("%s.v1" % args.variant))
     best, best_loss, best_step, history = None, None, None, []
     for chunk in range(args.steps // args.eval_every):
         log = train(model, train_part, TrainConfig(steps=args.eval_every, seed=args.seed * 1000 + chunk))
@@ -136,8 +157,10 @@ def fit(args, data, record):
 
 def evaluate(models, data, context, record):
     started = time.perf_counter()
+    variant = next(iter(models.values())).config.model_variant
+    model_arm = {"text_only": "T-G text_only", "text_relation": "R-G text_relation"}[variant]
     arms = {name: {"all": MacroAverager(), "repeat": MacroAverager(), "explore": MacroAverager()}
-            for name in ("T-G text_only", "popularity", "P-TopFreq")}
+            for name in (model_arm, "popularity", "P-TopFreq")}
     skipped = 0
     for seller in data["test"]:
         if not seller.examples or seller.seller_id not in models:
@@ -152,7 +175,7 @@ def evaluate(models, data, context, record):
             bucket = progress_bucket(example.target_position, len(visits[example.customer_id_local]))
             seller_counts = replay.counts(bucket)
             candidates = {
-                "T-G text_only": scores[row],
+                model_arm: scores[row],
                 "popularity": popularity_scores(seller.items, seller_counts),
                 "P-TopFreq": p_topfreq_scores(seller.items, example.prior_counts, seller_counts),
             }
@@ -174,6 +197,7 @@ def evaluate(models, data, context, record):
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--variant", default="text_only", choices=["text_only", "text_relation"])
     parser.add_argument("--encoder", default="minilm-l12", choices=sorted(CANDIDATES))
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
@@ -185,7 +209,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    record = {"run": "E-G0", "started_at": stamp, "seed": args.seed,
+    record = {"run": "E-G0", "variant": args.variant, "started_at": stamp, "seed": args.seed,
               "machine": {"os": platform.platform(), "python": platform.python_version(),
                           "torch": torch.__version__, "threads": torch.get_num_threads(),
                           "cpu": platform.processor(), "cpu_count": os.cpu_count()},
