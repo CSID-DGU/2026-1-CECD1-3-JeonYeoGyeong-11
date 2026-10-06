@@ -28,7 +28,7 @@
 | 5 | 텍스트 품질 보고 | 빈 입력·unknown·정규화/토큰 잘림 충돌, 규격 보존, 처리 시간·메모리 |
 | 6 | 텍스트만 추천 기준선 | E-G0, 관계 0인 상품도 후보 점수 생성 |
 
-지원 입력은 영어 데이터와 한국어 live 상품이다. 비ASCII 제거는 금지한다. 384차원·32토큰·MiniLM급은 이전 후보값이며 정확한 모델을 고른 것이 아니다. B는 한국어·영어 샘플을 실제 인코더로 확인하고 모델·길이를 고정한다. 바뀐 d_text는 fusion·relation_mlp 입력 차원과 manifest에 반영한다.
+지원 입력은 영어 데이터와 한국어 live 상품이다. 비ASCII 제거는 금지한다. 선택한 인코더는 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`(revision `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`, Apache-2.0)다. 입력은 builder 텍스트 그대로, special token 포함 최대 64토큰, padding을 뺀 평균 pooling 뒤 L2 정규화, d_text=384다. 근거와 측정은 [NLP 인코더 선정](nlp-encoder.md)에 있다. 이전 후보값 32토큰은 Instacart 상품의 9.8%를 잘라 쓰지 않는다. fusion·relation_mlp의 텍스트 입력 차원과 manifest는 d_text=384를 쓴다. Dunnhumby 텍스트를 잰 결과가 크게 다르면 선택을 다시 연다.
 
 마커는 기본적으로 일반 문자열로 토큰화한다. 임의 special token을 추가한 뒤 미학습 embedding을 frozen 상태로 쓰지 않는다. 서로 다른 상품명이 원문에서 고유해도 토큰 절단 후 같은 입력이 될 수 있다.
 
