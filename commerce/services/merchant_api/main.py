@@ -33,7 +33,7 @@ from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
 from commerce.services.merchant_api import accounts_db, accounts_service, orders_db, orders_service, session, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
-from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context
+from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
 
@@ -119,9 +119,7 @@ def settings_from_env() -> MerchantSettings:
         seller_id=os.environ["MERCHANT_ID"],
         feature_db_path=feature_db_path,
         model_dir=Path(os.environ["MODEL_DIR"]),
-        # Not yet in run_local.py's plan (C-owned); default keeps the launcher
-        # working until a PR adds it there (working-agreement.md §3).
-        merchant_db_path=Path(os.environ.get("MERCHANT_DB_PATH", str(feature_db_path.parent / "orders.sqlite"))),
+        merchant_db_path=merchant_db_path_from_env(),
         fl=FLClientConfig(enabled=enabled == "true", mode=os.environ.get("FL_MODE", "protected"),
                           model_variant=os.environ.get("FL_MODEL_VARIANT", "text_relation")),
     )

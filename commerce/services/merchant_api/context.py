@@ -1,4 +1,5 @@
 """A composes exactly one B runtime and passes it to C in the same process."""
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -7,6 +8,20 @@ from commerce.packages.contracts.ports import FLClientLifecycle, RecommenderRunt
 from commerce.packages.fl_client.lifecycle import FLClientConfig, create_client
 from commerce.packages.recommender.runtime import open_runtime
 from commerce.services.merchant_api.jobs import SellerJobs
+
+
+def merchant_db_path_from_env() -> Path:
+    """Where this seller's orders.sqlite is, by the same rule for the app and its tools.
+
+    MERCHANT_DB_PATH when set; otherwise orders.sqlite next to FEATURE_DB_PATH,
+    since run_local.py (C-owned) only passes FEATURE_DB_PATH so far
+    (working-agreement.md §3). KeyError when neither is set. Reads os.environ
+    directly so the docs gate sees which variables are read.
+    """
+    configured = os.environ.get("MERCHANT_DB_PATH")
+    if configured:
+        return Path(configured)
+    return Path(os.environ["FEATURE_DB_PATH"]).parent / "orders.sqlite"
 
 
 @dataclass(frozen=True)

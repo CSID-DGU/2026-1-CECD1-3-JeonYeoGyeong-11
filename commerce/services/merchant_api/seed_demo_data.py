@@ -5,8 +5,9 @@ tool (approach "①" from the team's own discussion of how to fake interaction
 on a first-time platform: generate a realistic timeline of synthetic activity
 rather than needing two live people to click through it).
 
-Usage:
-    MERCHANT_DB_PATH=/path/to/orders.sqlite python -m commerce.services.merchant_api.seed_demo_data
+Usage (the same MERCHANT_ID / FEATURE_DB_PATH / MERCHANT_DB_PATH the app reads):
+    MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite \
+        python -m commerce.services.merchant_api.seed_demo_data
 
 Safe to re-run: existing accounts/products are skipped, not duplicated.
 Dates are backdated by directly setting orders.created_at/completed_at after
@@ -22,10 +23,10 @@ import datetime as dt
 import os
 import random
 import sys
-from pathlib import Path
 
 from commerce.services.merchant_api import accounts_db, accounts_service, orders_db, orders_service, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
+from commerce.services.merchant_api.context import merchant_db_path_from_env
 
 _SELLER_ACCOUNT = {
     "username": "owner-1", "display_name": "제주 유기농 농장", "password": "demo-pass-1234",
@@ -210,12 +211,20 @@ def seed(conn, seller_id: str) -> None:
 
 
 def main() -> None:
-    seller_id = os.environ.get("MERCHANT_ID", "seller-1")
-    db_path = os.environ.get("MERCHANT_DB_PATH")
-    if not db_path:
-        print("Set MERCHANT_DB_PATH (and optionally MERCHANT_ID) before running this.", file=sys.stderr)
+    # Same environment as the app (main.settings_from_env), so the seed always
+    # lands in the DB and under the seller_id the app will actually serve.
+    seller_id = os.environ.get("MERCHANT_ID")
+    if not seller_id:
+        print("Set MERCHANT_ID (e.g. merchant-1, as run_local.py does) before running this.", file=sys.stderr)
         raise SystemExit(1)
-    conn = orders_db.connect(Path(db_path))
+    try:
+        db_path = merchant_db_path_from_env()
+    except KeyError:
+        print("Set MERCHANT_DB_PATH, or FEATURE_DB_PATH (orders.sqlite goes next to it), before running this.",
+              file=sys.stderr)
+        raise SystemExit(1)
+    print("seeding %s into %s" % (seller_id, db_path))
+    conn = orders_db.connect(db_path)
     try:
         with conn:
             seed(conn, seller_id)

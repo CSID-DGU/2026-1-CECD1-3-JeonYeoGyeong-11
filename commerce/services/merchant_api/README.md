@@ -14,7 +14,7 @@
 - `tests/test_social.py`: DM 스레드 순서, 피드 최신순, 공동구매 즉시/지연 성사·실패·중복참여 거부, 시세 upsert 커버.
 - `tests/test_accounts.py`: 회원가입/로그인, 비밀번호 비평문 저장, NTS mock/real 분기, 세션 서명·변조·만료 커버.
 - `tests/test_screens.py`: HTTP로 화면을 검사한다 — CSRF 없는/위조/이전 세션 토큰 거부, 폼 가격 조작 무시, A 기준선·B fallback·실제 모델의 배지, 추천기 오류 시 화면 유지, 비교 화면 네 칸과 P칸 미대체, `MERCHANT_SECRET`의 재시작 유지.
-- `seed_demo_data.py`: 데모용 시드 스크립트 — 판매자 계정 1개, 상품 6종, 고객 8명, 지난 30일에 걸쳐 분산된 주문 20여 건, DM 5건, 피드 4건, 공동구매 2건(진행중 1·성사 1), 상품 3종의 14일치 시세를 채운다. 실행: `MERCHANT_DB_PATH=... python -m commerce.services.merchant_api.seed_demo_data`. 재실행해도 중복 생성하지 않는다(계정·주문 idempotency_key로 존재 확인). `tests/test_seed_demo_data.py`가 멱등성·중복 키 없음을 검사한다.
+- `seed_demo_data.py`: 데모용 시드 스크립트 — 판매자 계정 1개, 상품 6종, 고객 8명, 지난 30일에 걸쳐 분산된 주문 20여 건, DM 5건, 피드 4건, 공동구매 2건(진행중 1·성사 1), 상품 3종의 14일치 시세를 채운다. 실행: 앱과 같은 환경변수로 `MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite python -m commerce.services.merchant_api.seed_demo_data` (`MERCHANT_DB_PATH`가 있으면 그 경로, 없으면 `FEATURE_DB_PATH` 옆 `orders.sqlite` — 앱과 같은 `context.merchant_db_path_from_env` 규칙. `MERCHANT_ID`가 없으면 만들지 않고 멈춘다). 재실행해도 중복 생성하지 않는다(계정·주문 idempotency_key로 존재 확인). `tests/test_seed_demo_data.py`가 멱등성·중복 키 없음을 검사한다.
 
 작업 순서는 [A 카드](../../../docs/team/tasks/A.md)를 따른다. 경계: event/outbox는 B ingest가 정상 반환한 뒤에만 전달 완료로 표시한다. 현재 B stub은 항상 미구현 예외를 내므로 delivered로 처리하면 안 된다.
 A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자당 1개이며 학습은 `context.jobs.submit(...)`으로 실행한다. 호출 예제는 [개발 안내](../../../docs/development.md)를 따른다.
