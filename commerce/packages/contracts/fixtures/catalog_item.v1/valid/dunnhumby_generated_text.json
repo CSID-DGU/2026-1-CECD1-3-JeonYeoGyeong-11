@@ -3,9 +3,9 @@
   "seller_id": "dh-store-367",
   "item_id_local": "dh-p-990000001",
   "source": "dunnhumby",
-  "description_text": null,
-  "title_text": "GROCERY | FLUID MILK PRODUCTS | MILK - FLUID WHOLE | 1 GA",
-  "category_path": null,
+  "description_text": "1 GA",
+  "title_text": "MILK - FLUID WHOLE",
+  "category_path": ["GROCERY", "FLUID MILK PRODUCTS"],
   "listing_status": "active",
   "first_listed_at": null
 }
