@@ -1,27 +1,42 @@
-"""Ranking metrics and non-model baselines. A owns this module (working-agreement.md §6:
-"B의 부담이 가장 크므로 평가 지표와 모델이 아닌 기준선은 처음부터 A가 맡는다").
+"""Ranking metrics and non-model baselines (evaluation.md §4). A owns this module
+(working-agreement.md §6: "B의 부담이 가장 크므로 평가 지표와 모델이 아닌 기준선은
+처음부터 A가 맡는다"), so the side building the model does not grade itself.
 
-Scoring input is always a model's or baseline's own candidate scores; this module
-never reads raw transactions or feature DBs (A card "입력은 B 실행기가 예제마다
-넘기는 두 묶음이다").
+Input is always a model's or baseline's own candidate scores plus the counts the
+B runner hands in per example (A card: the customer's and the seller's purchase
+counts before the cutoff, the relevant items). This module never reads raw
+transactions or feature DBs.
 
-Tie handling: `ranked` must already be sorted by score descending. When several
-candidates share a score, which of them lands inside vs. outside a fixed cutoff k
-is arbitrary. Rather than pick one tie-break, every metric here credits each item
-in a tied group with the *expected* outcome over a uniformly random ordering of
-that group -- so a metric value never depends on incidental sort stability.
+Two equivalent entry points:
+- Arrays, the shape B's runner uses (`expected_metrics`, `popularity_scores`,
+  `p_topfreq_scores`, `MacroAverager`): scores over the candidate list, relevant
+  given as candidate indices. These names match the temporary
+  commerce/evaluation/scoring.py so B can switch by changing the import.
+- Ranked lists of (item_id, score) (`recall_at_k`, `ndcg_at_k`, the *_ranking
+  baselines), used by the merchant app and the hand-checkable examples.
+
+Ties: a candidate's position inside a group of equal scores is never decided by
+ID or sort stability. Recall@K and NDCG@K credit every item of a tied group with
+the expected outcome over a uniformly random order of that group.
+
+Averages (evaluation.md §4 "고객별, 다음 판매자별 평균 ... 판매자 macro ... 전체
+예제 micro"): macro = mean per customer, then per seller, then over sellers;
+micro = mean over all examples.
 """
 from __future__ import annotations
 
 import math
-from typing import Iterable, Optional, Sequence
+from collections import defaultdict
+from typing import Iterable, Mapping, Optional, Sequence
 
 ScoredItem = tuple[str, float]
-RankedRelevant = tuple[Sequence[ScoredItem], set[str]]
+KS = (10, 20)
 
+
+# --- core: one ranking --------------------------------------------------------
 
 def _score_groups(ranked: Sequence[ScoredItem]) -> list[tuple[int, list[str]]]:
-    """(1-indexed start rank, item_ids) for each run of equal-score items."""
+    """(1-indexed start rank, item_ids) for each run of equal-score items. `ranked` is sorted by score desc."""
     groups: list[tuple[int, list[str]]] = []
     rank = 1
     i, n = 0, len(ranked)
@@ -48,16 +63,8 @@ def _expected_hits_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int
         if end <= k:
             hits += relevant_in_group
         else:
-            slots_in_k = k - start + 1
-            hits += relevant_in_group * (slots_in_k / len(ids))
+            hits += relevant_in_group * ((k - start + 1) / len(ids))
     return hits
-
-
-def recall_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float:
-    """|relevant| = 0 or k <= 0 has no defined recall; returns 0.0 by convention."""
-    if not relevant or k <= 0:
-        return 0.0
-    return _expected_hits_at_k(ranked, relevant, k) / len(relevant)
 
 
 def _dcg_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float:
@@ -69,15 +76,20 @@ def _dcg_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float
         relevant_in_group = sum(1 for item in ids if item in relevant)
         if relevant_in_group == 0:
             continue
-        last_rank_in_k = min(end, k)
-        discount_sum = sum(1.0 / math.log2(p + 1) for p in range(start, last_rank_in_k + 1))
+        discount_sum = sum(1.0 / math.log2(p + 1) for p in range(start, min(end, k) + 1))
         dcg += relevant_in_group * (discount_sum / len(ids))
     return dcg
 
 
 def _ideal_dcg_at_k(num_relevant: int, k: int) -> float:
-    top = min(num_relevant, k)
-    return sum(1.0 / math.log2(p + 1) for p in range(1, top + 1))
+    return sum(1.0 / math.log2(p + 1) for p in range(1, min(num_relevant, k) + 1))
+
+
+def recall_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float:
+    """|relevant| = 0 or k <= 0 has no defined recall; returns 0.0 by convention."""
+    if not relevant or k <= 0:
+        return 0.0
+    return _expected_hits_at_k(ranked, relevant, k) / len(relevant)
 
 
 def ndcg_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float:
@@ -87,53 +99,120 @@ def ndcg_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float
     return _dcg_at_k(ranked, relevant, k) / ideal if ideal > 0 else 0.0
 
 
-def macro_recall_at_k(per_customer: Iterable[RankedRelevant], k: int) -> Optional[float]:
-    """Mean of each customer's own Recall@k. None when no customer has ground truth."""
-    values = [recall_at_k(ranked, relevant, k) for ranked, relevant in per_customer if relevant]
-    return sum(values) / len(values) if values else None
+def _sorted_by_score(scored: Iterable[ScoredItem]) -> list[ScoredItem]:
+    """Score desc; equal scores by item_id only so the list is reproducible -- metrics treat them as tied."""
+    return sorted(scored, key=lambda pair: (-pair[1], pair[0]))
 
 
-def micro_recall_at_k(per_customer: Iterable[RankedRelevant], k: int) -> Optional[float]:
-    """Pooled hits / pooled relevant across all customers, not an average of ratios."""
-    per_customer = list(per_customer)
-    total_relevant = sum(len(relevant) for _, relevant in per_customer)
-    if total_relevant == 0:
-        return None
-    total_hits = sum(_expected_hits_at_k(ranked, relevant, k) for ranked, relevant in per_customer)
-    return total_hits / total_relevant
+# --- arrays: the shape B's runner uses ----------------------------------------
+
+def expected_metrics(scores: Sequence[float], relevant: Iterable[int], ks: Sequence[int] = KS) -> dict[str, float]:
+    """Recall@K and NDCG@K of one ranking over all candidates, ties at their expected value.
+
+    `scores[i]` is candidate i's score; `relevant` are candidate indices. An
+    example needs at least one relevant candidate (ValueError otherwise), so a
+    subset with nothing in it -- e.g. no explore item -- is skipped by the caller.
+    """
+    relevant_ids = {str(int(i)) for i in relevant}
+    if not relevant_ids:
+        raise ValueError("an example needs at least one relevant candidate")
+    ranked = _sorted_by_score((str(i), float(s)) for i, s in enumerate(scores))
+    out: dict[str, float] = {}
+    for k in ks:
+        out["recall@%d" % k] = recall_at_k(ranked, relevant_ids, k)
+        out["ndcg@%d" % k] = ndcg_at_k(ranked, relevant_ids, k)
+    return out
 
 
-def macro_ndcg_at_k(per_customer: Iterable[RankedRelevant], k: int) -> Optional[float]:
-    values = [ndcg_at_k(ranked, relevant, k) for ranked, relevant in per_customer if relevant]
-    return sum(values) / len(values) if values else None
+def popularity_scores(items: Sequence[str], seller_counts: Mapping[str, int]):
+    """Local popularity: the seller's purchases per item before the cutoff."""
+    import numpy as np  # only the array entry points need numpy
+    return np.array([seller_counts.get(i, 0) for i in items], dtype=np.float64)
 
 
-def micro_ndcg_at_k(per_customer: Iterable[RankedRelevant], k: int) -> Optional[float]:
-    per_customer = list(per_customer)
-    total_idcg = sum(_ideal_dcg_at_k(len(relevant), k) for _, relevant in per_customer)
-    if total_idcg == 0:
-        return None
-    total_dcg = sum(_dcg_at_k(ranked, relevant, k) for ranked, relevant in per_customer)
-    return total_dcg / total_idcg
+def p_topfreq_scores(items: Sequence[str], prior_counts: Mapping[str, int], seller_counts: Mapping[str, int]):
+    """P-TopFreq: the customer's own purchases per item before the cutoff, ties
+    broken by local popularity (seller counts scaled below 1, so they never
+    outweigh a single own purchase)."""
+    import numpy as np
+    top = max(seller_counts.values(), default=0) + 1
+    return np.array([prior_counts.get(i, 0) + seller_counts.get(i, 0) / top for i in items], dtype=np.float64)
 
 
-def p_topfreq_ranking(seller_counts_before_cutoff: dict[str, int], candidate_item_ids: Iterable[str]) -> list[ScoredItem]:
-    """Non-model baseline (A card): score = seller-wide purchase count before cutoff,
-    computed straight from counts the B runner hands in -- never a model feature."""
-    scored = [(item_id, float(seller_counts_before_cutoff.get(item_id, 0))) for item_id in candidate_item_ids]
-    scored.sort(key=lambda pair: (-pair[1], pair[0]))
-    return scored
+def repeat_explore_indices(items: Sequence[str], relevant: Iterable[int],
+                           prior_counts: Mapping[str, int]) -> tuple[list[int], list[int]]:
+    """Split relevant candidate indices into repeat (the customer bought it before the cutoff) and explore."""
+    repeat, explore = [], []
+    for i in relevant:
+        (repeat if prior_counts.get(items[i], 0) > 0 else explore).append(i)
+    return repeat, explore
+
+
+def new_item_indices(items: Sequence[str], relevant: Iterable[int], seller_counts: Mapping[str, int]) -> list[int]:
+    """Relevant candidates the seller had never sold before the cutoff (the new-item cohort)."""
+    return [i for i in relevant if seller_counts.get(items[i], 0) == 0]
+
+
+class MacroAverager:
+    """Mean per customer, then per seller, then over sellers; micro over examples too.
+
+    One averager per reported slice: overall, repeat, explore, new-item cohort.
+    `examples` in the result is the number of valid queries for that slice
+    (evaluation.md §4 asks for it next to the cohort metrics).
+    """
+
+    def __init__(self):
+        self._rows: dict[str, dict[str, list[dict[str, float]]]] = defaultdict(lambda: defaultdict(list))
+
+    def add(self, seller: str, customer: str, metrics: Mapping[str, float]) -> None:
+        self._rows[seller][customer].append(dict(metrics))
+
+    def result(self) -> dict:
+        if not self._rows:
+            return {"sellers": 0, "examples": 0}
+        names = sorted(next(iter(next(iter(self._rows.values())).values()))[0])
+        per_seller: dict[str, dict[str, float]] = {}
+        flat: list[dict[str, float]] = []
+        for seller, customers in self._rows.items():
+            per_customer = []
+            for rows in customers.values():
+                flat += rows
+                per_customer.append({n: sum(r[n] for r in rows) / len(rows) for n in names})
+            per_seller[seller] = {n: sum(c[n] for c in per_customer) / len(per_customer) for n in names}
+        return {
+            "sellers": len(per_seller), "examples": len(flat),
+            "macro": {n: sum(s[n] for s in per_seller.values()) / len(per_seller) for n in names},
+            "micro": {n: sum(r[n] for r in flat) / len(flat) for n in names},
+            "per_seller": per_seller,
+        }
+
+
+# --- ranked lists: baselines for the merchant app -----------------------------
+
+def local_popularity_ranking(seller_counts_before_cutoff: Mapping[str, int],
+                             candidate_item_ids: Iterable[str]) -> list[ScoredItem]:
+    """Non-model baseline: score = the seller's purchase count of the item before the cutoff."""
+    return _sorted_by_score((i, float(seller_counts_before_cutoff.get(i, 0))) for i in candidate_item_ids)
+
+
+def p_topfreq_ranking(customer_counts_before_cutoff: Mapping[str, int], seller_counts_before_cutoff: Mapping[str, int],
+                      candidate_item_ids: Iterable[str]) -> list[ScoredItem]:
+    """Non-model baseline P-TopFreq as a ranked list (same scores as p_topfreq_scores).
+    A customer with no history gets the local popularity order."""
+    items = list(candidate_item_ids)
+    top = max(seller_counts_before_cutoff.values(), default=0) + 1
+    return _sorted_by_score(
+        (i, customer_counts_before_cutoff.get(i, 0) + seller_counts_before_cutoff.get(i, 0) / top) for i in items)
 
 
 def classify_relevant_items(
     relevant: set[str],
-    customer_counts_before_cutoff: dict[str, int],
-    seller_counts_before_cutoff: dict[str, int],
+    customer_counts_before_cutoff: Mapping[str, int],
+    seller_counts_before_cutoff: Mapping[str, int],
 ) -> dict[str, dict[str, bool]]:
     """Ground-truth labels only, no ranking: per relevant item, whether the
     customer already bought it before cutoff (repeat vs. explore) and whether
-    the seller had zero sales of it before cutoff (new_item_cohort, A-0/C-new/C0
-    candidates per evaluation.md §3)."""
+    the seller had zero sales of it before cutoff (new_item_cohort)."""
     return {
         item: {
             "repeat": customer_counts_before_cutoff.get(item, 0) > 0,
@@ -144,9 +223,9 @@ def classify_relevant_items(
 
 
 def split_recall_by_repeat_explore(
-    ranked: Sequence[ScoredItem], relevant: set[str], k: int, customer_counts_before_cutoff: dict[str, int],
+    ranked: Sequence[ScoredItem], relevant: set[str], k: int, customer_counts_before_cutoff: Mapping[str, int],
 ) -> dict[str, Optional[float]]:
-    """Recall@k on the repeat subset and the explore subset of `relevant` separately."""
+    """Recall@k on the repeat subset and the explore subset of `relevant` separately (None when a subset is empty)."""
     repeat = {item for item in relevant if customer_counts_before_cutoff.get(item, 0) > 0}
     explore = relevant - repeat
     return {

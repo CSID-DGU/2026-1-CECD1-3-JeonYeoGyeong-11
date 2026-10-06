@@ -329,13 +329,20 @@ def get_recommendations_for_display(
         except Exception as exc:  # recommender failure must not break the buyer page
             _log.warning("predict_local failed, using A baseline: %s", exc)
 
+    # Counts from completed orders only (what B would have seen as purchase events).
+    # Purchases are counted per order line, not by quantity: P-TopFreq counts how
+    # often the customer bought the item (evaluation.md §4), not how many units.
     seller_counts: dict[str, int] = {}
+    customer_counts: dict[str, int] = {}
     for order in db.list_orders(conn, seller_id):
         if order["status"] != "completed":
             continue
         for item in order["items"]:
-            seller_counts[item["item_id_local"]] = seller_counts.get(item["item_id_local"], 0) + item["quantity"]
-    ranked = ranking.p_topfreq_ranking(seller_counts, active_items)[:top_n]
+            item_id = item["item_id_local"]
+            seller_counts[item_id] = seller_counts.get(item_id, 0) + 1
+            if order["customer_id_local"] == customer_id_local:
+                customer_counts[item_id] = customer_counts.get(item_id, 0) + 1
+    ranked = ranking.p_topfreq_ranking(customer_counts, seller_counts, active_items)[:top_n]
     return {
         "schema_version": "recommendation.v1",
         "seller_id": seller_id,
@@ -471,7 +478,7 @@ def recommendation_label(recommendation: dict[str, Any]) -> Optional[str]:
     rather than through a special model_version.
     """
     if recommendation["model_version"] == MOCK_MODEL_VERSION:
-        return "임시 · 추천 모델 미연결, 인기순"
+        return "임시 · 추천 모델 미연결, 구매 이력·인기순"
     if recommendation.get("fallback_reason"):
         return _FALLBACK_LABELS.get(recommendation["fallback_reason"], "대체 추천 · 매장 인기순")
     return None

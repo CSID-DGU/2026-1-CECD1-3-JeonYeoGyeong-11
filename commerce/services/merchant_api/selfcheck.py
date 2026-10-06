@@ -78,10 +78,13 @@ def _check_metrics_hand_example() -> None:
 
 
 def _check_unit_tests(verbose: bool) -> unittest.TestResult:
+    # Every A test, so CI's business gate catches a regression in any A screen,
+    # not only the order domain (all of them use temporary directories only).
     suite = unittest.TestSuite()
     loader = unittest.defaultTestLoader
-    suite.addTests(loader.loadTestsFromName("commerce.services.merchant_api.tests.test_orders"))
-    suite.addTests(loader.loadTestsFromName("commerce.evaluation.metrics.tests.test_ranking"))
+    root = Path(__file__).resolve().parents[3]
+    for start in ("commerce/services/merchant_api/tests", "commerce/evaluation/metrics/tests"):
+        suite.addTests(loader.discover(str(root / start), top_level_dir=str(root)))
     return unittest.TextTestRunner(verbosity=2 if verbose else 0).run(suite)
 
 
