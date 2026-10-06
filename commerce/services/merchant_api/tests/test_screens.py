@@ -90,6 +90,19 @@ class ScreenTest(unittest.TestCase):
         self.assertEqual(_product_emoji(["농산", "과일"], "설향 딸기 500g"), "🍓", "the title beats a coarse category")
         self.assertEqual(_product_emoji(["농산", "과일"], "이름에 단서 없음"), "🍊")
 
+    def test_two_sellers_on_one_host_keep_separate_logins(self):
+        # run_local.py serves every seller on 127.0.0.1 and browsers ignore the
+        # port for cookies, so one browser must be able to stay logged in to both.
+        for seller in (SELLER, "seller-2"):
+            r = self.client.post(f"/buyer/{seller}/signup", data={
+                "customer_id_local": "cust-1", "display_name": "고객", "password": "pw-1234"})
+            self.assertEqual(r.status_code, 303, r.text)
+        for seller in (SELLER, "seller-2"):
+            self.assertEqual(self.client.get(f"/buyer/{seller}/orders").status_code, 200, seller)
+        self.client.get(f"/buyer/{SELLER}/logout")
+        self.assertEqual(self.client.get(f"/buyer/{SELLER}/orders").status_code, 303)
+        self.assertEqual(self.client.get("/buyer/seller-2/orders").status_code, 200, "logging out of one keeps the other")
+
     # --- CSRF ------------------------------------------------------------------
 
     def test_seller_form_without_csrf_token_is_rejected(self):

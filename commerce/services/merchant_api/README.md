@@ -9,7 +9,7 @@
 - `cart_db.py` + `orders_service`의 `add_to_cart`·`set_cart_quantity`·`get_cart`·`checkout_cart`: 구매자 장바구니(orders.sqlite의 `cart_items`, 계약 없음). 결제는 담긴 상품을 카탈로그 현재 가격으로 `place_order` 1건(여러 상품)으로 만들고, `checkout_key`를 idempotency_key로 써서 중복 제출에도 주문이 한 번만 생긴다. `tests/test_cart.py`.
 - `accounts_db.py`/`accounts_service.py`: 구매자 회원가입/로그인과 이 매장 자체의 판매자(직원) 계정. `signup_seller`는 `nts_client.verify_business_registration`으로 **국세청 사업자등록 진위확인**을 통과해야 계정을 만든다. 비밀번호는 PBKDF2-SHA256(20만 회)로 저장, 평문 보관 없음.
 - `nts_client.py`: 공공데이터포털 "사업자등록정보 진위확인" API 클라이언트. `NTS_SERVICE_KEY`가 설정되면 실제 API(`POST api.odcloud.kr/.../validate`)를 호출하고, 없으면 사업자등록번호 형식만 확인하는 데모 mock으로 대체한다(`VerificationResult.mode`가 "real"/"mock"을 구분). 실제 키로 라이브 호출을 검증한 적은 없다(이 환경엔 키가 없음) — `get_recommendations_for_display`와 같은 "mock 지금, 실제 키로 전환" 구조.
-- `session.py`: stdlib(`hmac`/`hashlib`)만으로 서명한 세션 쿠키와 세션에 묶인 CSRF 토큰. `MERCHANT_SECRET`이 있으면 그 값에서 키를 만들어 재시작해도 로그인이 유지되고, 없으면 프로세스마다 랜덤 키다(재시작하면 로그아웃).
+- `session.py`: stdlib(`hmac`/`hashlib`)만으로 서명한 세션 쿠키와 세션에 묶인 CSRF 토큰. 쿠키 이름에 판매자 ID가 들어간다(`customer_session_<seller_id>`): 런처가 판매자들을 같은 127.0.0.1에 포트만 달리 띄우고 브라우저는 포트로 쿠키를 나누지 않으므로, 한 브라우저로 여러 판매자에 동시에 로그인할 수 있게 한다. `MERCHANT_SECRET`이 있으면 그 값에서 키를 만들어 재시작해도 로그인이 유지되고, 없으면 프로세스마다 랜덤 키다(재시작하면 로그아웃).
 - `selfcheck.py`: a1 게이트. 호출자 인증(OQ13·15)과 B 실제 연결(g2)은 의도적으로 남겨두고 그 외 상태전이·타 판매자 거부·평가지표 손계산 예제를 확인한다.
 - `tests/fakes.py`: A 소유 테스트 더블(`FakeRecommenderRuntime`). B의 `UnimplementedRuntime`을 고치지 않고 자체 성공 경로를 만든다([개발 안내](../../../docs/development.md#상대-모듈을-대체하는-방법)).
 - `tests/test_social.py`: DM 스레드 순서, 피드 최신순, 공동구매 즉시/지연 성사·실패·중복참여 거부, 시세 upsert 커버.

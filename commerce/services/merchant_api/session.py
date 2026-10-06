@@ -16,6 +16,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 from typing import Any, Optional
@@ -32,8 +33,22 @@ def _load_secret() -> bytes:
 _SECRET = _load_secret()
 _MAX_AGE_SECONDS = 7 * 24 * 3600
 
-CUSTOMER_COOKIE = "customer_session"
-SELLER_COOKIE = "seller_session"
+
+
+def _cookie_name(role: str, seller_id: str) -> str:
+    """One cookie per seller: run_local.py starts every seller on 127.0.0.1 with
+    only the port differing, and browsers do not separate cookies by port
+    (working-agreement.md §3), so a shared name would make logging in to one
+    seller log you out of the next. Non-token characters are dropped."""
+    return "%s_session_%s" % (role, re.sub(r"[^A-Za-z0-9_-]", "", seller_id))
+
+
+def customer_cookie(seller_id: str) -> str:
+    return _cookie_name("customer", seller_id)
+
+
+def seller_cookie(seller_id: str) -> str:
+    return _cookie_name("seller", seller_id)
 
 
 def _b64encode(data: bytes) -> str:

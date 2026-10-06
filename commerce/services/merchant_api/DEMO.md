@@ -9,7 +9,8 @@
 ```
 
 - lock에 torch가 들어 있다(#17). Windows에서 경로 길이 260자 제한에 걸리면 짧은 경로의 가상환경을 쓴다.
-- 실제 모델 추천에는 B의 설치물(frozen 텍스트 인코더, 첫 release)이 `MODEL_DIR` 아래 있어야 한다. 설치 방법은 B의 recommender README를 따른다. 없으면 B는 자기 fallback(`popularity.local`)으로 답하고 화면은 "공유 모델 준비 전"을 표시한다.
+- 실제 모델 추천에는 B의 설치물이 `MODEL_DIR` 아래 있어야 한다(작업 규칙 §3, #33에서 B가 안내): frozen 텍스트 인코더는 `{MODEL_DIR}/frozen_text/`, 공통 base는 `{MODEL_DIR}/base/{variant}/`. 시연용 첫 release는 B가 `release_bundle.py`로 만들어 두었고, C의 #29 `install_latest` 또는 `import_release`로 설치한다. 없으면 B는 자기 fallback(`popularity.local`)으로 답하고 화면은 "공유 모델 준비 전"을 표시한다.
+- 모델이 있으면 상품을 처음 넣은 직후 B가 상품 텍스트 벡터를 백그라운드에서 계산한다(상품 수천 개면 약 26초, 34개면 금방). 그동안 온 추천 요청은 계산이 끝날 때까지 기다린다.
 
 ## 2. 데이터 만들기
 
@@ -66,6 +67,7 @@ $env:MODEL_DIR="$PWD\commerce\deploy\var\merchant_1\models"; $env:MERCHANT_SECRE
 | 추천 배지 "임시 · 추천 모델 미연결" | B runtime이 stub이다(#31 머지 전). 정상 |
 | 추천 배지 "공유 모델 준비 전" | B는 연결됐지만 release가 설치되지 않았다 |
 | 재시작하면 로그아웃됨 | `MERCHANT_SECRET`을 넣지 않았다 |
+| 판매자 여럿을 띄웠는데 서로 로그인이 풀림 | 이제는 판매자별 쿠키라 풀리지 않는다. 풀리면 서버를 최신 코드로 다시 켠다 |
 | 포트 사용 중 | 다른 서버가 8101을 쓰고 있다. 끄거나 `--port`를 바꾼다(URL도 함께) |
 | 시뮬레이터 "seller login failed" | seed를 먼저 실행한다 |
 | 화면은 뜨는데 데이터가 비어 있음 | seed의 `MERCHANT_ID`와 서버의 `MERCHANT_ID`가 다르다 |

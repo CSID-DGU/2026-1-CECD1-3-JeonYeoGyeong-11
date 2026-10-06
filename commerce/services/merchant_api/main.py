@@ -41,16 +41,17 @@ _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
 _log = logging.getLogger(__name__)
 
 
-def _csrf_context(cookie_name: str):
+def _csrf_context(cookie_for_seller: Callable[[str], str]):
     def processor(request: Request) -> dict:
-        return {"csrf_token": session.csrf_token(request.cookies.get(cookie_name))}
+        seller_id = request.path_params.get("seller_id", "")
+        return {"csrf_token": session.csrf_token(request.cookies.get(cookie_for_seller(seller_id)))}
     return processor
 
 
 _seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"),
-                                    context_processors=[_csrf_context(session.SELLER_COOKIE)])
+                                    context_processors=[_csrf_context(session.seller_cookie)])
 _buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
-                                   context_processors=[_csrf_context(session.CUSTOMER_COOKIE)])
+                                   context_processors=[_csrf_context(session.customer_cookie)])
 
 # Platform name shown on every screen. Placeholder until the team settles the
 # "OO" part; change it here only.
@@ -241,6 +242,9 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
                 # thread never keeps the process alive past this.
                 await asyncio.to_thread(redelivery.join, _REDELIVERY_JOIN_SECONDS)
                 await asyncio.to_thread(context.jobs.close)
+                close = getattr(context.runtime, "close", None)  # not part of the Protocol; B's SellerRuntime has it
+                if callable(close):
+                    await asyncio.to_thread(close)
                 del app.state.merchant
 
     app = FastAPI(title="Merchant service scaffold", lifespan=lifespan,
@@ -263,7 +267,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             conn.close()
 
     def current_customer(seller_id: str, request: Request) -> Optional[dict]:
-        account = session.unsign(request.cookies.get(session.CUSTOMER_COOKIE))
+        account = session.unsign(request.cookies.get(session.customer_cookie(seller_id)))
         if account is None or account.get("seller_id") != seller_id or account.get("role") != "customer":
             return None
         return account
@@ -275,7 +279,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         return account
 
     def current_seller_staff(seller_id: str, request: Request) -> Optional[dict]:
-        account = session.unsign(request.cookies.get(session.SELLER_COOKIE))
+        account = session.unsign(request.cookies.get(session.seller_cookie(seller_id)))
         if account is None or account.get("seller_id") != seller_id or account.get("role") != "seller":
             return None
         return account
@@ -289,13 +293,13 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     # POST forms of a logged-in user: login plus a CSRF token bound to that session cookie.
     def require_customer_form(seller_id: str, request: Request, csrf_token: Optional[str] = Form(None)) -> dict:
         account = require_customer(seller_id, request)
-        if not session.check_csrf(request.cookies.get(session.CUSTOMER_COOKIE), csrf_token):
+        if not session.check_csrf(request.cookies.get(session.customer_cookie(seller_id)), csrf_token):
             raise ContractError("FORBIDDEN", "/csrf_token")
         return account
 
     def require_seller_form(seller_id: str, request: Request, csrf_token: Optional[str] = Form(None)) -> dict:
         account = require_seller(seller_id, request)
-        if not session.check_csrf(request.cookies.get(session.SELLER_COOKIE), csrf_token):
+        if not session.check_csrf(request.cookies.get(session.seller_cookie(seller_id)), csrf_token):
             raise ContractError("FORBIDDEN", "/csrf_token")
         return account
 
@@ -379,7 +383,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             })
         token = session.sign({"role": "seller", "seller_id": seller_id, "username": username, "display_name": display_name})
         response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
-        response.set_cookie(session.SELLER_COOKIE, token, httponly=True, samesite="lax")
+        response.set_cookie(session.seller_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
     @app.get("/seller/{seller_id}/login")
@@ -402,13 +406,13 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         token = session.sign({"role": "seller", "seller_id": seller_id, "username": username,
                                "display_name": account["display_name"]})
         response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
-        response.set_cookie(session.SELLER_COOKIE, token, httponly=True, samesite="lax")
+        response.set_cookie(session.seller_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
     @app.get("/seller/{seller_id}/logout")
     def seller_logout(seller_id: str):
         response = RedirectResponse(f"/seller/{seller_id}/login", status_code=303)
-        response.delete_cookie(session.SELLER_COOKIE)
+        response.delete_cookie(session.seller_cookie(seller_id))
         return response
 
     # --- Seller screens ---------------------------------------------------
@@ -618,7 +622,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         token = session.sign({"role": "customer", "seller_id": seller_id, "customer_id_local": customer_id_local,
                                "display_name": display_name})
         response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
-        response.set_cookie(session.CUSTOMER_COOKIE, token, httponly=True, samesite="lax")
+        response.set_cookie(session.customer_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
     @app.get("/buyer/{seller_id}/login")
@@ -643,13 +647,13 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         token = session.sign({"role": "customer", "seller_id": seller_id, "customer_id_local": customer_id_local,
                                "display_name": account["display_name"]})
         response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
-        response.set_cookie(session.CUSTOMER_COOKIE, token, httponly=True, samesite="lax")
+        response.set_cookie(session.customer_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
     @app.get("/buyer/{seller_id}/logout")
     def buyer_logout(seller_id: str):
         response = RedirectResponse(f"/buyer/{seller_id}/", status_code=303)
-        response.delete_cookie(session.CUSTOMER_COOKIE)
+        response.delete_cookie(session.customer_cookie(seller_id))
         return response
 
     # --- Buyer screens -----------------------------------------------------
