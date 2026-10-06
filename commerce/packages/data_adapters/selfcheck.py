@@ -10,8 +10,8 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2]
 
 REMAINING = (
-    "Dunnhumby 어댑터: 정제 순서, basket·상품 수량 합계, 절대시각의 시간대(OQ12)",
-    "판매자 배정을 train 구간만으로 생성: Instacart floor(0.7n) 이전 주문, Dunnhumby 2~39주",
+    "Dunnhumby 어댑터: 정제 순서, basket·상품 수량 합계, 절대시각의 시간대(OQ12), "
+    "주이용 점포와 300 basket 기준을 2~39주로 계산(Instacart 배정의 목표 크기도 여기서 나온다)",
 )
 
 
