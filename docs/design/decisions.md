@@ -76,7 +76,8 @@ text_only와 text_relation을 각각 학습하고 global/personalized를 비교�
   | 2 | text_relation | harex.R_lm.v1 | 위 6개 + time_mlp, relation_mlp, relation_pool |
 
   - D0019(고정 NLP 밖 전체 공유, query_proj·scorer만 로컬 개인화)와 D0017(후보 점수화)은 그대로다.
-  - 재구매 경로(D0023)는 넣지 않는다. hx(판매자별 단어 토큰 표)는 HAREX 비교 기준으로만 남긴다.
+  - 구조를 바꾸면 1·2를 다시 쓰지 않고 새 architecture_version을 등록한다([모델 실험](model-lab.md) §6의 2).
+  - 재구매 경로(#27에서 D0023으로 제안했고 병합하지 않는다)는 넣지 않는다. hx(판매자별 단어 토큰 표)는 HAREX 비교 기준으로만 남긴다.
   - 첫 release는 Instacart 판매자 100곳 비보호 FL 시뮬레이션(500라운드, 마지막 라운드)의 공유 가중치다. FL로 만든 release이며 보호 FL 결과가 아니라고 출처에 적는다(D0020).
 - **왜 hx가 아니라 lm인가.** 판매자 100곳 비보호 FL 시뮬레이션(D0022 1차 표, 다음 장바구니) 기준이다.
 
