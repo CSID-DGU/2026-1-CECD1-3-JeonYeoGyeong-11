@@ -8,7 +8,7 @@ import os
 import unittest
 
 REMAINING = (
-    "the same flow with separate processes started by run_local (launcher FL waits for OQ16)",
+    "the same flow as separate processes is commerce.deploy.fl_demo (manual; needs B's snapshot_digest)",
     "the real model run (MiniLM + first release) is reported on the PR, not run in CI",
 )
 

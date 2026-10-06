@@ -3,8 +3,8 @@
 Three synthetic sellers run one round, the base changes, personalization is rebuilt on
 the new base, and a fourth seller with its own catalog (not in the cohort) scores with it.
 The input is B's g3 scenario (recommender/scenario.py) at CI size: TINY_ARCHITECTURES and
-FakeText. The coordinator runs in-process over HTTP (TestClient); separate processes via
-run_local wait for OQ16. Generated synthetic input only; no real data, no protection (g4).
+FakeText. The coordinator runs in-process over HTTP (TestClient); the same flow as separate
+processes is commerce.deploy.fl_demo (D0025). Generated synthetic input only; no protection (g4).
 Ported from B's rehearsal (issue #35), with its fixed settings, under which personalization
 is known to pass validation at this size.
 """

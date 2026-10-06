@@ -53,6 +53,48 @@ def _check_fl_defaults(fail) -> int:
         fail("commerce/deploy/run_local.py",
              "런처가 FL_ENABLED=%r로 기동한다. 로컬 실행은 FL를 켜지 않는다"
              % launcher_values.get("FL_ENABLED"))
+    return checked + _check_fl_enablers(fail)
+
+
+# --- 1b. FL을 켜는 코드는 합성 시연 실행기 한 곳뿐이다 (D0025, OQ16) ---------------
+
+FL_DEMO = REPO_ROOT / "commerce/deploy/fl_demo.py"
+
+
+def _is_test(path: pathlib.Path) -> bool:
+    return "tests" in path.parts or path.name.startswith("test_")
+
+
+def _check_fl_enablers(fail) -> int:
+    """FLClientConfig에 상수 enabled=True나 synthetic_attestation을 넘기는 곳은 fl_demo.py뿐이다.
+
+    synthetic_plaintext는 확인 파일(synthetic_attestation)이 있어야만 돈다. 그래서 그 인자를
+    넘기는 곳이 FL을 실제로 켜는 곳이다. 거기서는 mode가 상수 "synthetic_plaintext"여야 한다.
+    판매자 앱의 환경변수 경로(FL_ENABLED)는 확인 파일을 넘기지 않으므로 켜도 시작이 거부된다.
+    """
+    checked = 0
+    for path in sorted((REPO_ROOT / "commerce").rglob("*.py")):
+        if _is_test(path):
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call) and getattr(node.func, "id", getattr(node.func, "attr", None))
+                    == "FLClientConfig"):
+                continue
+            keywords = {k.arg: k.value for k in node.keywords if k.arg}
+            enabled = keywords.get("enabled")
+            turns_on = ("synthetic_attestation" in keywords
+                        or (isinstance(enabled, ast.Constant) and enabled.value is True))
+            if not turns_on:
+                continue
+            checked += 1
+            where = "%s:%d" % (path.relative_to(REPO_ROOT).as_posix(), node.lineno)
+            mode = keywords.get("mode")
+            if path != FL_DEMO:
+                fail(where, "FL을 켜는 FLClientConfig는 commerce/deploy/fl_demo.py에만 둔다(D0025)")
+            elif not (isinstance(mode, ast.Constant) and mode.value == "synthetic_plaintext"
+                      and "synthetic_attestation" in keywords):
+                fail(where, "fl_demo.py의 FLClientConfig는 mode=\"synthetic_plaintext\"와 synthetic_attestation을 함께 쓴다")
     return checked
 
 

@@ -5,7 +5,14 @@
 `--smoke`를 빼면 Ctrl+C까지 유지한다. 포트는 8000, 8200, 8101부터이며 loopback에만 바인딩한다. 실행은 프로젝트 루트·개발 가상환경 기준이다.
 
 FL는 항상 비활성이고, 지금은 DB/모델 파일을 만들지 않는다. smoke는 각 `/healthz`가 200이고 `service`가 맞으며 `ready`가 bool인지만 본다. 지금은 모두 `ready=false`지만, 서비스가 구현돼 true가 돼도 smoke가 깨지지 않게 값은 고정하지 않는다.
-coordinator는 `REGISTRY_DIR`·`AUTH_FILE`·`ROUND_STATE_DIR` 없이 기동하므로 health만 제공한다. 런처로 합성 FL을 켜는 방법은 OQ16에서 정한다.
+coordinator는 `REGISTRY_DIR`·`AUTH_FILE`·`ROUND_STATE_DIR` 없이 기동하므로 health만 제공한다. run_local은 FL을 켜지 않는다.
+
+합성 FL 시연은 `python -m commerce.deploy.fl_demo`만 켠다([결정](../../docs/design/decisions.md) D0025).
+- 새 시연 폴더(`commerce/deploy/var/fl_demo/<시각>/`)에 B의 g3 시나리오로 판매자 4곳을 만들고, 판매자마다 생성한 입력의 내용 해시를 확인 파일로 남긴다.
+- coordinator(8250)는 이 프로세스에서, 판매자 앱(8151~)은 별도 프로세스에서 띄우고 `--rounds`만큼 라운드를 연다. 네 번째 판매자는 cohort 밖이라 새 base만 설치한다.
+- 기본은 CI 크기 모델이라 인코더가 필요 없다. 실제 모델은 `--encoder-dir`·`--release-dir`을 준다. `--keep`이면 끝난 뒤에도 판매자 앱을 유지한다.
+- `--tamper <판매자>`는 확인 파일을 쓴 뒤 생성기 밖 구매를 한 건 넣는다. 그 판매자는 제출하지 않고 라운드는 폐기된다(OQ17 보호의 시연).
+- B runtime의 `snapshot_digest`가 있어야 돈다. 없으면 준비 단계에서 멈춘다.
 
 `python -m commerce.deploy.run_local --check-hosts --merchants N`은 `central.localhost`·`coordinator.localhost`·`merchant-i.localhost`가 OS 해석에서 loopback만 가리키는지 확인한다.
 - 실패하면 hosts 파일에 넣을 `127.0.0.1 <이름>` 줄을 출력하고 종료 코드 1로 끝난다.
