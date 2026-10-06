@@ -37,6 +37,20 @@ class OrdersServiceTest(unittest.TestCase):
             items=items or _items(("sku-milk", 2, 3200)), currency="KRW",
         )
 
+    def test_catalog_rejections_a_retry_cannot_fix_are_quarantined(self):
+        # B keeps the first body for a source_seq; a reseeded DB re-sends seq 1
+        # with a new first_listed_at -> DUPLICATE_EVENT on every retry (#37 review).
+        class Rejecting(FakeRecommenderRuntime):
+            def upsert_catalog_item(self, item, source_seq):
+                self.catalog_calls += 1
+                raise ContractError("DUPLICATE_EVENT", "/source_seq")
+        runtime = Rejecting(SELLER)
+        svc.register_catalog_item(self.conn, seller_id=SELLER, item_id_local="sku-milk", title_text="우유", runtime=runtime)
+        svc.deliver_pending_catalog_items(self.conn, seller_id=SELLER, runtime=runtime)
+        self.assertEqual(runtime.catalog_calls, 1, "not re-sent once quarantined")
+        self.assertEqual(svc.delivery_summary(self.conn, seller_id=SELLER)["catalog_item"],
+                         {"pending": 0, "delivered": 0, "quarantined": 1})
+
     def test_concurrent_first_connections_do_not_lock_each_other_out(self):
         # The startup redelivery thread and a request may open a brand-new file
         # at the same moment; first-time setup used to fail one of them with

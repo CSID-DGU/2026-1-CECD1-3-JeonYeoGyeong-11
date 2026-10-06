@@ -59,6 +59,16 @@ class SeedDemoDataTest(unittest.TestCase):
                 seed_demo_data.main([])
         self.assertFalse((Path(self.tmp.name) / "x").exists(), "nothing is created on refusal")
 
+    def test_main_refuses_a_fresh_orders_db_next_to_an_old_feature_ledger(self):
+        root = Path(self.tmp.name) / "merchant_9"
+        root.mkdir()
+        (root / "features.sqlite").write_bytes(b"")  # B's ledger left behind by a half reset
+        environ = {"MERCHANT_ID": "merchant-9", "FEATURE_DB_PATH": str(root / "features.sqlite")}
+        with mock.patch.dict(os.environ, environ, clear=True), self.assertRaises(SystemExit), \
+                contextlib.redirect_stderr(io.StringIO()):
+            seed_demo_data.main([])
+        self.assertFalse((root / "orders.sqlite").exists())
+
     def _bulk(self, customers=10):
         with contextlib.redirect_stdout(io.StringIO()):
             seed_demo_data.seed(self.conn, SELLER)

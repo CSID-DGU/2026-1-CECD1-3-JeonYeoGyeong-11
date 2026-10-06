@@ -35,6 +35,10 @@ MOCK_MODEL_VERSION = "mock-p-topfreq-v1"
 
 _log = logging.getLogger(__name__)
 
+# B rejections a redelivery of the same body can never fix (interfaces.md §2-3):
+# same id/source_seq with a different body, an invalid body, the wrong seller.
+NON_RETRYABLE_CODES = frozenset({"DUPLICATE_EVENT", "SCHEMA_INVALID", "FORBIDDEN"})
+
 # interfaces.md §2 table, "live" row.
 _LIVE_SOURCE = "live"
 _LIVE_PARTITION = "platform_seller"
@@ -216,7 +220,7 @@ def deliver_pending_purchase_events(conn: sqlite3.Connection, *, seller_id: str,
             runtime.ingest_purchase_event(pending["payload"])
         except ContractError as exc:
             with conn:
-                if exc.code == "DUPLICATE_EVENT":
+                if exc.code in NON_RETRYABLE_CODES:
                     db.mark_outbox_quarantined(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
                 else:
                     db.mark_outbox_attempt(conn, seller_id, "purchase_event", pending["ref_id"], exc.code)
@@ -510,6 +514,16 @@ def deliver_pending_catalog_items(conn: sqlite3.Connection, *, seller_id: str, r
     for pending in db.fetch_pending_outbox(conn, seller_id, kind="catalog_item"):
         try:
             runtime.upsert_catalog_item(pending["payload"], pending["source_seq"])
+        except ContractError as exc:
+            # Same rule as purchase events: a rejection that a retry cannot fix is
+            # quarantined, so the dashboard shows it instead of a pending row that
+            # is re-sent on every request and never clears.
+            with conn:
+                if exc.code in NON_RETRYABLE_CODES:
+                    db.mark_outbox_quarantined(conn, seller_id, "catalog_item", pending["ref_id"], exc.code)
+                else:
+                    db.mark_outbox_attempt(conn, seller_id, "catalog_item", pending["ref_id"], exc.code)
+            continue
         except Exception as exc:  # B stub / transient failure: retry later.
             with conn:
                 db.mark_outbox_attempt(conn, seller_id, "catalog_item", pending["ref_id"], str(exc))

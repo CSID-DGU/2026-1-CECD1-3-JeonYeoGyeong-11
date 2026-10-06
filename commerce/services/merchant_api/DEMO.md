@@ -14,10 +14,11 @@
 
 ## 2. 데이터 만들기
 
-서버를 끈 상태에서 실행한다. 이미 있으면 지우고 새로 만든다.
+서버를 끈 상태에서 실행한다. 이미 있으면 지우고 새로 만든다. **A의 `orders.sqlite`와 B의 `features.sqlite`는 한 판매자의 짝이라 함께 지운다**(interfaces.md §2 '재시작과 초기화'). 하나만 지우면 B에 같은 고객 이력이 두 벌 쌓이고 상품 전달이 거부된다(seed가 이 경우를 감지하고 멈춘다). 옛 원장으로 만든 개인화(`models/personal/`)도 지운다. 공통 base release(`models/base/`)와 인코더(`models/frozen_text/`)는 남긴다.
 
 ```powershell
-Remove-Item commerce\deploy\var\merchant_1\orders.sqlite* -ErrorAction SilentlyContinue
+Remove-Item commerce\deploy\var\merchant_1\orders.sqlite*, commerce\deploy\var\merchant_1\features.sqlite* -ErrorAction SilentlyContinue
+Remove-Item commerce\deploy\var\merchant_1\models\personal -Recurse -ErrorAction SilentlyContinue
 $env:MERCHANT_ID="merchant-1"; $env:FEATURE_DB_PATH="$PWD\commerce\deploy\var\merchant_1\features.sqlite"
 .venv\Scripts\python.exe -m commerce.services.merchant_api.seed_demo_data --bulk 40
 ```

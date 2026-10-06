@@ -25,6 +25,7 @@ import json
 import os
 import random
 import sys
+from pathlib import Path
 
 from commerce.services.merchant_api import accounts_db, accounts_service, orders_db, orders_service, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
@@ -371,6 +372,14 @@ def main(argv: list[str] | None = None) -> None:
     except KeyError:
         print("Set MERCHANT_DB_PATH, or FEATURE_DB_PATH (orders.sqlite goes next to it), before running this.",
               file=sys.stderr)
+        raise SystemExit(1)
+    # orders.sqlite and features.sqlite are one seller's pair (interfaces.md §2 '재시작과 초기화'):
+    # a fresh orders DB next to an old feature ledger would hand B a second copy
+    # of every order and conflicting catalog bodies.
+    feature_db = Path(os.environ.get("FEATURE_DB_PATH") or db_path.parent / "features.sqlite")
+    if not db_path.exists() and feature_db.exists():
+        print("%s exists without %s. Delete the seller's features.sqlite* (and models/personal/) together with "
+              "orders.sqlite*, or keep both -- see DEMO.md step 2." % (feature_db, db_path.name), file=sys.stderr)
         raise SystemExit(1)
     print("seeding %s into %s" % (seller_id, db_path))
     conn = orders_db.connect(db_path)
