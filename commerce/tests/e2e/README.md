@@ -12,6 +12,14 @@
 - `test_c1_client.py`: 판매자 client 함수로 HTTP 라운드를 끝까지 돌리고 신규 판매자가 설치하는 흐름, 거부 사례.
 - `test_c1_synthetic.py`: synthetic_plaintext 루프(설치 후 참여, 라운드당 한 번)와 합성 입력 확인(D0025). 확인 파일과 다른 내용·생성기 밖 이벤트 한 건·해시를 못 내는 runtime은 제출하지 않는다.
 
+`test_g2_flow.py`·`selfcheck_g2.py`는 g2용이다(A가 실행하고 C가 작성한다). A의 판매자 앱(`create_app`)과 B의 실제 `SellerRuntime`(CI 크기)을 같은 프로세스에서 띄워 다음을 확인한다.
+1. A의 JSON 경로로 상품 등록·주문 완료를 하고, B가 반영한다.
+2. 공유 모델이 없을 때는 B의 대체 추천이 배지와 함께 나온다.
+3. base를 설치한 뒤에는 구매자 홈에 모델 추천이 나온다.
+4. 판매자 비교 화면에 네 칸이 나오고, 설치되지 않은 variant와 개인화 칸은 사유를 표시한다.
+
+실행: `python -m commerce.tools.gate g2`(종료 코드 3). B 장애 뒤 재전달의 1회 반영 확인과 별도 프로세스 실행은 남은 항목이다.
+
 `test_g3_flow.py`·`selfcheck_g3.py`는 g3용이다. B의 실제 `SellerRuntime`(CI 크기 `TINY_ARCHITECTURES`·`FakeText`)과 B의 g3 시나리오로 다음을 한 번에 돈다.
 1. 판매자 4곳이 base-0을 설치한다.
 2. 한 판매자가 개인화한다.
