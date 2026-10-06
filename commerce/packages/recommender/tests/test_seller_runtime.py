@@ -21,7 +21,7 @@ from commerce.packages.recommender.seller_runtime import (
     FALLBACK_MODEL_VERSION, SellerRuntime, is_validation_customer, planned_steps,
 )
 from commerce.packages.recommender.serving import (
-    SERVICE_ENCODER, build_model, canonical_npz, read_npz, shared_tensors,
+    SERVICE_ENCODER, build_manifest, build_model, canonical_npz, read_npz, shared_tensors,
 )
 
 SELLER = "seller-test"
@@ -288,6 +288,22 @@ class ReleaseTest(Base):
         self.assertEqual(caught.exception.code, "MANIFEST_MISMATCH")
         self.assertTrue(np.array_equal(self.runtime.export_shared_state()[next(iter(tensors))],
                                        tensors[next(iter(tensors))]))
+
+    def test_a_release_for_another_text_encoder_or_preprocessing_is_rejected(self):
+        # C fixes one manifest per variant; only B knows the encoder installed at this seller.
+        self.fill()
+        release, own, tensors = release_for(self.runtime, "text_relation", "base-1")
+        arch = self.runtime._arch("text_relation")
+        for field in ("text_artifact_hash", "preprocessing_version"):
+            fields = {"text_artifact_hash": own["text_artifact_hash"],
+                      "preprocessing_version": own["preprocessing_version"], field: "b" * 64}
+            foreign = build_manifest(arch, **fields)
+            with self.assertRaises(ContractError) as caught:
+                self.runtime.install_release(dict(release, manifest_hash=foreign["manifest_hash"]), foreign,
+                                             tensors, model_variant="text_relation")
+            self.assertEqual(caught.exception.code, "MANIFEST_MISMATCH")
+        served = self.runtime.predict_local(request("cust-02", START + timedelta(days=60)))
+        self.assertEqual(served["fallback_reason"], "no_shared_model")
 
     def test_a_failed_release_keeps_the_old_base_serving(self):
         self.fill()
