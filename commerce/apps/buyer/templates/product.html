@@ -34,8 +34,9 @@
     <form class="buy-bar" method="post" action="/buyer/{{ seller_id }}/orders"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
       <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}">
       <label class="field">수량
-        <input type="number" name="quantity" value="1" min="1" required>
+        <input type="number" name="quantity" value="1" min="1" max="99" required>
       </label>
+      <button class="btn secondary" type="submit" formaction="/buyer/{{ seller_id }}/cart">장바구니 담기</button>
       <button class="btn primary" type="submit">바로 주문하기</button>
     </form>
     {% else %}
@@ -43,9 +44,6 @@
       <a class="btn primary" href="/buyer/{{ seller_id }}/login">로그인하고 주문하기</a>
     </div>
     {% endif %}
-    <p class="muted-note">
-      장바구니에 여러 상품을 모아 담는 기능은 아직 없어서, 지금은 상품 하나를 바로 주문하는 방식입니다.
-    </p>
   </div>
 </div>
 {% endblock %}

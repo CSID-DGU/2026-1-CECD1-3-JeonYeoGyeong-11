@@ -406,3 +406,18 @@ a.list-item:hover { background: #fbfcf9; }
 .body-text { color: var(--text-2); white-space: pre-line; }
 .cell-thumb { width: 44px; flex: none; font-size: 18px; border-radius: var(--radius-sm); }
 .cell-thumb.emoji { font-size: 22px; }
+
+/* ── cart ─────────────────────────────────────────────────────────────── */
+.icon-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: var(--radius-pill); color: var(--text-2); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn:hover, .icon-btn.active { background: var(--brand-50); color: var(--brand-700); }
+.qty-form { display: flex; gap: 6px; align-items: center; }
+.qty-form input { width: 64px; height: 34px; padding: 0 8px; border-radius: var(--radius-sm); text-align: center; }
+.line-total { min-width: 88px; text-align: right; }
+.list-item a.thumb { flex: none; }
+@media (max-width: 720px) {
+  .icon-btn-label { display: none; }
+  .list-item:has(.qty-form) { flex-wrap: wrap; }
+  .list-item:has(.qty-form) .grow { flex-basis: calc(100% - 72px); }
+  .line-total { margin-left: auto; }
+}

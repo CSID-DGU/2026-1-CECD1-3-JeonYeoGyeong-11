@@ -25,6 +25,7 @@ from commerce.packages.contracts.errors import ContractError, FeatureNotImplemen
 from commerce.packages.contracts.ids import canonical_json, purchase_event_id
 from commerce.packages.contracts.ports import RecommenderRuntime
 
+from commerce.services.merchant_api import cart_db
 from commerce.services.merchant_api import orders_db as db
 
 # Screen-facing recommendation slot while B's runtime is unimplemented. Not a
@@ -347,6 +348,90 @@ def get_recommendations_for_display(
         "fallback_reason": "no_shared_model",
         "items": [{"item_id_local": item_id, "score": score} for item_id, score in ranked],
     }
+
+
+# --- cart (screen state before an order; working-agreement.md §5 "상품·장바구니 → 주문") ---
+
+MAX_CART_QUANTITY = 99
+
+
+def _active_catalog_item(conn: sqlite3.Connection, seller_id: str, item_id_local: str) -> dict[str, Any]:
+    item = get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local)
+    if item is None or item["listing_status"] != "active":
+        raise ContractError("NOT_FOUND", "/item_id_local")
+    return item
+
+
+def _check_quantity(quantity: int) -> None:
+    if not 1 <= quantity <= MAX_CART_QUANTITY:
+        raise ContractError("SCHEMA_INVALID", "/quantity")
+
+
+def add_to_cart(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str, item_id_local: str,
+                quantity: int) -> None:
+    _check_quantity(quantity)
+    _active_catalog_item(conn, seller_id, item_id_local)
+    with conn:
+        cart_db.add(conn, seller_id, customer_id_local, item_id_local, quantity, _now_iso())
+        # Keep the merged quantity within the same bound as a single add.
+        row = next(i for i in cart_db.list_items(conn, seller_id, customer_id_local) if i["item_id_local"] == item_id_local)
+        if row["quantity"] > MAX_CART_QUANTITY:
+            cart_db.set_quantity(conn, seller_id, customer_id_local, item_id_local, MAX_CART_QUANTITY)
+
+
+def set_cart_quantity(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str, item_id_local: str,
+                      quantity: int) -> None:
+    """quantity 0 removes the line."""
+    with conn:
+        if quantity == 0:
+            cart_db.remove(conn, seller_id, customer_id_local, item_id_local)
+            return
+        _check_quantity(quantity)
+        cart_db.set_quantity(conn, seller_id, customer_id_local, item_id_local, quantity)
+
+
+def get_cart(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str) -> dict[str, Any]:
+    """Cart lines priced from the catalog now. Lines whose item is no longer on
+    sale are returned separately and never checked out."""
+    lines, unavailable = [], []
+    for row in cart_db.list_items(conn, seller_id, customer_id_local):
+        item = get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=row["item_id_local"])
+        if item is None or item["listing_status"] != "active":
+            unavailable.append(row)
+            continue
+        lines.append({**row, "title_text": item["title_text"], "category_path": item["category_path"],
+                      "unit_price_minor": item["display_price_minor"],
+                      "line_total": item["display_price_minor"] * row["quantity"]})
+    return {"lines": lines, "unavailable": unavailable, "total": sum(l["line_total"] for l in lines)}
+
+
+def checkout_cart(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str,
+                  checkout_key: str) -> dict[str, Any]:
+    """One order with every on-sale cart line, at catalog prices, then an empty cart.
+
+    checkout_key is minted when the cart page renders, so a double submit (or
+    a retry after the response was lost) returns the order already made
+    instead of a second one -- the same idempotency rule as place_order.
+    """
+    existing = db.fetch_order_by_idempotency_key(conn, seller_id, checkout_key)
+    if existing is not None:
+        if existing["customer_id_local"] != customer_id_local:
+            raise ContractError("DUPLICATE_IDEMPOTENCY_KEY", "/checkout_key")
+        with conn:
+            cart_db.clear(conn, seller_id, customer_id_local)
+        return _to_commerce_order(existing)
+    cart = get_cart(conn, seller_id=seller_id, customer_id_local=customer_id_local)
+    if not cart["lines"]:
+        raise ContractError("MISSING_REQUIRED_FIELD", "/items")
+    order = place_order(
+        conn, seller_id=seller_id, customer_id_local=customer_id_local, idempotency_key=checkout_key,
+        items=[{"item_id_local": l["item_id_local"], "quantity": l["quantity"], "unit_price_minor": l["unit_price_minor"]}
+               for l in cart["lines"]],
+        currency="KRW",
+    )
+    with conn:
+        cart_db.clear(conn, seller_id, customer_id_local)
+    return order
 
 
 def deliver_all_pending(conn: sqlite3.Connection, *, seller_id: str, runtime: RecommenderRuntime) -> None:

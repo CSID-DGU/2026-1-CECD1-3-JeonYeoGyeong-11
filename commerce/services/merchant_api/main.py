@@ -32,7 +32,7 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
-from commerce.services.merchant_api import accounts_db, accounts_service, orders_db, orders_service, session, social_db, social_service
+from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, orders_service, session, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
 
@@ -230,6 +230,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         conn = orders_db.connect(context.merchant_db_path)
         social_db.ensure_schema(conn)
         accounts_db.ensure_schema(conn)
+        cart_db.ensure_schema(conn)
         try:
             yield conn
         finally:
@@ -675,6 +676,46 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             items=[{"item_id_local": item_id_local, "quantity": quantity, "unit_price_minor": unit_price_minor}],
             currency="KRW",
         )
+        return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
+            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
+            "titles": _catalog_titles(conn, seller_id),
+        })
+
+    @app.get("/buyer/{seller_id}/cart")
+    def buyer_cart(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
+        cart = orders_service.get_cart(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"])
+        return _buyer_templates.TemplateResponse(request, "cart.html", {
+            "seller_id": seller_id, "active_tab": "cart", "customer": customer, "cart": cart,
+            "titles": _catalog_titles(conn, seller_id),
+            # A fresh key per rendered cart: resubmitting this page cannot order twice.
+            "checkout_key": "cart-" + uuid.uuid4().hex,
+        })
+
+    @app.post("/buyer/{seller_id}/cart")
+    def buyer_add_to_cart(
+        seller_id: str, conn=Depends(get_conn), customer=Depends(require_customer_form),
+        item_id_local: str = Form(...), quantity: int = Form(1),
+    ):
+        orders_service.add_to_cart(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
+                                   item_id_local=item_id_local, quantity=quantity)
+        return RedirectResponse(f"/buyer/{seller_id}/cart", status_code=303)
+
+    @app.post("/buyer/{seller_id}/cart/{item_id_local}")
+    def buyer_update_cart(
+        seller_id: str, item_id_local: str, conn=Depends(get_conn), customer=Depends(require_customer_form),
+        quantity: int = Form(...),
+    ):
+        orders_service.set_cart_quantity(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
+                                         item_id_local=item_id_local, quantity=quantity)
+        return RedirectResponse(f"/buyer/{seller_id}/cart", status_code=303)
+
+    @app.post("/buyer/{seller_id}/checkout")
+    def buyer_checkout(
+        seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer_form),
+        checkout_key: str = Form(...),
+    ):
+        order = orders_service.checkout_cart(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
+                                             checkout_key=checkout_key)
         return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
             "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
             "titles": _catalog_titles(conn, seller_id),
