@@ -10,8 +10,10 @@ ledger in ROUND_STATE_DIR holds round metadata only: no delta, no metric, no sec
 """
 from __future__ import annotations
 
+import functools
 import json
 import secrets
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -25,6 +27,15 @@ from commerce.services.fl_coordinator.round_core import (
 )
 
 MODES = ("protected", "synthetic_plaintext")
+
+
+def _locked(method):
+    """One caller at a time: HTTP handlers and an in-process operator share one Coordinator."""
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
 
 
 @dataclass(frozen=True)
@@ -77,9 +88,11 @@ class Coordinator:
         self.registry, self.ledger, self.mode, self._now = registry, ledger, mode, now
         self._round: SyntheticRound | None = None
         self._declared: dict[str, Payload] = {}
+        self._lock = threading.RLock()
 
     # --- operator side ---------------------------------------------------------
 
+    @_locked
     def open_round(self, cohort: Sequence[str], settings: RoundSettings = RoundSettings(), *,
                    round_id: str | None = None) -> Payload:
         self._sync()
@@ -112,6 +125,7 @@ class Coordinator:
 
     # --- seller side -----------------------------------------------------------
 
+    @_locked
     def current_config(self, seller_id: str) -> Payload | None:
         """The open round's config for a cohort member, else None (no active round for this seller)."""
         self._sync()
@@ -119,6 +133,7 @@ class Coordinator:
             return None
         return dict(self._round.config)
 
+    @_locked
     def declare(self, seller_id: str, round_id: str, submission: Payload) -> None:
         """First step of a submission: the round_submission envelope, checked before the npz arrives."""
         rnd = self._find(round_id)
@@ -133,6 +148,7 @@ class Coordinator:
             raise ContractError("FORBIDDEN", "/transport_mode")
         self._declared[seller_id] = dict(submission)
 
+    @_locked
     def upload(self, seller_id: str, round_id: str, payload: bytes) -> Payload:
         """Second step: the npz bytes for the declared envelope. Returns round_submit_ack.v1."""
         rnd = self._find(round_id)
@@ -144,6 +160,7 @@ class Coordinator:
         finally:
             self._sync()
 
+    @_locked
     def result(self, seller_id: str, round_id: str) -> Payload:
         rnd = self._find(round_id)
         try:
