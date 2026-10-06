@@ -8,13 +8,16 @@ import hashlib
 from pathlib import Path
 import random
 import tempfile
+import threading
 import unittest
+from unittest import mock
 
 import numpy as np
 
 from commerce.packages.contracts.errors import ContractError, JobBusyError
 from commerce.packages.contracts.ids import manifest_hash, purchase_event_id
 from commerce.packages.contracts.ports import RecommenderRuntime
+from commerce.packages.recommender import seller_runtime
 from commerce.packages.recommender.feature_store import FeatureStore
 from commerce.packages.recommender.harex import HarexConfig
 from commerce.packages.recommender.seller_runtime import (
@@ -487,6 +490,106 @@ class TrainRoundTest(Base):
         self.assertEqual(planned_steps(100, dict(config, max_local_epochs=0)), 40)
         self.assertEqual(planned_steps(100, dict(config, local_steps=0)), 0)
         self.assertEqual(planned_steps(0, config), 0)
+
+
+class AgreementTest(Base):
+    """What A and C can rely on for OQ07 (a purchase before its item), OQ08 (jobs, restarts)
+    and OQ09 (fallback model_version and scores)."""
+
+    def ranked(self, out) -> list[tuple[str, float]]:
+        return [(i["item_id_local"], i["score"]) for i in out["items"]]
+
+    def test_a_purchase_before_its_item_is_kept_and_counts_once_the_item_arrives(self):
+        for i in (1, 2, 3):
+            self.runtime.upsert_catalog_item(item(i), i)
+        self.runtime.ingest_purchase_event(event("cust-a", "b-1", START, [1, 4]))
+        self.runtime.ingest_purchase_event(event("cust-a", "b-2", START + timedelta(days=1), [4]))
+        late = START + timedelta(days=30)
+        before = self.runtime.predict_local(request("cust-a", late))
+        self.assertEqual(self.ranked(before), [("item-01", 1.0), ("item-02", 0.0), ("item-03", 0.0)])
+        epoch = self.runtime.store.feature_epoch
+        self.runtime.upsert_catalog_item(item(4), 4)
+        self.assertGreater(self.runtime.store.feature_epoch, epoch)
+        after = self.runtime.predict_local(request("cust-a", late))
+        self.assertEqual(self.ranked(after)[:2], [("item-04", 2.0), ("item-01", 1.0)])
+
+    def test_a_redelivery_after_a_restart_is_applied_once(self):
+        self.fill()
+        epoch = self.runtime.store.feature_epoch
+        late = START + timedelta(days=60)
+        served = self.runtime.predict_local(request("cust-00", late))
+        restarted = self.open()
+        for e in history():
+            restarted.ingest_purchase_event(e)  # A's pending rows after a crash before "delivered"
+        self.assertEqual(restarted.store.feature_epoch, epoch)
+        self.assertEqual(restarted.predict_local(request("cust-00", late)), served)
+
+    def test_fallback_scores_are_basket_counts_and_model_version_names_the_serving_base(self):
+        self.fill()
+        late = START + timedelta(days=60)
+        counts = {}
+        for e in history():
+            for i in e["items"]:
+                counts[i["item_id_local"]] = counts.get(i["item_id_local"], 0) + 1
+        out = self.runtime.predict_local(request("cust-new", late, top_n=N_ITEMS))
+        self.assertEqual(out["model_version"], FALLBACK_MODEL_VERSION)
+        expected = {"item-%02d" % i: float(counts.get("item-%02d" % i, 0)) for i in range(1, N_ITEMS + 1)}
+        self.assertEqual(dict(self.ranked(out)), expected)
+        self.install(version="base-1")
+        new = self.runtime.predict_local(request("cust-new", late, top_n=N_ITEMS))
+        self.assertEqual((new["model_version"], new["fallback_reason"], new["is_cold_start"]),
+                         ("base-1", "no_customer_history", True))
+        self.assertEqual(new["items"], out["items"])
+
+    def test_serving_goes_on_while_a_round_trains_and_a_second_job_is_refused(self):
+        self.fill()
+        self.install(version="base-1")
+        started, release = threading.Event(), threading.Event()
+        real_train = seller_runtime.train
+
+        def slow_train(*args, **kwargs):
+            started.set()
+            release.wait(30)
+            return real_train(*args, **kwargs)
+
+        results = []
+        with mock.patch.object(seller_runtime, "train", slow_train):
+            worker = threading.Thread(target=lambda: results.append(self.runtime.train_round(
+                self.runtime.get_local_data_ref(), round_config(self.runtime, "text_relation"))))
+            worker.start()
+            try:
+                self.assertTrue(started.wait(30))
+                out = self.runtime.predict_local(request("cust-03", START + timedelta(days=60)))
+                self.assertEqual((out["model_version"], out["fallback_reason"]), ("base-1", None))
+                self.runtime.ingest_purchase_event(event("cust-03", "during", START + timedelta(days=61), [1]))
+                with self.assertRaises(JobBusyError):
+                    self.runtime.personalize_local(self.runtime.get_local_data_ref(), {})
+            finally:
+                release.set()
+                worker.join(60)
+        self.assertTrue(results and results[0].completed)
+
+    def test_a_failed_round_keeps_the_base_serving_and_frees_the_job(self):
+        self.fill()
+        self.install(version="base-1")
+        before = self.runtime.export_shared_state()
+        with mock.patch.object(seller_runtime, "train", side_effect=RuntimeError("killed mid-round")):
+            with self.assertRaises(RuntimeError):
+                self.runtime.train_round(self.runtime.get_local_data_ref(), round_config(self.runtime, "text_relation"))
+        after = self.runtime.export_shared_state()
+        self.assertTrue(all(np.array_equal(before[k], after[k]) for k in before))
+        self.assertEqual(self.runtime.predict_local(request("cust-03", START + timedelta(days=60)))["model_version"],
+                         "base-1")
+        result = self.runtime.train_round(self.runtime.get_local_data_ref(), round_config(self.runtime, "text_relation"))
+        self.assertTrue(result.completed)
+
+    def test_a_seller_with_nothing_to_learn_returns_an_incomplete_zero_delta(self):
+        self.fill(events=False)
+        self.install(version="base-1")
+        result = self.runtime.train_round(self.runtime.get_local_data_ref(), round_config(self.runtime, "text_relation"))
+        self.assertFalse(result.completed)
+        self.assertEqual(result.metrics, {"loss_mean": None, "grad_norm_mean": None})
+        self.assertTrue(all(not d.any() for d in result.shared_delta.values()))
 
 
 class WarmUpTest(Base):
