@@ -13,6 +13,7 @@ import time
 from urllib.request import build_opener, ProxyHandler
 
 ROOT = Path(__file__).resolve().parents[2]
+MAX_MERCHANTS = 8  # merchant ports 8101..8108 stay below the coordinator's 8200
 
 
 def service_plan(merchants: int) -> list[tuple[str, str, int, dict[str, str]]]:
@@ -50,7 +51,8 @@ def check_hosts(names: list[str], resolve=socket.getaddrinfo) -> list[tuple[str,
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--merchants", type=int, choices=range(1, 6), default=1)
+    # Up to 8: a protected cohort of 5 plus a held-out seller (interfaces.md §6, D0021) with room to spare.
+    parser.add_argument("--merchants", type=int, choices=range(1, MAX_MERCHANTS + 1), default=1)
     parser.add_argument("--check", action="store_true", help="Show process plan without starting it")
     parser.add_argument("--check-hosts", action="store_true",
                         help="Check that the *.localhost service names resolve to loopback, then exit")

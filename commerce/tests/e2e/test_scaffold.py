@@ -157,6 +157,20 @@ class LauncherHosts(unittest.TestCase):
         })
 
 
+class LauncherPlan(unittest.TestCase):
+    def test_room_for_a_protected_cohort_and_a_held_out_seller(self):
+        from commerce.deploy.run_local import MAX_MERCHANTS, service_plan
+
+        self.assertGreaterEqual(MAX_MERCHANTS, 6)  # 5 in a protected cohort (D0021) + 1 held out
+        plan = service_plan(MAX_MERCHANTS)
+        ports = [port for _, _, port, _ in plan]
+        self.assertEqual(len(ports), len(set(ports)))
+        merchants = [env for role, _, _, env in plan if role == "merchant"]
+        self.assertEqual(len(merchants), MAX_MERCHANTS)
+        self.assertEqual(len({env["MERCHANT_ID"] for env in merchants}), MAX_MERCHANTS)
+        self.assertTrue(all(env["FL_ENABLED"] == "false" for env in merchants))
+
+
 class NotYetImplemented(_TempSeller):
     def test_enabled_fl_fails_closed_in_both_modes(self):
         # c1 retires synthetic_plaintext once OQ17 is decided; g4 retires protected.
