@@ -39,7 +39,7 @@ def customers(seed=0):
 
 class HeldOutItems(unittest.TestCase):
     def test_fixed_by_seed_and_id_near_the_fraction(self):
-        ids = ["ic-p-%d" % n for n in range(5000)]
+        ids = ["ic-p-%d" % n for n in range(990000, 995000)]  # outside the raw ID range (data.md §6)
         chosen = [i for i in ids if held_out_item(i, 0.1, 0)]
         self.assertTrue(0.08 < len(chosen) / len(ids) < 0.12)
         self.assertEqual(chosen, [i for i in ids if held_out_item(i, 0.1, 0)])
