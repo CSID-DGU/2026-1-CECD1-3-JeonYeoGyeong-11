@@ -98,6 +98,10 @@ TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), complet
 - export_shared_state는 해당 variant의 배포된 공통 base만 반환한다. 학습 복사본 delta는 TrainingResult로만 반환하고 개인화 tail은 어느 FL export 경로에도 포함하지 않는다.
 - install_release는 base를 갱신하고 새 base의 공통 추천을 원자 활성화한다. 기존 개인화는 새 base와 호환되지 않는 상태로 표시하고 적용하지 않는다. 이후 새 base에서 다시 개인화한다. 검증에 실패한 release는 이전 서빙을 유지한다.
 - 이미 설치된 동일 버전·해시의 재전달은 멱등 성공이며 유효한 개인화를 초기화하지 않는다. 같은 버전에 다른 해시가 오면 거부한다.
+- **작업을 시작하는 쪽.** B는 스스로 학습을 시작하지 않는다. FL 라운드는 C의 판매자 FL client가, 개인화는 판매자 화면(A)의 실행 요청이 판매자 jobs 실행기를 거쳐 부른다. 새 base를 설치한 뒤 개인화를 자동으로 다시 하지 않으며, 그동안 비교의 P칸은 준비되지 않음으로 표시된다. 구매 반영은 학습 작업이 아니다.
+- 학습·개인화 중에도 ingest·upsert·predict_local·compare_local은 그대로 동작한다. 실행 중에 온 두 번째 작업은 JobBusyError로 거부하고 쌓아 두지 않는다(A의 jobs 실행기와 B runtime 모두).
+- 작업이 예외로 끝나거나 프로세스가 중간에 멈추면 서빙 base·개인화·특징 원장은 그대로이고 작업 잠금은 풀린다. 라운드 결과는 메모리에만 있으므로 재시작 뒤 이어서 하지 않는다. 개인화는 다 만든 결과만 원자적으로 반영한다. 재시작하면 CURRENT의 base와 그 base의 개인화를 다시 읽는다.
+- 학습할 예제가 없는 판매자(빈 원장 포함)는 §4대로 0 delta·completed=false다. 이런 판매자가 cohort에 있으면 라운드가 폐기되는 문제는 [열린 항목](open-questions.md) OQ20이다.
 
 ## 6. 학습 기본값과 정확성
 
