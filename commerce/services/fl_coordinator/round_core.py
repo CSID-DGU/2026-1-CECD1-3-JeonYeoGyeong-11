@@ -35,6 +35,8 @@ from commerce.services.fl_coordinator.npz_payload import (
 )
 
 MIN_SYNTHETIC_CLIENTS = 3
+# D0024: the architecture_version of each service variant (B's VARIANT_OF_ARCHITECTURE is the same table).
+ARCHITECTURE_OF_VARIANT = {"text_only": 1, "text_relation": 2}
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 
 
@@ -51,6 +53,14 @@ def check_contract(contract: str, payload) -> None:
 
 def _specs_by_name(specs: Sequence[Mapping]) -> dict:
     return {spec["name"]: (tuple(spec["shape"]), spec["dtype"]) for spec in specs}
+
+
+def check_variant(manifest: Mapping, model_variant: str) -> None:
+    """A registry serves one variant: its manifest must carry that variant's architecture_version."""
+    if model_variant not in ARCHITECTURE_OF_VARIANT:
+        raise ValueError("Unknown model variant")
+    if manifest["architecture_version"] != ARCHITECTURE_OF_VARIANT[model_variant]:
+        raise ContractError("MANIFEST_MISMATCH", "/architecture_version")
 
 
 def aggregate_uniform(deltas: Sequence[Mapping[str, object] | None]) -> TensorMap | None:

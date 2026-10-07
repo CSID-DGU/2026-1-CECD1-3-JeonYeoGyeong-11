@@ -56,6 +56,6 @@
 
 `gate docs`가 첫 줄을 이 서비스 디렉터리의 코드 전체와 대조한다. 코드에서 새 값을 읽으면 같은 PR에서 이 줄을 고친다.
 
-- 현재 코드가 읽는 값: `REGISTRY_DIR`, `AUTH_FILE`, `ROUND_STATE_DIR`, `FL_MODE`
+- 현재 코드가 읽는 값: `REGISTRY_DIR`, `AUTH_FILE`, `ROUND_STATE_DIR`, `FL_MODE`, `FL_MODEL_VARIANT`
 - `REGISTRY_DIR`·`ROUND_STATE_DIR`는 디렉터리, `AUTH_FILE`은 파일이다. 셋은 함께 주며, variant마다 따로 둔다([작업 규칙](../../../docs/team/working-agreement.md) §3).
-- 구현 시 추가: `FL_MODEL_VARIANT`(지금은 registry의 manifest 고정이 variant 혼합을 막는다)
+- `FL_MODEL_VARIANT`(선택): 주면 기동할 때 registry의 최신 release가 그 variant의 architecture_version(D0024: text_only 1, text_relation 2)인지 확인하고, 아니면 기동을 거부한다. `import_release --variant`도 같은 확인을 한다.

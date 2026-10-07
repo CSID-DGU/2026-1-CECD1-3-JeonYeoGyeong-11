@@ -24,7 +24,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from commerce.packages.contracts.errors import ContractError
 from commerce.services.fl_coordinator.auth import SellerAuth
 from commerce.services.fl_coordinator.npz_payload import MAX_PAYLOAD_BYTES, PayloadTooLarge
-from commerce.services.fl_coordinator.round_core import SAFE_ID, ModelRegistry
+from commerce.services.fl_coordinator.round_core import ARCHITECTURE_OF_VARIANT, SAFE_ID, ModelRegistry, check_variant
 from commerce.services.fl_coordinator.service import MODES, Coordinator, RoundLedger
 
 MAX_ENVELOPE_BYTES = 1024 * 1024
@@ -41,10 +41,13 @@ class CoordinatorSettings:
     auth_file: Path
     round_state_dir: Path
     mode: str = "protected"
+    model_variant: str | None = None  # FL_MODEL_VARIANT; when set, the registry must hold that variant
 
     def __post_init__(self):
         if self.mode not in MODES:
             raise ValueError("Unknown FL mode")
+        if self.model_variant is not None and self.model_variant not in ARCHITECTURE_OF_VARIANT:
+            raise ValueError("Unknown model variant")
         if self.registry_dir.exists() and not self.registry_dir.is_dir():
             raise ValueError("REGISTRY_DIR must be a directory")
         if self.round_state_dir.exists() and not self.round_state_dir.is_dir():
@@ -62,7 +65,7 @@ def settings_from_env() -> CoordinatorSettings | None:
     if not (registry_dir and auth_file and round_state_dir):
         raise ValueError("REGISTRY_DIR, AUTH_FILE and ROUND_STATE_DIR are set together")
     return CoordinatorSettings(Path(registry_dir), Path(auth_file), Path(round_state_dir),
-                               os.environ.get("FL_MODE", "protected"))
+                               os.environ.get("FL_MODE", "protected"), os.environ.get("FL_MODEL_VARIANT") or None)
 
 
 class _TooLarge(Exception):
@@ -123,8 +126,14 @@ def create_app(settings: CoordinatorSettings | None = None, *, now=None) -> Fast
         return app
 
     kwargs = {} if now is None else {"now": now}
-    coordinator = Coordinator(ModelRegistry(settings.registry_dir), RoundLedger(settings.round_state_dir),
-                              mode=settings.mode, **kwargs)
+    registry = ModelRegistry(settings.registry_dir)
+    latest = registry.latest()
+    if settings.model_variant is not None and latest is not None:
+        try:
+            check_variant(registry.manifest(latest["model_version"]), settings.model_variant)
+        except ContractError:
+            raise ValueError("REGISTRY_DIR holds another variant's releases than FL_MODEL_VARIANT") from None
+    coordinator = Coordinator(registry, RoundLedger(settings.round_state_dir), mode=settings.mode, **kwargs)
     sellers = SellerAuth(settings.auth_file)
     app.state.coordinator = coordinator  # the operator side (open_round) is in-process until OQ08
 

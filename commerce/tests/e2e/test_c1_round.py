@@ -345,6 +345,12 @@ class ImportRelease(unittest.TestCase):
         self.assertEqual(self.run_import()[0], 1)
         self.assertIsNone(ModelRegistry(self.registry).latest())
 
+    def test_a_release_of_another_variant_is_refused(self):
+        code, _, err = self.run_import("--variant", "text_relation")  # the dummy manifest is architecture 1
+        self.assertEqual(code, 1)
+        self.assertIn("MANIFEST_MISMATCH", err)
+        self.assertEqual(self.run_import("--variant", "text_only")[0], 0)
+
     def test_the_same_version_cannot_be_imported_twice(self):
         self.assertEqual(self.run_import()[0], 0)
         code, _, err = self.run_import()
