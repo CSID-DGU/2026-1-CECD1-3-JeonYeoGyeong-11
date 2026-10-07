@@ -40,6 +40,10 @@ coordinator는 `REGISTRY_DIR`·`AUTH_FILE`·`ROUND_STATE_DIR` 없이 기동하�
 - **측정** (2026-10-07, Windows 11·16 GB·Python 3.11.4, base-0 random init, B의 `snapshot_digest`는 아래 제안 구현을 임시로 넣어 실행):
   - CI 크기 모델: 2라운드와 리허설 7/7 통과, 약 54초.
   - 실제 모델(MiniLM, R_lm): 1라운드 63초, 2라운드 71초, 리허설 7/7 통과.
+  - 실제 모델 10라운드: 10라운드 모두 집계, 리허설 7/7, 152초, 판매자 로그 오류 0건.
+    - 5초마다 잰 메모리에서 라운드를 거듭해도 cohort 판매자는 약 360~370 MB로 일정해, 누수 징후는 없었다.
+    - 판매자 a(R7에서 상품 등록 뒤 재계산)와 가게(화면·비교 계산)는 그 단계에서 약 980·790 MB까지 늘었다.
+    - 시스템 여유 메모리는 최저 0.25 GB까지 내려갔다. 메모리가 모자라면 Windows가 작업 메모리를 줄이므로 위 수치는 실제보다 작을 수 있다.
   - 판매자 4곳이 각자 인코더를 올리므로 여유 메모리가 약 5 GB 필요하다. 여유가 1.1 GB이던 첫 실행에서는 R4의 주문 완료가 한 번 500으로 실패했고(187초), 원인은 확인하지 못했다. 이후 merchant.log를 남기며 두 번 다시 돌렸을 때는 재현되지 않았다.
 
 `python -m commerce.deploy.run_local --check-hosts --merchants N`은 `central.localhost`·`coordinator.localhost`·`merchant-i.localhost`가 OS 해석에서 loopback만 가리키는지 확인한다.
