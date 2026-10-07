@@ -147,6 +147,13 @@ class Split(TempTables):
         self.assertGreater(top_share(skewed), top_share(uniform) + 0.1)
         self.assertEqual(uniform.record["alpha"], "inf")
 
+    def test_excluded_customers_are_never_picked(self):
+        cohort = self.run_split("a")
+        held_out = self.run_split("b", exclude=set(cohort.clients))
+        self.assertTrue(held_out.clients)
+        self.assertFalse(set(held_out.clients) & set(cohort.clients))
+        self.assertEqual(held_out.record["users_excluded"], len(cohort.clients))
+
     def test_split_feeds_the_adapter(self):
         result = self.run_split("a")
         path = self.root / "assignment.csv"

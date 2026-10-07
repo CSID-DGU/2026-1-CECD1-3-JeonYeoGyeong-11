@@ -17,6 +17,10 @@ Apart from that cut the procedure is the previous one:
 Targets are client_id -> train-period size. They come from the Dunnhumby
 store roster (dunnhumby.load_dunnhumby(...).roster: store -> baskets in weeks
 2-39); the runs so far used a stand-in (e_g0.STAND_IN_TARGETS).
+
+exclude keeps customers out of the pick. Held-out sellers (evaluation.md §3,
+A-0) are a second split over the customers the training cohort did not take,
+so no customer is in both.
 """
 from collections import Counter
 import csv
@@ -24,7 +28,7 @@ from dataclasses import dataclass
 import hashlib
 import math
 from pathlib import Path
-from typing import Mapping
+from typing import Collection, Mapping
 
 import numpy as np
 
@@ -43,7 +47,8 @@ class Assignment:
 
 
 def assign_clients(data_dir: str | Path, targets: Mapping[int, int], *, alpha: float, seed: int,
-                   pick_factor: float = 1.25, cap_factor: float = 1.15) -> Assignment:
+                   pick_factor: float = 1.25, cap_factor: float = 1.15,
+                   exclude: Collection[int] = ()) -> Assignment:
     if not targets or min(targets.values()) <= 0:
         raise ValueError("targets need at least one client with a positive size")
     data_dir = Path(data_dir)
@@ -55,7 +60,8 @@ def assign_clients(data_dir: str | Path, targets: Mapping[int, int], *, alpha: f
             prior.setdefault(int(r["user_id"]), []).append((int(r["order_number"]), int(r["order_id"])))
     train_orders = {user: [o for n, o in history if n <= train_cutoff(len(history))]
                     for user, history in prior.items()}
-    eligible = sorted(u for u, orders in train_orders.items() if orders)
+    excluded = set(exclude)
+    eligible = sorted(u for u, orders in train_orders.items() if orders and u not in excluded)
 
     need = sum(targets.values())
     picked, picked_orders = [], 0
@@ -109,7 +115,8 @@ def assign_clients(data_dir: str | Path, targets: Mapping[int, int], *, alpha: f
         "algorithm": ALGORITHM, "alpha": "inf" if math.isinf(alpha) else alpha, "seed": seed,
         "pick_factor": pick_factor, "cap_factor": cap_factor, "train_cutoff": "floor(0.7 n)",
         "targets_sha256": hashlib.sha256(canonical_json(sorted(targets.items()))).hexdigest(),
-        "users_with_prior": len(prior), "users_without_train_orders": len(prior) - len(eligible),
+        "users_with_prior": len(prior), "users_excluded": len(excluded & set(prior)),
+        "users_without_train_orders": sum(1 for orders in train_orders.values() if not orders),
         "users_picked": len(picked), "train_orders_picked": picked_orders, "target_total": need,
         "labels": len(by_label),
     }
