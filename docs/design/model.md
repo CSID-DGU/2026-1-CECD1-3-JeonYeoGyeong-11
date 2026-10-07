@@ -120,6 +120,7 @@ metrics = loss_mean(고정 로컬 검증 손실 또는 null), grad_norm_mean(유
 실험 학습과 서비스는 같은 core 모델·특징 코드를 사용한다. 초기 checkpoint·불변 architecture config·release 설치와 서빙 동일성 검사는 model-lab.md를 따른다. NLP만 사전학습 가중치로 시작하며 관계/sequence/scorer의 프로젝트 가중치는 별도 실험에서 학습한다.
 
 z key: text_artifact_hash + preprocessing_version + 정규 텍스트 SHA-256.
+preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다. 소스 파일의 바이트가 아니다. 출력을 바꾸는 수정만 새 값을 받고, 고정 입력의 출력을 검사하는 테스트(`recommender/tests/test_preprocessing.py`)가 새 값 없이 출력이 바뀌는 것을 막는다. 값이 바뀌면 그 전 release와 z cache는 맞지 않게 된다.
 l/e key: model_variant + base_model_version + preprocessing_version + feature_snapshot_id + item_id. 마스킹 실행은 별도 feature_snapshot_id를 갖는다. 개인화는 query/scorer만 변경하므로 base의 l/e를 재사용할 수 있다. 최종 점수/추천 cache를 도입하면 personalization_revision과 요청 cutoff/후보도 key에 포함한다.
 이는 불변 base의 추론 cache 규칙이다. 전체 FL 학습 중에는 매 optimizer step마다 임베딩 함수도 바뀌므로 base cache를 현재 학습 결과로 재사용하지 않는다. 후보 e는 현재 학습 복사본으로 계산해 gradient를 유지한다. 선택적인 이력 detached cache는 §6의 근사 설정·갱신 주기를 따르고 서빙 cache와 분리한다.
 h는 요청별 계산. 모든 캐시와 반영 ID는 B 특징 저장소에 둔다.

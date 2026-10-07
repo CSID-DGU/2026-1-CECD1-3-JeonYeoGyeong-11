@@ -68,10 +68,5 @@ class Cache(unittest.TestCase):
     def test_empty_request(self):
         self.assertEqual(self.cache().vectors([]).shape, (0, 16))
 
-    def test_preprocessing_version_follows_the_builder_source(self):
-        self.assertEqual(preprocessing_version(), preprocessing_version())
-        builder = self.root / "text.py"
-        builder.write_text("A = 1\n", encoding="utf-8")
-        before = preprocessing_version((builder,))
-        builder.write_text("A = 2\n", encoding="utf-8")
-        self.assertNotEqual(preprocessing_version((builder,)), before)
+    def test_the_cache_keys_on_the_preprocessing_version(self):
+        self.assertEqual(self.cache().preprocessing_version, preprocessing_version())

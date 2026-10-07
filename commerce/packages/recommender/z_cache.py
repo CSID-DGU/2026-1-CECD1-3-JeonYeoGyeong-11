@@ -15,15 +15,17 @@ import numpy as np
 from commerce.packages.contracts.ids import canonical_json
 from commerce.packages.recommender.text_encoder import FrozenTextEncoder, artifact_hash
 
-# The text builder and the relation definitions and constants (model.md §2: preprocessing_version).
-PREPROCESSING_SOURCES = (Path(__file__).resolve().parents[1] / "data_adapters" / "text.py",
-                         Path(__file__).resolve().parent / "relations.py")
+# What the text builder (data_adapters/text.py) and the relation features (relations.py) produce
+# (model.md §7). It names their output, not their source bytes: a refactor that keeps every output
+# keeps the value, and a change to any output needs a new one. tests/test_preprocessing.py pins the
+# outputs, so changing them without a new value fails there. This first value is the hash the old
+# rule took over the two files at 08c573a, the code of the first releases; for live and Instacart
+# items nothing they produce has changed since (only the Dunnhumby text was added).
+PREPROCESSING_VERSION = "9a2ead06485fcceda0250a11ff06c32f621b79efcb606a31adc870251ef46004"
 
 
-def preprocessing_version(sources: Sequence[Path] = PREPROCESSING_SOURCES) -> str:
-    # .gitattributes checks *.py out with LF everywhere, so the bytes match across machines.
-    files = [[p.name, hashlib.sha256(p.read_bytes()).hexdigest()] for p in sources]
-    return hashlib.sha256(canonical_json(files)).hexdigest()
+def preprocessing_version() -> str:
+    return PREPROCESSING_VERSION
 
 
 class ZCache:
