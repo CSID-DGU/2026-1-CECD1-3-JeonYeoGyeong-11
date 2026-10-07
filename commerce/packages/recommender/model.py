@@ -23,6 +23,7 @@ import torch.nn.functional as F
 
 from commerce.packages.recommender.examples import Example
 from commerce.packages.recommender.relations import REL_FEATURES, RelationTensors, bin_inputs
+from commerce.packages.recommender.transfer import to_device
 
 GAP_CAP_DAYS = 30.0
 
@@ -95,7 +96,21 @@ class Recommender(nn.Module):
         return self.query_proj(hidden[:, -1])  # the most recent visit sits last
 
     def score(self, q: torch.Tensor, e: torch.Tensor) -> torch.Tensor:
-        return q @ self.scorer(e).T / math.sqrt(self.config.d_model)
+        return q @ self.score_side(e).T / self.score_scale
+
+    def score_side(self, e: torch.Tensor) -> torch.Tensor:
+        return self.scorer(e)
+
+    @property
+    def score_scale(self) -> float:
+        return math.sqrt(self.config.d_model)
+
+    # The interface training.py uses, shared with the HAREX-style backbone (harex.py).
+    def encode_items(self, seller) -> torch.Tensor:
+        return self.item_repr(seller.z, seller.relations)
+
+    def encode_queries(self, e: torch.Tensor, examples, seller) -> torch.Tensor:
+        return self.query(e, history_batch(examples, seller.row_of, self.config))
 
 
 class TextOnlyRecommender(Recommender):
@@ -179,13 +194,18 @@ def sampled_softmax_loss(positive: torch.Tensor, negatives: torch.Tensor,
     positive (B,), negatives (B, N), negative_mask (B, N) True where a negative is
     allowed, i.e. not in that example's target set. An example with no allowed
     negative is skipped and not counted.
+
+    The mask may stay on the CPU where it was built: the count then needs no wait
+    on the device. A skipped row keeps only its positive, so its loss is exactly 0.
     """
-    logits = torch.cat([positive.unsqueeze(1), negatives.masked_fill(~negative_mask, float("-inf"))], dim=1)
     usable = negative_mask.any(dim=1)
-    if not usable.any():
+    used = int(usable.sum())
+    if used == 0:
         return positive.sum() * 0.0, 0
-    per_example = -F.log_softmax(logits[usable], dim=1)[:, 0]
-    return per_example.mean(), int(usable.sum())
+    mask = to_device(negative_mask, negatives.device)
+    logits = torch.cat([positive.unsqueeze(1), negatives.masked_fill(~mask, float("-inf"))], dim=1)
+    per_example = -F.log_softmax(logits, dim=1)[:, 0] * to_device(usable, logits.device).to(logits.dtype)
+    return per_example.sum() / used, used
 
 
 def config_record(config: ModelConfig) -> dict:
