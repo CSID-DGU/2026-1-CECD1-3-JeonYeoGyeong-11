@@ -15,7 +15,8 @@ Apart from that cut the procedure is the previous one:
    load is below cap_factor x target. alpha = inf uses p = w (a random split).
 
 Targets are client_id -> train-period size. They come from the Dunnhumby
-store roster, which is built by the Dunnhumby adapter (not yet written).
+store roster (dunnhumby.load_dunnhumby(...).roster: store -> baskets in weeks
+2-39); the runs so far used a stand-in (e_g0.STAND_IN_TARGETS).
 
 exclude keeps customers out of the pick. Held-out sellers (evaluation.md §3,
 A-0) are a second split over the customers the training cohort did not take,
