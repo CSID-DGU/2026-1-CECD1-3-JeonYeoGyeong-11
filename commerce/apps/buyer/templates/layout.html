@@ -40,6 +40,7 @@
       </nav>
       <div class="session">
         {% if customer %}
+          <a class="icon-btn {{ 'active' if active_tab == 'wishlist' else '' }}" href="/buyer/{{ seller_id }}/wishlist" aria-label="찜한 상품"><span class="icon-heart" aria-hidden="true">♡</span><span class="icon-btn-label">찜</span></a>
           <a class="icon-btn {{ 'active' if active_tab == 'cart' else '' }}" href="/buyer/{{ seller_id }}/cart" aria-label="장바구니">{{ icon('cart') }}<span class="icon-btn-label">장바구니</span></a>
           <span class="avatar" aria-hidden="true">{{ customer.display_name[:1] }}</span>
           <span class="name">{{ customer.display_name }}님</span>

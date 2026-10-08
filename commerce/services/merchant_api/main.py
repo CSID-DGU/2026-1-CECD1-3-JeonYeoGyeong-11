@@ -33,9 +33,10 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
-from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, personalization, orders_service, session, social_db, social_service
+from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, chatbot, personalization, routes_chat, routes_group, routes_shop, routes_sns, shop_db, shop_service, sns_db, sns_service, orders_service, session, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
+from commerce.services.merchant_api.presentation import product_emoji
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
 _log = logging.getLogger(__name__)
@@ -48,44 +49,33 @@ def _csrf_context(cookie_for_seller: Callable[[str], str]):
     return processor
 
 
+def _store_name(request: Request) -> dict:
+    """The store's display name (its first staff account's), for screens that name the seller."""
+    seller_id = request.path_params.get("seller_id", "")
+    merchant = getattr(request.app.state, "merchant", None)
+    name = None
+    if merchant is not None and seller_id == merchant.seller_id:
+        conn = orders_db.connect(merchant.merchant_db_path, schemas=(accounts_db.ensure_schema,))
+        try:
+            row = conn.execute("SELECT display_name FROM seller_accounts WHERE seller_id = ? ORDER BY rowid LIMIT 1",
+                               (seller_id,)).fetchone()
+            name = row["display_name"] if row else None
+        finally:
+            conn.close()
+    return {"store_name": name or seller_id}
+
+
 _seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"),
                                     context_processors=[_csrf_context(session.seller_cookie)])
 _buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
-                                   context_processors=[_csrf_context(session.customer_cookie)])
+                                   context_processors=[_csrf_context(session.customer_cookie), _store_name])
 
 # Platform name shown on every screen. Placeholder until the team settles the
 # "OO" part; change it here only.
 BRAND_NAME = "오이OO"
 
-# There are no product photos yet; thumbnails show an emoji picked from the
-# catalog category (first match wins, most specific first), or the title's
-# first letter when nothing matches.
-_CATEGORY_EMOJI = (
-    ("우유", "🥛"), ("계란", "🥚"), ("유제품", "🧀"), ("생선", "🐟"), ("수산", "🐟"),
-    ("커피", "☕"), ("음료", "🧃"), ("빵", "🍞"), ("베이커리", "🥐"), ("과일", "🍊"),
-    ("채소", "🥬"), ("쌀", "🍚"), ("축산", "🥩"), ("농산", "🌽"),
-)
-
-
-# Checked against the title first: a category such as "과일" is too coarse to
-# tell strawberries from tangerines.
-_TITLE_EMOJI = (
-    ("딸기", "🍓"), ("사과", "🍎"), ("감귤", "🍊"), ("한라봉", "🍊"), ("토마토", "🍅"), ("상추", "🥬"),
-    ("오이", "🥒"), ("감자", "🥔"), ("고등어", "🐟"), ("갈치", "🐟"), ("한치", "🦑"), ("전복", "🐚"),
-    ("미역", "🌿"), ("새우", "🦐"), ("치즈", "🧀"), ("요거트", "🥣"), ("그래놀라", "🥣"), ("베이글", "🥯"),
-    ("크루아상", "🥐"), ("녹차", "🍵"), ("주스", "🧃"), ("콜드브루", "🧋"), ("오겹살", "🥓"), ("한우", "🥩"),
-    ("닭", "🍗"),
-)
-
-
-def _product_emoji(category_path: Optional[list[str]], title: Optional[str] = None) -> Optional[str]:
-    for keyword, emoji in _TITLE_EMOJI:
-        if title and keyword in title:
-            return emoji
-    for keyword, emoji in _CATEGORY_EMOJI:
-        if keyword in (category_path or []):
-            return emoji
-    return None
+# Thumbnail emoji: shared with the demo media generator (presentation.py).
+_product_emoji = product_emoji
 
 
 for _templates in (_seller_templates, _buyer_templates):
@@ -161,7 +151,8 @@ class LoginRequired(Exception):
 
 _REDELIVERY_JOIN_SECONDS = 60
 # Tables that share orders.sqlite with the order domain; created once per file (orders_db.connect).
-_SCREEN_SCHEMAS = (social_db.ensure_schema, accounts_db.ensure_schema, cart_db.ensure_schema)
+_SCREEN_SCHEMAS = (social_db.ensure_schema, sns_db.ensure_schema, accounts_db.ensure_schema, cart_db.ensure_schema,
+                   shop_db.ensure_schema, chatbot.ensure_schema)
 
 
 def _redeliver_outbox(context: MerchantContext) -> None:
@@ -553,40 +544,6 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer_id_local, sender="seller", body=body)
         return RedirectResponse(f"/seller/{seller_id}/messages/{customer_id_local}", status_code=303)
 
-    @app.get("/seller/{seller_id}/feed")
-    def seller_feed(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
-        posts = social_service.list_feed(conn, seller_id=seller_id)
-        return _seller_templates.TemplateResponse(request, "feed.html", {
-            "seller_id": seller_id, "active_tab": "feed", "posts": posts, "staff": staff,
-        })
-
-    @app.post("/seller/{seller_id}/feed")
-    def seller_create_post(
-        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller_form), kind: str = Form(...),
-        title: str = Form(...), body: str = Form(None),
-    ):
-        social_service.create_post(conn, seller_id=seller_id, kind=kind, title=title, body=body)
-        return RedirectResponse(f"/seller/{seller_id}/feed", status_code=303)
-
-    @app.get("/seller/{seller_id}/group-buys")
-    def seller_group_buys(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
-        group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
-        return _seller_templates.TemplateResponse(request, "group_buys.html", {
-            "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "staff": staff,
-            "titles": _catalog_titles(conn, seller_id),
-        })
-
-    @app.post("/seller/{seller_id}/group-buys")
-    def seller_create_group_buy(
-        seller_id: str, conn=Depends(get_conn), staff=Depends(require_seller_form), item_id_local: str = Form(...),
-        target_quantity: int = Form(...), unit_price_minor: int = Form(...), deadline_at: str = Form(...),
-    ):
-        social_service.create_group_buy(
-            conn, seller_id=seller_id, item_id_local=item_id_local, target_quantity=target_quantity,
-            unit_price_minor=unit_price_minor, deadline_at=deadline_at,
-        )
-        return RedirectResponse(f"/seller/{seller_id}/group-buys", status_code=303)
-
     @app.get("/seller/{seller_id}/prices")
     def seller_prices(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
@@ -669,7 +626,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     # --- Buyer screens -----------------------------------------------------
 
     @app.get("/buyer/{seller_id}/")
-    def buyer_home(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
+    def buyer_home(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer),
+                   q: Optional[str] = None, cat: Optional[str] = None):
         context: MerchantContext = request.app.state.merchant
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
         recommendation = orders_service.get_recommendations_for_display(
@@ -682,8 +640,12 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             if entry["item_id_local"] in catalog_by_id
         ]
         return _buyer_templates.TemplateResponse(request, "home.html", {
-            "seller_id": seller_id, "active_tab": "home", "catalog": catalog, "customer": customer,
-            "recommended": recommended,
+            "seller_id": seller_id, "active_tab": "home", "customer": customer,
+            "catalog": shop_service.search(catalog, q, cat), "q": q or "", "cat": cat,
+            "categories": shop_service.categories(catalog),
+            "ratings": shop_db.rating_summary(conn, seller_id),
+            "wished": set(shop_db.wishlist(conn, seller_id, customer["customer_id_local"])) if customer else set(),
+            "recommended": [i for i in recommended if i["listing_status"] == "active"],
             "recommendation_label": orders_service.recommendation_label(recommendation),
         })
 
@@ -693,9 +655,18 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         if item is None:
             raise ContractError("NOT_FOUND", "/item_id_local")
         price_history = social_service.get_price_history(conn, seller_id=seller_id, item_id_local=item_id_local)
+        customer_id = customer["customer_id_local"] if customer else None
+        reviews = shop_db.reviews_for_item(conn, seller_id, item_id_local)
         return _buyer_templates.TemplateResponse(request, "product.html", {
             "seller_id": seller_id, "active_tab": "home", "item": item, "price_history": price_history,
             "price_chart_points": _price_chart_points(price_history), "customer": customer,
+            "reviews": reviews, "rating": shop_db.rating_summary(conn, seller_id).get(item_id_local),
+            "my_review": next((r for r in reviews if r["customer_id_local"] == customer_id), None),
+            "can_review": bool(customer_id) and shop_service.bought(conn, seller_id, customer_id, item_id_local),
+            "wished": customer_id is not None and item_id_local in shop_db.wishlist(conn, seller_id, customer_id),
+            "posts": sns_service.posts_for_item(conn, seller_id=seller_id, item_id_local=item_id_local),
+            "group_price": social_service.group_price(conn, seller_id=seller_id, item_id_local=item_id_local)
+            if item["listing_status"] == "active" else None,
         })
 
     @app.post("/buyer/{seller_id}/orders")
@@ -772,14 +743,6 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "status_labels": _STATUS_LABELS, "customer": customer, "titles": _catalog_titles(conn, seller_id),
         })
 
-    @app.get("/buyer/{seller_id}/chat")
-    def buyer_chat(seller_id: str, request: Request, customer=Depends(current_customer)):
-        return _buyer_templates.TemplateResponse(request, "chat.html", {
-            "seller_id": seller_id, "active_tab": "chat", "customer": customer,
-        })
-
-    # --- Buyer social screens (M25 DM, M26/M27 feed, M29 group-buy) ------------
-
     @app.get("/buyer/{seller_id}/messages")
     def buyer_messages(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
         messages = social_service.list_thread_messages(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"])
@@ -792,32 +755,12 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"], sender="customer", body=body)
         return RedirectResponse(f"/buyer/{seller_id}/messages", status_code=303)
 
-    @app.get("/buyer/{seller_id}/feed")
-    def buyer_feed(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
-        posts = social_service.list_feed(conn, seller_id=seller_id)
-        return _buyer_templates.TemplateResponse(request, "feed.html", {
-            "seller_id": seller_id, "active_tab": "feed", "posts": posts, "customer": customer,
-        })
-
-    @app.get("/buyer/{seller_id}/group-buys")
-    def buyer_group_buys(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(current_customer)):
-        group_buys = social_service.list_group_buys(conn, seller_id=seller_id)
-        return _buyer_templates.TemplateResponse(request, "group_buys.html", {
-            "seller_id": seller_id, "active_tab": "group_buys", "group_buys": group_buys, "customer": customer,
-            "titles": _catalog_titles(conn, seller_id),
-        })
-
-    @app.post("/buyer/{seller_id}/group-buys/{group_buy_id}/join")
-    def buyer_join_group_buy(
-        seller_id: str, group_buy_id: str, conn=Depends(get_conn), customer=Depends(require_customer_form),
-        quantity: int = Form(...),
-    ):
-        social_service.join_group_buy(
-            conn, seller_id=seller_id, group_buy_id=group_buy_id,
-            customer_id_local=customer["customer_id_local"], quantity=quantity,
-        )
-        return RedirectResponse(f"/buyer/{seller_id}/group-buys", status_code=303)
-
+    deps = routes_sns.ScreenDeps(get_conn, current_customer, require_customer, require_customer_form,
+                                 require_seller, require_seller_form, _buyer_templates, _seller_templates)
+    routes_sns.register(app, deps)
+    routes_group.register(app, deps)
+    routes_shop.register(app, deps)
+    routes_chat.register(app, deps, BRAND_NAME)
     return app
 
 

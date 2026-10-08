@@ -5,6 +5,8 @@
     <h1 class="page-title">주문내역</h1>
     <p>{{ customer.display_name }}님의 주문입니다.</p>
   </div>
+  {% if request.query_params.get('ok') == 'cancelled' %}<div class="notice">주문을 취소했어요.</div>{% endif %}
+  {% if request.query_params.get('e') %}<div class="notice warn">판매자가 이미 수락한 주문은 취소할 수 없어요. 쪽지로 문의해 주세요.</div>{% endif %}
   <div class="card flush">
     <div class="list">
       {% for order in orders %}
@@ -17,6 +19,13 @@
         <div class="stack align-end">
           <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ status_labels[order.status] }}</span>
           <span class="price-now">{{ "{:,}".format(order.total_amount) }}원</span>
+          {% if order.status == 'requested' %}
+          <form method="post" action="/buyer/{{ seller_id }}/orders/{{ order.order_id }}/cancel" onsubmit="return confirm('주문을 취소할까요?');"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+            <button class="btn ghost sm" type="submit">주문 취소</button>
+          </form>
+          {% elif order.status == 'completed' %}
+          <a class="btn ghost sm" href="/buyer/{{ seller_id }}/items/{{ order['items'][0].item_id_local }}#reviews">리뷰 쓰기</a>
+          {% endif %}
         </div>
       </div>
       {% else %}

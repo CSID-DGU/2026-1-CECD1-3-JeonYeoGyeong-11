@@ -7,14 +7,24 @@
     <div class="seller-row">
       <span class="avatar" aria-hidden="true">{{ seller_id[:1] | upper }}</span>
       <div class="grow">
-        <p class="list-title">{{ seller_id }}</p>
+        <p class="list-title">{{ store_name }}</p>
         <p class="list-sub">이 매장에서 직접 판매하는 상품</p>
       </div>
+      {% if customer %}
+      <form method="post" action="/buyer/{{ seller_id }}/wishlist/{{ item.item_id_local }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <button class="heart {{ 'on' if wished else '' }}" type="submit" aria-label="{{ '찜 해제' if wished else '찜하기' }}">{{ '♥' if wished else '♡' }}</button>
+      </form>
+      {% endif %}
     </div>
     <div class="stack">
       {% if item.category_path %}<p class="product-meta">{{ item.category_path | join(' · ') }}</p>{% endif %}
       <h1 class="page-title">{{ item.title_text }}</h1>
-      <p class="price-now lg">{{ "{:,}".format(item.display_price_minor) }}원</p>
+      <div class="price-row">
+        <p class="price-now lg">{{ "{:,}".format(item.display_price_minor) }}원</p>
+        {% if rating %}<a class="rating" href="#reviews">★ {{ rating[0] }} <span class="muted-note">리뷰 {{ rating[1] }}</span></a>{% endif %}
+      </div>
+      {% if item.description_text %}<p class="body-text">{{ item.description_text }}</p>{% endif %}
+      {% if item.listing_status != 'active' %}<div class="notice warn">지금은 판매하지 않는 상품이에요.</div>{% endif %}
     </div>
 
     {% if price_chart_points %}
@@ -30,6 +40,11 @@
     </div>
     {% endif %}
 
+    {% if group_price %}
+    <a class="notice" href="/buyer/{{ seller_id }}/group-buys?item={{ item.item_id_local | urlencode }}">👥 이웃과 함께 사면 <strong>{{ "{:,}".format(group_price) }}원</strong> — 공동구매 열기/참여하기 →</a>
+    {% endif %}
+
+    {% if item.listing_status == 'active' %}
     {% if customer %}
     <form class="buy-bar" method="post" action="/buyer/{{ seller_id }}/orders"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
       <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}">
@@ -44,6 +59,48 @@
       <a class="btn primary" href="/buyer/{{ seller_id }}/login">로그인하고 주문하기</a>
     </div>
     {% endif %}
+    {% endif %}
   </div>
 </div>
+
+{% if posts %}
+<section class="section">
+  <h2 class="section-title">이 상품이 나온 소식</h2>
+  <div class="explore small">
+    {% for p in posts %}
+    <a class="tile" href="/buyer/{{ seller_id }}/posts/{{ p.post_id }}">
+      {% set m = p.media[0] if p.media else none %}
+      {% if m and m.type == 'video' %}<video src="{{ m.url }}" muted playsinline preload="metadata"></video>
+      {% elif m %}<img src="{{ m.url }}" alt="" loading="lazy">{% else %}<div class="tile-text">{{ p.title }}</div>{% endif %}
+      {% if p.kind == 'short_video' %}<span class="tile-kind">▶</span>{% endif %}
+      <span class="tile-stats"><span>♥ {{ p.likes }}</span><span>💬 {{ p.comments }}</span></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="section" id="reviews">
+  <h2 class="section-title">리뷰 {{ reviews | length }}{% if rating %} <span class="rating">★ {{ rating[0] }}</span>{% endif %}</h2>
+  {% if request.query_params.get('review') == 'denied' %}<div class="notice warn mb-16">구매를 완료한 상품만 리뷰를 쓸 수 있어요.</div>{% endif %}
+  {% if can_review %}
+  <form class="card form mb-16" method="post" action="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}/reviews"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <div class="stars" role="radiogroup" aria-label="별점">
+      {% for n in (5, 4, 3, 2, 1) %}<input type="radio" id="star{{ n }}" name="rating" value="{{ n }}" {{ 'checked' if (my_review and my_review.rating == n) or (not my_review and n == 5) else '' }}><label for="star{{ n }}" title="{{ n }}점">★</label>{% endfor %}
+    </div>
+    <textarea name="body" rows="2" maxlength="1000" placeholder="상품은 어떠셨나요?">{{ my_review.body if my_review and my_review.body else '' }}</textarea>
+    <div class="form-actions"><button class="btn primary sm" type="submit">{{ '리뷰 수정' if my_review else '리뷰 남기기' }}</button></div>
+  </form>
+  {% endif %}
+  {% for r in reviews %}
+  <div class="review">
+    <div class="row between"><span class="list-title">{{ r.customer_id_local }}</span><span class="rating">{{ '★' * r.rating }}<span class="muted-star">{{ '★' * (5 - r.rating) }}</span></span></div>
+    {% if r.body %}<p class="body-text">{{ r.body }}</p>{% endif %}
+    {% if r.seller_reply %}<p class="seller-reply">사장님 답글 · {{ r.seller_reply }}</p>{% endif %}
+    <p class="muted-note">{{ r.created_at[:10] }}</p>
+  </div>
+  {% else %}
+  <p class="muted-note">아직 리뷰가 없어요.{% if not can_review %} 구매를 완료하면 리뷰를 남길 수 있어요.{% endif %}</p>
+  {% endfor %}
+</section>
 {% endblock %}

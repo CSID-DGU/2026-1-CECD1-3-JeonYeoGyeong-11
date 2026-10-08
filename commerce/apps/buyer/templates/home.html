@@ -6,7 +6,9 @@
   <div class="product-info">
     <p class="product-title">{{ item.title_text }}</p>
     {% if item.category_path %}<p class="product-meta">{{ item.category_path | join(' · ') }}</p>{% endif %}
-    <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span></div>
+    <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span>
+      {%- set r = ratings.get(item.item_id_local) %}{% if r %}<span class="rating">★ {{ r[0] }} <span class="muted-note">({{ r[1] }})</span></span>{% endif %}
+      {%- if item.item_id_local in wished %}<span class="wish-mark" aria-label="찜한 상품">♥</span>{% endif %}</div>
   </div>
 </a>
 {%- endmacro %}
@@ -30,12 +32,23 @@
 
 <section class="section">
   <h1 class="page-title mb-16">상품 둘러보기</h1>
+  <form class="search-bar" method="get" action="/buyer/{{ seller_id }}/" role="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="상품 검색 (예: 감귤, 원두, 유기농)" aria-label="상품 검색">
+    {% if cat %}<input type="hidden" name="cat" value="{{ cat }}">{% endif %}
+    <button class="btn primary" type="submit">검색</button>
+  </form>
+  <div class="chip-row mt-12" aria-label="카테고리">
+    <a class="chip {{ 'active' if not cat else '' }}" href="/buyer/{{ seller_id }}/{{ '?q=' ~ (q | urlencode) if q else '' }}">전체</a>
+    {% for c in categories %}<a class="chip {{ 'active' if cat == c else '' }}" href="/buyer/{{ seller_id }}/?cat={{ c | urlencode }}{{ '&q=' ~ (q | urlencode) if q else '' }}">{{ c }}</a>{% endfor %}
+  </div>
+  {% if q or cat %}<p class="muted-note mt-12">{% if q %}'{{ q }}' {% endif %}{% if cat %}{{ cat }} {% endif %}검색 결과 {{ catalog | length }}개</p>{% endif %}
+  <div class="mb-16"></div>
   {% if catalog %}
   <div class="product-grid">
     {% for item in catalog %}{{ product_card(item, loop.index0 + 1) }}{% endfor %}
   </div>
   {% else %}
-  <div class="card empty">아직 등록된 상품이 없습니다. 판매자 화면에서 상품을 등록해 보세요.</div>
+  <div class="card empty">{% if q or cat %}조건에 맞는 상품이 없어요.{% else %}아직 등록된 상품이 없습니다. 판매자 화면에서 상품을 등록해 보세요.{% endif %}</div>
   {% endif %}
 </section>
 {% endblock %}

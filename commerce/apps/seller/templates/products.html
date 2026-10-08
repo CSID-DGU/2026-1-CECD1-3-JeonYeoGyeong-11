@@ -26,7 +26,7 @@
 <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>상품</th><th class="num">가격</th><th>상태</th></tr>
+      <tr><th>상품</th><th class="num">가격</th><th>상태</th><th></th></tr>
     </thead>
     <tbody>
       {% for item in catalog %}
@@ -36,7 +36,7 @@
           <div class="row">
             <span class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji }} cell-thumb" aria-hidden="true">{{ emoji or item.title_text[:1] }}</span>
             <div class="grow">
-              <p class="list-title">{{ item.title_text }}</p>
+              <a class="list-title link-plain" href="/seller/{{ seller_id }}/products/{{ item.item_id_local }}">{{ item.title_text }}</a>
               <p class="mono">{{ item.item_id_local }}</p>
             </div>
           </div>
@@ -47,9 +47,10 @@
             {{ '판매중' if item.listing_status == 'active' else '중지' }}
           </span>
         </td>
+        <td><a class="btn secondary sm" href="/seller/{{ seller_id }}/products/{{ item.item_id_local }}">수정</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="3"><div class="empty">등록된 상품이 없습니다.</div></td></tr>
+      <tr><td colspan="4"><div class="empty">등록된 상품이 없습니다.</div></td></tr>
       {% endfor %}
     </tbody>
   </table>

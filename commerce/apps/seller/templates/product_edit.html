@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <a class="link" href="/seller/{{ seller_id }}/products">← 상품 관리</a>
+  <h1 class="page-title">{{ item.title_text }}</h1>
+  <p>찜 {{ wishes }}명{% if rating %} · ★ {{ rating[0] }} (리뷰 {{ rating[1] }}){% endif %} · 수정하면 추천 모델(B)에도 바로 반영됩니다.</p>
+</div>
+
+<div class="card">
+  {% if request.query_params.get('saved') %}<div class="notice mb-16">저장했어요.</div>{% endif %}
+  <form class="form" method="post" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <label class="field">상품명<input type="text" name="title_text" value="{{ item.title_text }}" required></label>
+    <div class="form-row">
+      <label class="field">가격(원)<input type="number" name="display_price_minor" min="0" value="{{ item.display_price_minor }}" required></label>
+      <label class="field"><span>분류 <span class="field-hint">'>'로 구분, 예: 식품 > 유제품 > 우유</span></span>
+        <input type="text" name="category" value="{{ (item.category_path or []) | join(' > ') }}"></label>
+      <label class="field">판매 상태
+        <select name="listing_status">
+          <option value="active" {{ 'selected' if item.listing_status == 'active' else '' }}>판매중</option>
+          <option value="inactive" {{ 'selected' if item.listing_status != 'active' else '' }}>판매 중지</option>
+        </select></label>
+    </div>
+    <label class="field">설명 <span class="field-hint">추천 모델이 상품을 이해하는 데 쓰는 글이에요</span>
+      <textarea name="description_text" rows="3" maxlength="1000">{{ item.description_text or '' }}</textarea></label>
+    <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+  </form>
+</div>
+
+<section class="section" id="reviews">
+  <h2 class="section-title">리뷰 {{ reviews | length }}</h2>
+  {% for r in reviews %}
+  <div class="card stack">
+    <div class="row between"><span class="list-title">{{ r.customer_id_local }}</span><span class="rating">{{ '★' * r.rating }}<span class="muted-star">{{ '★' * (5 - r.rating) }}</span></span></div>
+    {% if r.body %}<p class="body-text">{{ r.body }}</p>{% endif %}
+    <form class="inline-form" method="post" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}/reviews/{{ r.customer_id_local }}/reply"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <label class="field">사장님 답글<input type="text" name="reply" maxlength="500" value="{{ r.seller_reply or '' }}"></label>
+      <button class="btn secondary sm" type="submit">{{ '수정' if r.seller_reply else '답글' }}</button>
+    </form>
+  </div>
+  {% else %}<div class="card empty">아직 리뷰가 없습니다.</div>{% endfor %}
+</section>
+{% endblock %}
