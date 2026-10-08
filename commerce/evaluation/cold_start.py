@@ -122,7 +122,7 @@ def main(argv=None):
                            for k, v in vars(args).items()},
               "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device),
                           "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None},
-              "labels": ["pilot", "stand-in seller sizes", "A-0: no local weight update", "temporary scoring"],
+              "labels": ["pilot", "stand-in seller sizes", "A-0: no local weight update"],
               "groups": []}
     runs = find_runs(args.runs)
     if not runs:
