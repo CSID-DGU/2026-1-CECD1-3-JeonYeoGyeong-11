@@ -72,3 +72,24 @@ $env:MODEL_DIR="$PWD\commerce\deploy\var\merchant_1\models"; $env:MERCHANT_SECRE
 | 포트 사용 중 | 다른 서버가 8101을 쓰고 있다. 끄거나 `--port`를 바꾼다(URL도 함께) |
 | 시뮬레이터 "seller login failed" | seed를 먼저 실행한다 |
 | 화면은 뜨는데 데이터가 비어 있음 | seed의 `MERCHANT_ID`와 서버의 `MERCHANT_ID`가 다르다 |
+
+## 7. 통합 리허설: 판매자 여러 곳
+
+FL은 판매자가 여럿이어야 한다. C의 런처(`run_local.py`)는 판매자 i를 `merchant-i`, `commerce/deploy/var/merchant_i/`, 포트 `8100+i`로 띄운다. 같은 규칙으로 데이터를 한 번에 만든다(서버를 끈 상태, 초기화는 2단계처럼 판매자 폴더마다 `orders.sqlite*`·`features.sqlite*`를 함께 지운 뒤).
+
+```powershell
+.venv\Scripts\python.exe -m commerce.services.merchant_api.seed_demo_data --all 4 --bulk 40
+.venv\Scripts\python.exe -m commerce.deploy.run_local --merchants 4
+```
+
+| 판매자 | 가게 | 상품 | 주소 |
+| --- | --- | --- | --- |
+| merchant-1 | 제주 유기농 농장 (기본 + bulk) | 34종 | http://127.0.0.1:8101/buyer/merchant-1/ |
+| merchant-2 | 제주 바다 수산 | 8종 | http://127.0.0.1:8102/buyer/merchant-2/ |
+| merchant-3 | 한라 베이커리 & 커피 | 12종 | http://127.0.0.1:8103/buyer/merchant-3/ |
+| merchant-4 | 오이네 청과·정육 | 13종 | http://127.0.0.1:8104/buyer/merchant-4/ |
+
+- 가게마다 고객 30명(`cust-001`~`cust-030`, 비밀번호 `demo-pass-1234`, 가게마다 따로인 계정)과 60일치 주문이 있다. 판매자는 모두 `owner-1`. 우유·계란·쌀은 여러 가게가 함께 판다.
+- 한 브라우저로 여러 가게에 동시에 로그인해도 된다(쿠키가 판매자별이다).
+- 판매자 "모델 비교" 화면의 **개인화 실행** 버튼은 그 가게 기록으로 두 모델의 마지막 층을 학습한다(OQ08). FL 라운드가 도는 중이면 "이미 학습 중"으로 거절된다.
+- `--merchants 5` 이상이면 5번부터 수산·베이커리·청과가 다시 돌아온다.
