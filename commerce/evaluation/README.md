@@ -10,6 +10,6 @@
 - `release_bundle.py`: lm 계열 FL 실행의 공유 가중치를 서비스 첫 release 폴더(release.json·manifest.json·weights.npz와 출처 provenance.json)로 만든다. 실행의 텍스트 artifact·전처리가 지금 코드와 다르면 거부한다.
 - `service_check.py`: 보류 판매자를 실제 판매자 runtime에 넣어(카탈로그·마지막 방문 전까지의 이벤트) release 설치 전후의 추천을 마지막 방문으로 채점하고 지연을 잰다. 서비스 경로 점검이며 D0022 표가 아니다.
 
-`scoring.py`는 A의 `metrics/`가 들어오기 전까지 쓰는 같은 정의의 임시 채점이며, 그 결과는 A 모듈로 다시 채점한 뒤 보고한다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
+채점은 A의 `metrics/ranking.py`로 한다. 그 전까지 쓰던 B의 임시 `scoring.py`는 같은 정의였고(무작위 순위 500개·기준선·평균에서 소수 12자리까지 같음, #37 교차검증), A 모듈이 들어온 뒤 지웠다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
 작업 순서는 [B 카드](../../docs/team/tasks/B.md)를 따른다. 손실 함수와 예제별 특징 cutoff는 본 학습 전에 확정한다([열린 구현 항목](../../docs/design/open-questions.md)).
 산출물은 이 디렉터리의 Git 제외 `data/`, `cache/`, `runs/`, `outputs/`에 둔다. 집계 core는 C에게서 제공받으며 그 API는 선정 후 공동 확정한다. 모델 학습이 서비스 startup에서 실행되게 하지 않는다.
