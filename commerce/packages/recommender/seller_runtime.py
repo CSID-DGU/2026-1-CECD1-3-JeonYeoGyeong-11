@@ -78,12 +78,13 @@ FALLBACK_MODEL_VERSION = "popularity.local"  # recommendation.model_version when
 VALIDATION_SHARE = 10  # one customer in ten (model.md §6)
 WEIGHT_DECAY = 0.01
 CLIP_NORM = 1.0
-# Personalization starting values; the same for both variants (model.md §8.1). Keys of
-# personal_config override them; any other key is an error. "seed" drives the training
+# Personalization settings, the same for both variants (model.md §8.1). lr and steps were
+# chosen on validation loss at held-out sellers (evaluation/personal_sweep.py, model.md §8).
+# Keys of personal_config override them; any other key is an error. "seed" drives the training
 # randomness only: the validation customers come from PERSONAL_SPLIT_SEED, fixed per
 # seller, so no config can pick the customers its own result is judged on.
 PERSONAL_SPLIT_SEED = 0
-DEFAULT_PERSONAL = {"steps": 40, "batch_size": 64, "lr": 1e-3, "n_neg": 200, "seed": 0,
+DEFAULT_PERSONAL = {"steps": 40, "batch_size": 64, "lr": 3e-4, "n_neg": 200, "seed": 0,
                     "min_train_examples": 20, "min_val_examples": 5}
 ARMS = (("T-G", "text_only", "global"), ("R-G", "text_relation", "global"),
         ("T-P", "text_only", "personalized"), ("R-P", "text_relation", "personalized"))

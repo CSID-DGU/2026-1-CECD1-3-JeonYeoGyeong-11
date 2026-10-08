@@ -143,6 +143,13 @@ b2는 frozen 해시 불변, 공유 층 gradient, export에 local/frozen/상품�
 4. 개인화 결과는 만든 base에만 붙인다. base가 바뀌면 옛 결과를 쓰지 않고 새 base에서 다시 만든다.
 5. 데이터가 없거나 검증을 통과하지 못하면 공통 base로 서비스하고, 비교에서 P칸을 G 결과로 채우지 않는다.
 
+**개인화 설정(2026-10-08).** lr 0.0003, 40 step, batch 64, 음성 200이고 두 variant에 같이 쓴다(`seller_runtime.DEFAULT_PERSONAL`).
+- 고른 방법: Instacart 보류 판매자 10곳에 첫 release를 base로 두고, 1차로 lr {0.001, 0.003, 0.01} × step {40, 120}, 2차로 더 작은 쪽 lr {0.0003, 0.001} × step {10, 20, 40}을 personalize_local과 같은 분할·검증 기준으로 돌렸다(`evaluation/personal_sweep.py`). 두 variant의 검증 손실 개선 평균이 가장 큰 설정을 골랐다.
+- 결과: text_relation은 8/10곳에서 채택되고 검증 손실이 평균 1.4% 줄었다. text_only는 5/10곳에서 채택되고 평균으로는 0.4% 늘었다. 그래서 채택되지 않은 곳은 base로 서비스한다.
+- lr을 키우거나 step을 늘리면 과적합해서 채택이 줄고 검증 손실도 나빠졌다(lr 0.01은 0~1/10곳).
+- 각 고객의 마지막 방문(선택에 쓰지 않음)에서 채택된 개인화를 쓰면 HR@10은 text_relation +0.6pt, text_only −0.1pt였다.
+- 최소 데이터 기준(학습 예제 20, 검증 예제 5)은 시작값 그대로다.
+
 recommendation.model_version은 실제 서빙 가중치의 opaque ID다. C의 round_config.model_version은 항상 공통 base ID다. A는 서빙 ID를 해석해 모델 URL을 만들지 않는다.
 
 b2에서 개인화 전후 공통 base 해시 불변, 두 그룹 밖 가중치 불변, export에 개인화 값 없음, 다른 base와의 결합 거부를 확인한다.
