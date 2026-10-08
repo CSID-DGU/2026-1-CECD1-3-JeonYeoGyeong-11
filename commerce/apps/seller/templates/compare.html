@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">모델 비교</h1>
+  <p>한 고객에 대해 같은 시점·같은 후보로 네 가지 모델(텍스트/관계 × 공통/개인화)의 추천을 나란히 봅니다.
+    모델마다 점수 척도가 달라 점수는 보여주지 않고 순위만 비교합니다.</p>
+</div>
+
+<div class="card">
+  <form class="inline-form" method="get" action="/seller/{{ seller_id }}/compare">
+    <label class="field">고객
+      <select name="customer_id_local" required>
+        <option value="">고객 선택</option>
+        {% for c in customers %}
+        <option value="{{ c.customer_id_local }}" {{ 'selected' if c.customer_id_local == customer_id_local else '' }}>
+          {{ c.display_name }} ({{ c.customer_id_local }})
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn primary" type="submit">비교하기</button>
+  </form>
+</div>
+
+{% if customer_id_local and result is none %}
+<div class="notice warn">추천 모델이 아직 연결되지 않아 비교할 수 없습니다.</div>
+{% elif result %}
+<p class="muted-note">
+  비교 시점 {{ result.as_of }} · 특징 스냅샷 {{ result.feature_snapshot_id }} · 후보 집합 <span class="mono">{{ result.candidate_set_hash[:12] }}</span>
+</p>
+<div class="grid cols-4">
+  {% for arm in result.arms %}
+  <div class="card arm{{ '' if arm.available else ' unavailable' }}">
+    <div class="arm-head">
+      <span class="arm-id">{{ arm.arm_id }}</span>
+      <span class="badge {{ 'brand' if arm.mode == 'global' else 'muted' }}">{{ '공통' if arm.mode == 'global' else '개인화' }}</span>
+    </div>
+    <p class="muted-note">{{ '텍스트' if arm.model_variant == 'text_only' else '텍스트+관계' }}</p>
+    {% if arm.available %}
+    <p class="muted-note">
+      기준 모델 {{ arm.base_model_version }}{% if arm.personalization_revision %} · 개인화 {{ arm.personalization_revision }}{% endif %}
+    </p>
+    {% if arm.recommendation.fallback_reason %}
+    <p><span class="badge warn">대체 추천 ({{ arm.recommendation.fallback_reason }})</span></p>
+    {% endif %}
+    <ol>
+      {% for entry in arm.recommendation['items'] %}
+      <li>{{ titles.get(entry.item_id_local, entry.item_id_local) }}</li>
+      {% else %}
+      <li class="muted-note">추천 결과 없음</li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="muted-note">사용할 수 없음: {{ unavailable_labels.get(arm.unavailable_reason, arm.unavailable_reason) }}</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

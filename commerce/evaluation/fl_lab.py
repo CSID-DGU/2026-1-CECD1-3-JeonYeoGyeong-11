@@ -120,7 +120,7 @@ def main(argv=None):
                           "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "cpu_count": os.cpu_count()},
               "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
-                         "temporary aggregation", "temporary scoring"]
+                         "temporary aggregation"]
               + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
     if args.protocol == "gci":
         if args.target != "basket":

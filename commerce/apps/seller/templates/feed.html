@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">소식 관리</h1>
+  <p>올린 소식은 구매자 화면의 '소식' 탭에 최신순으로 보입니다.</p>
+</div>
+
+<div class="card">
+  <h2 class="section-title">새 소식 올리기</h2>
+  <form class="form" method="post" action="/seller/{{ seller_id }}/feed"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <div class="form-row">
+      <label class="field">종류
+        <select name="kind">
+          <option value="article">글</option>
+          <option value="short_video">숏폼 영상 소개</option>
+        </select>
+      </label>
+      <label class="field">제목
+        <input type="text" name="title" required>
+      </label>
+    </div>
+    <label class="field">내용
+      <textarea name="body" rows="3"></textarea>
+    </label>
+    <p class="muted-note">숏폼은 영상 업로드 대신 소개 글로 대체합니다 (별도 미디어 저장소 미구현).</p>
+    <div class="form-actions"><button class="btn primary" type="submit">올리기</button></div>
+  </form>
+</div>
+
+<div class="card-list">
+  {% for post in posts %}
+  <article class="card stack">
+    <div class="row">
+      <span class="badge {{ 'brand' if post.kind == 'short_video' else 'muted' }}">{{ '숏폼' if post.kind == 'short_video' else '소식' }}</span>
+      <span class="muted-note">{{ post.created_at[:10] }}</span>
+    </div>
+    <h2 class="section-title flush">{{ post.title }}</h2>
+    {% if post.body %}<p class="body-text">{{ post.body }}</p>{% endif %}
+  </article>
+  {% else %}
+  <div class="card empty">아직 올린 소식이 없습니다.</div>
+  {% endfor %}
+</div>
+{% endblock %}

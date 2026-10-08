@@ -10,8 +10,8 @@ picks its own chunk by its own fixed validation loss and is scored on its own
 test examples; the results are then averaged over sellers. Several sellers'
 data are never pooled into one optimizer. FL runs (federated_lab_sim) come with
 C's aggregation core. The training runs in chunks that each start a fresh
-AdamW, as FL rounds do. Scores come from scoring.py, a temporary copy of A's
-metric definitions.
+AdamW, as FL rounds do. Scores come from A's metrics module
+(commerce/evaluation/metrics/ranking.py).
 --variant picks text_only (T-G) or text_relation (R-G). Both variants see
 identical batches: examples are grouped by (seller, progress bucket) for both,
 and text_relation reads that bucket's relation snapshot.
@@ -30,7 +30,7 @@ import numpy as np
 import torch
 
 from commerce.evaluation.encoder_probe import CANDIDATES, peak_memory_mb
-from commerce.evaluation.scoring import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
+from commerce.evaluation.metrics.ranking import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
 from commerce.packages.data_adapters.instacart import load_instacart, split_role
@@ -188,7 +188,7 @@ def evaluate(models, data, context, record):
                                              expected_metrics(ranking, rel))
     record["evaluation"] = {
         "split": "test", "targets_outside_catalog": skipped,
-        "scoring": "commerce/evaluation/scoring.py (temporary copy of A's definitions)",
+        "scoring": "commerce/evaluation/metrics/ranking.py (A)",
         "results": {name: {part: avg.result() for part, avg in parts.items()} for name, parts in arms.items()},
         "seconds": round(time.perf_counter() - started, 1),
     }
@@ -213,8 +213,7 @@ def main(argv=None):
               "machine": {"os": platform.platform(), "python": platform.python_version(),
                           "torch": torch.__version__, "threads": torch.get_num_threads(),
                           "cpu": platform.processor(), "cpu_count": os.cpu_count()},
-              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL",
-                         "temporary scoring"]}
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL"]}
     data, context = build(args, record)
     models = fit(args, data, record)
     evaluate(models, data, context, record)
