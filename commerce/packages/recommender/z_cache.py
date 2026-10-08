@@ -32,7 +32,8 @@ class ZCache:
         self.encoder = encoder
         self.text_artifact_hash = artifact_hash(model_dir, encoder.spec)
         self.preprocessing_version = preprocessing or preprocessing_version()
-        self._db = sqlite3.connect(str(path))
+        # Several runs share one cache: a writer waits for the others instead of failing at once.
+        self._db = sqlite3.connect(str(path), timeout=300)
         self._db.execute("CREATE TABLE IF NOT EXISTS z (key TEXT PRIMARY KEY, dim INTEGER NOT NULL, "
                          "vector BLOB NOT NULL)")
         self.encoded = 0  # texts encoded by this instance; cache hits do not count
