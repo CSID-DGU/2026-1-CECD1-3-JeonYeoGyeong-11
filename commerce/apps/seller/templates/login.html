@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="auth">
+  <div class="auth-head">
+    <img src="/static/logo.svg" alt="">
+    <h1 class="page-title">{{ brand_name }} 판매자센터</h1>
+    <p>매장 직원 계정으로 로그인해 주세요.</p>
+  </div>
+  <div class="card">
+    <form class="form" method="post" action="/seller/{{ seller_id }}/login">
+      {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+      <label class="field">아이디
+        <input type="text" name="username" autocomplete="username" required>
+      </label>
+      <label class="field">비밀번호
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn primary block" type="submit">로그인</button>
+    </form>
+  </div>
+  <p class="muted-note auth-foot">아직 판매자가 아니신가요? <a href="/seller/{{ seller_id }}/signup">판매자 가입</a></p>
+</div>
+{% endblock %}
