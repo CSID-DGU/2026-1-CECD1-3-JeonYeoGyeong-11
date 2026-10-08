@@ -78,7 +78,7 @@ Instacart 첫 주문의 누적 상대일은 0, 이후 days_since_prior_order를 
 | Instacart products+aisles+departments | [NAME] product_name [AISLE] aisle [DEPT] department |
 | live catalog_item | [NAME] title_text + 존재하면 [DESC] description_text + category_path가 있으면 [CAT] 경로 |
 
-원문 title은 표시용으로 보존하고 인코더 입력은 B builder가 별도로 만든다. product_text라는 임의 필드를 JSON 계약에 추가하지 않는다. Dunnhumby의 대체 제목을 실제 고유 상품명으로 보고하지 않는다.
+실험실과 서비스는 같은 catalog_item.v1을 같은 builder(`catalog_item_text`)로 읽는다(OQ03). 서비스는 A가 보낸 catalog_item을 고치지 않고 원장에 둔다. `recommender/tests/test_text_roundtrip.py`는 Instacart·Dunnhumby·live 상품이 원장을 거친 뒤에도 실험실과 같은 텍스트와 z(허용오차 1e-6)를 갖는지 본다. 원문 title은 표시용으로 보존하고 인코더 입력은 B builder가 별도로 만든다. product_text라는 임의 필드를 JSON 계약에 추가하지 않는다. Dunnhumby의 대체 제목을 실제 고유 상품명으로 보고하지 않는다.
 
 - NFC·공백 정리, 결측 필드는 생략. 모든 필드가 비면 오류/격리하고 빈 벡터를 성공으로 반환하지 않는다.
 - 한국어와 영어, 규격의 소수·분수·단위를 보존한다. 비ASCII 삭제 금지. 소문자화는 선택 인코더 규칙에 따른다.
