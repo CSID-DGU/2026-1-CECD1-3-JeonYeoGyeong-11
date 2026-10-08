@@ -33,7 +33,7 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
-from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, orders_service, session, social_db, social_service
+from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, personalization, orders_service, session, social_db, social_service
 from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
 
@@ -517,7 +517,17 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "customers": accounts_db.list_customers(conn, seller_id),
             "customer_id_local": customer_id_local, "result": result, "titles": titles,
             "unavailable_labels": _UNAVAILABLE_LABELS,
+            "personalization": personalization.last_run(seller_id),
+            "personalization_notice": request.query_params.get("p"),
         })
+
+    @app.post("/seller/{seller_id}/personalize")
+    def seller_personalize(seller_id: str, request: Request, staff=Depends(require_seller_form),
+                           customer_id_local: str = Form("")):
+        context: MerchantContext = request.app.state.merchant
+        outcome = personalization.start(context)
+        back = f"/seller/{seller_id}/compare?p={outcome}"
+        return RedirectResponse(back + (f"&customer_id_local={customer_id_local}" if customer_id_local else ""), status_code=303)
 
     # --- Seller social screens (M25 DM, M26/M27 feed, M29 group-buy, M30 price) --
 

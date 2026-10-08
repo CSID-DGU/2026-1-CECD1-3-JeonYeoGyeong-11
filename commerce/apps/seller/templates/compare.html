@@ -22,6 +22,42 @@
   </form>
 </div>
 
+<div class="card stack">
+  <div class="row between">
+    <span class="list-title">이 매장 데이터로 개인화 학습</span>
+    <form method="post" action="/seller/{{ seller_id }}/personalize"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <input type="hidden" name="customer_id_local" value="{{ customer_id_local or '' }}">
+      <button class="btn primary sm" type="submit">개인화 실행</button>
+    </form>
+  </div>
+  <p class="muted-note">공통 모델의 마지막 두 층만 이 매장의 구매 기록으로 다시 학습합니다(텍스트·텍스트+관계 두 모델). 검증에서 공통 모델보다 나을 때만 T-P·R-P 칸에 쓰입니다. 학습은 뒤에서 돌고, 끝나면 이 화면을 새로고침하세요.</p>
+  {% if personalization_notice == 'busy' %}<div class="notice warn">이미 학습(개인화 또는 FL 라운드)이 진행 중입니다. 끝난 뒤 다시 눌러 주세요.</div>{% endif %}
+  {% if personalization %}
+    {% if personalization.state == 'running' %}
+    <div class="notice">개인화 학습 중… ({{ personalization.started_at }} 시작)</div>
+    {% elif personalization.error == 'not_connected' %}
+    <div class="notice warn">추천 모델이 아직 연결되지 않아 개인화를 실행할 수 없습니다.</div>
+    {% elif personalization.error %}
+    <div class="notice warn">개인화 실패: <span class="mono">{{ personalization.error }}</span></div>
+    {% else %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>모델</th><th>결과</th><th>기준 모델</th></tr></thead>
+      <tbody>
+      {% for variant, r in personalization.results.items() %}
+      <tr>
+        <td>{{ '텍스트' if variant == 'text_only' else '텍스트+관계' }}</td>
+        <td><span class="badge {{ 'solid' if r.status == 'installed' else 'muted' }}">{{ {'installed': '적용됨', 'rejected': '검증 미달로 미적용', 'skipped': '데이터 부족'}.get(r.status, r.status) }}</span>
+          {% if r.reason %}<span class="mono">{{ r.reason }}</span>{% endif %}</td>
+        <td class="mono">{{ r.base_model_version }}{% if r.revision %} · {{ r.revision }}{% endif %}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="muted-note">{{ personalization.finished_at }} 완료</p>
+    {% endif %}
+  {% endif %}
+</div>
+
 {% if customer_id_local and result is none %}
 <div class="notice warn">추천 모델이 아직 연결되지 않아 비교할 수 없습니다.</div>
 {% elif result %}
