@@ -19,6 +19,13 @@
 - `seed_demo_data.py`: 데모용 시드 스크립트 — 판매자 계정 1개, 상품 6종, 고객 8명, 지난 30일에 걸쳐 분산된 주문 20여 건, DM 5건, 피드 4건, 공동구매 2건(진행중 1·성사 1), 상품 3종의 14일치 시세를 채운다. 실행: 앱과 같은 환경변수로 `MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite python -m commerce.services.merchant_api.seed_demo_data` (`MERCHANT_DB_PATH`가 있으면 그 경로, 없으면 `FEATURE_DB_PATH` 옆 `orders.sqlite` — 앱과 같은 `context.merchant_db_path_from_env` 규칙. `MERCHANT_ID`가 없으면 만들지 않고 멈춘다). 재실행해도 중복 생성하지 않는다(계정·주문 idempotency_key로 존재 확인). `tests/test_seed_demo_data.py`가 멱등성·중복 키 없음을 검사한다. `--bulk N`을 붙이면 상품 28종과 **취향이 있는** 고객 N명(아침 장보기·수산물·커피·과일채소·고기 집밥 다섯 패턴, 단골 재구매와 약간의 탐색), 60일치 주문을 더 만든다(`seed_bulk`). 기본 seed가 쓰는 내용은 바뀌지 않고 키가 모두 `bulk-`로 시작해서 이미 seed한 DB 위에 다시 돌려도 된다. 완료 주문의 purchase_event 시각도 과거 완료 시각으로 맞춘다(아직 B에 전달되지 않은 행만).
 - `simulate_activity.py`: 실행 중인 앱에 대한 실시간 데모 트래픽. seed 고객이 로그인 → 홈의 추천을 보고(기본 60%는 추천 상품) 바로 주문하거나 장바구니로 주문하고, 판매자가 수락·완료해 구매 이벤트가 B로 간다. 브라우저와 같은 폼·CSRF로 HTTP만 쓴다. 실행: `python -m commerce.services.merchant_api.simulate_activity --base http://127.0.0.1:8101 --seller merchant-1 --interval 3` (Ctrl+C로 중지). `tests/test_simulate_activity.py`.
 
+- SNS(소식) — `sns_db.py`/`sns_service.py`/`routes_sns.py`/`feed_ranking.py`/`media.py`: 판매자 "게시물 스튜디오"(`/seller/{seller_id}/feed`: 게시물·릴스, 사진/영상 업로드 최대 10개, 캡션·해시태그, 상품 태그 최대 5개, 수정·삭제, 댓글 답글, 게시물별 조회·좋아요·댓글·참여율·게시 후 태그 상품 주문 수)과 구매자 "탐색" 그리드(`/buyer/{seller_id}/feed`, `?tag=`), 게시물 화면(좋아요·댓글·태그 상품 담기·비슷한 게시물). 순서는 `feed_ranking.rank`가 정한다: 로그인 고객은 0.45 관련도(구매 이력 반감기 30일·장바구니·찜·좋아요한 게시물의 상품/해시태그·B 추천 순위) + 0.25 반응(좋아요+2×댓글+0.05×조회, log) + 0.20 최신성(10일 감쇠) + 0.10 최근 3일 좋아요 비율, 비회원은 반응·최신성·추세만. 최근 본 게시물·이미 좋아요한 게시물은 내리고, 같은 상품·카테고리가 연달아 나오지 않게 다시 섞는다. 타일에 이유("내가 산 상품", "AI 추천 상품"/모델이 아니면 "많이 찾는 상품" 등)를 붙인다. 업로드 형식은 파일 이름이 아니라 앞부분 바이트로 판정하고(JPG·PNG·GIF·WebP·MP4·WebM·MOV, SVG·HTML 거부), 파일은 orders.sqlite 옆 `media/`에 저장해 `/media/{seller_id}/{name}`으로만 낸다. **실제 영상이 없을 때**: 업로드 없이 올린 게시물에는 상품·캡션으로 만든 SVG 그래픽(릴스는 9초 반복 애니메이션)을 자동으로 붙인다 — 데모용 대체이고 "데모 영상 대체 그래픽"이라고 표시한다. 실제 사진·영상을 올리면 그것을 쓴다.
+- 공동구매(구매자 제안) — `routes_group.py`, `social_service.propose_group_buy`: 공동구매는 **구매자가 제안**하고 본인 수량으로 먼저 참여한다(상품당 진행 중 1건, 기간 1~14일). 판매자는 할인율(0~50%)·최소 목표 수량(2~100)·매장 소개만 정하고(`store_settings`), 부적절한 제안을 마감(`closed_by_seller`)할 수 있다. 목표 도달 즉시 참여자별 주문이 생기는 흐름은 그대로다.
+- 쇼핑 부가 기능 — `shop_db.py`/`shop_service.py`/`routes_shop.py`: 상품 검색·카테고리 필터, 리뷰(완료 주문이 있는 고객만, 고객·상품당 1개, 판매자 답글), 찜, 구매자의 접수 상태 주문 취소, 판매자 상품 수정(제목·가격·카테고리·설명·판매 상태 → 다음 source_seq로 B에 다시 전달).
+- 챗봇 — `chatbot.py`/`routes_chat.py`(`/buyer/{seller_id}/chat`): `CHATBOT_MODE=auto`(기본)는 `anthropic` 패키지와 `ANTHROPIC_API_KEY`(또는 `ANTHROPIC_AUTH_TOKEN`)가 있으면 Claude(`CHATBOT_MODEL`, 기본 `claude-opus-5-5`)가 매장 도구(상품 검색·상세, 카테고리, 모집 중 공동구매, 매장 안내, 장바구니 담기)를 불러 답하고, 없거나 호출이 실패하면 규칙 기반 답변으로 대신한다(`llm`/`rules`/`rules-fallback` 표시). `rules`/`llm`으로 고정할 수 있다. **데이터 경계**: 기본값에서는 고객의 주문 내역·개인 추천을 외부 LLM에 보내지 않는다. `CHATBOT_ALLOW_CUSTOMER_DATA=1`일 때만 그 두 도구를 연다(팀 결정 필요). 결제·주문 확정은 하지 않고, 대화는 로그인 고객만 저장한다(`chat_messages`). 로그인 고객의 질문은 CSRF 토큰을 확인한다.
+- `migrate.py`: 기존 orders.sqlite에 없는 열만 `ALTER TABLE ADD COLUMN`으로 더한다(새 기능 때문에 DB를 지우지 않아도 되게).
+- `platform_dataset.py`: 여러 매장의 합성 플랫폼 데이터셋 — 매장 6곳(농장·수산·베이커리·청과·정육, 그리고 이력이 짧고 다른 매장과 상품이 겹치지 않는 반찬가게), 상품 설명, 매장당 40~85명 고객의 90일(반찬가게 30일) 주문·리뷰·찜·장바구니·게시물/릴스·조회·좋아요·댓글·구매자 제안 공동구매·쪽지·시세를 A의 코드 경로로 만든다. 고정 시드라 다시 돌려도 늘지 않는다. `--export DIR`은 매장별로 B `scenario.SellerInput` 모양(JSON: catalog_item.v1, 완료 순 purchase_event.v1, customers)과 `summary.json`을 쓴다. 실행: `python -m commerce.services.merchant_api.platform_dataset --stores 6 [--export DIR]`(런처의 `commerce/deploy/var/merchant_i`). `tests/test_platform_dataset.py`.
+- `tests/test_sns.py`(순위·미디어·게시물·이전 DB 이전), `tests/test_platform_screens.py`(스튜디오·탐색·좋아요 CSRF·공동구매 제안/성사/마감·리뷰 자격·찜·취소·상품 수정→B·챗봇).
 시연 순서(데이터 만들기·서버 켜기·발표 흐름·B 연결 확인)는 [DEMO.md](DEMO.md)에 있다.
 
 작업 순서는 [A 카드](../../../docs/team/tasks/A.md)를 따른다. 경계: event/outbox는 B ingest가 정상 반환한 뒤에만 전달 완료로 표시한다. 현재 B stub은 항상 미구현 예외를 내므로 delivered로 처리하면 안 된다.
@@ -30,7 +37,7 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 
 `gate docs`가 첫 줄을 이 서비스 디렉터리의 코드 전체와 대조한다. 코드에서 새 값을 읽으면 같은 PR에서 이 줄을 고친다.
 
-- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`
+- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`
 - 구현 시 추가: `COORDINATOR_URL`, `FL_CLIENT_TOKEN`
 
 `MERCHANT_SECRET`은 선택값이다. 지금은 세션 쿠키·CSRF 서명 키를 만드는 데만 쓰며, 판매자마다 다른 충분히 긴 임의 문자열을 넣는다. 비워두면 재시작할 때마다 모든 사용자가 로그아웃된다. 저장소나 로그에 남기지 않는다.
@@ -38,3 +45,5 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 `NTS_SERVICE_KEY`는 선택값이다. 비워두면 판매자 가입이 사업자등록번호 형식만 확인하는 mock 인증으로 통과한다. 실제 국세청 진위확인을 받으려면 [공공데이터포털](https://www.data.go.kr)에서 "사업자등록정보 진위확인 및 상태조회 서비스"를 신청해 발급받은 serviceKey를 이 값에 넣는다.
 
 `MERCHANT_DB_PATH`는 아직 `run_local.py`(C 소유)가 넘기지 않으므로 `os.environ.get`과 `FEATURE_DB_PATH` 옆 기본 경로로 읽는다. 필수값으로 바꾸는 것은 C의 런처 PR이 먼저 병합된 뒤다([작업 규칙](../../../docs/team/working-agreement.md) §3).
+
+`CHATBOT_MODE`(`auto`·`llm`·`rules`), `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`(`1`이면 주문 내역·개인 추천 도구를 LLM에 연다, 기본 꺼짐)는 선택값이다. `ANTHROPIC_API_KEY` 또는 `ANTHROPIC_AUTH_TOKEN`이 없으면 챗봇은 규칙 기반으로만 답한다. 키는 저장소·로그에 남기지 않는다. `anthropic` 패키지는 챗봇이 LLM을 쓸 때만 import한다(설치하지 않아도 앱은 뜬다).
