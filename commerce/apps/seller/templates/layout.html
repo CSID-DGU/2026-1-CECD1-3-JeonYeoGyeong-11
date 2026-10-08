@@ -1,0 +1,71 @@
+{%- macro icon(name) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{%- if name == 'overview' -%}<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>
+{%- elif name == 'products' -%}<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>
+{%- elif name == 'orders' -%}<path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z"/><path d="M9 8.5h6M9 12.5h6"/>
+{%- elif name == 'message' -%}<path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6.5L6 20.5V17a3 3 0 0 1-2-2.8z"/>
+{%- elif name == 'feed' -%}<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8 9h8M8 12.5h8M8 16h5"/>
+{%- elif name == 'group' -%}<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15.5 14.7c2.3-.3 4.3 1 5 3.8"/>
+{%- elif name == 'prices' -%}<path d="M4 19.5h16"/><path d="M6 15l4-4.5 3 3 5-6"/>
+{%- elif name == 'compare' -%}<path d="M7 20V11M12 20V5M17 20v-6"/>
+{%- endif -%}
+</svg>
+{%- endmacro -%}
+{%- set nav = [
+  ('overview', '/overview', '개요'), ('products', '/products', '상품 관리'), ('orders', '/orders', '주문 관리'),
+  ('messages', '/messages', '쪽지'), ('feed', '/feed', '소식'), ('group_buys', '/group-buys', '공동구매'),
+  ('prices', '/prices', '시세 입력'), ('compare', '/compare', '모델 비교'),
+] -%}
+{%- set icons = {'overview': 'overview', 'products': 'products', 'orders': 'orders', 'messages': 'message',
+                 'feed': 'feed', 'group_buys': 'group', 'prices': 'prices', 'compare': 'compare'} -%}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ title or (brand_name ~ " 판매자센터") }}</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="demo-bar">
+    <span>데모 화면</span>
+    <a href="/buyer/{{ seller_id }}/">구매자</a>
+    <a class="active" href="/seller/{{ seller_id }}/overview">판매자</a>
+  </div>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/seller/{{ seller_id }}/overview"><img src="/static/logo.svg" alt="">{{ brand_name }}</a>
+      <span class="brand-chip">판매자센터</span>
+      <div class="session">
+        {% if staff %}
+          <span class="avatar" aria-hidden="true">{{ staff.display_name[:1] }}</span>
+          <span class="name">{{ staff.display_name }}</span>
+          <a href="/seller/{{ seller_id }}/logout">로그아웃</a>
+        {% else %}
+          <a href="/seller/{{ seller_id }}/login">로그인</a>
+          <a class="btn primary sm" href="/seller/{{ seller_id }}/signup">판매자 가입</a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+  {% if staff %}
+  <div class="shell">
+    <nav class="sidenav" aria-label="판매자 메뉴">
+      <div class="sidenav-label">매장 운영</div>
+      {% for key, path, label in nav %}
+      <a href="/seller/{{ seller_id }}{{ path }}" class="{{ 'active' if active_tab == key else '' }}">{{ icon(icons[key]) }}{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <main class="page">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  {% else %}
+  <main class="page">
+    {{ self.content() }}
+  </main>
+  {% endif %}
+</body>
+</html>

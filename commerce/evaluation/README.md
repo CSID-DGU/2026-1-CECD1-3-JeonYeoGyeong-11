@@ -8,6 +8,6 @@
 - `gci_original.py`: GCI 원 모델(상품명 생성 + Jaccard 매칭, glocal FL)을 같은 조건에서 재현한다. 단독 학습·FL·데이터 통합 학습을 논문 Table 4처럼 낸다. 추가 범위다.
 - `d0022_report.py`: 실행 기록을 모아 결과표와 1차 대비의 판매자 단위 paired bootstrap 구간을 Markdown으로 낸다.
 
-`scoring.py`는 A의 `metrics/`가 들어오기 전까지 쓰는 같은 정의의 임시 채점이며, 그 결과는 A 모듈로 다시 채점한 뒤 보고한다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
+채점은 A의 `metrics/ranking.py`로 한다. 그 전까지 쓰던 B의 임시 `scoring.py`는 같은 정의였고(무작위 순위 500개·기준선·평균에서 소수 12자리까지 같음, #37 교차검증), A 모듈이 들어온 뒤 지웠다. `metrics/`(평가 지표와 모델이 아닌 기준선)는 A 소유이고, 나머지 실행기는 B 소유다([작업 규칙](../../docs/team/working-agreement.md) §1). `commerce.packages.recommender`의 같은 모델 core를 사용하며 FastAPI 앱에 의존하지 않는다.
 작업 순서는 [B 카드](../../docs/team/tasks/B.md)를 따른다. 손실 함수와 예제별 특징 cutoff는 본 학습 전에 확정한다([열린 구현 항목](../../docs/design/open-questions.md)).
 산출물은 이 디렉터리의 Git 제외 `data/`, `cache/`, `runs/`, `outputs/`에 둔다. 집계 core는 C에게서 제공받으며 그 API는 선정 후 공동 확정한다. 모델 학습이 서비스 startup에서 실행되게 하지 않는다.

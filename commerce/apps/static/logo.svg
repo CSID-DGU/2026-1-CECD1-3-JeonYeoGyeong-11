@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Original mark: a tilted cucumber with a seed line and a small leaf. -->
+  <rect width="48" height="48" rx="14" fill="#e2f0d4"/>
+  <g transform="rotate(-38 24 25)">
+    <rect x="8" y="17" width="32" height="16" rx="8" fill="#3b7d2f"/>
+    <rect x="11.5" y="20" width="25" height="10" rx="5" fill="#a5d07f"/>
+    <g fill="#f1f7ea">
+      <ellipse cx="17" cy="25" rx="1.5" ry="1.1"/>
+      <ellipse cx="22" cy="25" rx="1.5" ry="1.1"/>
+      <ellipse cx="27" cy="25" rx="1.5" ry="1.1"/>
+      <ellipse cx="32" cy="25" rx="1.5" ry="1.1"/>
+    </g>
+  </g>
+  <path d="M33.5 8.5c3.6-.4 6.2 1.9 6.4 5.4-3.6.4-6.1-1.9-6.4-5.4z" fill="#5a9f41"/>
+</svg>
