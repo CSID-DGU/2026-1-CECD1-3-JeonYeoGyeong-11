@@ -22,7 +22,7 @@ after --patience checks without improvement (GCI used patience 20) or at
 --max-steps, and the best check is kept. Test examples are ranked over the
 seller's whole catalog next to local popularity and P-TopFreq. Sellers come from
 the train-only split with stand-in target sizes until the Dunnhumby roster exists.
-Scores come from scoring.py, a temporary copy of A's definitions. Records stay
+Scores come from A's metrics module (metrics/ranking.py). Records stay
 under the Git-ignored commerce/evaluation/runs/.
 """
 import argparse
@@ -43,7 +43,7 @@ import torch
 
 from commerce.evaluation.e_g0 import STAND_IN_TARGETS
 from commerce.evaluation.encoder_probe import CANDIDATES, peak_memory_mb
-from commerce.evaluation.scoring import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
+from commerce.evaluation.metrics.ranking import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
 from commerce.packages.data_adapters.instacart import first_in_cart, item_id, load_instacart, split_role
@@ -336,7 +336,7 @@ def main(argv=None):
               "machine": {"os": platform.platform(), "python": platform.python_version(), "torch": torch.__version__,
                           "device": str(device), "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "threads": torch.get_num_threads(), "cpu_count": os.cpu_count()},
-              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL", "temporary scoring"]
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "local_only, not FL"]
               + (["C-new: items held out of training"] if args.holdout_frac > 0 else []),
               "results": {}}
     if args.protocol == "gci":
