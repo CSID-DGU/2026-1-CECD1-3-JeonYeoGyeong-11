@@ -73,17 +73,30 @@ def batch_loss(model: Recommender, seller: SellerData, examples: Sequence[Exampl
 
 
 def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig,
-          optimizer: torch.optim.Optimizer | None = None) -> dict:
+          optimizer: torch.optim.Optimizer | None = None, *, only: Sequence[str] | None = None) -> dict:
     """Run config.steps optimizer steps. Without an optimizer every call starts a fresh AdamW, as
-    every FL round does; a local_only run passes its own so early-stopping checks keep its state."""
+    every FL round does; a local_only run passes its own so early-stopping checks keep its state.
+
+    only names the top-level modules that learn (personalization: query_proj, scorer); every
+    other module stays frozen and in eval mode, so its dropout is off as in serving."""
     rng = random.Random(config.seed)
     torch.manual_seed(config.seed)
     pool = [s for s in sellers if s.examples]
     if not pool:
         return {"steps": 0, "skipped_batches": 0, "loss_mean": None, "grad_norm_mean": None, "config": asdict(config)}
+    learn = list(model.parameters()) if only is None else [p for name in only for p in getattr(model, name).parameters()]
+    if only is not None:
+        allowed = {id(p) for p in learn}
+        for p in model.parameters():
+            p.requires_grad_(id(p) in allowed)
     if optimizer is None:
-        optimizer = torch.optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
-    model.train()
+        optimizer = torch.optim.AdamW(learn, lr=config.lr, weight_decay=config.weight_decay)
+    if only is None:
+        model.train()
+    else:
+        model.eval()
+        for name in only:
+            getattr(model, name).train()
     losses, norms, skipped = [], [], 0
     weights = [len(s.examples) for s in pool]
     for _ in range(config.steps):
@@ -95,7 +108,7 @@ def train(model: Recommender, sellers: Sequence[SellerData], config: TrainConfig
             continue
         optimizer.zero_grad()
         loss.backward()
-        norms.append(torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_norm))
+        norms.append(torch.nn.utils.clip_grad_norm_(learn, config.clip_norm))
         optimizer.step()
         losses.append(loss.detach())
     model.eval()
