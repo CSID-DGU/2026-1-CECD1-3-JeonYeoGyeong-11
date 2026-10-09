@@ -1,7 +1,8 @@
-"""B's callable skeleton. No method pretends to persist or train successfully.
+"""B's runtime entry point.
 
-UnimplementedRuntime is the reference stub that gate scaffold checks. Build the
-real runtime as a separate class and have open_runtime return it; keep this one.
+open_runtime returns the real runtime (seller_runtime.SellerRuntime). The
+UnimplementedRuntime stub stays as the reference that gate scaffold checks: none
+of its methods pretends to persist or train successfully.
 """
 from pathlib import Path
 
@@ -57,4 +58,7 @@ class UnimplementedRuntime:
 def open_runtime(seller_id: str, feature_db_path: str | Path, model_dir: str | Path) -> RecommenderRuntime:
     if not seller_id:
         raise ValueError("seller_id is required")
-    return UnimplementedRuntime(seller_id, Path(feature_db_path), Path(model_dir))
+    # Imported here: the stub and the scaffold gate must not need torch.
+    from commerce.packages.recommender.seller_runtime import SellerRuntime
+    # warm: z, relations and e are computed in the background, not on the first request.
+    return SellerRuntime(seller_id, Path(feature_db_path), Path(model_dir), warm=True)
