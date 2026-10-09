@@ -100,6 +100,10 @@ TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), complet
 - export_shared_state는 해당 variant의 배포된 공통 base만 반환한다. 학습 복사본 delta는 TrainingResult로만 반환하고 개인화 tail은 어느 FL export 경로에도 포함하지 않는다.
 - install_release는 base를 갱신하고 새 base의 공통 추천을 원자 활성화한다. 기존 개인화는 새 base와 호환되지 않는 상태로 표시하고 적용하지 않는다. 이후 새 base에서 다시 개인화한다. 검증에 실패한 release는 이전 서빙을 유지한다.
 - 이미 설치된 동일 버전·해시의 재전달은 멱등 성공이며 유효한 개인화를 초기화하지 않는다. 같은 버전에 다른 해시가 오면 거부한다.
+- **작업을 시작하는 쪽.** B는 스스로 학습을 시작하지 않는다. FL 라운드는 C의 판매자 FL client가, 개인화는 판매자 화면(A)의 실행 요청이 판매자 jobs 실행기를 거쳐 부른다. 새 base를 설치한 뒤 개인화를 자동으로 다시 하지 않으며, 그동안 비교의 P칸은 준비되지 않음으로 표시된다. 구매 반영은 학습 작업이 아니다.
+- 학습·개인화 중에도 ingest·upsert·predict_local·compare_local은 그대로 동작한다. 실행 중에 온 두 번째 작업은 JobBusyError로 거부하고 쌓아 두지 않는다(A의 jobs 실행기와 B runtime 모두).
+- 작업이 예외로 끝나거나 프로세스가 중간에 멈추면 서빙 base·개인화·특징 원장은 그대로이고 작업 잠금은 풀린다. 라운드 결과는 메모리에만 있으므로 재시작 뒤 이어서 하지 않는다. 개인화는 다 만든 결과만 원자적으로 반영한다. 재시작하면 CURRENT의 base와 그 base의 개인화를 다시 읽는다.
+- 학습할 예제가 없는 판매자(빈 원장 포함)는 §4대로 0 delta·completed=false다. 이런 판매자가 cohort에 있으면 라운드가 폐기되는 문제는 [열린 항목](open-questions.md) OQ20이다.
 
 ## 6. 학습 기본값과 정확성
 
@@ -120,6 +124,7 @@ metrics = loss_mean(고정 로컬 검증 손실 또는 null), grad_norm_mean(유
 실험 학습과 서비스는 같은 core 모델·특징 코드를 사용한다. 초기 checkpoint·불변 architecture config·release 설치와 서빙 동일성 검사는 model-lab.md를 따른다. NLP만 사전학습 가중치로 시작하며 관계/sequence/scorer의 프로젝트 가중치는 별도 실험에서 학습한다.
 
 z key: text_artifact_hash + preprocessing_version + 정규 텍스트 SHA-256.
+preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다. 소스 파일의 바이트가 아니다. 출력을 바꾸는 수정만 새 값을 받고, 고정 입력의 출력을 검사하는 테스트(`recommender/tests/test_preprocessing.py`)가 새 값 없이 출력이 바뀌는 것을 막는다. 값이 바뀌면 그 전 release와 z cache는 맞지 않게 된다.
 l/e key: model_variant + base_model_version + preprocessing_version + feature_snapshot_id + item_id. 마스킹 실행은 별도 feature_snapshot_id를 갖는다. 개인화는 query/scorer만 변경하므로 base의 l/e를 재사용할 수 있다. 최종 점수/추천 cache를 도입하면 personalization_revision과 요청 cutoff/후보도 key에 포함한다.
 이는 불변 base의 추론 cache 규칙이다. 전체 FL 학습 중에는 매 optimizer step마다 임베딩 함수도 바뀌므로 base cache를 현재 학습 결과로 재사용하지 않는다. 후보 e는 현재 학습 복사본으로 계산해 gradient를 유지한다. 선택적인 이력 detached cache는 §6의 근사 설정·갱신 주기를 따르고 서빙 cache와 분리한다.
 h는 요청별 계산. 모든 캐시와 반영 ID는 B 특징 저장소에 둔다.
