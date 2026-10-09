@@ -37,7 +37,7 @@ Linux/macOS에서는 `.venv/bin/python`을 사용한다. PATH의 `python`은 다
 
 ### 상대 모듈을 대체하는 방법
 
-`open_runtime`이 돌려주는 `UnimplementedRuntime`은 **모든 업무 메서드가 `FeatureNotImplemented`를 낸다.** 성공 경로를 만들려면 호출자가 자기 test double을 주입한다. 저장소에 공용 fake는 없다.
+`open_runtime`은 B의 실제 runtime(`SellerRuntime`)을 돌려준다. 모델 release와 frozen 인코더가 설치되기 전의 추천은 fallback이다. 기준 stub `UnimplementedRuntime`은 **모든 업무 메서드가 `FeatureNotImplemented`를 낸다.** 테스트에서 특정 성공 경로가 필요하면 호출자가 자기 test double을 주입한다. 저장소에 공용 fake는 없다.
 
 ```python
 # A의 예: 성공 경로용 double을 자기 소유 경로에 두고 주입한다.
