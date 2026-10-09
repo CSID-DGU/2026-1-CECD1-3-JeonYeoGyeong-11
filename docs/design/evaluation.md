@@ -124,7 +124,15 @@ R1/R2는 roster 규모이며 매 라운드 전원 동시 학습을 강제하지 
 - **FL:** 500라운드 고정이다. 매 라운드 판매자마다 자기 학습 예제를 1 epoch 돌린다. 결과는 마지막 라운드이고, checkpoint를 고르지 않는다.
 - **local_only:** 판매자 혼자 최대 20,000 step까지 학습한다. 25 step마다 자기 검증 손실을 보고, 20번 연속 나아지지 않으면 멈춘다. 결과는 검증 손실이 가장 낮던 checkpoint다.
   - 판매자 100곳 모두 한도 전에 멈췄다. 최저점 중앙값은 T_lm 1,037, R_lm 1,287, T_hx 512, R_hx 550 step이다. 예산이 모자라서 진 것이 아니다.
-- local_only가 자기 검증으로 checkpoint를 고르는 이점까지 가지므로 "FL이 local_only보다 높다"는 보수적인 비교다. 개인화(D0019)는 FL 뒤 base에만 하고 local_only에는 하지 않는다. 두 쪽의 계산량(step·시간)은 실행 기록에 따로 남긴다.
+- local_only가 자기 검증으로 checkpoint를 고르는 이점까지 가지므로 "FL이 local_only보다 높다"는 보수적인 비교다. lm FL은 500라운드에서도 검증 손실이 아직 내려가고 있었다(plateaued=False). FL 쪽이 덜 수렴한 상태라 같은 방향이다. 개인화(D0019)는 FL 뒤 base에만 하고 local_only에는 하지 않는다. 두 쪽의 계산량(step·시간)은 실행 기록에 따로 남긴다.
+- **재현 명령.** 실행기 기본값(`fl_lab --rounds` 300, `harex_compare --eval-every` 100)과 다르므로 아래 인자를 모두 준다. `<V>`는 T_hx·R_hx·R_hx_shuffled·T_lm·R_lm, `<S>`는 seed 0·1·2다.
+
+  ```text
+  python -m commerce.evaluation.fl_lab --instacart-dir fedcommerce/data/instacart --sellers 100 --threads 4 --rounds 500 --variant <V> --target basket --seed <S> --out-dir commerce/evaluation/runs/fl_100
+  python -m commerce.evaluation.harex_compare --instacart-dir fedcommerce/data/instacart --sellers 100 --threads 4 --eval-every 25 --patience 20 --max-steps 20000 --variants T_hx,R_hx --targets basket --seed <S> --out-dir commerce/evaluation/runs/local_100
+  ```
+
+  local_only의 lm은 `--variants T_lm,R_lm`, 다음 상품 1개는 `--target next_item`·`--targets next_item`으로 같은 명령을 쓴다.
 
 로컬 step cap/epoch cap/작은 데이터 때문에 소비 예제 수가 달라질 수 있다. 이번 기본 구현은 delta 균등 평균이며 추가 step 보정은 하지 않는다. 연구용 FedNova/지각 이월 규칙을 몰래 기본 경로로 되살리지 않는다.
 
