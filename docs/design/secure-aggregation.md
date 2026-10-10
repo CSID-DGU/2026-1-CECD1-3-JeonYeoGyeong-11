@@ -1,7 +1,7 @@
-# 보호 집계 선정 조사
+# 보호 집계 선정 기록
 
-갱신: 2026-10-01 · 소유: C · 실행 기준 [D0017·D0021](decisions.md)
-상태: **조사 기록이며 채택 결정이 아니다.** 결론은 사람이 정한 뒤 [결정 요약](decisions.md)에 D 번호로 올린다. 아래 수치는 단일 프로세스 프로토타입의 측정이고 보호 검증(G4)의 증거가 아니다.
+갱신: 2026-10-10 · 소유: C · 실행 기준 [D0017·D0021](decisions.md)
+상태: 조사·측정 기록이다. 채택 결론은 [결정 요약](decisions.md) D0026이다(2026-10-10). 아래 수치는 단일 프로세스 프로토타입의 측정이고 보호 검증(G4)의 증거가 아니다.
 
 ## 1. 요구와 범위
 
@@ -17,7 +17,7 @@
 | 후보 | 판정 | 근거 |
 | --- | --- | --- |
 | A. Flower `SecAggPlusWorkflow` (flwr 1.39.0) | 라이브러리로는 제외, 프로토콜 참조로만 | 아래 §2.1 |
-| B. 공개 프로토콜(pairwise masking)을 pyca/cryptography로 조립 | **추천(사람 확인 필요)** | §2.2, §3 |
+| B. 공개 프로토콜(pairwise masking)을 pyca/cryptography로 조립 | **채택(D0026)** | §2.2, §3 |
 | C. TensorFlow Federated `SecureSumFactory` | 제외 | TF 생태계 연산자다. 이 프로젝트의 모델 경로는 PyTorch다. 단독 사용 가능 여부는 확인하지 않았다 |
 | D. 동형암호 계열(예: NVIDIA FLARE의 HE 필터) | 이번에 검토하지 않음 | 마스킹 계열과 다른 방식이며 의존성과 암호문 크기가 크다. 비용을 측정하지 않았다 |
 | E. 원 논문 전체(Bonawitz 2017: 이중 마스크·비밀 분산·서명) | 범위 밖 | 이탈 복구용 구성이다. D0021이 첫 범위에서 제외했다 |
@@ -41,7 +41,7 @@
 - 필요한 기능은 `X25519`, `HKDF`, `ChaCha20`이며 import가 된다는 것을 확인했다.
 - lock에 추가하는 것은 의존성 변경이므로 C가 환경 호환성을 확인하는 별도 PR로 한다([개발 안내](../development.md)).
 
-## 3. 추천안: 이탈 복구 없는 pairwise masking
+## 3. 채택안: 이탈 복구 없는 pairwise masking
 
 [Bonawitz 2017](https://eprint.iacr.org/2017/281.pdf)의 핵심인 쌍별 마스크만 쓰고, 이탈 복구에 쓰는 부분을 뺀다.
 
@@ -124,7 +124,7 @@ def mask(self, vec, peers, round_id, model_version):
 - 측정의 한계: random init base와 작은 합성 시나리오의 두 라운드다. 학습된 release, 큰 판매자, 다른 optimizer 설정에서는 다시 잰다. 측정 스크립트는 저장소 밖에 두었다.
 - uint32는 float32와 같은 4바이트다. 전송 한도 8 MiB([인터페이스](interfaces.md) §5)는 마스크 전에도 후에도 같다. 헤더를 제외하면 약 209만 원소가 상한이다.
 
-## 6. 한계와 사람이 정할 것
+## 6. 한계와 결정
 
 **이 방식이 보장하지 않는 것(결과에 적는다)**
 
@@ -134,15 +134,17 @@ def mask(self, vec, peers, round_id, model_version):
 - 집계된 모델에서의 추론, 참여 여부 같은 운영 메타데이터는 보호하지 않는다([아키텍처](architecture.md) §2~3).
 - 한 PC 시연은 호스트 관리자에 대한 격리를 증명하지 않는다.
 
-**사람이 정할 항목**
+**결정 (D0026, 2026-10-10)**
 
-1. **"이중 마스킹을 뺀 pairwise masking"이 D0021의 허용 범위인가.** 새 암호 구성이 아니라 공개 프로토콜에서 이탈 복구를 뺀 것이라는 것이 본 조사의 판단이지만, D0021이 애매하면 사람이 정하라고 했다. 개인 마스크 없이 안전한 근거는 위 §3 표와 같이 서버가 쌍별 비밀을 얻을 방법이 없다는 점이다. 이 논증은 외부 검토를 받은 것이 아니다.
-2. `cryptography`를 lock에 추가할지. 추가하면 별도 PR에서 Windows·Linux CI 설치를 확인한다.
-3. 키 바꿔치기를 범위 밖으로 둔 채 "보호 FL"이라 부를 수 있는 표현의 한계 문구.
-4. 양자화: 소수 비트 20과 `clip = 2 × local_steps × learning_rate`(§5의 실제 delta 측정 근거)를 채택할지.
+조사 때 사람에게 올린 네 항목은 아래처럼 정했다. 세부 문구는 D0026이 기준이다.
 
-## 7. 다음 작업(결정 뒤)
+1. 이중 마스킹을 뺀 pairwise masking은 D0021의 허용 범위다. 근거는 §3 표(비밀 분산이 없어 서버가 쌍별 비밀을 얻을 길이 없음)이며, 이 논증은 외부 검토를 받지 않았다고 결과에 적는다.
+2. `cryptography`를 lock에 추가한다. 별도 PR에서 Windows·Linux CI 설치를 확인한다.
+3. "보호 FL"은 "중앙이 프로토콜을 따른다는 가정(semi-honest) 아래 개별 업데이트를 숨기는 보호 집계"로 쓰고, 위 한계 다섯 가지를 함께 적는다.
+4. 양자화는 소수 비트 20, `clip = 2 × local_steps × learning_rate`다. coordinator가 `N × clip × 2^20 < 2^31`을 확인한다. G4 전에 학습된 release와 큰 판매자로 delta를 다시 잰다.
 
-1. 위 1·2가 정해지면 프로토콜 메시지 schema와 fixture를 만든다([인터페이스](interfaces.md) §7). 계약 변경이므로 소비자 확인이 필요하다.
+## 7. 다음 작업
+
+1. `cryptography` lock PR 뒤 프로토콜 메시지 schema와 fixture를 만든다([인터페이스](interfaces.md) §7). 계약 변경이므로 소비자 확인이 필요하다.
 2. 합성 보호 집계를 `commerce/tests/e2e/`의 selfcheck로 만들고 실패·재시도(이탈, 중복 제출, round 불일치, 수 미달)를 검사한다.
 3. 결정 전에도 되는 일: protected가 평문으로 조용히 떨어지지 않고 실패해야 한다([아키텍처](architecture.md) §3). 판매자 FL client는 이미 그렇다. `commerce/tests/e2e/test_scaffold.py`가 enabled FL을 protected·synthetic_plaintext 두 모드 모두에서 `FeatureNotImplemented`로 고정한다. coordinator 쪽 같은 고정은 c1 서비스 PR(브랜치 `commerce/c/c1-service`)이 `FL_MODE=protected` 기동 실패로 추가한다.
