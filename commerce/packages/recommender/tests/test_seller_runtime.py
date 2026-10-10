@@ -21,7 +21,7 @@ from commerce.packages.recommender import seller_runtime
 from commerce.packages.recommender.feature_store import FeatureStore
 from commerce.packages.recommender.harex import HarexConfig
 from commerce.packages.recommender.seller_runtime import (
-    FALLBACK_MODEL_VERSION, SellerRuntime, is_validation_customer, planned_steps,
+    FALLBACK_MODEL_VERSION, SellerRuntime, is_validation_customer, planned_steps, round_train_seed,
 )
 from commerce.packages.recommender.serving import (
     SERVICE_ENCODER, build_manifest, build_model, canonical_npz, read_npz, shared_tensors,
@@ -428,6 +428,28 @@ class TrainRoundTest(Base):
             self.assertTrue(result.metrics["grad_norm_mean"] is not None)
             after = self.runtime.export_shared_state(model_variant=variant)
             self.assertTrue(all(np.array_equal(before[k], after[k]) for k in before))
+
+    def test_one_run_seed_samples_anew_each_round_but_keeps_its_validation_customers(self):
+        ref = self.runtime.get_local_data_ref()
+        seen = []
+        real = self.runtime.training_parts
+
+        def spy(epoch, variant, run_seed):
+            seen.append(run_seed)
+            return real(epoch, variant, run_seed)
+
+        self.runtime.training_parts = spy
+
+        def delta(round_id):
+            config = round_config(self.runtime, "text_only", round_id=round_id)
+            return self.runtime.train_round(ref, config, model_variant="text_only").shared_delta
+
+        first, again, second = delta("round-0001"), delta("round-0001"), delta("round-0002")
+        self.assertTrue(all(np.array_equal(first[k], again[k]) for k in first))
+        self.assertFalse(all(np.array_equal(first[k], second[k]) for k in first))
+        self.assertEqual(seen, [7, 7, 7])
+        self.assertNotEqual(round_train_seed(SELLER, 7, "round-0001"), round_train_seed(SELLER, 7, "round-0002"))
+        self.assertNotEqual(round_train_seed(SELLER, 7, "round-0001"), round_train_seed("other", 7, "round-0001"))
 
     def test_a_round_must_name_the_installed_base(self):
         ref = self.runtime.get_local_data_ref()

@@ -1,17 +1,24 @@
 """c1: synthetic round core with generated tensors. Not a g3 check: no real B runtime, no HTTP."""
+import contextlib
 import copy
 import hashlib
 import io
+import json
+import tempfile
 import unittest
 import zipfile
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import numpy as np
 
 from commerce.packages.contracts import ids
 from commerce.packages.contracts.errors import ContractError
+from commerce.services.fl_coordinator import import_release
 from commerce.services.fl_coordinator.npz_payload import PayloadTooLarge, decode_npz, encode_npz
-from commerce.services.fl_coordinator.round_core import ModelRegistry, SyntheticRound, check_contract
+from commerce.services.fl_coordinator.round_core import (
+    ModelRegistry, RegistryCorrupt, SyntheticRound, aggregate_uniform, check_contract,
+)
 from commerce.tests.e2e import dummy_round as dummy
 
 SELLERS = ("seller-a", "seller-b", "seller-c")
@@ -210,6 +217,184 @@ class ManifestAndTensorChecks(_RoundCase):
         self.assertEqual(self.code(self.registry.release, "missing"), "NOT_FOUND")
 
 
+class RegistryOnDisk(unittest.TestCase):
+    """REGISTRY_DIR: atomic publish, verified reload, variant pin, no partial release."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name) / "text_only" / "registry"
+        self.manifest = dummy.dummy_manifest()
+
+    def aggregated_registry(self):
+        registry = ModelRegistry(self.root)
+        registry.register("model-0", self.manifest, dummy.base_tensors(self.manifest),
+                          provenance={"source": "import", "kind": "random_init"})
+        config = dummy.round_config(self.manifest, "model-0")
+        rnd = SyntheticRound(registry, config, SELLERS)
+        for seller in SELLERS:
+            result = dummy.DummyTrainer(seller, OFFSETS[seller]).train_round(dummy.base_tensors(self.manifest), config)
+            rnd.submit(seller, *dummy.build_submission(seller, self.manifest, config, result))
+        return registry, rnd
+
+    def test_reload_restores_releases_latest_and_provenance(self):
+        registry, rnd = self.aggregated_registry()
+        reloaded = ModelRegistry(self.root)
+        self.assertEqual(reloaded.latest(), registry.latest())
+        version = rnd.release["model_version"]
+        self.assertEqual(reloaded.weights(version), registry.weights(version))
+        self.assertEqual(reloaded.provenance("model-0")["kind"], "random_init")
+        record = reloaded.provenance(version)
+        self.assertEqual((record["source"], record["round_id"], record["base_model_version"], record["cohort_size"]),
+                         ("fl_round", "round-0001", "model-0", 3))
+
+    def test_only_releases_reach_the_disk(self):
+        self.aggregated_registry()
+        names = sorted(path.relative_to(self.root).as_posix() for path in self.root.rglob("*") if path.is_file())
+        allowed = {"latest"} | {"%s/%s" % (v, f) for v in {n.split("/")[0] for n in names if "/" in n}
+                                for f in ("release.json", "manifest.json", "weights.npz", "provenance.json")}
+        self.assertTrue(set(names) <= allowed, names)
+
+    def test_a_version_is_never_rewritten_after_a_restart(self):
+        self.aggregated_registry()
+        reloaded = ModelRegistry(self.root)
+        with self.assertRaises(ContractError) as caught:
+            reloaded.register("model-0", self.manifest, dummy.base_tensors(self.manifest))
+        self.assertEqual(caught.exception.code, "ILLEGAL_STATE_TRANSITION")
+
+    def test_variant_pin_survives_a_restart(self):
+        self.aggregated_registry()
+        other = copy.deepcopy(self.manifest)
+        other["architecture_version"] = 2
+        other["manifest_hash"] = ids.manifest_hash(other)
+        with self.assertRaises(ContractError) as caught:
+            ModelRegistry(self.root).register("model-x", other, dummy.base_tensors(other))
+        self.assertEqual(caught.exception.code, "MANIFEST_MISMATCH")
+
+    def test_tampered_weights_or_a_dangling_latest_refuse_to_load(self):
+        registry, _ = self.aggregated_registry()
+        weights = self.root / "model-0" / "weights.npz"
+        data = bytearray(weights.read_bytes())
+        data[-1] ^= 0xFF
+        weights.write_bytes(bytes(data))
+        with self.assertRaises(RegistryCorrupt):
+            ModelRegistry(self.root)
+        weights.write_bytes(registry.weights("model-0"))
+        ModelRegistry(self.root)  # restored
+        (self.root / "latest").write_text("model-missing", encoding="ascii")
+        with self.assertRaises(RegistryCorrupt):
+            ModelRegistry(self.root)
+
+    def test_an_interrupted_publish_is_invisible(self):
+        registry = ModelRegistry(self.root)
+        registry.register("model-0", self.manifest, dummy.base_tensors(self.manifest))
+        staging = self.root / ".staging-crash"
+        staging.mkdir()
+        (staging / "weights.npz").write_bytes(b"partial")
+        reloaded = ModelRegistry(self.root)
+        self.assertEqual(reloaded.latest()["model_version"], "model-0")
+        self.assertFalse(staging.exists())
+
+    def test_unsafe_version_names_are_refused(self):
+        registry = ModelRegistry(self.root)
+        for bad in ("../escape", "a/b", ".hidden", ""):
+            with self.assertRaises(ContractError):
+                registry.register(bad, self.manifest, dummy.base_tensors(self.manifest))
+
+
+class ImportRelease(unittest.TestCase):
+    """Local import of a lab release: no upload API, provenance recorded."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.dir = Path(directory.name)
+        self.registry = self.dir / "registry"
+        self.manifest = dummy.dummy_manifest()
+        (self.dir / "manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
+        (self.dir / "weights.npz").write_bytes(encode_npz(dummy.base_tensors(self.manifest)))
+
+    def run_import(self, *extra, version="model-init-1", kind="trained"):
+        argv = ["--registry", str(self.registry), "--manifest", str(self.dir / "manifest.json"),
+                "--weights", str(self.dir / "weights.npz"), "--model-version", version, "--kind", kind, *extra]
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = import_release.main(argv)
+        return code, out.getvalue(), err.getvalue()
+
+    def test_import_publishes_latest_and_records_the_kind(self):
+        code, out, err = self.run_import("--note", "single-seller pretraining", kind="random_init")
+        self.assertEqual(code, 0, err)
+        descriptor = json.loads(out)
+        check_contract("model_release.v1", descriptor)
+        registry = ModelRegistry(self.registry)
+        self.assertEqual(registry.latest(), descriptor)
+        record = registry.provenance("model-init-1")
+        self.assertEqual((record["source"], record["kind"], record["note"]),
+                         ("import", "random_init", "single-seller pretraining"))
+        self.assertIn("not checked", err)  # B's config registry is not verified yet
+
+    def test_bad_manifest_hash_or_tensor_set_is_refused(self):
+        self.manifest["manifest_hash"] = "0" * 64
+        (self.dir / "manifest.json").write_text(json.dumps(self.manifest), encoding="utf-8")
+        self.assertEqual(self.run_import()[0], 1)
+        manifest = dummy.dummy_manifest()
+        (self.dir / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        first = manifest["tensors"][0]["name"]
+        (self.dir / "weights.npz").write_bytes(encode_npz({first: np.zeros(manifest["tensors"][0]["shape"], np.float32)}))
+        self.assertEqual(self.run_import()[0], 1)
+        self.assertIsNone(ModelRegistry(self.registry).latest())
+
+    def test_a_release_of_another_variant_is_refused(self):
+        code, _, err = self.run_import("--variant", "text_relation")  # the dummy manifest is architecture 1
+        self.assertEqual(code, 1)
+        self.assertIn("MANIFEST_MISMATCH", err)
+        self.assertEqual(self.run_import("--variant", "text_only")[0], 0)
+
+    def test_the_same_version_cannot_be_imported_twice(self):
+        self.assertEqual(self.run_import()[0], 0)
+        code, _, err = self.run_import()
+        self.assertEqual(code, 1)
+        self.assertIn("ILLEGAL_STATE_TRANSITION", err)
+
+
+class LabAggregation(unittest.TestCase):
+    """aggregate_uniform is the entry point for B's lab runner (unprotected simulation, D0020)."""
+
+    def test_uniform_mean_when_everyone_completed(self):
+        mean = aggregate_uniform([{"w": np.array([1.0, 3.0])}, {"w": np.array([3.0, 5.0])}])
+        self.assertEqual(mean["w"].dtype, np.float32)
+        np.testing.assert_array_equal(mean["w"], [2.0, 4.0])
+
+    def test_one_missing_member_or_an_empty_cohort_discards(self):
+        self.assertIsNone(aggregate_uniform([{"w": np.ones(2)}, None]))
+        self.assertIsNone(aggregate_uniform([]))
+
+    def test_no_sample_weighting(self):
+        # three members: the mean of the three, whatever their data sizes were
+        mean = aggregate_uniform([{"w": np.array([0.0])}, {"w": np.array([0.0])}, {"w": np.array([3.0])}])
+        np.testing.assert_array_equal(mean["w"], [1.0])
+
+    def test_tensor_set_or_shape_disagreement_raises(self):
+        with self.assertRaises(ValueError):
+            aggregate_uniform([{"w": np.ones(1)}, {"v": np.ones(1)}])
+        with self.assertRaises(ValueError):
+            aggregate_uniform([{"w": np.ones(1)}, {"w": np.ones(2)}])
+
+    def test_round_core_uses_the_same_rule(self):
+        manifest = dummy.dummy_manifest()
+        registry = ModelRegistry()
+        registry.register("model-0", manifest, dummy.base_tensors(manifest))  # zero base
+        config = dummy.round_config(manifest, "model-0")
+        rnd = SyntheticRound(registry, config, SELLERS)
+        deltas = []
+        for seller in SELLERS:
+            result = dummy.DummyTrainer(seller, OFFSETS[seller]).train_round(dummy.base_tensors(manifest), config)
+            deltas.append(result.shared_delta)
+            rnd.submit(seller, *dummy.build_submission(seller, manifest, config, result))
+        expected = aggregate_uniform(deltas)
+        for name, array in registry.tensors(rnd.release["model_version"]).items():
+            np.testing.assert_array_equal(array, expected[name])
 class FailureModes(_RoundCase):
     def test_float32_overflow_discards_the_round_instead_of_publishing(self):
         huge = {name: np.full(array.shape, 3e38, np.float32) for name, array in dummy.base_tensors(self.manifest).items()}
