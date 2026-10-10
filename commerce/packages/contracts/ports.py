@@ -26,6 +26,14 @@ class RecommenderRuntime(Protocol):
     def compare_local(self, request: Payload) -> ComparisonResult: ...
 
 
+@runtime_checkable
+class SnapshotDigest(Protocol):
+    """Optional runtime capability for synthetic FL (D0025). Kept out of RecommenderRuntime
+    so a runtime without it still satisfies the main protocol; the FL client refuses
+    synthetic rounds on such a runtime instead of trusting its input."""
+    def snapshot_digest(self, local_data_ref: str) -> str: ...
+
+
 class SellerJobExecutor(Protocol):
     def submit(self, operation: Callable[[], T]) -> Future[T]: ...
 

@@ -1,8 +1,8 @@
 """HTTP client for the coordinator's synthetic round routes (see the coordinator README).
 
 Takes an httpx.Client whose base_url is the coordinator and the seller's bearer token.
-Nothing here decides whether a seller may send plaintext: FLClient.start refuses until
-OQ17 settles how a trusted synthetic input is recognised.
+Nothing here decides whether a seller may send plaintext: FLClient.start does, and only
+on attested synthetic input (D0025).
 """
 from __future__ import annotations
 

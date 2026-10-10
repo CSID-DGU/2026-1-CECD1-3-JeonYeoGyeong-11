@@ -1,7 +1,7 @@
 """c1: the seller FL client over coordinator HTTP, with generated-tensor runtimes. Not g3: B is faked.
 
-The client functions are driven directly; FLClient.start still refuses both modes
-until OQ17 (synthetic input provenance) and g4 (protection) are settled.
+The client functions are driven directly. FLClient.start's synthetic loop and its
+attested-input check (D0025) are in test_c1_synthetic.py; protected waits for g4.
 """
 import tempfile
 import unittest
