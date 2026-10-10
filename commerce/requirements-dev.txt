@@ -12,3 +12,5 @@ python-multipart>=0.0.9,<1
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch>=2.13,<2.14
 transformers>=5.17,<6
+# C: protected aggregation (D0026): X25519, HKDF-SHA256 and ChaCha20 from a standard library.
+cryptography>=50.0.2,<51
