@@ -99,6 +99,30 @@ def ndcg_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float
     return _dcg_at_k(ranked, relevant, k) / ideal if ideal > 0 else 0.0
 
 
+def hit_rate_at_k(ranked: Sequence[ScoredItem], relevant: set[str], k: int) -> float:
+    """Chance that at least one relevant item is in the top k, over every order of tied groups.
+
+    A tied group wholly inside the top k contributes 1 if it holds a relevant
+    item. If the cutoff falls inside a group of m items with r relevant and s
+    slots left above the cutoff, the chance is 1 - C(m-r, s) / C(m, s). Either
+    only counts when no earlier group held a relevant item (same definition as
+    B's scoring._hit_chance)."""
+    if not relevant or k <= 0:
+        return 0.0
+    for start, ids in _score_groups(ranked):
+        if start > k:
+            break
+        r = sum(1 for item in ids if item in relevant)
+        if r == 0:
+            continue
+        m, end = len(ids), start + len(ids) - 1
+        if end <= k:
+            return 1.0
+        s = k - start + 1
+        return 1.0 - math.comb(m - r, s) / math.comb(m, s)
+    return 0.0
+
+
 def _sorted_by_score(scored: Iterable[ScoredItem]) -> list[ScoredItem]:
     """Score desc; equal scores by item_id only so the list is reproducible -- metrics treat them as tied."""
     return sorted(scored, key=lambda pair: (-pair[1], pair[0]))
@@ -107,7 +131,7 @@ def _sorted_by_score(scored: Iterable[ScoredItem]) -> list[ScoredItem]:
 # --- arrays: the shape B's runner uses ----------------------------------------
 
 def expected_metrics(scores: Sequence[float], relevant: Iterable[int], ks: Sequence[int] = KS) -> dict[str, float]:
-    """Recall@K and NDCG@K of one ranking over all candidates, ties at their expected value.
+    """Recall@K, NDCG@K and HR@K of one ranking over all candidates, ties at their expected value.
 
     `scores[i]` is candidate i's score; `relevant` are candidate indices. An
     example needs at least one relevant candidate (ValueError otherwise), so a
@@ -121,6 +145,7 @@ def expected_metrics(scores: Sequence[float], relevant: Iterable[int], ks: Seque
     for k in ks:
         out["recall@%d" % k] = recall_at_k(ranked, relevant_ids, k)
         out["ndcg@%d" % k] = ndcg_at_k(ranked, relevant_ids, k)
+        out["hr@%d" % k] = hit_rate_at_k(ranked, relevant_ids, k)
     return out
 
 

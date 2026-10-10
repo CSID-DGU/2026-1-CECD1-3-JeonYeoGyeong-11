@@ -57,6 +57,14 @@ class ArrayEntryPointTest(unittest.TestCase):
         self.assertAlmostEqual(m["recall@2"], 0.25, places=9)
         self.assertAlmostEqual(m["ndcg@2"], 0.19343, places=5)
 
+    def test_hit_rate_counts_the_chance_a_tied_group_puts_a_hit_in_the_top_k(self):
+        # a > {b, c} > d, relevant {b, d}, k=2: one slot left for the (b, c) group,
+        # m=2, r=1, s=1 -> 1 - C(1,1)/C(2,1) = 1/2.
+        self.assertAlmostEqual(expected_metrics([3.0, 2.0, 2.0, 1.0], relevant=[1, 3], ks=(2,))["hr@2"], 0.5, places=9)
+        # a relevant item fully inside the top k -> 1; nothing relevant in reach -> 0.
+        self.assertEqual(expected_metrics([3.0, 2.0, 1.0], relevant=[1], ks=(2,))["hr@2"], 1.0)
+        self.assertEqual(expected_metrics([3.0, 2.0, 1.0], relevant=[2], ks=(2,))["hr@2"], 0.0)
+
     def test_candidate_order_does_not_matter_only_scores_do(self):
         a = expected_metrics([3.0, 2.0, 2.0, 1.0], relevant=[1, 3])
         b = expected_metrics([2.0, 1.0, 3.0, 2.0], relevant=[0, 1])  # same scores, shuffled
