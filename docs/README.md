@@ -4,11 +4,11 @@
 
 ## 처음 읽을 것
 
-1. [공통 에이전트 지침](../AGENTS.md) → [팀 시작 안내](team/start.md)의 필요한 만큼 읽기 절차.
+1. [공통 에이전트 지침](../AGENTS.md) → [팀 시작 안내](team/start.md) §0: 첫 작업 전에 `docs/` 전체를 읽는다.
 2. 자신의 [A 플랫폼](team/tasks/A.md) / [B 데이터·모델](team/tasks/B.md) / [C FL·통합](team/tasks/C.md) 카드 하나.
 3. 이번 작은 작업의 코드·계약·설계 절. 설치·검사 시 [개발 안내](development.md)를 참조한다.
 
-처음부터 아래 모든 문서를 읽을 필요는 없다. 담당 작업에 필요한 계약·설계 절을 찾아 읽고, 이어가기에서는 변경 diff와 남은 작업을 확인한다.
+첫 작업 전에 아래 문서를 모두 끝까지 읽는다. 규칙이 역할 카드가 가리키지 않는 문서에 있는 경우가 많다. 이어가기에서는 바뀐 문서·변경 diff와 남은 작업을 확인한다.
 
 ## 현재 설계
 
@@ -21,7 +21,8 @@
 | [평가](design/evaluation.md) | 시점·두 콜드스타트·기준선·지표 | B | EVALUATION |
 | [독립 모델 실험](design/model-lab.md) | 화면 없는 학습·checkpoint·초기 release | B, C | LAB_WORKFLOW |
 | [모델 비교](design/comparison.md) | T-G/R-G/T-P/R-P·동일 snapshot 시연 | A, B | COMPARISON |
-| [보호 집계 선정 조사](design/secure-aggregation.md) | 후보 비교·프로토타입 측정·한계·사람이 정할 항목 | C | 조사 기록(결정 아님) |
+| [NLP 인코더 선정](design/nlp-encoder.md) | 인코더 ID·revision·길이·측정 근거 | B, C | 새 문서 |
+| [보호 집계 선정](design/secure-aggregation.md) | 후보 비교·프로토타입 측정·한계, 채택 결론은 D0026 | C | 새 문서 |
 | [채택한 설계 결정](design/decisions.md) | D0017~D0021 및 초기 뼈대 선택 이유 | 필요한 경우 | 현행 결정 요약 |
 | [열린 구현 항목](design/open-questions.md) | 미확정 부분·담당·완료 증거 | 해당 담당 | 현행 검토 항목 |
 

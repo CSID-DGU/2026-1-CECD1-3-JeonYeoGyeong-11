@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import time
 from urllib.request import build_opener, ProxyHandler
 
 ROOT = Path(__file__).resolve().parents[2]
+MAX_MERCHANTS = 8  # merchant ports 8101..8108 stay below the coordinator's 8200
 
 
 def service_plan(merchants: int) -> list[tuple[str, str, int, dict[str, str]]]:
@@ -29,12 +31,46 @@ def service_plan(merchants: int) -> list[tuple[str, str, int, dict[str, str]]]:
     return plan
 
 
+def host_names(merchants: int) -> list[str]:
+    """Target host names (working-agreement §3). Separate hosts, not ports, separate cookies."""
+    return ["central.localhost", "coordinator.localhost"] + [f"merchant-{i}.localhost" for i in range(1, merchants + 1)]
+
+
+def check_hosts(names: list[str], resolve=socket.getaddrinfo) -> list[tuple[str, bool]]:
+    """(name, ok) where ok means the name resolves and every address is loopback."""
+    report = []
+    for name in names:
+        try:
+            addresses = {info[4][0].split("%", 1)[0] for info in resolve(name, None)}
+        except OSError:
+            report.append((name, False))
+            continue
+        report.append((name, bool(addresses) and all(ipaddress.ip_address(a).is_loopback for a in addresses)))
+    return report
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--merchants", type=int, choices=range(1, 6), default=1)
+    # Up to 8: a protected cohort of 5 plus a held-out seller (interfaces.md §6, D0021) with room to spare.
+    parser.add_argument("--merchants", type=int, choices=range(1, MAX_MERCHANTS + 1), default=1)
     parser.add_argument("--check", action="store_true", help="Show process plan without starting it")
+    parser.add_argument("--check-hosts", action="store_true",
+                        help="Check that the *.localhost service names resolve to loopback, then exit")
     parser.add_argument("--smoke", action="store_true", help="Check health then stop all started processes")
     args = parser.parse_args(argv)
+    if args.check_hosts:
+        report = check_hosts(host_names(args.merchants))
+        for name, ok in report:
+            print(f"{name}: {'loopback' if ok else 'NOT loopback or unresolved'}", flush=True)
+        missing = [name for name, ok in report if not ok]
+        if missing:
+            print("Add these lines to the hosts file (Windows: C:\\Windows\\System32\\drivers\\etc\\hosts, "
+                  "elsewhere: /etc/hosts), then run this check again:", flush=True)
+            for name in missing:
+                print(f"127.0.0.1 {name}", flush=True)
+            return 1
+        print("HOSTS OK: every service name resolves to loopback", flush=True)
+        return 0
     plan = service_plan(args.merchants)
     for role, module, port, _ in plan:
         print(f"{role}: {module} -> http://127.0.0.1:{port}/healthz", flush=True)

@@ -17,7 +17,7 @@ python -m venv .venv
 .venv\Scripts\python -m commerce.deploy.run_local --smoke --merchants 2
 ```
 
-Linux/macOS에서는 `.venv/bin/python`을 사용한다. PATH의 `python`은 다른 프로젝트의 가상환경일 수 있으므로 쓰지 않는다. Git Bash처럼 UTF-8로 읽는 콘솔에서 게이트의 한국어 요약 줄이 깨지면 `PYTHONUTF8=1`을 준다. 판정은 영어 마지막 줄로 하므로 결과는 같다. Python 3.11 기준이며 프로젝트 루트에서 실행한다. lock은 검증한 초기 개발 환경이다. 의존성을 바꿀 때 C가 전체 환경 호환성을 확인한다. 아직 PyTorch/NLP 모델 의존성이나 가중치는 설치하지 않는다.
+Linux/macOS에서는 `.venv/bin/python`을 사용한다. PATH의 `python`은 다른 프로젝트의 가상환경일 수 있으므로 쓰지 않는다. Git Bash처럼 UTF-8로 읽는 콘솔에서 게이트의 한국어 요약 줄이 깨지면 `PYTHONUTF8=1`을 준다. 판정은 영어 마지막 줄로 하므로 결과는 같다. Python 3.11 기준이며 프로젝트 루트에서 실행한다. lock은 검증한 초기 개발 환경이다. 의존성을 바꿀 때 C가 전체 환경 호환성을 확인한다. lock에는 PyTorch(CPU 빌드)와 transformers가 들어 있다(OQ18). 모델 가중치와 frozen 인코더 파일은 lock으로 설치되지 않으며 Git에도 없다.
 
 `scaffold` 성공은 기능 완성을 뜻하지 않는다. `a1/b1/b2/c1/g2/g3/g4`는 담당이 selfcheck를 추가하기 전까지 종료 코드 3의 `NOT_IMPLEMENTED`이고, `business`는 이들 중 실패가 없다는 뜻일 뿐이다. health의 200은 프로세스 기동이며 `ready=false`가 업무 미준비를 뜻한다. 런처는 FL를 비활성으로 고정하며 데이터·모델을 만들지 않는다.
 
@@ -37,7 +37,7 @@ Linux/macOS에서는 `.venv/bin/python`을 사용한다. PATH의 `python`은 다
 
 ### 상대 모듈을 대체하는 방법
 
-`open_runtime`이 돌려주는 `UnimplementedRuntime`은 **모든 업무 메서드가 `FeatureNotImplemented`를 낸다.** 성공 경로를 만들려면 호출자가 자기 test double을 주입한다. 저장소에 공용 fake는 없다.
+`open_runtime`은 B의 실제 runtime(`SellerRuntime`)을 돌려준다. 모델 release와 frozen 인코더가 설치되기 전의 추천은 fallback이다. 기준 stub `UnimplementedRuntime`은 **모든 업무 메서드가 `FeatureNotImplemented`를 낸다.** 테스트에서 특정 성공 경로가 필요하면 호출자가 자기 test double을 주입한다. 저장소에 공용 fake는 없다.
 
 ```python
 # A의 예: 성공 경로용 double을 자기 소유 경로에 두고 주입한다.

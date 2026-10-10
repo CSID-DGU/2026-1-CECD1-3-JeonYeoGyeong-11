@@ -29,9 +29,12 @@ Instacart는 prior만 사용한다. 공식 train/test를 이 프로젝트의 시
 | --- | --- | --- |
 | The Complete Journey 원출처 안내 | [dunnhumby Source Files](https://www.dunnhumby.com/source-files/) | 2년·2,500가구로 소개하는 원자료 안내. 아래 R 배포판과 동일 파일·기간이라고 가정하지 않는다 |
 | 현재 Dunnhumby 분석의 배포판 | [completejourney 공식 문서](https://bradleyboehmke.github.io/completejourney/)·[관리자 저장소](https://github.com/bradleyboehmke/completejourney) | 기존 분석 기록은 이 R 배포판을 사용했다고 명시한다. 배포판은 출처를 84.51°로 밝히며 1년·2,469가구를 설명한다 |
-| Instacart 2017 | [기존 공식 대회 주소](https://www.kaggle.com/c/instacart-market-basket-analysis/data)·[현재 Kaggle Market Basket Analysis 데이터 페이지](https://www.kaggle.com/competitions/basket-analysis/data) | 기존 기록에는 미러 검증이 있으나 정확한 취득 미러 URL·버전은 미확인이다. 이번 확인에서 기존 주소의 본문을 읽지 못했고 현재 페이지의 다운로드 가능 여부·이용 조건도 확인하지 못했다. B가 계정으로 접근해 실제 취득 경로를 기록한다 |
+| Instacart 2017 원출처 | [Instacart 공개 글](https://tech.instacart.com/3-million-instacart-orders-open-sourced-d40d29ead6f2)·[기존 공식 대회 주소](https://www.kaggle.com/c/instacart-market-basket-analysis/data)·[현재 대회 페이지](https://www.kaggle.com/competitions/basket-analysis/data) | 원 조건은 "as-is, 비상업적 사용"이다. 2026-09-28 확인: 대회 페이지의 데이터는 호스트 요청으로 삭제돼 `sample_submission.csv`만 남았고, Instacart의 원 배포 주소는 404/403이다 |
+| 현재 Instacart 분석의 배포판 | [Kaggle 미러 psparks/instacart-market-basket-analysis](https://www.kaggle.com/datasets/psparks/instacart-market-basket-analysis) Version 1 | 2026-09-28에 `archive.zip`(207,073,669 B)을 받았다. 올린 사람의 CC0 표시는 원 제공자의 허락이 아니므로 원 조건을 따른다. 파일별 크기·SHA-256은 Git 제외 실행 기록에 있다. 행 수(orders 3,421,083 / prior lines 32,434,489 / products 49,688)와 파일 크기가 이전 기록과 같다. 이전 파일의 해시 기록이 없어 같은 파일인지는 확정하지 않았다 |
 
 Complete Journey는 `transactions_sample`을 전체 데이터 대신 사용하지 않는다. 관리자 문서의 [get_transactions()](https://bradleyboehmke.github.io/completejourney/reference/get_transactions.html)와 [products](https://bradleyboehmke.github.io/completejourney/reference/products.html)를 기준으로 준비하고, 사용한 패키지 버전·저장소 commit 또는 실제 다운로드 URL을 고정한다. 공식 CSV 원본을 받았다면 기존 R 파일과의 변환·기간 차이를 확인하고 이전 분석 수치를 그대로 재사용하지 않는다.
+
+R 파일은 `commerce/packages/data_adapters/rds.py`가 R 없이 읽는다(OQ12: lock 밖 의존성 없음). transaction_timestamp에는 tzone `America/New_York`이 기록돼 있어 시간대를 추정하지 않는다. ID 몇 개는 배포판이 숫자를 문자로 바꾸며 지수 표기(예: 상품 `1e+05`)로 남아 있어 어댑터가 정확한 정수로 되돌린다.
 
 이전 탐색 스크립트용 경로는 `fedcommerce/data/transactions.rds`, `fedcommerce/data/products.rda` 및 `fedcommerce/data/instacart/`다. Instacart에서 사용하는 파일은 `orders.csv`, `order_products__prior.csv`, `products.csv`, `aisles.csv`, `departments.csv`이며 `order_products__train.csv`는 현행 학습 입력에 쓰지 않는다. 스크립트의 상대 경로 기준 작업 디렉터리는 `fedcommerce/`다. 새 어댑터·실험 산출물의 경로는 §6을 따른다.
 
@@ -41,10 +44,12 @@ B는 실제 사용 파일별로 `출처 URL / 배포판·revision / 취득일 / 
 
 Dunnhumby 순서: product_category 유효 → quantity>0 → sales_value>=0 → COUPON/MISC ITEMS 제외 → household를 가장 많은 basket을 가진 점포 하나에 배정(동점 숫자 store_id 오름차순) → 300 basket 이상 점포 선택.
 제외 순서를 바꿔 나온 102개 결과와 기존 101개 roster를 섞지 않는다. 기존 보고의 최종 basket은 104,011개이며 B가 새 어댑터 실행으로 재현/차이를 설명한다.
+주이용 점포가 아닌 점포의 거래는 버린다(OQ06). 판매자는 자기 점포의 판매만 보고, 한 가구는 한 판매자에만 있다. 같은 basket·상품의 여러 행은 수량을 합친다.
 
 **판매자 배정과 표본 선정에는 train 구간만 쓴다.** validation/test 구간의 방문이 배정 라벨이나 선정 기준에 들어가면 판매자 구성이 평가 정답과 상관되고, local_only와 개인화가 유리해진다.
 - IC: 이전 스크립트는 고객의 전체 prior 주문으로 주력 aisle(배정 라벨)을 계산했다(`instacart_match.py` 70~76행). 각 고객의 floor(0.7n) 이전 주문만으로 다시 계산한다.
 - DH: 주이용 점포 배정과 300 basket 기준을 2~39주로 계산한다. 아래 기준 roster는 전체 기간으로 만든 것이므로, B는 새 계산 결과와의 차이를 보고한다.
+  - 2026-10-06 재현(`dunnhumby.py`): 거래 1,469,307행 → 정제 후 1,442,249행(분류 없음 7,045, 수량 0 4,016, 판매액 음수 0, COUPON/MISC ITEMS 15,997). 주이용 점포에 남은 행 1,093,669·basket 105,567(다른 점포 거래 347,588행·36,436 basket을 버림, 2~39주 basket이 없는 가구 26). 300 basket 이상 점포 **93개**로 모두 기준 101개 안에 있고, 나머지 8개는 2~39주만 세면 300 미만이다. 점포 크기(2~39주 basket)는 335~2,106, 중앙값 732다. 파일 해시와 단계별 수는 Git 제외 실행 기록에 있다.
 
 기준 roster: [dunnhumby_rb.csv](../../commerce/packages/data_adapters/rosters/dunnhumby_rb.csv). 공개하는 이 파일은 store_id 101개만 포함하며 고객·거래·배정표는 포함하지 않는다.
 파일 SHA-256: bb1d8e9c503b966be93a915b2d4d0c031ea4e7bbec34d8de0d1c9abe339965a5
@@ -77,7 +82,7 @@ Instacart 첫 주문의 누적 상대일은 0, 이후 days_since_prior_order를 
 
 - NFC·공백 정리, 결측 필드는 생략. 모든 필드가 비면 오류/격리하고 빈 벡터를 성공으로 반환하지 않는다.
 - 한국어와 영어, 규격의 소수·분수·단위를 보존한다. 비ASCII 삭제 금지. 소문자화는 선택 인코더 규칙에 따른다.
-- null을 문자열 "nan"/"None"으로 만들지 않는다.
+- null을 문자열 "nan"/"None"으로 만들지 않는다. Instacart의 aisle·department 이름 `missing`(aisle 100·department 21, 같은 1,258개 상품)은 원자료의 결측 표시이므로 결측으로 생략한다.
 - 원문·정규화 후·token truncation 후의 중복률, 결측률, 한국어 보존을 측정한다.
 - 마커는 기본 tokenizer의 일반 문자열로 처리한다. 새 special token을 frozen 모델에 임의 추가하지 않는다.
 - 정확한 checkpoint/revision, tokenizer, pooling, 길이·차원은 [모델 경계](model.md) §2의 B 산출물이다.
@@ -107,7 +112,7 @@ A/C는 합성 상품·계정·주문으로 시작한다. B는 소형 두 출처 
 
 원자료, 고객별 배정표, 전처리 구매 이벤트, 관계·캐시·개별 업데이트·실데이터 모델은 기본 Git 제외다. 공개할 수 있는 schema·직접 만든 합성 fixture·집계 보고서만 별도 검토한다. 라이선스 확인과 공개 범위 기록은 B가 맡는다. 검토는 생성기를 새로 만들거나 생성 규칙을 바꿀 때 한 번 받는다([Git 협업](../team/git-workflow.md) 첫 표).
 
-직접 만든 합성 fixture는 커밋 대상이므로 자기 소유 경로의 `tests/fixtures/` 아래 두고, 생성기와 seed·개수 설정을 함께 커밋해 같은 결과를 다시 만들 수 있게 한다. 실행 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 두며 이들은 Git 제외다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
+직접 만든 합성 fixture는 커밋 대상이므로 자기 소유 경로의 `tests/fixtures/` 아래 두고, 생성기와 seed·개수 설정을 함께 커밋해 같은 결과를 다시 만들 수 있게 한다. 합성 fixture와 테스트 입력의 숫자 ID(상품·고객·주문·점포)는 원자료 ID와 겹치지 않게 원자료 범위 밖(예: 990000 이상)으로 만든다. 계약 fixture가 이미 이렇게 한다. 실행 산출물은 commerce/evaluation/data/, cache/, runs/, outputs/ 또는 commerce/deploy/var/ 아래에 두며 이들은 Git 제외다. 기존 fedcommerce/out/도 공개 안전성을 확인하기 전에는 기본 제외한다. 구입 이력이 담긴 파일을 새 폴더로 옮겼다고 반출 허용이 되지 않는다.
 
 b1 완료: 소형 입력으로 정제 순서·ID·수량 null·시간 종류·중복·한국어 보존 검사. 별도로 로컬 원자료 재현 보고(행 수/제외 사유/roster/해시)를 만든다. 합성 fixture 통과와 원자료 재현 완료를 따로 보고한다.
 

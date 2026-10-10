@@ -28,11 +28,11 @@
 | 5 | 텍스트 품질 보고 | 빈 입력·unknown·정규화/토큰 잘림 충돌, 규격 보존, 처리 시간·메모리 |
 | 6 | 텍스트만 추천 기준선 | E-G0, 관계 0인 상품도 후보 점수 생성 |
 
-지원 입력은 영어 데이터와 한국어 live 상품이다. 비ASCII 제거는 금지한다. 384차원·32토큰·MiniLM급은 이전 후보값이며 정확한 모델을 고른 것이 아니다. B는 한국어·영어 샘플을 실제 인코더로 확인하고 모델·길이를 고정한다. 바뀐 d_text는 fusion·relation_mlp 입력 차원과 manifest에 반영한다.
+지원 입력은 영어 데이터와 한국어 live 상품이다. 비ASCII 제거는 금지한다. 선택한 인코더는 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`(revision `e8f8c211226b894fcb81acc59f3b34ba3efd5f42`, Apache-2.0)다. 입력은 builder 텍스트 그대로, special token 포함 최대 64토큰, padding을 뺀 평균 pooling 뒤 L2 정규화, d_text=384다. 근거와 측정은 [NLP 인코더 선정](nlp-encoder.md)에 있다. 이전 후보값 32토큰은 Instacart 상품의 9.8%를 잘라 쓰지 않는다. z는 float32다. 서비스 구조(D0024)에서는 공유 그룹 text_proj(384→d_model)가 z를 받으므로 text_proj의 입력 차원과 manifest는 d_text=384를 쓴다. Dunnhumby 텍스트를 잰 결과가 크게 다르면 선택을 다시 연다.
 
 마커는 기본적으로 일반 문자열로 토큰화한다. 임의 special token을 추가한 뒤 미학습 embedding을 frozen 상태로 쓰지 않는다. 서로 다른 상품명이 원문에서 고유해도 토큰 절단 후 같은 입력이 될 수 있다.
 
-text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder·관계 정의·고정 상수의 artifact 해시다. 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
+text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다(§7). 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
 
 ## 3. 공통 함수와 입력 경로
 
@@ -47,6 +47,8 @@ text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revis
 | shared.sequence | 방문 시퀀스 처리 |
 | shared.query_proj | 고객 query |
 | shared.scorer | 로컬 후보 상품 공통 점수 |
+
+**서비스 구조는 [결정](decisions.md) D0024를 따른다.** D0022 뼈대의 lm 표현(text_only = harex.T_lm.v1, text_relation = harex.R_lm.v1)이며, 공유 그룹은 text_proj·fusion·position·sequence·query_proj·scorer와 text_relation의 time_mlp·relation_mlp·relation_pool이다. 아래 표와 §6의 basket_encoder·seq_time_pos·d_model 64·2층은 초기 후보 구조로 남긴 기록이다. 그룹 수(6·9)와 관계 경로·개인화 대상은 같다.
 
 위 9개는 text_relation의 그룹이다. text_only는 time_mlp/relation_mlp/relation_pool을 제외한 6개를 사용하며 l=0인 Fusion을 처음부터 학습한다([모델 비교](comparison.md) §2). 이름은 그룹이며 실제 export는 shared.relation_mlp_l0_w처럼 평탄한 층별 키다. 텐서 key·shape·dtype은 variant별 B manifest로 고정하고 C는 해당 목록만 검증한다. 기본 shared dtype은 float32, 정규화는 LayerNorm. 고정 상품 ID별 출력행·공유 상품 ID embedding table은 쓰지 않는다.
 
@@ -98,6 +100,10 @@ TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), complet
 - export_shared_state는 해당 variant의 배포된 공통 base만 반환한다. 학습 복사본 delta는 TrainingResult로만 반환하고 개인화 tail은 어느 FL export 경로에도 포함하지 않는다.
 - install_release는 base를 갱신하고 새 base의 공통 추천을 원자 활성화한다. 기존 개인화는 새 base와 호환되지 않는 상태로 표시하고 적용하지 않는다. 이후 새 base에서 다시 개인화한다. 검증에 실패한 release는 이전 서빙을 유지한다.
 - 이미 설치된 동일 버전·해시의 재전달은 멱등 성공이며 유효한 개인화를 초기화하지 않는다. 같은 버전에 다른 해시가 오면 거부한다.
+- **작업을 시작하는 쪽.** B는 스스로 학습을 시작하지 않는다. FL 라운드는 C의 판매자 FL client가, 개인화는 판매자 화면(A)의 실행 요청이 판매자 jobs 실행기를 거쳐 부른다. 새 base를 설치한 뒤 개인화를 자동으로 다시 하지 않으며, 그동안 비교의 P칸은 준비되지 않음으로 표시된다. 구매 반영은 학습 작업이 아니다.
+- 학습·개인화 중에도 ingest·upsert·predict_local·compare_local은 그대로 동작한다. 실행 중에 온 두 번째 작업은 JobBusyError로 거부하고 쌓아 두지 않는다(A의 jobs 실행기와 B runtime 모두).
+- 작업이 예외로 끝나거나 프로세스가 중간에 멈추면 서빙 base·개인화·특징 원장은 그대로이고 작업 잠금은 풀린다. 라운드 결과는 메모리에만 있으므로 재시작 뒤 이어서 하지 않는다. 개인화는 다 만든 결과만 원자적으로 반영한다. 재시작하면 CURRENT의 base와 그 base의 개인화를 다시 읽는다.
+- 학습할 예제가 없는 판매자(빈 원장 포함)는 §4대로 0 delta·completed=false다. 이런 판매자가 cohort에 있으면 라운드가 폐기되는 문제는 [열린 항목](open-questions.md) OQ20이다.
 
 ## 6. 학습 기본값과 정확성
 
@@ -105,9 +111,21 @@ TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), complet
 
 target 방문의 상품 집합에서 양성 1개를 고르고 배치 공유 음성 N_neg(후보 200)를 점수화한다. **예제별로 정답 집합 전체를 음성에서 제외**한다. 중복 음성은 한 번만 센다. 카탈로그가 작으면 가능한 음성 수로 줄이고, 음성이 없으면 해당 예제를 건너뛰어 기록한다. 표본 수는 중앙에 보내지 않는다.
 
+**손실의 정의(OQ01).** 위 문장을 이렇게 구현했다(`model.sampled_softmax_loss`, `training.batch_loss`).
+- 양성은 학습 step마다 정답 집합에서 균등하게 하나 뽑는다. 뽑는 순서는 config의 seed로 고정한다.
+- 음성은 그 판매자 카탈로그에서 중복 없이 N_neg개를 뽑아 배치 전체가 함께 쓴다. N_neg=0이면 카탈로그 전체가 음성이다.
+- 손실은 [양성, 음성] 위의 softmax cross-entropy다. 예제마다 정답 집합에 든 음성은 가린다. 배치 손실은 쓸 수 있는 예제(음성이 하나 이상 남은 예제)의 평균이다.
+- 배치는 한 판매자·한 관계 snapshot에서만 만든다.
+- N_neg=200은 D0022 비교에서 카탈로그 전체 softmax와 견준 뒤 유지했다(차이가 일정하지 않았다).
+- 근거는 `recommender/tests/test_model.py`의 `Loss`(손으로 계산한 손실·gradient, 정답 음성 제외, 평균 대상)와 실행 기록의 config다.
+
+**예제의 과거만 쓰기(OQ02).** 한 snapshot 안에서도 예제마다 그 target보다 앞선 방문만 입력과 관계에 쓴다([평가](evaluation.md) §2의 cutoff). 다음 테스트가 근거다.
+- `test_examples`: 뒤 방문과 정답을 바꿔도 이전 예제의 입력·과거 구매 수가 같다.
+- `test_relations`의 `Snapshot`: replay 구간 밖 방문은 관계에 들어가지 않는다.
+
 local_steps=40, batch_size=64, max_local_epochs=6은 시작 후보다. 실제 step은 min(local_steps, ceil(n_train/batch_size) × max_local_epochs); max_local_epochs=0은 상한 없음, local_steps=0은 학습 없음이다. 부분 배치는 실제 크기로 계산하므로 소비 예제 수가 항상 2,560이라고 하지 않는다. 빈 학습셋이면 completed=false이고 제출 집계에 넣지 않는다.
 
-optimizer는 라운드마다 새 AdamW, 초기 lr=0.001·weight_decay=0.01·clip norm=1. 실제 채택 config를 기록한다. 검증 고객 9:1 분할은 train 안에서 한 번 만들고 seller·run seed로 고정한다. **val_split seed에는 round_id를 넣지 않는다.** 너무 적어 유효 검증셋이 없으면 loss_mean=null, 조기 종료 판단에서 제외하고 사유는 로컬에 남긴다.
+optimizer는 라운드마다 새 AdamW, 초기 lr=0.001·weight_decay=0.01·clip norm=1. 실제 채택 config를 기록한다. 검증 고객 9:1 분할은 train 안에서 한 번 만들고 seller·run seed로 고정한다. **val_split seed에는 round_id를 넣지 않는다.** 반대로 라운드 학습의 난수(배치 순서·음성 샘플)는 seller·run seed·round_id로 정해서, 한 실행이 seed를 고정해도 라운드마다 새로 뽑는다(실험실 `fl_lab`도 라운드·판매자마다 바꿨다). 검증 손실의 음성은 run seed로 고정해 라운드끼리 비교한다. 너무 적어 유효 검증셋이 없으면 loss_mean=null, 조기 종료 판단에서 제외하고 사유는 로컬에 남긴다.
 
 metrics = loss_mean(고정 로컬 검증 손실 또는 null), grad_norm_mean(유한값 또는 null). seller·round·completed는 delta_manifest가 소유한다. 합성 모드의 전송은 round_submission.v1, 최종 모드는 보호 집계 안에서 합산한다.
 
@@ -118,6 +136,7 @@ metrics = loss_mean(고정 로컬 검증 손실 또는 null), grad_norm_mean(유
 실험 학습과 서비스는 같은 core 모델·특징 코드를 사용한다. 초기 checkpoint·불변 architecture config·release 설치와 서빙 동일성 검사는 model-lab.md를 따른다. NLP만 사전학습 가중치로 시작하며 관계/sequence/scorer의 프로젝트 가중치는 별도 실험에서 학습한다.
 
 z key: text_artifact_hash + preprocessing_version + 정규 텍스트 SHA-256.
+preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다. 소스 파일의 바이트가 아니다. 출력을 바꾸는 수정만 새 값을 받고, 고정 입력의 출력을 검사하는 테스트(`recommender/tests/test_preprocessing.py`)가 새 값 없이 출력이 바뀌는 것을 막는다. 값이 바뀌면 그 전 release와 z cache는 맞지 않게 된다.
 l/e key: model_variant + base_model_version + preprocessing_version + feature_snapshot_id + item_id. 마스킹 실행은 별도 feature_snapshot_id를 갖는다. 개인화는 query/scorer만 변경하므로 base의 l/e를 재사용할 수 있다. 최종 점수/추천 cache를 도입하면 personalization_revision과 요청 cutoff/후보도 key에 포함한다.
 이는 불변 base의 추론 cache 규칙이다. 전체 FL 학습 중에는 매 optimizer step마다 임베딩 함수도 바뀌므로 base cache를 현재 학습 결과로 재사용하지 않는다. 후보 e는 현재 학습 복사본으로 계산해 gradient를 유지한다. 선택적인 이력 detached cache는 §6의 근사 설정·갱신 주기를 따르고 서빙 cache와 분리한다.
 h는 요청별 계산. 모든 캐시와 반영 ID는 B 특징 저장소에 둔다.

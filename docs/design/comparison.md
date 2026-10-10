@@ -8,6 +8,8 @@
 
 ## 2. 두 모델과 네 결과
 
+D0022에 따라 모든 variant는 HAREX(GCI) 계열의 같은 뼈대를 쓰고 상품 표현만 바꾼다. 텍스트 표현은 GCI식 단어 토큰(hx)과 사전학습 인코더(lm) 두 가지이고, 아래 text_only/text_relation 구분이 각 텍스트 표현마다 있다(T_hx·R_hx·T_lm·R_lm). 1차 대비는 hx 행이다([평가](evaluation.md) §4).
+
 | variant | 상품 표현 | 공통 조건 |
 | --- | --- | --- |
 | text_only | e = Fusion(z_text, zero_l) | 같은 NLP, Fusion 입출력 차원, basket/sequence/query/scorer 설계 |

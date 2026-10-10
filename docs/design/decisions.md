@@ -46,6 +46,56 @@ text_only와 text_relation을 각각 학습하고 global/personalized를 비교�
 
 근거: "참여·이탈 하한"과 "직접 설계 금지"가 모호하게 남아 있으면 이탈 복구가 필요한 가장 비싼 선택지로 끌려간다. 전원 완료 규칙이 이미 정해져 있으므로 복구 없는 구현으로 충분하다. [아키텍처](architecture.md) §3, [인터페이스](interfaces.md) §7.
 
+## D0022 · HAREX(GCI) 계열 공통 뼈대에서 상품 표현만 바꾼 비교
+
+- **비교의 뜻.** 협력 기업 HAREX(㈜하렉스인포텍)의 GCI 엔진(Lee et al., AAAI-24)과 같은 계열의 공통 뼈대를 모든 variant가 똑같이 쓰고, **상품 표현(아이템 임베딩)만** 바꾼다. 뼈대는 상품·고객 ID 없이 최근 구매 상품 시퀀스를 1층 Transformer(d_model 128, 4 heads, FFN 256, dropout 0.2)로 읽는다. 학습은 validation 손실의 patience 기반 조기 종료로 수렴시킨다.
+- **재구매 특징은 뼈대에 넣지 않는다.** 고객별 구매 횟수·최근성 같은 반복 구매 신호나 이력 복사 경로를 점수에 더하지 않는다. GCI가 이런 장치 없이 성능을 보였으므로, 우리 방식도 같은 조건에서 보여야 HAREX 기준과 비교가 된다. 개인 구매 빈도(P-TopFreq)는 evaluation.md §4대로 기준선으로만 보고하고, 그와의 격차는 이 뼈대의 한계로 적는다.
+- **출력은 D0017대로 후보 점수화다.** GCI의 상품명 생성과 Jaccard 매칭 대신, 판매자의 실제 후보 상품 표현을 공통 함수로 점수화한다. 없는 상품명은 나오지 않는다.
+- **상품 표현 2×2.**
+
+  | | 텍스트만 (T) | 텍스트 + 로컬 구매 관계 (R) |
+  | --- | --- | --- |
+  | GCI식 단어 토큰(hx) | T_hx: HAREX 기준 | R_hx: 우리 방식 추가 |
+  | 사전학습 인코더(lm, `nlp-encoder.md`, #18) | T_lm: 새 토큰 임베딩 | R_lm |
+
+  - hx는 상품명을 띄어쓰기로 나눈 단어 토큰을 판매자별 embedding으로 학습한다. GCI의 glocalization처럼 어휘에 매인 이 embedding은 판매자 로컬에 두고 FL에서 뺀다. 나머지 공통 층은 D0019대로 공유한다.
+  - R은 [모델 경계](model.md) §3의 로컬 관계(고객·장바구니·방향별 시간)로 만든 l을 더한다.
+- **예측 타깃.** 1차는 evaluation.md §1대로 다음 방문의 상품 집합이다. 보조로 HAREX식 "다음 상품 1개"를 둔다. 다음 방문에서 장바구니에 처음 담은 상품을 이전 방문들만으로 맞히는 것이며, HR@10으로 잰다. 같은 장바구니의 일부로 나머지를 맞히는 문제로 바꾸지 않는다(evaluation.md §2).
+- **1차 대비.** Instacart FL cohort에서 R_hx와 T_hx의 NDCG@10, 판매자 macro 평균, 판매자 단위 paired bootstrap이다. T_lm↔T_hx(특히 신상품 C-new·신규 판매자 A-0), R_lm↔T_lm은 보조다. 지표·cohort·판정 문장은 evaluation.md §4를 그대로 쓴다.
+- **이미 본 결과.** 이 결정 전에 lm 계열의 이전 뼈대로 판매자 5곳 local_only pilot(E-G0)을 돌려 T와 R의 수치를 봤다. 1차 대비(hx, FL cohort)의 결과는 아직 보지 않았다.
+
+근거: 과제의 원 모델이 HAREX GCI이므로, 같은 계열 뼈대에서 상품 표현만 바꿔야 "우리 방식이 무엇을 더했는가"가 드러난다. 사전학습 인코더는 처음 보는 상품과 판매자도 표현할 수 있어 그 자체로 콜드스타트 대응이라 별도 축으로 둔다. [비교](comparison.md), [평가](evaluation.md), GCI 논문(https://ojs.aaai.org/index.php/AAAI/article/view/30309).
+
+## D0024 · 서비스 모델은 D0022 뼈대의 lm 표현으로 정한다
+
+- **무엇.** 서비스의 두 variant는 D0022 공통 뼈대에 사전학습 인코더 표현(lm)을 쓴다. [모델 경계](model.md) §3·§6의 초기 후보 구조(basket_encoder·seq_time_pos, d_model 64, 2층)는 서비스에 쓰지 않는다.
+
+  | architecture_version | model_variant | 구조 | 공유 그룹 |
+  | --- | --- | --- | --- |
+  | 1 | text_only | harex.T_lm.v1 | text_proj, fusion, position, sequence, query_proj, scorer |
+  | 2 | text_relation | harex.R_lm.v1 | 위 6개 + time_mlp, relation_mlp, relation_pool |
+
+  - D0019(고정 NLP 밖 전체 공유, query_proj·scorer만 로컬 개인화)와 D0017(후보 점수화)은 그대로다.
+  - 구조를 바꾸면 1·2를 다시 쓰지 않고 새 architecture_version을 등록한다([모델 실험](model-lab.md) §6의 2).
+  - 재구매 경로(#27에서 D0023으로 제안했고 병합하지 않는다)는 넣지 않는다. hx(판매자별 단어 토큰 표)는 HAREX 비교 기준으로만 남긴다.
+  - 첫 release는 Instacart 판매자 100곳 비보호 FL 시뮬레이션(500라운드, 마지막 라운드)의 공유 가중치다. FL로 만든 release이며 보호 FL 결과가 아니라고 출처에 적는다(D0020).
+- **왜 hx가 아니라 lm인가.** 판매자 100곳 비보호 FL 시뮬레이션(D0022 1차 표, 다음 장바구니) 기준이다.
+
+  | 상황 | T_hx | R_hx | T_lm | R_lm |
+  | --- | --- | --- | --- | --- |
+  | 기존 판매자 NDCG@10 | 0.171 | **0.213** | 0.140 | 0.196 |
+  | 기존 판매자 HR@10 | 0.554 | 0.653 | 0.558 | **0.662** |
+  | 신규 판매자 A-0 NDCG@10(로컬 학습 없음) | 0.018 | 0.077 | 0.143 | **0.198** |
+  | 작은 판매자(학습 주문 약 250건) NDCG@10 | 0.135 | 0.178 | 0.139 | **0.210** |
+  | 다음 상품 1개 HR@10 | 0.122 | 0.129 | 0.207 | **0.268** |
+
+  - 위 세 줄은 네 모델 모두 seed 3개의 평균이고, 아래 두 줄은 seed 1개다. 기존 판매자 NDCG@10에서 R_lm − T_lm은 +0.056(판매자 paired bootstrap 95% [+0.051, +0.061])이다.
+  - 기존 판매자의 1차 지표에서는 R_hx가 가장 높다. 하지만 hx의 단어 표는 판매자 로컬이라, 플랫폼에 새로 들어온 판매자는 학습 전까지 쓸 수 없다(A-0 0.018·0.077). 서비스는 신규·작은 판매자를 받는 것이 목표라 lm을 쓴다.
+  - 구매 관계(R)는 두 표현 모두에서 텍스트만(T)보다 높다. 그래서 text_relation을 서비스 기본 variant로 둔다.
+- **서빙 경로의 확인.** 같은 입력에서 학습 코드의 점수와 판매자 runtime의 `predict_local` 점수가 일치하는지 검사한다(model-lab.md §6.8). 서비스 결과 보고는 실험과 같은 라벨(비보호 FL 시뮬레이션)을 쓴다.
+
+근거: 과제의 목표는 HAREX보다 나은 표현을 서비스에서 쓰는 것이다. D0022의 비교 조건은 바꾸지 않고 그 결과에서 서비스 구성을 고른다. 수치는 #26 본문 결과표(lm 세 줄은 seed 3개로 갱신한 #51), 구현은 #31이다. [모델 경계](model.md), [독립 실험](model-lab.md).
+
 ## 초기 공통 코드에서 고정한 경계
 
 PR #3은 공통 import·Protocol·dataclass·예외를 정하고, A lifespan이 판매자 runtime 하나를 만들고 C client에 같은 runtime/jobs를 주입하도록 했다. runtime은 동기 API, start/stop은 async이며 학습 작업은 판매자별 단일 background 실행기로 보낸다. worker는 판매자당 1개다.
