@@ -32,7 +32,7 @@
 
 마커는 기본적으로 일반 문자열로 토큰화한다. 임의 special token을 추가한 뒤 미학습 embedding을 frozen 상태로 쓰지 않는다. 서로 다른 상품명이 원문에서 고유해도 토큰 절단 후 같은 입력이 될 수 있다.
 
-text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder·관계 정의·고정 상수의 artifact 해시다. 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
+text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다(§7). 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
 
 ## 3. 공통 함수와 입력 경로
 
@@ -111,9 +111,21 @@ TrainingResult는 shared_delta(dict[str, numpy.ndarray]), metrics(dict), complet
 
 target 방문의 상품 집합에서 양성 1개를 고르고 배치 공유 음성 N_neg(후보 200)를 점수화한다. **예제별로 정답 집합 전체를 음성에서 제외**한다. 중복 음성은 한 번만 센다. 카탈로그가 작으면 가능한 음성 수로 줄이고, 음성이 없으면 해당 예제를 건너뛰어 기록한다. 표본 수는 중앙에 보내지 않는다.
 
+**손실의 정의(OQ01).** 위 문장을 이렇게 구현했다(`model.sampled_softmax_loss`, `training.batch_loss`).
+- 양성은 학습 step마다 정답 집합에서 균등하게 하나 뽑는다. 뽑는 순서는 config의 seed로 고정한다.
+- 음성은 그 판매자 카탈로그에서 중복 없이 N_neg개를 뽑아 배치 전체가 함께 쓴다. N_neg=0이면 카탈로그 전체가 음성이다.
+- 손실은 [양성, 음성] 위의 softmax cross-entropy다. 예제마다 정답 집합에 든 음성은 가린다. 배치 손실은 쓸 수 있는 예제(음성이 하나 이상 남은 예제)의 평균이다.
+- 배치는 한 판매자·한 관계 snapshot에서만 만든다.
+- N_neg=200은 D0022 비교에서 카탈로그 전체 softmax와 견준 뒤 유지했다(차이가 일정하지 않았다).
+- 근거는 `recommender/tests/test_model.py`의 `Loss`(손으로 계산한 손실·gradient, 정답 음성 제외, 평균 대상)와 실행 기록의 config다.
+
+**예제의 과거만 쓰기(OQ02).** 한 snapshot 안에서도 예제마다 그 target보다 앞선 방문만 입력과 관계에 쓴다([평가](evaluation.md) §2의 cutoff). 다음 테스트가 근거다.
+- `test_examples`: 뒤 방문과 정답을 바꿔도 이전 예제의 입력·과거 구매 수가 같다.
+- `test_relations`의 `Snapshot`: replay 구간 밖 방문은 관계에 들어가지 않는다.
+
 local_steps=40, batch_size=64, max_local_epochs=6은 시작 후보다. 실제 step은 min(local_steps, ceil(n_train/batch_size) × max_local_epochs); max_local_epochs=0은 상한 없음, local_steps=0은 학습 없음이다. 부분 배치는 실제 크기로 계산하므로 소비 예제 수가 항상 2,560이라고 하지 않는다. 빈 학습셋이면 completed=false이고 제출 집계에 넣지 않는다.
 
-optimizer는 라운드마다 새 AdamW, 초기 lr=0.001·weight_decay=0.01·clip norm=1. 실제 채택 config를 기록한다. 검증 고객 9:1 분할은 train 안에서 한 번 만들고 seller·run seed로 고정한다. **val_split seed에는 round_id를 넣지 않는다.** 너무 적어 유효 검증셋이 없으면 loss_mean=null, 조기 종료 판단에서 제외하고 사유는 로컬에 남긴다.
+optimizer는 라운드마다 새 AdamW, 초기 lr=0.001·weight_decay=0.01·clip norm=1. 실제 채택 config를 기록한다. 검증 고객 9:1 분할은 train 안에서 한 번 만들고 seller·run seed로 고정한다. **val_split seed에는 round_id를 넣지 않는다.** 반대로 라운드 학습의 난수(배치 순서·음성 샘플)는 seller·run seed·round_id로 정해서, 한 실행이 seed를 고정해도 라운드마다 새로 뽑는다(실험실 `fl_lab`도 라운드·판매자마다 바꿨다). 검증 손실의 음성은 run seed로 고정해 라운드끼리 비교한다. 너무 적어 유효 검증셋이 없으면 loss_mean=null, 조기 종료 판단에서 제외하고 사유는 로컬에 남긴다.
 
 metrics = loss_mean(고정 로컬 검증 손실 또는 null), grad_norm_mean(유한값 또는 null). seller·round·completed는 delta_manifest가 소유한다. 합성 모드의 전송은 round_submission.v1, 최종 모드는 보호 집계 안에서 합산한다.
 
