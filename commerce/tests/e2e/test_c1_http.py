@@ -190,6 +190,20 @@ class Configuration(unittest.TestCase):
             with self.assertRaises(FeatureNotImplemented):
                 create_app(CoordinatorSettings(root / "registry", root / "auth.json", root / "rounds"))
 
+    def test_model_variant_must_match_the_registry(self):
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            manifest = dummy.dummy_manifest()  # architecture_version 1 = text_only (D0024)
+            ModelRegistry(root / "registry").register("model-0", manifest, dummy.base_tensors(manifest))
+            settings = lambda variant: CoordinatorSettings(root / "registry", root / "auth.json", root / "rounds",
+                                                           mode="synthetic_plaintext", model_variant=variant)
+            create_app(settings("text_only"))
+            create_app(settings(None))  # not set: not checked
+            with self.assertRaises(ValueError):
+                create_app(settings("text_relation"))
+            with self.assertRaises(ValueError):
+                settings("text_other")
+
 
 if __name__ == "__main__":
     unittest.main()

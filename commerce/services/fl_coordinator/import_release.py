@@ -24,17 +24,19 @@ from pathlib import Path
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.contracts.types import Payload
 from commerce.services.fl_coordinator.npz_payload import PayloadTooLarge, decode_npz
-from commerce.services.fl_coordinator.round_core import ModelRegistry, check_contract
+from commerce.services.fl_coordinator.round_core import ModelRegistry, check_contract, check_variant
 
 KINDS = ("trained", "random_init")
 
 
 def import_release(registry_dir: Path | str, manifest_path: Path | str, weights_path: Path | str,
-                   model_version: str, kind: str, note: str | None = None) -> Payload:
+                   model_version: str, kind: str, note: str | None = None, variant: str | None = None) -> Payload:
     if kind not in KINDS:
         raise ValueError("kind must be one of %s" % ", ".join(KINDS))
     manifest = json.loads(Path(manifest_path).read_bytes())
     check_contract("shared_model_manifest.v1", manifest)
+    if variant is not None:
+        check_variant(manifest, variant)  # D0024: the release must be that variant's architecture
     weights = Path(weights_path).read_bytes()
     tensors = decode_npz(weights, manifest["tensors"])
     provenance = {"source": "import", "kind": kind, "input_weights_sha256": hashlib.sha256(weights).hexdigest()}
@@ -51,10 +53,12 @@ def main(argv=None) -> int:
     parser.add_argument("--model-version", required=True)
     parser.add_argument("--kind", required=True, choices=KINDS)
     parser.add_argument("--note", help="local provenance note, e.g. single-seller pretraining")
+    parser.add_argument("--variant", choices=("text_only", "text_relation"),
+                        help="refuse a release whose architecture_version is not this variant's (D0024)")
     args = parser.parse_args(argv)
     try:
         descriptor = import_release(args.registry, args.manifest, args.weights, args.model_version,
-                                    args.kind, args.note)
+                                    args.kind, args.note, args.variant)
     except ContractError as exc:
         print("import refused: %s" % exc.code, file=sys.stderr)
         return 1
