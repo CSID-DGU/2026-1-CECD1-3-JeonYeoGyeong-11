@@ -32,7 +32,7 @@
 
 마커는 기본적으로 일반 문자열로 토큰화한다. 임의 special token을 추가한 뒤 미학습 embedding을 frozen 상태로 쓰지 않는다. 서로 다른 상품명이 원문에서 고유해도 토큰 절단 후 같은 입력이 될 수 있다.
 
-text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder·관계 정의·고정 상수의 artifact 해시다. 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
+text_artifact_hash = 파일별 SHA-256 목록과 인코더 설정(model ID/revision, tokenizer 설정, pooling, max_length, 출력 정규화)의 정규 JSON에 대한 SHA-256. 파일 목록은 상대 경로순 정렬한다. tokenizer와 가중치·config를 함께 식별한다. preprocessing_version은 텍스트 builder와 관계 특징이 내는 출력의 이름이다(§7). 판매자 이벤트로 fit한 사전·통계를 포함하지 않는다.
 
 ## 3. 공통 함수와 입력 경로
 
