@@ -1,0 +1,242 @@
+"""federated_lab_sim (model-lab.md §4, D0020) of the D0022 variants: an UNPROTECTED FL simulation.
+
+    python -m commerce.evaluation.fl_lab --instacart-dir fedcommerce/data/instacart --variant T_hx
+
+Each round every seller starts from the same global shared weights, trains
+--local-epochs on its own data with a fresh AdamW (GCI: one epoch per round,
+batch 128) and returns shared_delta = after - before. A seller's word-token
+table (hx) stays with it and is never aggregated, as in GCI's glocalization.
+The simulation keeps one model on the device and swaps each seller's table in
+for its turn; the shared weights are reloaded every turn anyway.
+The round is kept only if every seller completed; then the global model adds
+the uniform mean of the deltas (D0017). aggregate_uniform is a TEMPORARY copy
+of that rule until C's aggregation core lands (working-agreement §8, D3); swap
+it in then and check the result is the same.
+
+The run has a fixed number of rounds (evaluation.md §5) and its result is the
+last round. Beside it, as an auxiliary, the round with the lowest validation
+loss summed over all sellers and divided by the total example count is tested
+too: an aggregate, never a per-seller value. The shared weights of both rounds
+are saved next to the record (Git-ignored runs/) for later held-out scoring.
+Results are labelled "비보호 FL 시뮬레이션" (unprotected FL simulation).
+"""
+import argparse
+import copy
+import dataclasses
+from datetime import datetime, timezone
+import json
+import math
+import os
+from pathlib import Path
+import platform
+import time
+
+import torch
+
+from commerce.evaluation.encoder_probe import peak_memory_mb
+from commerce.evaluation.harex_compare import (
+    TARGETS, VARIANTS, architecture, build, code_version, evaluate, new_arms, parts,
+)
+from commerce.packages.recommender.harex import HarexRecommender
+from commerce.packages.recommender.training import TrainConfig, seller_on, train, validation_loss
+
+
+def aggregate_uniform(deltas: list[dict[str, torch.Tensor] | None]) -> dict[str, torch.Tensor] | None:
+    """TEMPORARY stand-in for C's aggregation core: all complete or discard, then the uniform mean."""
+    if not deltas or any(d is None for d in deltas):
+        return None
+    keys = set(deltas[0])
+    if any(set(d) != keys for d in deltas):
+        raise ValueError("sellers returned different tensor sets")
+    return {k: torch.stack([d[k] for d in deltas]).mean(0) for k in keys}
+
+
+def on_device(seller_parts, device):
+    """Move one seller's data to the device only while it trains: 100 sellers' relation snapshots
+    do not fit in GPU memory together."""
+    return [(bucket, seller_on(p, device)) for bucket, p in seller_parts]
+
+
+def local_tables(model):
+    """A CPU copy of the seller's own tensors: the hx token table, none for lm."""
+    return {k: v.detach().to("cpu", copy=True) for k, v in model.state_dict().items() if k.startswith("local_")}
+
+
+def local_round(model: HarexRecommender, global_shared: dict, train_parts, epochs: int, batch_size: int,
+                lr: float, seed: int, negatives: int = 200) -> dict[str, torch.Tensor] | None:
+    model.load_state_dict(global_shared, strict=False)  # local_tokens keep the seller's own values
+    before = {k: v.detach().clone() for k, v in model.shared_state().items()}
+    n = sum(len(p.examples) for _, p in train_parts)
+    if n == 0:
+        return None  # nothing to learn from: the round cannot complete
+    steps = max(1, math.ceil(n / batch_size) * epochs)
+    train(model, [p for _, p in train_parts],
+          TrainConfig(steps=steps, batch_size=batch_size, lr=lr, seed=seed, n_negatives=negatives))
+    after = model.shared_state()
+    return {k: (after[k] - before[k]) for k in before if before[k].is_floating_point()}
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
+    parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
+    parser.add_argument("--variant", required=True, choices=VARIANTS)
+    parser.add_argument("--target", default="basket", choices=TARGETS)
+    parser.add_argument("--sellers", type=int, default=5)
+    parser.add_argument("--rounds", type=int, default=300)
+    parser.add_argument("--local-epochs", type=int, default=1)
+    parser.add_argument("--val-every", type=int, default=5)  # and always the last round
+    # GCI's early stopping (patience 20 rounds on the validation loss), for --protocol gci only:
+    # evaluation.md §5 keeps our own first FL runs at a fixed round count.
+    parser.add_argument("--patience-rounds", type=int, default=0)
+    parser.add_argument("--batch-size", type=int, default=128)
+    parser.add_argument("--negatives", type=int, default=200)  # 0: the whole catalog, as GCI's full softmax
+    parser.add_argument("--lr", type=float, default=1e-3)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--split-seed", type=int, default=0)
+    parser.add_argument("--holdout-frac", type=float, default=0.0)  # C-new: 0.1 (evaluation.md §3)
+    parser.add_argument("--holdout-seed", type=int, default=0)
+    parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
+    # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
+    parser.add_argument("--threads", type=int, default=8)
+    parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--out-dir", type=Path, default=Path("commerce/evaluation/runs/fl_lab"))
+    args = parser.parse_args(argv)
+    args.variants = [args.variant]
+    if args.patience_rounds and args.protocol != "gci":
+        raise SystemExit("--patience-rounds reproduces GCI; our own first FL runs keep a fixed round count")
+    torch.set_num_threads(args.threads)
+    device = torch.device(args.device)
+    config = architecture(args.variant)
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    record = {"run": "D0022 federated_lab_sim", "mode": "비보호 FL 시뮬레이션 (unprotected FL simulation, D0020)",
+              "aggregation": "temporary uniform mean, all complete or discard (stand-in for C's core)",
+              "started_at": stamp, "code": code_version(), "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
+              "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device),
+                          "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
+                          "cpu_count": os.cpu_count()},
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
+                         "temporary aggregation"]
+              + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
+    if args.protocol == "gci":
+        if args.target != "basket":
+            raise SystemExit("--protocol gci has one label per unit: use --target basket")
+        from commerce.evaluation.gci_protocol import build as gci_build
+        record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
+        sellers, first = gci_build(args, record)
+    else:
+        sellers, first = build(args, record)
+
+    # One model on the device; a seller's own part is its hx token table, made with the same
+    # seed as a model of its own would make it.
+    hx = config.text == "hx"
+    torch.manual_seed(args.seed)
+    model = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"] if hx else None).to(device)
+    global_shared = {k: v.detach().clone() for k, v in model.shared_state().items()}
+    local = {}
+    for seller, info in sellers.items():
+        tables = None
+        if hx:
+            torch.manual_seed(args.seed)
+            tables = HarexRecommender(config, vocab_size=info["vocab_size"]).local_tokens  # on the CPU
+            info["z"] = info["z"][:, :0]  # hx never reads z: keep none of it on the device
+        # Without relations everything stays on the device. With relations the seller's parts,
+        # z included, move per turn: 100 sellers' z on the device next to other runs ran out of memory.
+        if not config.relation:
+            info["z"], info["tokens"], info["keep"] = (info[k].to(device) for k in ("z", "tokens", "keep"))
+        place = None if config.relation else device
+        local[seller] = {"tables": tables,
+                         **{role: parts(info, seller, role, args.variant, args.target, first, place, args.seed)
+                            for role in ("train", "validation", "test")}}
+
+    current = [None]
+
+    def turn(s):
+        """The seller's token table moves to the device for its turn and back after it."""
+        if s["tables"] is not None and current[0] is not s:
+            if current[0] is not None:
+                current[0]["tables"].to("cpu")
+            model.local_tokens = s["tables"].to(device)
+            current[0] = s
+        return model
+
+    def placed(seller_parts):
+        return on_device(seller_parts, device) if config.relation else seller_parts
+
+    best, history, discarded = None, [], 0
+    started = time.perf_counter()
+    for rnd in range(args.rounds):
+        deltas = [local_round(turn(s), global_shared, placed(s["train"]), args.local_epochs, args.batch_size,
+                              args.lr, args.seed * 100000 + rnd * 1000 + i, args.negatives)
+                  for i, s in enumerate(local.values())]
+        mean = aggregate_uniform(deltas)
+        if mean is None:
+            discarded += 1
+            continue
+        global_shared = {k: (v + mean[k] if k in mean else v) for k, v in global_shared.items()}
+        if (rnd + 1) % args.val_every and rnd + 1 != args.rounds:
+            continue
+        total, count = 0.0, 0
+        for s in local.values():
+            n = sum(len(p.examples) for _, p in s["validation"])
+            turn(s).load_state_dict(global_shared, strict=False)
+            loss = validation_loss(model, [p for _, p in placed(s["validation"])], n_negatives=args.negatives,
+                                   seed=args.seed)
+            if loss is not None:
+                total, count = total + loss * n, count + n  # only the sum and count leave the loop
+        val = total / count if count else None
+        history.append([rnd + 1, val])
+        if val is not None and (best is None or val < best["val"]):
+            best = {"round": rnd + 1, "val": val, "shared": {k: v.clone() for k, v in global_shared.items()},
+                    "local": {sid: local_tables(turn(s)) for sid, s in local.items()}}
+        if (rnd + 1) % 10 == 0:
+            print("round %d val %.4f best %d (%.4f) %.0fs" % (rnd + 1, val, best["round"], best["val"],
+                                                            time.perf_counter() - started), flush=True)
+        if args.patience_rounds and rnd + 1 - best["round"] >= args.patience_rounds:
+            print("early stop at round %d, best %d" % (rnd + 1, best["round"]), flush=True)
+            break
+    rounds_run = rnd + 1
+
+    # The first run has a fixed round count (evaluation.md §5), so the last round is the result.
+    # The best aggregate-validation round is reported beside it as an auxiliary.
+    final = {"shared": global_shared, "local": {sid: local_tables(turn(s)) for sid, s in local.items()}}
+    # Runs started in the same second must not share a folder.
+    out = args.out_dir / ("%s_%s_%s_s%d_%d" % (stamp, args.variant, args.target, args.seed, os.getpid()))
+    out.mkdir(parents=True, exist_ok=True)
+    # The shared weights alone (no seller's token table), so sellers left out of training can
+    # later be scored with the same models (evaluation.md §3, A-0).
+    torch.save({"architecture": config.architecture_version, "variant": args.variant, "best_round": best["round"],
+                "final_round_shared": {k: v.cpu() for k, v in final["shared"].items()},
+                "best_round_shared": {k: v.cpu() for k, v in best["shared"].items()}}, out / "shared_weights.pt")
+    record["weights"] = "shared_weights.pt"
+    arm = "%s FL" % args.variant
+    record["metrics"] = {}
+    for which, state in (("final_round", final), ("best_round", best)):
+        arms = new_arms((arm, "popularity", "P-TopFreq"))
+        for sid, s in local.items():
+            turn(s).load_state_dict(state["shared"], strict=False)
+            model.load_state_dict(state["local"][sid], strict=False)
+            evaluate(model, sellers[sid], placed(s["test"]), args.target, arms, arm)
+        record["metrics"][which] = {name: {p: a.result() for p, a in parts_.items()} for name, parts_ in arms.items()}
+    # GCI reports its early-stopped model; our own runs report the last of a fixed round count.
+    record["metrics"]["primary"] = "best_round" if args.patience_rounds else "final_round"
+    record["training"] = {"rounds": args.rounds, "discarded_rounds": discarded, "best_round": best["round"],
+                          "best_val_loss_aggregate": best["val"], "history": history,
+                          # Best round in the last tenth: the curve was still falling, so run longer.
+                          "plateaued": best["round"] <= 0.9 * rounds_run, "rounds_run": rounds_run,
+                          "seconds": round(time.perf_counter() - started, 1)}
+    record["peak_memory_mb"] = peak_memory_mb()
+    (out / "record.json").write_text(json.dumps(record, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(json.dumps({which: {name: {k: round(v, 4) for k, v in m["all"]["macro"].items()
+                                     if k in ("ndcg@10", "recall@20", "hr@10")} for name, m in record["metrics"][which].items()}
+                      for which in ("final_round", "best_round")}, indent=2))
+    print("best round %d of %d (plateaued=%s), discarded %d -> %s" % (
+        best["round"], args.rounds, record["training"]["plateaued"], discarded, out))
+
+
+if __name__ == "__main__":
+    main()

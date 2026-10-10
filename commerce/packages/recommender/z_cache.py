@@ -15,24 +15,29 @@ import numpy as np
 from commerce.packages.contracts.ids import canonical_json
 from commerce.packages.recommender.text_encoder import FrozenTextEncoder, artifact_hash
 
-# The text builder and the relation definitions and constants (model.md §2: preprocessing_version).
-PREPROCESSING_SOURCES = (Path(__file__).resolve().parents[1] / "data_adapters" / "text.py",
-                         Path(__file__).resolve().parent / "relations.py")
+# What the text builder (data_adapters/text.py) and the relation features (relations.py) produce
+# (model.md §7). It names their output, not their source bytes: a refactor that keeps every output
+# keeps the value, and a change to any output needs a new one. tests/test_preprocessing.py pins the
+# outputs, so changing them without a new value fails there. This first value is the hash the old
+# rule took over the two files at 08c573a, the code of the first releases; for live and Instacart
+# items nothing they produce has changed since (only the Dunnhumby text was added).
+PREPROCESSING_VERSION = "9a2ead06485fcceda0250a11ff06c32f621b79efcb606a31adc870251ef46004"
 
 
-def preprocessing_version(sources: Sequence[Path] = PREPROCESSING_SOURCES) -> str:
-    # .gitattributes checks *.py out with LF everywhere, so the bytes match across machines.
-    files = [[p.name, hashlib.sha256(p.read_bytes()).hexdigest()] for p in sources]
-    return hashlib.sha256(canonical_json(files)).hexdigest()
+def preprocessing_version() -> str:
+    return PREPROCESSING_VERSION
 
 
 class ZCache:
-    def __init__(self, path: str | Path, encoder: FrozenTextEncoder, model_dir: str | Path, *,
-                 preprocessing: str | None = None):
+    def __init__(self, path: str | Path, encoder: FrozenTextEncoder, model_dir: str | Path | None, *,
+                 preprocessing: str | None = None, text_artifact_hash: str | None = None):
+        """encoder needs .dim and .encode(texts). A caller that has hashed the artifact already
+        (the seller runtime) passes text_artifact_hash and no model_dir."""
         self.encoder = encoder
-        self.text_artifact_hash = artifact_hash(model_dir, encoder.spec)
+        self.text_artifact_hash = text_artifact_hash or artifact_hash(model_dir, encoder.spec)
         self.preprocessing_version = preprocessing or preprocessing_version()
-        self._db = sqlite3.connect(str(path))
+        # Several runs share one cache: a writer waits for the others instead of failing at once.
+        self._db = sqlite3.connect(str(path), timeout=300)
         self._db.execute("CREATE TABLE IF NOT EXISTS z (key TEXT PRIMARY KEY, dim INTEGER NOT NULL, "
                          "vector BLOB NOT NULL)")
         self.encoded = 0  # texts encoded by this instance; cache hits do not count

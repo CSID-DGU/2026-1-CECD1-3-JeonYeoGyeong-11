@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import Mapping, Sequence
 import unicodedata
 
-from commerce.packages.contracts.errors import FeatureNotImplemented
 from commerce.packages.contracts.types import Payload
 
 Fields = Sequence[tuple[str, str | None]]  # (marker, raw value) in output order
@@ -79,7 +78,14 @@ def catalog_item_fields(item: Payload) -> Fields:
         department = path[0] if path else None
         aisle = path[1] if len(path) == 2 else None
         return instacart_fields(item["title_text"], aisle, department)
-    raise FeatureNotImplemented("B: dunnhumby catalog text")
+    if source == "dunnhumby":
+        # dunnhumby.catalog_item: path [department, product_category], title product_type
+        # (product_category when the type is missing, so then there is no [TYPE]), size in description.
+        path = item["category_path"] or []
+        category = path[-1] if path else None
+        product_type = None if item["title_text"] == category else item["title_text"]
+        return dunnhumby_fields(category, product_type, item["description_text"])
+    raise ValueError("unknown catalog_item source %r" % source)
 
 
 def catalog_item_text(item: Payload) -> str:
