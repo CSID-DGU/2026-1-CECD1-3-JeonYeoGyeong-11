@@ -6,7 +6,7 @@ orders, B for historical baskets, and the validator checks both against this cod
 """
 import hashlib
 import json
-from typing import Any, Mapping
+from typing import Any, Iterable, Mapping
 
 
 def canonical_json(obj: Any) -> bytes:
@@ -21,3 +21,18 @@ def purchase_event_id(seller_id: str, source: str, basket_id_local: str) -> str:
 def manifest_hash(manifest: Mapping[str, Any]) -> str:
     body = {key: value for key, value in manifest.items() if key != "manifest_hash"}
     return hashlib.sha256(canonical_json(body)).hexdigest()
+
+
+def snapshot_digest(purchase_event_ids: Iterable[str], catalog: Mapping[str, Mapping[str, Any]]) -> str:
+    """Content hash of a seller's training snapshot (D0025, OQ17).
+
+    B computes it over the events and the latest catalog_item.v1 per item in a
+    local_data_ref snapshot; the synthetic demo runner computes it over what its
+    generator wrote. Equal digests mean the FL client trains on exactly the
+    generated input. Order does not matter; a repeated event ID is an error.
+    """
+    events = sorted(purchase_event_ids)
+    if len(set(events)) != len(events):
+        raise ValueError("a purchase_event_id appears twice")
+    items = sorted([item_id, hashlib.sha256(canonical_json(body)).hexdigest()] for item_id, body in catalog.items())
+    return hashlib.sha256(canonical_json({"events": events, "catalog": items})).hexdigest()

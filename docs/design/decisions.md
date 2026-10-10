@@ -96,6 +96,30 @@ text_only와 text_relation을 각각 학습하고 global/personalized를 비교�
 
 근거: 과제의 목표는 HAREX보다 나은 표현을 서비스에서 쓰는 것이다. D0022의 비교 조건은 바꾸지 않고 그 결과에서 서비스 구성을 고른다. 수치는 #26 본문 결과표, 구현은 #31이다. [모델 경계](model.md), [독립 실험](model-lab.md).
 
+## D0025 · 합성 FL 시연은 전용 실행기 한 곳에서 켜고, 입력은 내용 해시로 확인한다 (OQ16·OQ17)
+
+- **실행(OQ16).**
+  - run_local은 계속 FL을 끈다. 합성 FL은 `commerce/deploy/fl_demo.py` 한 곳에서만 켠다.
+  - 이 실행기가 하는 일:
+    - 새 시연 폴더를 만들고 B의 결정적 g3 시나리오로 판매자 원장을 채운다.
+    - coordinator를 자기 프로세스에서 띄우고 판매자 앱을 별도 프로세스로 띄운다.
+    - 고정 라운드 수만큼 라운드를 연다.
+  - policy 게이트는 FL을 켜는 `FLClientConfig`(상수 `enabled=True` 또는 `synthetic_attestation`)가 다음 경우면 실패한다.
+    - 이 파일 밖에 있을 때
+    - 이 파일 안에서 `mode="synthetic_plaintext"`나 확인 파일 없이 쓰일 때
+  - 판매자 앱의 환경변수 경로(`FL_ENABLED`)는 확인 파일을 넘기지 않으므로 켜도 시작이 거부된다.
+- **입력 확인(OQ17).**
+  - 실행기는 생성한 입력의 내용 해시를 판매자별 확인 파일에 쓴다. 해시는 `ids.snapshot_digest`로 계산하며, 이벤트 ID와 상품별 최신 catalog 본문을 대상으로 한다.
+  - FL client는 매 라운드 학습 직전 B runtime의 `snapshot_digest(local_data_ref)`를 확인 파일과 비교한다. 다르거나, 확인 파일이나 그 메서드가 없으면 아무것도 제출하지 않는다.
+  - `source` 필드는 보지 않는다.
+  - 생성기 밖 구매가 한 건이라도 있으면(화면 주문 포함) 그 판매자는 라운드에 참여하지 않고, 라운드는 deadline 뒤 폐기된다. 그래서 시연에서 화면 주문은 cohort 밖 판매자에서 보여 준다.
+- **역할.** `ids.snapshot_digest`·확인 파일·client 루프·실행기·policy 규칙은 C 소유다. runtime의 `snapshot_digest(local_data_ref)`는 B가 구현한다(`ports.SnapshotDigest`, 선택 capability라 `RecommenderRuntime`은 바뀌지 않는다).
+- **한계.**
+  - 실수로 실데이터를 평문 경로에 연결하는 것을 막는다. 판매자 호스트에서 확인 파일을 고쳐 쓸 수 있는 사람은 막지 못한다.
+  - 보호 FL이 아니며 결과는 합성 데이터의 비보호 FL로 표시한다(D0020·D0021).
+
+근거: run_local의 FL 꺼짐 고정은 유지하면서 FL을 켜는 길을 한 파일로 좁혀 검사로 고정한다. 출처 표시 필드가 아니라 학습할 내용 자체를 생성 결과와 대조해야 interfaces.md §7의 "`source`만으로 판정하지 않는다"를 만족한다. 제안·결정: C(zzziwoo0120) 2026-10-06, A·B 확인은 PR 검토. [인터페이스](interfaces.md) §7, [아키텍처](architecture.md) §3.
+
 ## 초기 공통 코드에서 고정한 경계
 
 PR #3은 공통 import·Protocol·dataclass·예외를 정하고, A lifespan이 판매자 runtime 하나를 만들고 C client에 같은 runtime/jobs를 주입하도록 했다. runtime은 동기 API, start/stop은 async이며 학습 작업은 판매자별 단일 background 실행기로 보낸다. worker는 판매자당 1개다.

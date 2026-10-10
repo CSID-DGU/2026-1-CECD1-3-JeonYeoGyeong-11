@@ -8,17 +8,16 @@ import os
 import unittest
 
 REMAINING = (
-    "HTTP routes and Bearer seller auth over this core (auth failure code waits for OQ13)",
-    "coordinator-side persistence of releases (REGISTRY_DIR) and the pre-fixed cohort setting",
-    "FL client submission path and plaintext activation (waits for OQ17)",
-    "run_local integration: coordinator health order and shutdown",
+    "contract_error body of the 401 response (waits for OQ13; today 401 has an empty body)",
+    "who opens rounds and when, with a fixed round count (trigger waits for OQ08)",
+    "B's SellerRuntime.snapshot_digest, without which synthetic clients refuse every round (D0025)",
 )
 
 
 def run(verbose: bool = False) -> int:
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     suite = unittest.defaultTestLoader.discover(
-        os.path.join(repo_root, "commerce", "tests", "e2e"), pattern="test_c1_round.py", top_level_dir=repo_root)
+        os.path.join(repo_root, "commerce", "tests", "e2e"), pattern="test_c1_*.py", top_level_dir=repo_root)
     result = unittest.TextTestRunner(verbosity=2 if verbose else 1).run(suite)
     if not result.wasSuccessful() or result.testsRun == 0:
         return 1

@@ -24,7 +24,8 @@ from commerce.packages.contracts.ports import RecommenderRuntime
 from commerce.packages.fl_client.lifecycle import FLClientConfig
 from commerce.packages.recommender.runtime import UnimplementedRuntime
 from commerce.services.central_api.main import app as central_app
-from commerce.services.fl_coordinator.main import app as coordinator_app
+from commerce.services.fl_coordinator.main import CoordinatorSettings, app as coordinator_app
+from commerce.services.fl_coordinator.main import create_app as create_coordinator_app
 from commerce.services.merchant_api.context import MerchantSettings, build_context
 from commerce.services.merchant_api.main import create_app
 
@@ -133,6 +134,29 @@ class ScaffoldInvariants(_TempSeller):
             ContractError("NOT_IMPLEMENTED")
 
 
+class LauncherHosts(unittest.TestCase):
+    """run_local --check-hosts judges resolution only; it never assumes the OS resolves *.localhost."""
+
+    def test_only_names_resolving_to_loopback_alone_pass(self):
+        from commerce.deploy.run_local import check_hosts, host_names
+
+        answers = {
+            "central.localhost": ["127.0.0.1"], "coordinator.localhost": ["::1", "127.0.0.1"],
+            "merchant-1.localhost": ["127.0.0.1", "192.0.2.10"], "merchant-2.localhost": [],
+        }
+
+        def resolve(name, _port):
+            if name not in answers:
+                raise OSError("unresolved")
+            return [(None, None, None, None, (address, 0)) for address in answers[name]]
+
+        self.assertEqual(host_names(3)[2:], ["merchant-1.localhost", "merchant-2.localhost", "merchant-3.localhost"])
+        self.assertEqual(dict(check_hosts(host_names(3), resolve)), {
+            "central.localhost": True, "coordinator.localhost": True,
+            "merchant-1.localhost": False, "merchant-2.localhost": False, "merchant-3.localhost": False,
+        })
+
+
 class LauncherPlan(unittest.TestCase):
     def test_room_for_a_protected_cohort_and_a_held_out_seller(self):
         from commerce.deploy.run_local import MAX_MERCHANTS, service_plan
@@ -149,7 +173,8 @@ class LauncherPlan(unittest.TestCase):
 
 class NotYetImplemented(_TempSeller):
     def test_enabled_fl_fails_closed_in_both_modes(self):
-        # c1 retires synthetic_plaintext once OQ17 is decided; g4 retires protected.
+        # Without an attestation (the env path never has one) synthetic_plaintext stays refused (D0025);
+        # g4 retires protected.
         for mode in ("protected", "synthetic_plaintext"):
             settings = MerchantSettings(seller_id=self.settings.seller_id, feature_db_path=self.settings.feature_db_path,
                                         model_dir=self.settings.model_dir, fl=FLClientConfig(enabled=True, mode=mode))
@@ -157,10 +182,19 @@ class NotYetImplemented(_TempSeller):
                 with TestClient(create_app(settings, context_factory=stub_context)):
                     self.fail("Enabled FL should not start before its implementation")
 
-    def test_coordinator_accepts_no_submissions_yet(self):
-        # c1 retires this with the synthetic submission route.
+    def test_protected_coordinator_fails_closed(self):
+        # g4 retires this. The synthetic routes are checked by gate c1 (test_c1_http.py).
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            settings = CoordinatorSettings(root / "registry", root / "auth.json", root / "rounds", mode="protected")
+            with self.assertRaises(FeatureNotImplemented):
+                create_coordinator_app(settings)
+
+    def test_unconfigured_coordinator_accepts_no_submissions(self):
+        # The launcher starts the coordinator without REGISTRY_DIR/AUTH_FILE/ROUND_STATE_DIR.
         with TestClient(coordinator_app) as client:
             self.assertEqual(client.post("/rounds/synthetic/submissions", json={}).status_code, 404)
+            self.assertFalse(client.get("/healthz").json()["ready"])
 
 
 if __name__ == "__main__":
