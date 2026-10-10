@@ -40,17 +40,22 @@ class RoundSettings:
 
 
 class RoundLedger:
-    """`<root>/<round_id>.json` per round: state, base model, deadline, cohort size, result model."""
+    """`<root>/<round_id>.json` per round: state, base model, deadline, cohort size, seed, result model.
+
+    One ledger directory is one run, and `seed` is the round seed that run uses."""
 
     STATES = ("open", "aggregated", "discarded")
 
     def __init__(self, root: Path | str):
         self._root = Path(root)
         self._root.mkdir(parents=True, exist_ok=True)
+        self.seed: int | None = None
         for path in self._root.glob("*.json"):
             entry = json.loads(path.read_bytes())
             if entry["state"] == "open":  # the coordinator stopped while this round was running
                 self._write(dict(entry, state="discarded", reason="coordinator_restart"))
+            if entry.get("seed") is not None:
+                self.seed = entry["seed"]
 
     def get(self, round_id: str) -> Payload | None:
         path = self._root / (round_id + ".json")
@@ -61,6 +66,8 @@ class RoundLedger:
         if entry["state"] not in self.STATES:
             raise ValueError("unknown round state")
         self._write(entry)
+        if entry.get("seed") is not None:
+            self.seed = entry["seed"]
 
     def _write(self, entry: Payload) -> None:
         atomic_write(self._root / (entry["round_id"] + ".json"), ids.canonical_json(entry))
@@ -93,6 +100,9 @@ class Coordinator:
             raise ContractError("SCHEMA_INVALID", "/round_id")
         if self.ledger.get(round_id) is not None:
             raise ContractError("ILLEGAL_STATE_TRANSITION", "/round_id")  # never reuse a round_id
+        if self.ledger.seed is not None and settings.seed != self.ledger.seed:
+            # B picks validation customers from the seed (model.md §6): a new seed needs a new run.
+            raise ContractError("ILLEGAL_STATE_TRANSITION", "/seed")
         manifest = self.registry.manifest(latest["model_version"])
         deadline = self._now() + timedelta(seconds=settings.deadline_seconds)
         config = {
@@ -107,7 +117,7 @@ class Coordinator:
         self._round = SyntheticRound(self.registry, config, cohort, now=self._now)
         self._declared = {}
         self.ledger.record(round_id, state="open", model_version=config["model_version"],
-                           deadline=config["deadline"], cohort_size=len(cohort))
+                           deadline=config["deadline"], cohort_size=len(cohort), seed=settings.seed)
         return dict(config)
 
     # --- seller side -----------------------------------------------------------

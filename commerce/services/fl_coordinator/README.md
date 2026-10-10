@@ -16,8 +16,9 @@
 - `service.Coordinator`: variant 하나의 상태다.
   - 운영자가 `open_round(cohort, RoundSettings(...))`로 라운드를 열며 cohort는 그때 고정된다. 열린 라운드는 한 번에 하나다.
   - 누가 언제 라운드를 여는지(트리거)와 고정 라운드 수는 OQ08에서 정한다. 그때까지 라운드는 같은 프로세스 안에서만 연다(`app.state.coordinator`).
-  - `RoundLedger`는 `ROUND_STATE_DIR`에 라운드마다 상태·기준 모델·deadline·cohort 크기·결과 모델만 쓴다. delta·지표·비밀·참여자 ID는 쓰지 않는다.
+  - `RoundLedger`는 `ROUND_STATE_DIR`에 라운드마다 상태·기준 모델·deadline·cohort 크기·seed·결과 모델만 쓴다. delta·지표·비밀·참여자 ID는 쓰지 않는다.
   - 재시작하면 열려 있던 라운드를 `discarded`로 기록하고 그 round_id는 다시 쓰지 않는다.
+  - `ROUND_STATE_DIR` 하나가 한 실행이다. 첫 라운드의 `seed`를 그 뒤 모든 라운드가 쓰며, 다른 seed로 열면 `ILLEGAL_STATE_TRANSITION`(`/seed`)이다. 재시작해도 같다. B는 판매자의 검증 고객을 이 seed로 고르므로([모델 경계](../../../docs/design/model.md) §6), seed가 바뀌면 검증 고객이 학습으로 넘어간다. seed를 바꾸려면 새 `ROUND_STATE_DIR`로 새 실행을 시작한다.
 - `auth.py`: 판매자 토큰 `<seller_id>.<secret>`. `AUTH_FILE`(파일)에는 scrypt 해시만 둔다.
   - 발급과 교체: `python -m commerce.services.fl_coordinator.auth issue --auth-file <AUTH_FILE> --seller <id>`. 토큰은 그때 한 번만 출력된다. 폐기는 `revoke`다.
   - variant마다 별도 파일을 쓴다.
