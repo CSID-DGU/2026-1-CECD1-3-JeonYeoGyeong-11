@@ -2,7 +2,6 @@ import json
 import unicodedata
 import unittest
 
-from commerce.packages.contracts.errors import FeatureNotImplemented
 from commerce.packages.data_adapters.tests import CONTRACT_FIXTURES, LIVE
 from commerce.packages.data_adapters.text import (
     EmptyProductText, audit_texts, build_product_text, catalog_item_text, dunnhumby_fields,
@@ -44,8 +43,8 @@ class SourceTexts(unittest.TestCase):
                          "[NAME] Soda [AISLE] soft drinks [DEPT] beverages")
 
     def test_dunnhumby_order(self):
-        self.assertEqual(build_product_text(dunnhumby_fields("FLUID MILK", "WHOLE", "1 GA")),
-                         "[CAT] FLUID MILK [TYPE] WHOLE [SIZE] 1 GA")
+        self.assertEqual(build_product_text(dunnhumby_fields("TEST CAT", "TEST TYPE", "990 G")),
+                         "[CAT] TEST CAT [TYPE] TEST TYPE [SIZE] 990 G")
 
     def test_live_contract_example(self):
         item = contract_example("catalog_item.v1", "live_new_item_zero_history.json")
@@ -58,10 +57,15 @@ class SourceTexts(unittest.TestCase):
         self.assertEqual(catalog_item_text(item),
                          build_product_text(instacart_fields("Soda", "soft drinks", "beverages")))
 
-    def test_dunnhumby_catalog_text_is_not_built_yet(self):
+    def test_dunnhumby_contract_example(self):
+        # dunnhumby.catalog_item: path [department, category], stand-in title = product_type, size in description.
         item = contract_example("catalog_item.v1", "dunnhumby_generated_text.json")
-        with self.assertRaises(FeatureNotImplemented):
-            catalog_item_text(item)
+        self.assertEqual(catalog_item_text(item), "[CAT] TEST CAT DAIRY [TYPE] TEST TYPE WHOLE [SIZE] 990 G")
+
+    def test_dunnhumby_without_a_type_has_no_type_marker(self):
+        item = dict(contract_example("catalog_item.v1", "dunnhumby_generated_text.json"),
+                    title_text="TEST CAT DAIRY", description_text=None)
+        self.assertEqual(catalog_item_text(item), "[CAT] TEST CAT DAIRY")
 
     def test_sizes_numbers_and_korean_survive(self):
         for title in ("Greek Style Yogurt 1.5 kg", "Whole Milk 1/2 gal", "무가당 두유 950ml",

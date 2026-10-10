@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="narrow-inner stack-lg">
+  <div class="page-head">
+    <h1 class="page-title">주문내역</h1>
+    <p>{{ customer.display_name }}님의 주문입니다.</p>
+  </div>
+  <div class="card flush">
+    <div class="list">
+      {% for order in orders %}
+      <div class="list-item">
+        <div class="thumb tone-{{ loop.index0 % 4 }}" aria-hidden="true">{{ titles.get(order['items'][0].item_id_local, order['items'][0].item_id_local)[:1] if order['items'] else '' }}</div>
+        <div class="grow">
+          <p class="list-title">{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</p>
+          <p class="list-sub">{{ order.created_at[:10] }} · 주문번호 {{ order.order_id[:8] }}</p>
+        </div>
+        <div class="stack align-end">
+          <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ status_labels[order.status] }}</span>
+          <span class="price-now">{{ "{:,}".format(order.total_amount) }}원</span>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty">주문 내역이 없습니다.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

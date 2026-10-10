@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{{ staff.display_name }}님, 안녕하세요</h1>
+  <p>오늘 매장 현황이에요.</p>
+</div>
+<div class="grid cols-3">
+  <a class="card stat" href="/seller/{{ seller_id }}/products">
+    <span class="stat-icon" aria-hidden="true">📦</span>
+    <span class="stat-value">{{ product_count }}개</span>
+    <span class="stat-label">등록 상품</span>
+  </a>
+  <a class="card stat" href="/seller/{{ seller_id }}/orders">
+    <span class="stat-icon" aria-hidden="true">🧾</span>
+    <span class="stat-value">{{ status_counts.requested + status_counts.accepted }}건</span>
+    <span class="stat-label">처리 대기 주문 (접수 {{ status_counts.requested }} · 처리중 {{ status_counts.accepted }})</span>
+  </a>
+  <a class="card stat" href="/seller/{{ seller_id }}/orders">
+    <span class="stat-icon" aria-hidden="true">✅</span>
+    <span class="stat-value">{{ status_counts.completed }}건</span>
+    <span class="stat-label">완료된 주문</span>
+  </a>
+</div>
+
+<section class="section">
+  <h2 class="section-title">추천 모델 연결</h2>
+  <div class="grid cols-2">
+    <div class="card stack">
+      <div class="row between">
+        <span class="list-title">추천 모델</span>
+        {% if not model_connected %}
+        <span class="badge muted">미연결</span>
+        {% elif model_fallback %}
+        <span class="badge warn">연결됨 · 모델 준비 중</span>
+        {% else %}
+        <span class="badge solid">실제 모델로 추천 중</span>
+        {% endif %}
+      </div>
+      {% if not model_connected %}
+      <p class="muted-note">추천 모델(B)이 아직 이 서버에 연결되지 않아, 매장 인기순으로 추천하고 있습니다.</p>
+      {% elif model_fallback %}
+      <p class="muted-note">추천 모델은 연결됐지만 아직 답할 수 없어 인기순으로 대신 보여줍니다 (사유: <span class="mono">{{ model_fallback }}</span>).</p>
+      {% else %}
+      <p class="muted-note">모델 버전 <span class="mono">{{ model_version }}</span></p>
+      {% endif %}
+    </div>
+    <div class="card stack">
+      <div class="row between">
+        <span class="list-title">추천 모델로 보낸 데이터</span>
+        {% set waiting = delivery.purchase_event.pending + delivery.catalog_item.pending %}
+        <span class="badge {{ 'warn' if waiting else 'brand' }}">{{ '전달 대기 %d건' % waiting if waiting else '모두 전달됨' }}</span>
+      </div>
+      <p class="muted-note">
+        구매 기록 {{ delivery.purchase_event.delivered }}건 · 상품 {{ delivery.catalog_item.delivered }}개 전달 완료.
+        {% if waiting %}대기 중인 건은 모델이 연결되면 자동으로 다시 보냅니다.{% endif %}
+        {% if delivery.purchase_event.quarantined %}<br>내용이 달라 보류된 구매 기록 {{ delivery.purchase_event.quarantined }}건이 있습니다.{% endif %}
+      </p>
+    </div>
+  </div>
+</section>
+<p class="muted-note">숫자는 이 매장의 주문 DB(orders.sqlite)에서 바로 센 값입니다. 완료된 주문만 구매 기록으로 추천 모델에 전달됩니다.</p>
+{% endblock %}

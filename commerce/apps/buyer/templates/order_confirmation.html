@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="narrow-inner stack-lg">
+  <div class="page-head">
+    <span class="badge solid">주문 접수 완료</span>
+    <h1 class="page-title">주문이 접수되었습니다</h1>
+    <p>판매자가 확인하면 주문내역에서 상태가 바뀝니다.</p>
+  </div>
+
+  <div class="card stack">
+    <div class="row between"><span class="muted-note">주문번호</span><strong>{{ order.order_id[:8] }}</strong></div>
+    <div class="row between"><span class="muted-note">상품</span><span>{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</span></div>
+    <hr class="divider">
+    <div class="row between"><span class="list-title">결제 예정 금액</span><span class="price-now lg">{{ "{:,}".format(order.total_amount) }}원</span></div>
+  </div>
+
+  <section class="section">
+    <h2 class="section-title">처리 흐름</h2>
+    <div class="flow">
+      <div class="step active">
+        <div class="step-title">주문 접수</div>
+        <div class="step-desc">판매자에게 주문이 전달되었습니다.</div>
+      </div>
+      <div class="step">
+        <div class="step-title">매장 로컬 기록</div>
+        <div class="step-desc">이 매장의 구매 기록으로 저장됩니다.</div>
+      </div>
+      <div class="step">
+        <div class="step-title">매장 로컬 학습</div>
+        <div class="step-desc">매장 데이터로 추천 모델이 갱신됩니다. (모델 연동 준비 중)</div>
+      </div>
+      <div class="step">
+        <div class="step-title">공유 모델 반영</div>
+        <div class="step-desc">여러 매장의 학습 결과가 모여 공유 모델에 반영됩니다. (연동 준비 중)</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <a class="btn secondary" href="/buyer/{{ seller_id }}/orders">주문내역 보기</a>
+    <a class="btn ghost" href="/buyer/{{ seller_id }}/">계속 둘러보기</a>
+  </div>
+</div>
+{% endblock %}
