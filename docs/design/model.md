@@ -149,6 +149,7 @@ b2는 frozen 해시 불변, 공유 층 gradient, export에 local/frozen/상품�
 - lr을 키우거나 step을 늘리면 과적합해서 채택이 줄고 검증 손실도 나빠졌다(lr 0.01은 0~1/10곳).
 - 각 고객의 마지막 방문(선택에 쓰지 않음)에서 채택된 개인화를 쓰면 HR@10은 text_relation +0.6pt, text_only −0.1pt였다.
 - 최소 데이터 기준(학습 예제 20, 검증 예제 5)은 시작값 그대로다.
+- 이 10곳은 설정을 고르는 데 썼다(각 고객의 마지막 방문 전까지 전부가 원장). 그래서 A-few 결과를 같은 10곳의 test 구간으로 보고하면 test 구간을 보고 고른 셈이 된다(evaluation.md §4.1). A-few는 다른 보류 판매자로 보고하거나, 같은 곳이면 이 점을 결과에 적는다.
 
 recommendation.model_version은 실제 서빙 가중치의 opaque ID다. C의 round_config.model_version은 항상 공통 base ID다. A는 서빙 ID를 해석해 모델 URL을 만들지 않는다.
 
