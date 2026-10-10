@@ -10,6 +10,7 @@
   - 모델 파일: `{model_dir}/base/{variant}/{model_version}/`(release.json·manifest.json·weights.npz)와 `CURRENT`. 검증을 모두 통과한 release만 임시 폴더→이름 바꾸기→CURRENT 순으로 반영하므로 실패하면 이전 base가 계속 서빙한다.
   - frozen 인코더는 B 설치물로 `{model_dir}/frozen_text/`에 둔다(model-lab.md §6.6). 없으면 모델을 쓰지 않고 fallback만 한다.
   - 설치: `python -m commerce.packages.recommender.install --model-dir <MODEL_DIR> --encoder-dir <받은 인코더 폴더>`가 인코더를 확인(text_artifact_hash)한 뒤 `frozen_text/`에 둔다. `--release-dir <release 폴더> --variant …`는 FL 없이 학습된 release를 설치한다(C coordinator에서 받은 것과 같은 검사).
+    - 이 명령은 FL 없이 서빙만 하는 판매자용이다. FL에 참여할 판매자는 같은 release를 C의 `fl_coordinator.import_release`로 registry에 넣고 client `install_latest`로 받는다(model-lab.md §6의 3·5). 그렇지 않으면 첫 라운드의 `round_config.model_version`이 판매자 base와 달라 학습이 거부된다.
   - Instacart처럼 상대시간인 과거 원장은 달력이 없으므로 어떤 live as_of보다도 앞선 이력으로 본다.
   - train_round의 검증 고객(10명 중 1명)은 seller와 round_config.seed로 정하고 round_id는 쓰지 않는다. 그래서 seed를 라운드마다 바꾸면 검증 고객도 바뀐다. C coordinator는 한 실행 동안 seed를 고정한다.
   - install_release는 받은 manifest의 hash를 이 패키지가 기대하는 manifest(설치된 인코더의 text_artifact_hash와 preprocessing_version 포함)와 비교한다. 다른 인코더나 전처리로 만든 release는 MANIFEST_MISMATCH다.
