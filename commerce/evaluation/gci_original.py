@@ -44,7 +44,7 @@ import torch.nn.functional as F
 from commerce.evaluation.encoder_probe import peak_memory_mb
 from commerce.evaluation.gci_protocol import menu_items, seller_units
 from commerce.evaluation.harex_compare import code_version, cohort_targets
-from commerce.evaluation.scoring import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
+from commerce.evaluation.metrics.ranking import MacroAverager, expected_metrics, p_topfreq_scores, popularity_scores
 from commerce.packages.data_adapters.assignment import assign_clients
 from commerce.packages.data_adapters.baskets import basket_from_event, customer_visits
 from commerce.packages.data_adapters.instacart import cart_orders, load_instacart

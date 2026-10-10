@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="auth">
+  <div class="auth-head">
+    <img src="/static/logo.svg" alt="">
+    <h1 class="page-title">{{ brand_name }} 회원가입</h1>
+    <p>계정은 이 매장 안에서만 쓰이고 다른 곳으로 보내지지 않아요.</p>
+  </div>
+  <div class="card">
+    <form class="form" method="post" action="/buyer/{{ seller_id }}/signup">
+      {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+      <label class="field">아이디
+        <input type="text" name="customer_id_local" value="{{ form.customer_id_local or '' }}" autocomplete="username" required>
+      </label>
+      <label class="field">이름
+        <input type="text" name="display_name" value="{{ form.display_name or '' }}" autocomplete="name" required>
+      </label>
+      <label class="field">비밀번호
+        <input type="password" name="password" autocomplete="new-password" required>
+      </label>
+      <button class="btn primary block" type="submit">가입하기</button>
+    </form>
+  </div>
+  <p class="muted-note auth-foot">이미 계정이 있으신가요? <a href="/buyer/{{ seller_id }}/login">로그인</a></p>
+</div>
+{% endblock %}

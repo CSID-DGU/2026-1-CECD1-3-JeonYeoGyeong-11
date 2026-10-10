@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% macro product_card(item, index) -%}
+<a class="product-card" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
+  {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+  <div class="thumb tone-{{ index % 4 }}{{ ' emoji' if emoji }}" aria-hidden="true">{{ emoji or item.title_text[:1] }}</div>
+  <div class="product-info">
+    <p class="product-title">{{ item.title_text }}</p>
+    {% if item.category_path %}<p class="product-meta">{{ item.category_path | join(' · ') }}</p>{% endif %}
+    <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span></div>
+  </div>
+</a>
+{%- endmacro %}
+{% block content %}
+{% if recommended %}
+<section class="section">
+  <h2 class="section-title">
+    {% if customer %}{{ customer.display_name }}님을 위한 {% endif %}추천 상품
+    {% if recommendation_label %}<span class="badge muted">{{ recommendation_label }}</span>{% endif %}
+  </h2>
+  <div class="shelf">
+    {% for item in recommended %}{{ product_card(item, loop.index0) }}{% endfor %}
+  </div>
+  {% if recommendation_label %}
+  <p class="muted-note mt-12">
+    아직 모델 추천을 낼 수 없어, 이 고객이 자주 산 상품을 먼저, 그다음 이 매장에서 많이 팔린 상품 순으로 보여주고 있습니다.
+  </p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="section">
+  <h1 class="page-title mb-16">상품 둘러보기</h1>
+  {% if catalog %}
+  <div class="product-grid">
+    {% for item in catalog %}{{ product_card(item, loop.index0 + 1) }}{% endfor %}
+  </div>
+  {% else %}
+  <div class="card empty">아직 등록된 상품이 없습니다. 판매자 화면에서 상품을 등록해 보세요.</div>
+  {% endif %}
+</section>
+{% endblock %}

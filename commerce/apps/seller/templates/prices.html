@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">시세 입력</h1>
+  <p>오늘 가격을 기록하면 구매자 상품 화면에 시세 그래프로 보입니다.</p>
+</div>
+
+<div class="card">
+  <form class="inline-form" method="post" action="/seller/{{ seller_id }}/prices"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <label class="field">상품
+      <select name="item_id_local">
+        {% for item in catalog %}
+        <option value="{{ item.item_id_local }}">{{ item.title_text }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">오늘 가격(원)
+      <input type="number" name="price_minor" min="0" required>
+    </label>
+    <button class="btn primary" type="submit">입력</button>
+  </form>
+</div>
+
+<div class="grid cols-2">
+  {% for item in catalog %}
+  {% set history = histories[item.item_id_local] %}
+  {% if history %}
+  <div class="card stack">
+    <div class="row between">
+      <h2 class="section-title flush">{{ item.title_text }}</h2>
+      <span class="price-now">{{ "{:,}".format(history[-1].price_minor) }}원</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>날짜</th><th class="num">가격</th></tr></thead>
+        <tbody>
+          {% for row in history[-7:] | reverse %}
+          <tr><td>{{ row.price_date }}</td><td class="num">{{ "{:,}".format(row.price_minor) }}원</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}
