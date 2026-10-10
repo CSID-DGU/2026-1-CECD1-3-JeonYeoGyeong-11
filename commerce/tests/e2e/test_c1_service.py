@@ -146,12 +146,36 @@ class Restart(_CoordinatorCase):
         files = list((self.root / "rounds").iterdir())
         self.assertEqual([path.suffix for path in files], [".json"])
         entry = json.loads(files[0].read_bytes())
-        self.assertLessEqual(set(entry), {"round_id", "state", "model_version", "deadline", "cohort_size",
+        self.assertLessEqual(set(entry), {"round_id", "state", "model_version", "deadline", "cohort_size", "seed",
                                           "result_model_version", "reason"})
         self.assertNotIn("seller-a", files[0].read_text(encoding="utf-8"))
 
     def test_unknown_round_is_not_found(self):
         self.assertEqual(self.code(self.coordinator().result, "seller-a", "round-none"), "NOT_FOUND")
+
+
+class FixedSeed(_CoordinatorCase):
+    """B picks each seller's validation customers from round_config.seed (model.md §6), so one
+    run keeps one seed; a new seed would move customers between validation and training."""
+
+    def test_later_rounds_must_keep_the_first_seed(self):
+        coordinator = self.coordinator()
+        first = coordinator.open_round(SELLERS, RoundSettings(seed=7, deadline_seconds=60))
+        self.clock.now += timedelta(seconds=61)  # discarded at the deadline
+        self.assertEqual(self.code(coordinator.open_round, SELLERS, RoundSettings(seed=8)), "ILLEGAL_STATE_TRANSITION")
+        self.assertEqual(coordinator.open_round(SELLERS, RoundSettings(seed=7))["seed"], first["seed"])
+
+    def test_the_seed_survives_a_restart(self):
+        self.coordinator().open_round(SELLERS, RoundSettings(seed=7))
+        after = self.coordinator()  # restart: the open round is discarded, the seed stays
+        self.assertEqual(self.code(after.open_round, SELLERS, RoundSettings(seed=0)), "ILLEGAL_STATE_TRANSITION")
+        self.assertEqual(after.open_round(SELLERS, RoundSettings(seed=7))["seed"], 7)
+
+    def test_a_new_round_state_dir_is_a_new_run(self):
+        self.coordinator().open_round(SELLERS, RoundSettings(seed=7))
+        other = Coordinator(ModelRegistry(self.root / "registry"), RoundLedger(self.root / "rounds-next"),
+                            mode="synthetic_plaintext", now=self.clock)
+        self.assertEqual(other.open_round(SELLERS, RoundSettings(seed=8))["seed"], 8)
 
 
 if __name__ == "__main__":
