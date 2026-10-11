@@ -55,6 +55,21 @@ class PlatformDatasetTest(unittest.TestCase):
         pd.seed_store(other, "merchant-1", self.store)
         self.assertEqual(pd.export_seller_input(self.conn, "merchant-1"), pd.export_seller_input(other, "merchant-1"))
 
+    def test_master_account_logs_in_both_ways_and_has_a_history(self):
+        from commerce.services.merchant_api import accounts_service, fulfillment, notifications
+        pd.seed_store(self.conn, "merchant-1", self.store, now=NOW)
+        pd.seed_store(self.conn, "merchant-1", self.store, now=NOW)  # again: nothing doubles
+        accounts_service.authenticate_customer(self.conn, seller_id="merchant-1", customer_id_local=pd.MASTER_ID,
+                                               password=pd.MASTER_PASSWORD)
+        accounts_service.authenticate_seller(self.conn, seller_id="merchant-1", username=pd.MASTER_ID,
+                                             password=pd.MASTER_PASSWORD)
+        mine = orders_db.list_orders_by_customer(self.conn, "merchant-1", pd.MASTER_ID)
+        self.assertEqual(sorted(o["status"] for o in mine).count("completed"), 9)
+        self.assertEqual({o["status"] for o in mine} - {"completed"}, {"accepted", "requested"})
+        self.assertTrue(all(fulfillment.of_order(self.conn, "merchant-1", o["order_id"]) for o in mine))
+        self.assertTrue(notifications.is_following(self.conn, "merchant-1", pd.MASTER_ID))
+        self.assertGreater(notifications.unread_count(self.conn, "merchant-1", pd.MASTER_ID), 0)
+
     def test_new_item_is_listed_late(self):
         pd.seed_store(self.conn, "merchant-1", self.store, now=NOW)
         catalog = {c["item_id_local"]: c for c in pd.export_seller_input(self.conn, "merchant-1")["catalog"]}

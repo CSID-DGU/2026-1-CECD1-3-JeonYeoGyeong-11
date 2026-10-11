@@ -99,6 +99,9 @@ for _templates in (_seller_templates, _buyer_templates):
     _templates.env.globals["brand_name"] = BRAND_NAME
     _templates.env.globals["product_emoji"] = _product_emoji
     _templates.env.filters["mask_name"] = mask_name
+    # Demo only: DEMO_MASTER=1 shows a one-click login for the presenter's master account
+    # (platform_dataset.MASTER_ID) on both login screens. Off by default.
+    _templates.env.globals["demo_master"] = os.environ.get("DEMO_MASTER") == "1"
 
 _STATUS_LABELS = {"requested": "접수", "accepted": "처리중", "completed": "완료", "cancelled": "취소"}
 

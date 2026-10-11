@@ -632,3 +632,5 @@ form:has(input[name=method][value=delivery]:checked) .when-pickup { display: non
 }
 .page-head > .badge { align-self: flex-start; }
 .notice > .notice-text { display: block; }
+
+.demo-login { display: grid; gap: 8px; margin-top: 12px; border-style: dashed; border-color: var(--brand-300); background: var(--brand-50); }

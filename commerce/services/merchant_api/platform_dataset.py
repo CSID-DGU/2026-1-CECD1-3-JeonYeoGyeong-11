@@ -10,7 +10,8 @@ order's key, so a re-run adds nothing and two machines get the same events,
 times and catalog bodies (hence the same ids.snapshot_digest).
 
 What it makes per store (launcher layout: merchant-i in commerce/deploy/var/merchant_i):
-- a seller account (owner-1 / demo-pass-1234) and a catalog of its business
+- a seller account (owner-1 / demo-pass-1234), the presenter's master login
+  (master / master-1234, buyer and seller staff, with a history to show), and a catalog of its business
   type, about 40 items with descriptions (B's text encoder reads title +
   description + categories); a few staples are sold by several stores; one item
   is listed late in the period (a new item with little history);
@@ -621,6 +622,9 @@ def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Opti
     # --- pickup/delivery, stock, follows, notifications --------------------------------
     _trade_details(conn, seller_id, store, shoppers, catalog, now)
 
+    # --- the presenter's master account ---------------------------------------------------
+    _master(conn, seller_id, store, catalog, now)
+
     # --- DMs and price history -------------------------------------------------------
     rng = random.Random("dm-" + store.key)
     with conn:
@@ -711,6 +715,105 @@ def _trade_details(conn, seller_id: str, store: Store, shoppers: list[Shopper], 
                              "/buyer/%s/orders/%s" % (seller_id, order["order_id"]),
                              dedupe_key="order:%s:%s" % (order["order_id"], action[order["status"]]),
                              at=order.get("completed_at") or order["created_at"])
+
+
+MASTER_ID = "master"            # one demo login for every store, as buyer and as seller staff
+MASTER_PASSWORD = "master-1234"
+MASTER_NAME = "시연용 마스터"
+
+
+def _master(conn, seller_id: str, store: Store, catalog: dict, now: dt.datetime) -> None:
+    """The presenter's account: a seller staff login and a customer with a history worth showing
+    (repeat purchases in one liked category, so recommendations and personalization have
+    something to say; one order in progress by delivery, one fresh pickup order waiting for the
+    seller; reviews, wishes, a cart, a follow, a group buy and notifications)."""
+    if accounts_db.fetch_seller_account(conn, seller_id, MASTER_ID) is None:
+        accounts_service.signup_seller(conn, seller_id=seller_id, username=MASTER_ID, display_name=store.name,
+                                       password=MASTER_PASSWORD, business_reg_no=store.reg_no,
+                                       business_open_date="20190301", business_rep_name="데모")
+    if accounts_db.fetch_customer(conn, seller_id, MASTER_ID) is None:
+        accounts_service.signup_customer(conn, seller_id=seller_id, customer_id_local=MASTER_ID,
+                                         display_name=MASTER_NAME, password=MASTER_PASSWORD)
+    rng = random.Random("master-" + store.key)
+    counts: dict[str, int] = {}
+    for item in catalog.values():
+        counts[_category(item)] = counts.get(_category(item), 0) + 1
+    liked = max(sorted(counts), key=lambda c: counts[c])
+    in_liked = sorted(i for i in catalog if _category(catalog[i]) == liked and i != store.new_item)
+    favourites = rng.sample(in_liked, k=min(3, len(in_liked)))
+    others = sorted(i for i in catalog if i not in favourites and i != store.new_item)
+    days_ago = lambda d: now - dt.timedelta(days=d)  # noqa: E731
+    plan = [(d, "completed") for d in (58, 51, 44, 37, 30, 23, 16, 9, 4)] + [(1.0, "accepted"), (0.2, "requested")]
+    if store.history_days < 60:
+        plan = [(d * store.history_days / 60, s) for d, s in plan]
+    terms = fulfillment.store_terms(conn, seller_id)
+    placed = []
+    for n, (ago, stage) in enumerate(plan):
+        basket = set(rng.sample(favourites, k=rng.randint(1, len(favourites)))) | {rng.choice(others)}
+        items = [{"item_id_local": i, "quantity": rng.choice([1, 1, 2]), "unit_price_minor": catalog[i][2]} for i in sorted(basket)]
+        key = "master-%s-%d" % (store.key, n)
+        existed = orders_db.fetch_order_by_idempotency_key(conn, seller_id, key) is not None
+        order = orders_service.place_order(conn, seller_id=seller_id, customer_id_local=MASTER_ID, idempotency_key=key,
+                                           items=items, currency="KRW", order_id=_order_id(seller_id, key))
+        placed.append((order, stage, ago))
+        if existed:
+            continue
+        when = days_ago(ago)
+        if stage in ("accepted", "completed"):
+            orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"], action="accept",
+                                            expected_status_version=1)
+        done = None
+        if stage == "completed":
+            orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"], action="complete",
+                                            expected_status_version=2)
+            done = _iso(when + dt.timedelta(hours=5))
+        delivery = stage == "accepted" or n % 3 == 0
+        subtotal = sum(i["quantity"] * i["unit_price_minor"] for i in items)
+        with conn:
+            conn.execute("UPDATE orders SET created_at = ?, completed_at = ? WHERE seller_id = ? AND order_id = ?",
+                         (_iso(when), done, seller_id, order["order_id"]))
+            if done:
+                _backdate_event(conn, seller_id, order["order_id"], done)
+            conn.execute(
+                "INSERT OR IGNORE INTO order_fulfillment (seller_id, order_id, method, recipient, phone, address, pickup_slot, memo, "
+                "shipping_fee, tracking_no, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (seller_id, order["order_id"], "delivery" if delivery else "pickup", MASTER_NAME if delivery else None,
+                 "010-0000-1234", "제주시 첨단로 213-3, 시연동 101호" if delivery else None,
+                 None if delivery else fulfillment.PICKUP_SLOTS[1], "시연용 주문이에요" if n >= 9 else None,
+                 fulfillment.shipping_fee(terms, "delivery" if delivery else "pickup", subtotal),
+                 ("CJ%010d" % (n * 7919 + 13)) if delivery and stage == "completed" else None, _iso(when)))
+            if stage != "requested":
+                fulfillment.log_status(conn, seller_id, order["order_id"], "accepted", _iso(when + dt.timedelta(hours=1)))
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO customer_profiles (seller_id, customer_id_local, method, recipient, phone, address, updated_at) "
+                     "VALUES (?, ?, 'delivery', ?, '010-0000-1234', '제주시 첨단로 213-3, 시연동 101호', ?)",
+                     (seller_id, MASTER_ID, MASTER_NAME, _iso(now)))
+        for n, item in enumerate(favourites[:2]):
+            conn.execute("INSERT OR IGNORE INTO reviews (seller_id, item_id_local, customer_id_local, rating, body, created_at) "
+                         "VALUES (?, ?, ?, ?, ?, ?)", (seller_id, item, MASTER_ID, 5 - n, REVIEWS[5 - n][0], _iso(days_ago(3 + n))))
+        for item in others[:3]:
+            conn.execute("INSERT OR IGNORE INTO wishlist (seller_id, customer_id_local, item_id_local, created_at) VALUES (?, ?, ?, ?)",
+                         (seller_id, MASTER_ID, item, _iso(days_ago(2))))
+        for item in others[3:5]:
+            conn.execute("INSERT OR IGNORE INTO cart_items (seller_id, customer_id_local, item_id_local, quantity, added_at) "
+                         "VALUES (?, ?, ?, 1, ?)", (seller_id, MASTER_ID, item, _iso(days_ago(0.1))))
+        conn.execute("INSERT OR IGNORE INTO store_follows (seller_id, customer_id_local, created_at) VALUES (?, ?, ?)",
+                     (seller_id, MASTER_ID, _iso(days_ago(40))))
+        for gb in social_db.list_group_buys(conn, seller_id):
+            if gb["status"] == "open" and social_db.sum_group_buy_quantity(conn, seller_id, gb["group_buy_id"]) + 1 < gb["target_quantity"]:
+                social_db.insert_group_buy_participant(conn, seller_id, gb["group_buy_id"], MASTER_ID, 1, _iso(days_ago(0.5)))
+                break
+        conn.execute("UPDATE reviews SET seller_reply = COALESCE(seller_reply, ?) WHERE seller_id = ? AND item_id_local = ? "
+                     "AND customer_id_local = ?", (SELLER_REPLIES[0], seller_id, favourites[0], MASTER_ID))
+    for order, stage, ago in placed:
+        if stage in ("accepted", "completed") and ago < 10:
+            action = "accept" if stage == "accepted" else "complete"
+            notifications.notify(conn, seller_id, [MASTER_ID], "order", notifications.ORDER_TITLES[action],
+                                 "/buyer/%s/orders/%s" % (seller_id, order["order_id"]),
+                                 dedupe_key="order:%s:%s" % (order["order_id"], action), at=_iso(days_ago(max(0.0, ago - 0.1))))
+    notifications.notify(conn, seller_id, [MASTER_ID], "reply", "판매자가 내 리뷰에 답글을 남겼어요.",
+                         "/buyer/%s/items/%s#reviews" % (seller_id, favourites[0]), dedupe_key="master-reply",
+                         at=_iso(days_ago(1.5)))
 
 
 def _order_id(seller_id: str, key: str) -> str:

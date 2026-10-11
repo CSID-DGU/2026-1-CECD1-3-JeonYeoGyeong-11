@@ -18,6 +18,13 @@
       <button class="btn primary block" type="submit">로그인</button>
     </form>
   </div>
+  {% if demo_master %}
+  <form class="card demo-login" method="post" action="/buyer/{{ seller_id }}/login">
+    <input type="hidden" name="customer_id_local" value="master"><input type="hidden" name="password" value="master-1234">
+    <p class="muted-note">시연 모드 · 구매 이력·단골·알림이 채워진 계정</p>
+    <button class="btn secondary block" type="submit">🥒 시연용 마스터 계정으로 로그인</button>
+  </form>
+  {% endif %}
   <p class="muted-note auth-foot">계정이 없으신가요? <a href="/buyer/{{ seller_id }}/signup">회원가입</a></p>
 </div>
 {% endblock %}

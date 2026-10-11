@@ -44,7 +44,7 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 
 `gate docs`가 첫 줄을 이 서비스 디렉터리의 코드 전체와 대조한다. 코드에서 새 값을 읽으면 같은 PR에서 이 줄을 고친다.
 
-- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`
+- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `DEMO_MASTER`
 - 구현 시 추가: `COORDINATOR_URL`, `FL_CLIENT_TOKEN`
 
 `MERCHANT_SECRET`은 선택값이다. 지금은 세션 쿠키·CSRF 서명 키를 만드는 데만 쓰며, 판매자마다 다른 충분히 긴 임의 문자열을 넣는다. 비워두면 재시작할 때마다 모든 사용자가 로그아웃된다. 저장소나 로그에 남기지 않는다.
@@ -54,3 +54,5 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 `MERCHANT_DB_PATH`는 아직 `run_local.py`(C 소유)가 넘기지 않으므로 `os.environ.get`과 `FEATURE_DB_PATH` 옆 기본 경로로 읽는다. 필수값으로 바꾸는 것은 C의 런처 PR이 먼저 병합된 뒤다([작업 규칙](../../../docs/team/working-agreement.md) §3).
 
 `CHATBOT_MODE`(`auto`·`llm`·`rules`), `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`(`1`이면 주문 내역·개인 추천 도구를 LLM에 연다, 기본 꺼짐)는 선택값이다. `ANTHROPIC_API_KEY` 또는 `ANTHROPIC_AUTH_TOKEN`이 없으면 챗봇은 규칙 기반으로만 답한다. 키는 저장소·로그에 남기지 않는다. `anthropic` 패키지는 챗봇이 LLM을 쓸 때만 import한다(설치하지 않아도 앱은 뜬다).
+
+`DEMO_MASTER=1`은 시연용이다. 로그인 화면에 마스터 계정(`master` / `master-1234`, `platform_dataset`이 가게마다 만든다) 원클릭 로그인 버튼을 보인다. `serve_demo`가 기본으로 켠다. 실제 운영에서는 켜지 않는다.

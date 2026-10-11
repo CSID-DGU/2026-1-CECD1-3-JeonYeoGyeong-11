@@ -36,6 +36,7 @@ def main(argv=None) -> int:
             base = VAR / f"merchant_{i}"
             base.mkdir(parents=True, exist_ok=True)
             env = {k: v for k, v in os.environ.items() if not k.startswith(("MERCHANT_ID", "FEATURE_", "MODEL_", "FL_"))}
+            env.setdefault("DEMO_MASTER", "1")  # one-click master login on the login screens
             env.update({"MERCHANT_ID": f"merchant-{i}", "FEATURE_DB_PATH": str(base / "features.sqlite"),
                         "MODEL_DIR": str(base / "models"), "FL_ENABLED": "false", "FL_MODE": "protected"})
             log = open(base / "server.log", "ab")
