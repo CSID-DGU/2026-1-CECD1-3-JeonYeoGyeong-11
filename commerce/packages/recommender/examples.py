@@ -48,6 +48,14 @@ def cut_items(basket: LocalBasket, k: int = K_ITEMS) -> tuple[tuple[str, ...], i
     return tuple(ordered[:k]), max(0, len(ordered) - k)
 
 
+def _history(before: Sequence[Visit]) -> tuple[tuple[HistoryVisit, ...], dict[str, int]]:
+    history = []
+    for visit in before[-L_VISITS:]:
+        items, dropped = cut_items(visit.basket)
+        history.append(HistoryVisit(items, dropped, visit.gap_days, visit.gap_censored, visit.time_lower_bound))
+    return tuple(history), dict(Counter(item for visit in before for item in visit.basket.item_ids))
+
+
 def customer_examples(visits: Sequence[Visit], positions: Iterable[int]) -> list[Example]:
     """Examples for the 1-based target positions that have MIN_HISTORY earlier visits.
 
@@ -62,15 +70,25 @@ def customer_examples(visits: Sequence[Visit], positions: Iterable[int]) -> list
         if len(before) < MIN_HISTORY:
             continue
         target = visits[position - 1].basket
-        history = []
-        for visit in before[-L_VISITS:]:
-            items, dropped = cut_items(visit.basket)
-            history.append(HistoryVisit(items, dropped, visit.gap_days, visit.gap_censored,
-                                        visit.time_lower_bound))
-        counts = Counter(item for visit in before for item in visit.basket.item_ids)
+        history, counts = _history(before)
         examples.append(Example(
             seller_id=target.seller_id, customer_id_local=target.customer_id_local,
             target_basket_id=target.basket_id_local, target_position=position,
-            history=tuple(history), target_items=target.item_ids, prior_counts=dict(counts),
+            history=history, target_items=target.item_ids, prior_counts=counts,
         ))
     return examples
+
+
+def query_example(visits: Sequence[Visit]) -> Example:
+    """The serving query: the customer's next, not yet made visit after all given visits.
+
+    The history is cut exactly as for a training example, so the service reads what
+    training read. Any number of visits works; MIN_HISTORY only limits training.
+    """
+    if not visits:
+        raise ValueError("a query needs at least one earlier visit")
+    last = visits[-1].basket
+    history, counts = _history(visits)
+    return Example(seller_id=last.seller_id, customer_id_local=last.customer_id_local, target_basket_id="",
+                   target_position=len(visits) + 1, history=history, target_items=frozenset(),
+                   prior_counts=counts)

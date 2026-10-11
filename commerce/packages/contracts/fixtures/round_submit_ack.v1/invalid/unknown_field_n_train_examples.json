@@ -1,7 +1,7 @@
 {
   "schema_version": "round_submit_ack.v1",
   "round_id": "round-0002",
-  "seller_id": "dh-store-0412",
+  "seller_id": "dh-store-990412",
   "disposition": "accepted_on_time",
   "arrival_t_s": 3.1,
   "staleness_rounds": 0,

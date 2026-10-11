@@ -51,6 +51,10 @@ A는 구매자의 입력을 서버에서 검증하고 가격·상태·완료시�
 
 구매 성공은 A commit 기준이다. B 전달 대기는 주문 실패로 바꾸지 않고 로컬 상태로 표시한다. 시작 시와 주기적으로 pending을 재생한다. A와 B의 DB를 직접 교차 쓰지 않는다.
 
+**상품보다 구매가 먼저 올 때.** B는 그 구매를 저장하고 정상 반환하므로 A는 전달을 보류하거나 상품 전달을 기다리며 재시도하지 않는다. 카탈로그에 없는 상품은 그 catalog_item이 반영될 때까지 특징·후보에 쓰지 않는다. 반영되면 feature_epoch가 오르고 이미 저장된 구매가 함께 쓰인다. 비교와 학습은 각자 고정한 snapshot에 있는 상품만 본다.
+
+**재시작과 초기화.** 재시작 뒤 A가 pending을 다시 보내면 B는 이벤트 ID로 한 번만 반영한다. A 주문 DB와 B 특징 DB는 한 판매자의 짝이다. 하나만 새로 만들면 source_seq가 1부터 다시 시작해 B가 옛 순번보다 낮은 갱신을 무시하므로, 판매자 데이터를 초기화할 때는 둘을 함께 새로 만든다. catalog의 같은 순번·다른 본문(DUPLICATE_EVENT)과 schema·권한 오류는 재시도로 풀리지 않으므로 A는 purchase_event처럼 격리한다.
+
 purchase_event_id = SHA-256(정규 JSON [seller_id, source, basket_id_local])의 앞 32자리. A와 B 모두 `commerce.packages.contracts.ids.purchase_event_id`로 계산하고 검증기가 fixture를 이 식과 대조한다. 이벤트는 immutable이며 한 완료 주문에 하나다. basket_id_local=live order_id. 상품 중복은 주문 단계에서 수량을 합친다. 기존 이벤트를 원장으로 재생할 때도 같은 ID를 쓴다.
 
 | 출처 | seller_partition | time / order_rank | 수량 |
@@ -83,6 +87,8 @@ A가 로그인 세션의 seller/customer, 현재 UTC as_of로 runtime.predict_lo
 - 모델 없음 → no_shared_model, 판매자 이력 없음 → no_seller_history, 고객 이력 없음 → no_customer_history 순서로 fallback_reason을 결정한다. fallback이면 is_cold_start=true. 공통/개인화 가중치로 정상 시퀀스 추론을 하면 false/null.
 - fallback은 활성 카탈로그의 로컬 인기순, 동점 ID순. 이력 없는 판매자는 ID순으로 표시하고 fallback임을 숨기지 않는다. 텍스트 기준선은 고객 이력이 있을 때 정의한다.
 - 신규 판매자라는 이유만으로 항상 fallback하지 않는다. 공유 모델과 로컬 이력이 있으면 가중치 개인화 전에도 실제 시퀀스 모델로 평가한다.
+- model_version은 요청을 시작할 때 고정한 서빙 가중치 ID다. 공통 base가 설치돼 있으면 no_customer_history fallback에서도 그 base(개인화가 쓰이면 개인화) ID이고, 설치된 base가 없으면 B의 고정값 `popularity.local`이다. 순위가 인기순인지는 is_cold_start·fallback_reason으로만 판단한다.
+- fallback 점수는 as_of 이전 판매자 장바구니 가운데 그 상품이 든 장바구니 수다. 모델 점수는 한 응답 안의 순서만 뜻하는 실수다. 둘 다 확률이 아니며 다른 응답·모델·variant의 점수와 비교하지 않는다.
 
 B는 contract_error에 대응하는 코드·field_path를 가진 예외를 제공한다. A는 이를 HTTP 오류로 매핑한다. stack trace와 원장 내용을 응답하지 않는다.
 
