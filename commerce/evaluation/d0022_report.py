@@ -91,6 +91,8 @@ def main(argv=None):
     fl, local, cold = load(args.runs)
     gci_fl = [r for r in fl if r["settings"].get("protocol") == "gci"]
     gci_local = [r for r in local if r["settings"].get("protocol") == "gci"]
+    dh_fl = [r for r in fl if r["settings"].get("protocol") == "dunnhumby"]
+    dh_local = [r for r in local if r["settings"].get("protocol") == "dunnhumby"]
     fl = [r for r in fl if r["settings"].get("protocol", "next_visit") == "next_visit"]
     local = [r for r in local if r["settings"].get("protocol", "next_visit") == "next_visit"]
     out = []
@@ -208,7 +210,67 @@ def main(argv=None):
     for cond in sorted({condition(r["settings"]) for r in gci_fl + gci_local}):
         out += gci_table([r for r in gci_fl if condition(r["settings"]) == cond],
                          [r for r in gci_local if condition(r["settings"]) == cond], cond)
+    for sellers in sorted({r["settings"]["sellers"] for r in dh_fl + dh_local}):
+        out += dh_table([r for r in dh_fl if r["settings"]["sellers"] == sellers],
+                        [r for r in dh_local if r["settings"]["sellers"] == sellers], sellers)
     print("\n".join(out))
+
+
+def dh_table(fl, local, sellers):
+    """The auxiliary Dunnhumby cohort: answers split by whether their text is unique in the store (evaluation.md §4)."""
+    out = ["### Dunnhumby 보조 cohort — 점포 %d곳, 주 기준 분할, 판매자 macro, seed 평균\n" % sellers,
+           "| 모델 | 방식 | seed | NDCG@10 | HR@10 | Recall@20 | 정답 텍스트 고유 NDCG@10 | 같은 텍스트 정답 NDCG@10 |",
+           "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    fl_by, local_by, base = {}, {}, None
+    for r in fl:
+        fl_by.setdefault(r["settings"]["variant"], {})[r["settings"]["seed"]] = r["metrics"]["final_round"]
+    for r in local:
+        for variant, res in r["results"].get("basket", {}).items():
+            local_by.setdefault(variant, {})[r["settings"]["seed"]] = res["metrics"]
+
+    def row(name, mode, results, arm, seeds=True):
+        res = list(results.values())
+
+        def mean(part, metric):
+            return np.mean([macro(x[arm][part], metric) for x in res])
+        return "| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            name, mode, len(res) if seeds else "", fmt(mean("all", "ndcg@10")), fmt(mean("all", "hr@10")),
+            fmt(mean("all", "recall@20")), fmt(mean("text_unique", "ndcg@10")), fmt(mean("text_shared", "ndcg@10")))
+    for variant in sorted(set(fl_by) | set(local_by)):
+        if variant in fl_by:
+            out.append(row(variant, "FL", fl_by[variant], "%s FL" % variant))
+            base = base or next(iter(fl_by[variant].values()))
+        if variant in local_by:
+            arm = "%s (HAREX baseline)" % variant if variant == "T_hx" else variant
+            out.append(row(variant, "local_only", local_by[variant], arm))
+    if base:
+        for name in ("popularity", "P-TopFreq"):
+            out.append(row(name, "기준선", {0: base}, name, seeds=False))
+    out.append("")
+    contrasts = []
+    for a, b in (("R_lm", "T_lm"), ("R_hx", "T_hx")):
+        both = sorted(set(fl_by.get(a, {})) & set(fl_by.get(b, {})))
+        if not both:
+            continue
+        for part, label in (("all", "전체"), ("text_unique", "정답 텍스트 고유")):
+            pa = [fl_by[a][seed]["%s FL" % a][part].get("per_seller", {}) for seed in both]
+            pb = [fl_by[b][seed]["%s FL" % b][part].get("per_seller", {}) for seed in both]
+            stores = sorted(set.intersection(*(set(x) for x in pa + pb)))
+            if not stores:
+                continue
+            va = np.array([np.mean([x[st]["ndcg@10"] for x in pa]) for st in stores])
+            vb = np.array([np.mean([x[st]["ndcg@10"] for x in pb]) for st in stores])
+            mean, low, high = paired_bootstrap(va, vb)
+            judged = "차이를 확인하지 못했다" if low <= 0 <= high else "%s가 높다" % (a if low > 0 else b)
+            contrasts.append("| %s − %s FL (%s) | %d | %+.4f | [%+.4f, %+.4f] | %s |" % (
+                a, b, label, len(both), mean, low, high, judged))
+    if contrasts:
+        out += ["| 비교 | seed | NDCG@10 차이 | 판매자 bootstrap 95% | 판정 |", "| --- | --- | --- | --- | --- |"]
+        out += contrasts + [""]
+    out.append("DH는 상품명이 없어 점포 상품의 약 3분의 2가 다른 상품과 텍스트가 같다(OQ04). 그래서 R이 T보다 높아도 "
+               "관계 덕분인지 상품 구별 덕분인지 가를 수 없어, 정답 텍스트가 고유한 줄을 함께 본다(evaluation.md §4).")
+    out.append("")
+    return out
 
 
 def gci_table(fl, local, cond=MAIN):

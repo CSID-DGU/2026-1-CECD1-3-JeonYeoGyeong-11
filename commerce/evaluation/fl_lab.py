@@ -78,7 +78,8 @@ def local_round(model: HarexRecommender, global_shared: dict, train_parts, epoch
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--instacart-dir", type=Path)
+    parser.add_argument("--dunnhumby-dir", type=Path)  # --protocol dunnhumby
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
     parser.add_argument("--variant", required=True, choices=VARIANTS)
@@ -99,7 +100,8 @@ def main(argv=None):
     parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
-    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    # dunnhumby: the auxiliary DH cohort with week splits (dunnhumby_protocol.py).
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci", "dunnhumby"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -128,7 +130,16 @@ def main(argv=None):
         from commerce.evaluation.gci_protocol import build as gci_build
         record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
         sellers, first = gci_build(args, record)
+    elif args.protocol == "dunnhumby":
+        if args.target != "basket":
+            raise SystemExit("Dunnhumby has no cart order: use --target basket")
+        from commerce.evaluation.dunnhumby_protocol import build as dh_build
+        record["labels"] = [l for l in record["labels"] if l != "stand-in seller sizes"] + [
+            "Dunnhumby auxiliary cohort (evaluation.md §4): week splits, answers split by unique text"]
+        sellers, first = dh_build(args, record)
     else:
+        if args.instacart_dir is None:
+            raise SystemExit("--instacart-dir is needed unless --protocol dunnhumby")
         sellers, first = build(args, record)
 
     # One model on the device; a seller's own part is its hx token table, made with the same
