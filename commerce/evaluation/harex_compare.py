@@ -63,7 +63,7 @@ VARIANTS = ("T_hx", "R_hx", "T_lm", "R_lm", "R_hx_shuffled",
             "T_hx_rep2", "R_hx_rep2", "T_lm_rep2", "R_lm_rep2")  # _rep2: it also reads the item
 TARGETS = ("basket", "next_item")
 SHUFFLED = "_shuffled"
-PARTS = ("all", "repeat", "explore", "cnew")
+PARTS = ("all", "repeat", "explore", "cnew", "text_unique", "text_shared")  # text_*: Dunnhumby only
 # A-0 sellers (evaluation.md §3), fixed in advance: a second split over the customers
 # the cohort did not take, with the cohort's stand-in size.
 HELD_OUT_TARGETS = {990201 + k: 1040 for k in range(20)}
@@ -292,6 +292,9 @@ def evaluate(model, info, test_parts, target, arms, model_arm):
             repeat = {r for r in relevant if seller.items[r] in example.prior_counts}
             split = {"all": relevant, "repeat": repeat, "explore": relevant - repeat,
                      "cnew": relevant & info["held_rows"]}
+            if "shared_rows" in info:  # answers whose text another item of the store has (evaluation.md §4)
+                split["text_shared"] = relevant & info["shared_rows"]
+                split["text_unique"] = relevant - info["shared_rows"]
             for name, ranking in candidates.items():
                 for part, rel in split.items():
                     if rel:
@@ -301,7 +304,8 @@ def evaluate(model, info, test_parts, target, arms, model_arm):
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--instacart-dir", type=Path)
+    parser.add_argument("--dunnhumby-dir", type=Path)  # --protocol dunnhumby
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
     parser.add_argument("--variants", default=",".join(VARIANTS))
@@ -319,7 +323,8 @@ def main(argv=None):
     parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
-    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    # dunnhumby: the auxiliary DH cohort with week splits (dunnhumby_protocol.py).
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci", "dunnhumby"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -345,7 +350,16 @@ def main(argv=None):
         from commerce.evaluation.gci_protocol import build as gci_build
         record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
         sellers, first = gci_build(args, record)
+    elif args.protocol == "dunnhumby":
+        if args.targets != ["basket"]:
+            raise SystemExit("Dunnhumby has no cart order: use --targets basket")
+        from commerce.evaluation.dunnhumby_protocol import build as dh_build
+        record["labels"] = [l for l in record["labels"] if l != "stand-in seller sizes"] + [
+            "Dunnhumby auxiliary cohort (evaluation.md §4): week splits, answers split by unique text"]
+        sellers, first = dh_build(args, record)
     else:
+        if args.instacart_dir is None:
+            raise SystemExit("--instacart-dir is needed unless --protocol dunnhumby")
         sellers, first = build(args, record)
     for target in args.targets:
         for variant in args.variants:
