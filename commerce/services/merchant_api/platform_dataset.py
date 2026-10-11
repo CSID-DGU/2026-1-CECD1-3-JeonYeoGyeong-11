@@ -4,17 +4,19 @@ ledger and an FL round all see the same history.
 
 Why it exists: a marketplace only shows whether recommendations, the explore
 feed and FL work once people have bought, liked and talked for a while. With
-no real users yet, this generates that history -- deterministically (fixed
-seeds, stable ids), so a re-run adds nothing and two machines get the same
-stores.
+no real users yet, this generates that history -- deterministically: fixed
+seeds, a fixed end time (DEFAULT_NOW, or --now) and order IDs drawn from each
+order's key, so a re-run adds nothing and two machines get the same events,
+times and catalog bodies (hence the same ids.snapshot_digest).
 
 What it makes per store (launcher layout: merchant-i in commerce/deploy/var/merchant_i):
 - a seller account (owner-1 / demo-pass-1234) and a catalog of its business
-  type with descriptions (B's text encoder reads title + description +
-  categories); a few staples are sold by several stores; one item is listed
-  late in the period (a new item with little history);
-- 60-90 seller-local customers with an activity level, favourites they rebuy,
-  store-specific bought-together pairs and next-visit sequences;
+  type, about 40 items with descriptions (B's text encoder reads title +
+  description + categories); a few staples are sold by several stores; one item
+  is listed late in the period (a new item with little history);
+- 40-85 seller-local customers with an activity level, one or two liked
+  categories, favourites they rebuy, store-specific bought-together pairs and
+  next-visit sequences;
 - 90 days of orders through orders_service (completed orders become
   purchase_events with their backdated completion time), a few still open or
   cancelled near the end;
@@ -33,7 +35,7 @@ gets through A's outbox. Everything is invented (data.md §6): names, products
 and baskets come from fixed seeds, not from any raw dataset.
 
 Usage:
-    python -m commerce.services.merchant_api.platform_dataset --stores 6 [--export DIR]
+    python -m commerce.services.merchant_api.platform_dataset --stores 6 [--export DIR] [--now 2026-10-10T09:00:00Z]
 """
 from __future__ import annotations
 
@@ -43,15 +45,20 @@ import json
 import random
 import sqlite3
 import sys
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
-from commerce.services.merchant_api import (accounts_db, accounts_service, cart_db, chatbot, media, orders_db,
-                                            orders_service, shop_db, sns_db, social_db)
+from commerce.services.merchant_api import (accounts_db, accounts_service, cart_db, chatbot, fulfillment, media,
+                                            notifications, orders_db, orders_service, shop_db, sns_db, social_db)
 from commerce.services.merchant_api.presentation import product_emoji, tone_for
 
 DAYS = 90
+# The history ends here, on every machine (B's #49 check: with "now" every re-run shifted the
+# times, and random order IDs changed every purchase_event_id). --now moves it for a later demo.
+DEFAULT_NOW = dt.datetime(2026, 10, 10, 9, 0, tzinfo=dt.timezone.utc)
+_ID_NAMESPACE = uuid.UUID("6f0c2b1e-4d1a-5b8e-9a51-0e1c2d3f4a5b")
 PASSWORD = "demo-pass-1234"
 OWNER = "owner-1"
 VAR = Path(__file__).resolve().parents[2] / "deploy" / "var"
@@ -200,6 +207,171 @@ STORES: list[Store] = [
 ]
 
 
+# More of each store's goods (B's #49 note: with 9-17 items any five picks hit half the time, so
+# the models could not differ on screen). Same tuple shape as above; ids stay store-local.
+_MORE: dict[str, list[tuple[str, str, int, list[str], str]]] = {
+    "farm": [
+        ("farm-milk-low", "저지방 유기농 우유 900ml", 2800, ["식품", "유제품", "우유"], "지방을 절반으로 줄인 목장 유기농 우유"),
+        ("farm-greek", "그릭 요거트 400g", 6900, ["식품", "유제품"], "꾸덕하게 물기를 뺀 무가당 그릭 요거트"),
+        ("farm-butter", "목장 가염 버터 200g", 7800, ["식품", "유제품"], "목장 크림으로 만든 고소한 가염 버터"),
+        ("farm-icecream", "우유 아이스크림 500ml", 8900, ["식품", "유제품", "디저트"], "목장 우유를 듬뿍 넣은 바닐라 아이스크림"),
+        ("farm-egg-30", "동물복지 유정란 30구", 17900, ["식품", "축산", "계란"], "대가족을 위한 넉넉한 30구 한 판"),
+        ("farm-quail", "메추리알 30구", 4900, ["식품", "축산", "계란"], "장조림하기 좋은 신선한 메추리알"),
+        ("farm-broccoli", "제주 브로콜리 2송이", 4500, ["농산", "채소"], "단단하고 푸른 겨울 제주 브로콜리"),
+        ("farm-cabbage", "제주 양배추 1통", 3900, ["농산", "채소"], "달큰하고 아삭한 제주 월동 양배추"),
+        ("farm-radish", "제주 월동무 1개", 2500, ["농산", "채소"], "시원한 국물 맛을 내는 제주 월동무"),
+        ("farm-onion", "제주 햇양파 1.5kg", 4900, ["농산", "채소"], "매운맛이 적고 단 제주 햇양파"),
+        ("farm-garlic", "제주 마늘 500g", 7500, ["농산", "채소"], "알이 굵은 제주 남도 마늘"),
+        ("farm-spinach", "유기농 시금치 300g", 3500, ["농산", "채소"], "나물·국거리용 유기농 시금치"),
+        ("farm-kale", "유기농 케일 200g", 3800, ["농산", "채소"], "주스와 쌈으로 좋은 유기농 케일"),
+        ("farm-paprika", "파프리카 3색 3입", 5900, ["농산", "채소"], "빨강·노랑·주황 아삭한 파프리카"),
+        ("farm-cherrytomato", "대추방울토마토 750g", 8900, ["농산", "채소"], "한입에 쏙 단맛 진한 방울토마토"),
+        ("farm-mandarin-5", "제주 노지 감귤 5kg", 27000, ["농산", "과일"], "가족이 넉넉히 먹는 노지 감귤 5kg"),
+        ("farm-redhyang", "제주 레드향 2kg", 32000, ["농산", "과일"], "껍질이 얇고 과즙이 풍부한 레드향"),
+        ("farm-cheonhye", "제주 천혜향 2kg", 30000, ["농산", "과일"], "향이 좋은 제주 천혜향"),
+        ("farm-kiwi", "제주 골드키위 1kg", 12900, ["농산", "과일"], "새콤달콤한 제주 골드키위"),
+        ("farm-tangerine-juice", "감귤 착즙 주스 1L", 6900, ["식품", "음료"], "물 한 방울 넣지 않은 감귤 착즙"),
+        ("farm-granola", "보리 그래놀라 300g", 7900, ["식품", "시리얼"], "제주 보리로 구운 바삭한 그래놀라"),
+        ("farm-barley-tea", "제주 보리차 티백 30입", 4900, ["식품", "음료", "차"], "구수한 제주 보리차"),
+        ("farm-green-tea", "제주 녹차 잎차 50g", 12000, ["식품", "음료", "차"], "제주 차밭의 첫물 녹차"),
+    ],
+    "seafood": [
+        ("sea-mackerel-4", "손질 고등어 4손", 18000, ["수산", "생선"], "한 달 먹을 넉넉한 순살 고등어"),
+        ("sea-okdom", "제주 옥돔 2마리", 32000, ["수산", "생선"], "반건조한 제주 대표 생선 옥돔"),
+        ("sea-yellowcorvina", "참굴비 10미", 29000, ["수산", "생선"], "영광식으로 말린 짭조름한 굴비"),
+        ("sea-cod", "생대구 손질 1kg", 21000, ["수산", "생선"], "탕·지리용 생대구"),
+        ("sea-pollack", "동태 손질 2마리", 12000, ["수산", "생선"], "동태찌개용 손질 동태"),
+        ("sea-tuna", "참치 회 200g", 24000, ["수산", "회"], "부위별 참치 회 모둠"),
+        ("sea-sashimi-set", "모둠회 2인 500g", 39000, ["수산", "회"], "광어·우럭·연어 모둠회"),
+        ("sea-mussel", "홍합 1kg", 6000, ["수산", "조개"], "탕·파스타용 해감 홍합"),
+        ("sea-clam", "바지락 1kg", 9000, ["수산", "조개"], "해감 완료된 바지락"),
+        ("sea-scallop", "가리비 1kg", 15000, ["수산", "조개"], "찜·구이용 활가리비"),
+        ("sea-conch", "제주 소라 1kg", 26000, ["수산", "조개"], "제주 해녀가 딴 뿔소라"),
+        ("sea-urchin", "제주 성게알 100g", 35000, ["수산"], "미역국에 넣는 제주 성게알"),
+        ("sea-myeongran", "저염 명란젓 300g", 16000, ["수산", "젓갈"], "짜지 않은 저염 명란젓"),
+        ("sea-squid-jeot", "오징어젓 300g", 9000, ["수산", "젓갈"], "밥반찬 오징어젓"),
+        ("sea-shrimp-jeot", "새우젓 500g", 11000, ["수산", "젓갈"], "김장용 육젓 새우젓"),
+        ("sea-dried-squid", "건오징어 5마리", 23000, ["수산", "건어물"], "구워 먹는 동해 건오징어"),
+        ("sea-dried-pollack", "황태채 300g", 12000, ["수산", "건어물"], "해장국용 황태채"),
+        ("sea-kelp", "국물용 다시마 200g", 6000, ["수산", "건어물"], "국물 맛을 내는 완도 다시마"),
+        ("sea-seaweed-dry", "자른 미역 200g", 7000, ["수산", "건어물"], "불려서 바로 쓰는 자른 미역"),
+        ("sea-fishcake", "수제 어묵 500g", 8500, ["수산", "가공"], "생선살 함량 높은 수제 어묵"),
+        ("sea-seafood-mix", "해물탕 세트 2인", 25000, ["수산", "가공"], "꽃게·새우·조개 해물탕 세트"),
+        ("sea-wasabi", "생와사비 100g", 6500, ["식품", "양념"], "회와 곁들이는 생와사비"),
+        ("sea-chojang", "수제 초고추장 300g", 4500, ["식품", "양념"], "회·물회용 새콤한 초고추장"),
+        ("sea-ponzu", "폰즈 소스 300ml", 5500, ["식품", "양념"], "샤브샤브·회용 상큼한 폰즈"),
+    ],
+    "bakery": [
+        ("bak-baguette", "바게트", 4500, ["식품", "베이커리", "빵"], "겉은 바삭 속은 촉촉한 프랑스식 바게트"),
+        ("bak-ciabatta", "올리브 치아바타", 5500, ["식품", "베이커리", "빵"], "올리브가 박힌 쫄깃한 치아바타"),
+        ("bak-rye", "호밀빵", 6800, ["식품", "베이커리", "빵"], "호밀 50% 묵직한 독일식 빵"),
+        ("bak-brioche", "브리오슈 식빵", 7500, ["식품", "베이커리", "빵"], "버터와 달걀이 듬뿍 들어간 브리오슈"),
+        ("bak-pain-choco", "뺑오쇼콜라 2입", 6500, ["식품", "베이커리"], "초콜릿 바를 넣은 크루아상 반죽"),
+        ("bak-danish", "과일 데니시 2입", 7900, ["식품", "베이커리"], "제철 과일을 올린 데니시"),
+        ("bak-saltbread", "소금빵 4입", 8000, ["식품", "베이커리", "빵"], "버터 풍미 가득한 소금빵"),
+        ("bak-madeleine", "마들렌 6입", 9000, ["식품", "베이커리", "구움과자"], "레몬 향 마들렌"),
+        ("bak-financier", "휘낭시에 6입", 10500, ["식품", "베이커리", "구움과자"], "태운 버터와 아몬드의 휘낭시에"),
+        ("bak-cheesecake", "바스크 치즈케이크", 28000, ["식품", "베이커리", "케이크"], "겉을 그을린 진한 치즈케이크 한 판"),
+        ("bak-tiramisu", "티라미수 컵", 6500, ["식품", "베이커리", "케이크"], "마스카포네 크림 티라미수"),
+        ("bak-roll", "우유 롤케이크", 15000, ["식품", "베이커리", "케이크"], "목장 우유 크림 롤케이크"),
+        ("bak-macaron", "마카롱 5입", 12000, ["식품", "베이커리", "구움과자"], "다섯 가지 맛 마카롱"),
+        ("bak-bean-ken", "케냐 원두 200g", 14500, ["식품", "음료", "커피"], "베리 산미가 선명한 케냐 AA"),
+        ("bak-bean-bra", "브라질 원두 200g", 11500, ["식품", "음료", "커피"], "견과류와 초콜릿 향의 브라질"),
+        ("bak-bean-dec", "디카페인 원두 200g", 13500, ["식품", "음료", "커피"], "카페인을 뺀 콜롬비아 원두"),
+        ("bak-dripbag", "드립백 커피 10입", 9900, ["식품", "음료", "커피"], "물만 부으면 되는 드립백"),
+        ("bak-earlgrey", "얼그레이 잎차 50g", 9500, ["식품", "음료", "차"], "베르가못 향 얼그레이"),
+        ("bak-chai", "차이 라떼 파우더 200g", 10500, ["식품", "음료"], "시나몬·생강 향 차이 라떼"),
+        ("bak-cream", "생크림 500ml", 6900, ["식품", "유제품"], "베이킹용 동물성 생크림"),
+        ("bak-jam-straw", "딸기잼 300g", 6500, ["식품", "잼"], "국산 딸기로 졸인 수제 딸기잼"),
+        ("bak-cream-cheese", "크림치즈 200g", 6500, ["식품", "유제품"], "베이글에 바르는 크림치즈"),
+        ("bak-syrup", "바닐라 시럽 250ml", 7500, ["식품", "음료"], "커피에 넣는 바닐라 시럽"),
+        ("bak-oatmilk", "귀리 우유 1L", 4500, ["식품", "음료"], "라떼용 바리스타 귀리 우유"),
+    ],
+    "produce": [
+        ("pro-pear", "신고배 3kg", 24000, ["농산", "과일"], "시원하고 아삭한 신고배"),
+        ("pro-persimmon", "청도 반시 2kg", 15900, ["농산", "과일"], "씨 없는 청도 반시"),
+        ("pro-mandarin", "노지 감귤 3kg", 13900, ["농산", "과일"], "새콤달콤 노지 감귤"),
+        ("pro-melon", "머스크멜론 1통", 12900, ["농산", "과일"], "향이 진한 머스크멜론"),
+        ("pro-cherry", "체리 500g", 14900, ["농산", "과일"], "알이 굵은 수입 체리"),
+        ("pro-mango", "애플망고 2입", 19900, ["농산", "과일"], "후숙된 달콤한 애플망고"),
+        ("pro-plum", "자두 1kg", 11900, ["농산", "과일"], "새콤한 여름 자두"),
+        ("pro-tomato", "완숙 토마토 2kg", 12900, ["농산", "채소"], "붉게 익은 완숙 토마토"),
+        ("pro-cucumber", "취청오이 5입", 5500, ["농산", "채소"], "아삭한 오이소박이용 취청오이"),
+        ("pro-zucchini", "애호박 2입", 3900, ["농산", "채소"], "찌개·전용 애호박"),
+        ("pro-eggplant", "가지 3입", 3500, ["농산", "채소"], "구이용 윤기 나는 가지"),
+        ("pro-pepper", "청양고추 200g", 2900, ["농산", "채소"], "칼칼한 청양고추"),
+        ("pro-greenonion", "대파 1단", 3500, ["농산", "채소"], "흰 줄기가 굵은 대파"),
+        ("pro-carrot", "흙당근 1kg", 4500, ["농산", "채소"], "단맛 좋은 흙당근"),
+        ("pro-potato", "수미감자 2kg", 7900, ["농산", "채소"], "포슬포슬한 수미감자"),
+        ("pro-radish", "다발무 1단", 6900, ["농산", "채소"], "깍두기·김치용 무"),
+        ("pro-bean-sprout", "무농약 콩나물 500g", 1900, ["농산", "채소"], "국·무침용 콩나물"),
+        ("pro-tofu", "국산콩 두부 500g", 3900, ["식품", "두부"], "국산 콩으로 만든 부침 두부"),
+        ("pro-lettuce", "꽃상추 200g", 2900, ["농산", "채소"], "쌈용 꽃상추"),
+        ("pro-perilla", "깻잎 100g", 2500, ["농산", "채소"], "향긋한 깻잎"),
+        ("pro-spinach", "포항초 시금치 300g", 3900, ["농산", "채소"], "단맛 나는 포항초"),
+        ("pro-mushroom-mix", "모둠 버섯 400g", 6900, ["농산", "채소"], "느타리·새송이·팽이 모둠"),
+        ("pro-salad", "샐러드 채소 믹스 250g", 4900, ["농산", "채소"], "씻어 나온 샐러드용 채소"),
+        ("pro-avocado", "아보카도 3입", 7900, ["농산", "과일"], "바로 먹기 좋게 익은 아보카도"),
+        ("pro-lemon", "레몬 5입", 5900, ["농산", "과일"], "즙 많은 레몬"),
+    ],
+    "butcher": [
+        ("but-porkshoulder", "흑돼지 앞다리 1kg", 15900, ["식품", "축산", "정육"], "수육·불고기용 앞다리살"),
+        ("but-bulgogi", "한우 불고기 500g", 29000, ["식품", "축산", "정육"], "양념 없이 얇게 썬 한우 불고기감"),
+        ("but-galbi", "한우 찜갈비 1kg", 59000, ["식품", "축산", "정육"], "명절·잔치용 한우 찜갈비"),
+        ("but-chuck", "한우 부채살 300g", 32000, ["식품", "축산", "정육"], "스테이크용 한우 부채살"),
+        ("but-tenderloin", "한우 안심 300g", 49000, ["식품", "축산", "정육"], "가장 부드러운 한우 안심"),
+        ("but-ground-beef", "한우 다짐육 500g", 19000, ["식품", "축산", "정육"], "이유식·햄버그용 한우 다짐육"),
+        ("but-ground-pork", "돼지 다짐육 500g", 8900, ["식품", "축산", "정육"], "만두·볶음용 돼지 다짐육"),
+        ("but-pork-tenderloin", "돼지 안심 500g", 8500, ["식품", "축산", "정육"], "돈가스·장조림용 안심"),
+        ("but-jowl", "흑돼지 항정살 300g", 16900, ["식품", "축산", "정육"], "꼬들꼬들한 항정살"),
+        ("but-pork-skin", "흑돼지 껍데기 500g", 6900, ["식품", "축산"], "쫄깃한 구이용 껍데기"),
+        ("but-chicken-whole", "토종닭 1마리", 16900, ["식품", "축산"], "백숙용 토종닭"),
+        ("but-chicken-thigh", "닭다리살 1kg", 11900, ["식품", "축산"], "뼈 없는 닭다리살"),
+        ("but-duck-raw", "생오리 슬라이스 500g", 13900, ["식품", "축산"], "구이용 생오리"),
+        ("but-lamb", "양갈비 500g", 27900, ["식품", "축산", "정육"], "프렌치랙 양갈비"),
+        ("but-bacon", "수제 베이컨 200g", 7900, ["식품", "축산", "가공"], "참나무로 훈연한 베이컨"),
+        ("but-ham", "수제 슬라이스 햄 200g", 6900, ["식품", "축산", "가공"], "샌드위치용 수제 햄"),
+        ("but-jangjorim", "소고기 장조림 300g", 12000, ["식품", "반찬"], "메추리알 넣은 장조림"),
+        ("but-galbi-marinated", "양념 돼지갈비 1kg", 19900, ["식품", "축산", "가공"], "숯불 향 양념 돼지갈비"),
+        ("but-bulgogi-marinated", "양념 소불고기 700g", 21900, ["식품", "축산", "가공"], "달콤한 간장 양념 소불고기"),
+        ("but-mushroom", "구이용 새송이 300g", 3500, ["농산", "채소"], "고기와 굽는 새송이버섯"),
+        ("but-onion", "구이용 양파 3입", 2500, ["농산", "채소"], "구이용 둥근 양파"),
+        ("but-kimchi", "고기용 묵은지 1kg", 12000, ["식품", "반찬", "김치"], "고기에 싸 먹는 1년 묵은지"),
+        ("but-salt", "구운 소금 200g", 4500, ["식품", "양념"], "고기 찍어 먹는 구운 소금"),
+        ("but-sauce", "스테이크 소스 250ml", 6500, ["식품", "양념"], "과일로 만든 스테이크 소스"),
+        ("but-charcoal", "참숯 2kg", 9900, ["생활", "캠핑"], "캠핑·바비큐용 참숯"),
+    ],
+    "banchan": [
+        ("ban-oikimchi", "오이소박이 500g", 8000, ["식품", "반찬", "김치"], "아삭한 오이소박이"),
+        ("ban-pakimchi", "파김치 300g", 7000, ["식품", "반찬", "김치"], "쪽파로 담근 파김치"),
+        ("ban-gochu-myeolchi", "꽈리고추 멸치볶음 200g", 6500, ["식품", "반찬"], "꽈리고추를 넣은 멸치볶음"),
+        ("ban-eomuk", "어묵볶음 300g", 5500, ["식품", "반찬"], "달큰한 간장 어묵볶음"),
+        ("ban-gyeranmari", "계란말이", 6000, ["식품", "반찬"], "채소 넣은 두툼한 계란말이"),
+        ("ban-dubu-jorim", "두부조림 300g", 5500, ["식품", "반찬"], "양념 배인 두부조림"),
+        ("ban-gamja-jorim", "감자조림 300g", 5000, ["식품", "반찬"], "윤기 나는 감자조림"),
+        ("ban-doenjang", "된장찌개 1인", 6500, ["식품", "국"], "제주 된장으로 끓인 찌개"),
+        ("ban-kimchijjigae", "김치찌개 1인", 7000, ["식품", "국"], "돼지고기 듬뿍 김치찌개"),
+        ("ban-kimchi-mandu", "김치만두 10입", 8500, ["식품", "만두"], "매콤한 김치만두"),
+        ("ban-bingtteok", "제주 빙떡 5입", 9000, ["식품", "떡"], "메밀전에 무채를 만 제주 빙떡"),
+    ],
+}
+_MORE_PAIRS: dict[str, list[tuple[str, str]]] = {
+    "farm": [("farm-greek", "farm-granola"), ("farm-cabbage", "farm-radish"), ("farm-paprika", "farm-kale")],
+    "seafood": [("sea-sashimi-set", "sea-chojang"), ("sea-tuna", "sea-wasabi"), ("sea-clam", "sea-mussel"),
+                ("sea-seafood-mix", "sea-kelp")],
+    "bakery": [("bak-bagel", "bak-cream-cheese"), ("bak-baguette", "bak-butter"), ("bak-dripbag", "bak-madeleine"),
+               ("bak-bean-ken", "bak-oatmilk")],
+    "produce": [("pro-salad", "pro-avocado"), ("pro-tofu", "pro-zucchini"), ("pro-greenonion", "pro-tofu"),
+                ("pro-lettuce", "pro-perilla")],
+    "butcher": [("but-jowl", "but-salt"), ("but-sirloin", "but-sauce"), ("but-galbi-marinated", "but-charcoal"),
+                ("but-bulgogi", "but-mushroom")],
+    "banchan": [("ban-doenjang", "ban-gyeranmari"), ("ban-kimchijjigae", "ban-dubu-jorim")],
+}
+for _store in STORES:
+    _store.items.extend(_MORE.get(_store.key, []))
+    _store.pairs.extend(_MORE_PAIRS.get(_store.key, []))
+
+
 def store_index(i: int) -> Store:
     """merchant-i -> store profile (repeats past six)."""
     return STORES[(i - 1) % len(STORES)]
@@ -244,7 +416,17 @@ class Shopper:
     bought: dict[str, int] = field(default_factory=dict)
 
 
-def _shoppers(store: Store, rng: random.Random, now_days: int, items: list[str]) -> list[Shopper]:
+def _category(item: tuple) -> str:
+    path = item[3]
+    return path[1] if len(path) > 1 else path[0]
+
+
+def _shoppers(store: Store, rng: random.Random, catalog: dict[str, tuple]) -> list[Shopper]:
+    """Customers with a visit rhythm, three favourites and one or two liked categories: the
+    favourites are bought again and again, the liked categories more than the rest, so text
+    (what an item is) and history (what this customer buys) both carry signal."""
+    items = list(catalog)
+    categories = sorted({_category(i) for i in catalog.values()})
     out = []
     for n in range(store.customers):
         level = rng.choices(["weekly", "biweekly", "monthly", "once"], weights=[3, 4, 3, 2])[0]
@@ -254,8 +436,10 @@ def _shoppers(store: Store, rng: random.Random, now_days: int, items: list[str])
         while t > 0.5 and len(visits) < 20:
             visits.append(round(t, 3))
             t -= max(1.0, rng.gauss(gap, gap * 0.25)) if gap < 999 else 999
-        favourites = rng.sample(items, k=min(3, len(items)))
-        taste = {i: 0.4 for i in items}
+        liked = set(rng.sample(categories, k=min(len(categories), rng.choice([1, 2]))))
+        in_liked = [i for i in items if _category(catalog[i]) in liked]
+        favourites = rng.sample(in_liked, k=min(2, len(in_liked))) + rng.sample(items, k=1)
+        taste = {i: (1.6 if _category(catalog[i]) in liked else 0.25) for i in items}
         for f in favourites:
             taste[f] = 6.0
         out.append(Shopper("cust-%03d" % (n + 1), rng.choice(_FAMILY) + rng.choice(_GIVEN), visits, favourites, taste,
@@ -266,10 +450,11 @@ def _shoppers(store: Store, rng: random.Random, now_days: int, items: list[str])
 def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Optional[dt.datetime] = None,
                media_folder: Optional[Path] = None) -> dict[str, int]:
     """Fill one store; idempotent (stable ids). Returns counts of what it added."""
-    now = (now or dt.datetime.now(dt.timezone.utc)).replace(microsecond=0)
+    now = (now or DEFAULT_NOW).replace(microsecond=0)
     rng = random.Random("platform-" + store.key)
     for ensure in (orders_db.ensure_schema, social_db.ensure_schema, sns_db.ensure_schema, accounts_db.ensure_schema,
-                   cart_db.ensure_schema, shop_db.ensure_schema, chatbot.ensure_schema):
+                   cart_db.ensure_schema, shop_db.ensure_schema, chatbot.ensure_schema, fulfillment.ensure_schema,
+                   notifications.ensure_schema):
         ensure(conn)
     added = {"orders": 0, "reviews": 0, "posts": 0, "likes": 0, "comments": 0}
     days_ago = lambda d: now - dt.timedelta(days=d)  # noqa: E731
@@ -289,7 +474,7 @@ def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Opti
         for item_id in catalog:
             listed = days_ago(new_item_day if item_id == store.new_item else store.history_days + 1)
             _backdate_listing(conn, seller_id, item_id, _iso(listed))
-    shoppers = _shoppers(store, rng, store.history_days, list(catalog))
+    shoppers = _shoppers(store, rng, catalog)
     quality = {i: rng.uniform(3.7, 4.9) for i in catalog}
 
     # --- orders ------------------------------------------------------------
@@ -322,8 +507,8 @@ def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Opti
             key = "pd-%s-%s-%d" % (store.key, shopper.customer_id, visit_no)
             existed = orders_db.fetch_order_by_idempotency_key(conn, seller_id, key) is not None
             order = orders_service.place_order(conn, seller_id=seller_id, customer_id_local=shopper.customer_id,
-                                               idempotency_key=key,
-                                               items=items, currency="KRW")
+                                               idempotency_key=key, items=items, currency="KRW",
+                                               order_id=_order_id(seller_id, key))
             if stage == "completed":
                 for i in sorted(basket):
                     shopper.bought[i] = shopper.bought.get(i, 0) + 1
@@ -433,6 +618,9 @@ def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Opti
     # --- buyer-proposed group buys -------------------------------------------------
     _group_buys(conn, seller_id, store, shoppers, catalog, now)
 
+    # --- pickup/delivery, stock, follows, notifications --------------------------------
+    _trade_details(conn, seller_id, store, shoppers, catalog, now)
+
     # --- DMs and price history -------------------------------------------------------
     rng = random.Random("dm-" + store.key)
     with conn:
@@ -451,6 +639,83 @@ def seed_store(conn: sqlite3.Connection, seller_id: str, store: Store, now: Opti
                 p = max(int(p * (1 + rng.uniform(-0.04, 0.04))), int(price * 0.75))
                 social_db.upsert_price(conn, seller_id, item_id, days_ago(d).strftime("%Y-%m-%d"), p)
     return added
+
+
+_STREETS = ["첨단로", "연북로", "노형로", "중앙로", "일주동로", "516로", "한라대학로", "신대로", "도령로", "서광로"]
+_TOWNS = {"farm": "제주시 구좌읍", "seafood": "제주시 한림읍", "bakery": "제주시 노형동", "produce": "서귀포시 남원읍",
+          "butcher": "제주시 조천읍", "banchan": "제주시 이도동"}
+
+
+def _trade_details(conn, seller_id: str, store: Store, shoppers: list[Shopper], catalog: dict, now: dt.datetime) -> None:
+    """How each order was received (made-up addresses; data.md §6), the store's delivery terms,
+    a few tracked stocks (one sold out), follows and the latest orders' notifications."""
+    rng = random.Random("trade-" + store.key)
+    with conn:
+        conn.execute("INSERT OR IGNORE INTO store_settings (seller_id) VALUES (?)", (seller_id,))
+        conn.execute("UPDATE store_settings SET pickup_address = COALESCE(pickup_address, ?), pickup_hours = COALESCE(pickup_hours, ?), "
+                     "delivery_fee = COALESCE(delivery_fee, ?), free_delivery_over = COALESCE(free_delivery_over, ?) WHERE seller_id = ?",
+                     ("%s %s %d (가게 앞)" % (_TOWNS.get(store.key, "제주시"), rng.choice(_STREETS), rng.randint(1, 99)),
+                      rng.choice(["매일 09:00~18:00", "화~일 10:00~19:00", "매일 08:00~13:00"]),
+                      rng.choice([3000, 3500, 4000]), rng.choice([30000, 40000, 50000]), seller_id))
+    terms = fulfillment.store_terms(conn, seller_id)
+    profiles = {}
+    for shopper in shoppers:
+        prng = random.Random("profile-%s-%s" % (store.key, shopper.customer_id))
+        delivery = prng.random() < 0.45
+        profiles[shopper.customer_id] = {
+            "method": "delivery" if delivery else "pickup", "recipient": shopper.name,
+            "phone": "010-%04d-%04d" % (prng.randint(1000, 9999), prng.randint(1000, 9999)),
+            "address": "%s %s %d, %d호" % (rng.choice(list(_TOWNS.values())), prng.choice(_STREETS), prng.randint(1, 300), prng.randint(101, 1204))}
+    orders = orders_db.list_orders(conn, seller_id)
+    known = fulfillment.of_orders(conn, seller_id)
+    with conn:
+        for order in orders:
+            if order["order_id"] in known:
+                continue
+            prof = profiles.get(order["customer_id_local"])
+            if prof is None:
+                continue
+            orng = random.Random(order["order_id"])
+            method = prof["method"] if orng.random() < 0.85 else ("pickup" if prof["method"] == "delivery" else "delivery")
+            subtotal = sum(i["quantity"] * i["unit_price_minor"] for i in order["items"])
+            conn.execute(
+                "INSERT OR IGNORE INTO order_fulfillment (seller_id, order_id, method, recipient, phone, address, pickup_slot, memo, "
+                "shipping_fee, tracking_no, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (seller_id, order["order_id"], method, prof["recipient"] if method == "delivery" else None,
+                 prof["phone"], prof["address"] if method == "delivery" else None,
+                 orng.choice(fulfillment.PICKUP_SLOTS) if method == "pickup" else None,
+                 orng.choice([None, None, None, "문 앞에 두세요", "얼음팩 넉넉히 부탁드려요", "도착 전에 연락 주세요"]),
+                 fulfillment.shipping_fee(terms, method, subtotal),
+                 ("CJ%010d" % orng.randint(0, 10 ** 10 - 1)) if method == "delivery" and order["status"] == "completed" else None,
+                 order["created_at"]))
+            if order["status"] in ("accepted", "completed"):
+                accepted = dt.datetime.fromisoformat(order["created_at"].replace("Z", "+00:00")) + dt.timedelta(hours=orng.uniform(0.3, 3))
+                fulfillment.log_status(conn, seller_id, order["order_id"], "accepted", _iso(min(accepted, now)))
+        for cid, prof in profiles.items():
+            conn.execute("INSERT OR IGNORE INTO customer_profiles (seller_id, customer_id_local, method, recipient, phone, address, updated_at) "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?)", (seller_id, cid, prof["method"], prof["recipient"], prof["phone"],
+                                                          prof["address"], _iso(now)))
+        tracked = sorted(catalog)[:: max(1, len(catalog) // 6)][:6]
+        for n, item in enumerate(tracked):
+            conn.execute("INSERT OR IGNORE INTO item_stock (seller_id, item_id_local, stock) VALUES (?, ?, ?)",
+                         (seller_id, item, 0 if n == 0 else rng.choice([2, 3, 5, 8, 12, 20])))
+        for shopper in shoppers:
+            if len(shopper.visits) >= 3 or rng.random() < 0.15:
+                conn.execute("INSERT OR IGNORE INTO store_follows (seller_id, customer_id_local, created_at) VALUES (?, ?, ?)",
+                             (seller_id, shopper.customer_id, _iso(now - dt.timedelta(days=rng.uniform(5, store.history_days)))))
+    recent = [o for o in orders if o["status"] in ("accepted", "completed", "cancelled")
+              and o["created_at"] >= _iso(now - dt.timedelta(days=3))]
+    action = {"accepted": "accept", "completed": "complete", "cancelled": "cancel"}
+    for order in recent:
+        notifications.notify(conn, seller_id, [order["customer_id_local"]], "order", notifications.ORDER_TITLES[action[order["status"]]],
+                             "/buyer/%s/orders/%s" % (seller_id, order["order_id"]),
+                             dedupe_key="order:%s:%s" % (order["order_id"], action[order["status"]]),
+                             at=order.get("completed_at") or order["created_at"])
+
+
+def _order_id(seller_id: str, key: str) -> str:
+    """Same order (hence purchase_event_id) on every machine and every re-run."""
+    return uuid.uuid5(_ID_NAMESPACE, "%s/%s" % (seller_id, key)).hex
 
 
 def _backdate_listing(conn, seller_id: str, item_id: str, listed_at: str) -> None:
@@ -513,14 +778,16 @@ def _group_buys(conn, seller_id: str, store: Store, shoppers: list[Shopper], cat
                                                        _iso(created + dt.timedelta(hours=6 * (k + 1))))
                 joined += qty
         if outcome == "succeeded":
-            # settle like the live path (one order per participant), then complete and backdate those orders
-            from commerce.services.merchant_api import social_service
-            gb = social_db.fetch_group_buy(conn, seller_id, gid)
+            # Settled as the live path does (social_service._settle_succeeded: one order per
+            # participant, same idempotency key), with the order ID drawn from that key.
             if social_db.sum_group_buy_quantity(conn, seller_id, gid) >= target:
-                social_service._settle_succeeded(conn, seller_id=seller_id, group_buy=gb)
                 for p in social_db.list_group_buy_participants(conn, seller_id, gid):
-                    order = orders_db.fetch_order_by_idempotency_key(conn, seller_id, "group-buy-%s-%s" % (gid, p["customer_id_local"]))
-                    if order and order["status"] == "requested":
+                    key = "group-buy-%s-%s" % (gid, p["customer_id_local"])
+                    order = orders_service.place_order(
+                        conn, seller_id=seller_id, customer_id_local=p["customer_id_local"], idempotency_key=key,
+                        items=[{"item_id_local": item, "quantity": p["quantity"], "unit_price_minor": price}],
+                        currency="KRW", order_id=_order_id(seller_id, key))
+                    if order["status"] == "requested":
                         orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"], action="accept",
                                                         expected_status_version=1)
                         orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"], action="complete",
@@ -530,6 +797,8 @@ def _group_buys(conn, seller_id: str, store: Store, shoppers: list[Shopper], cat
                             conn.execute("UPDATE orders SET created_at = ?, completed_at = ? WHERE seller_id = ? AND order_id = ?",
                                          (_iso(created + dt.timedelta(days=1)), done, seller_id, order["order_id"]))
                             _backdate_event(conn, seller_id, order["order_id"], done)
+                with conn:
+                    social_db.update_group_buy_status(conn, seller_id, gid, "succeeded")
         elif outcome == "failed":
             with conn:
                 social_db.update_group_buy_status(conn, seller_id, gid, "failed")
@@ -593,7 +862,11 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--stores", type=int, default=6, help="how many launcher sellers to fill (merchant-1..N)")
     parser.add_argument("--var", default=str(VAR), help="launcher var folder (default commerce/deploy/var)")
     parser.add_argument("--export", help="write each store's SellerInput JSON and a summary here")
+    parser.add_argument("--now", help="end of the history, ISO time in UTC (default %s)" % DEFAULT_NOW.isoformat())
     args = parser.parse_args(argv)
+    now = dt.datetime.fromisoformat(args.now.replace("Z", "+00:00")) if args.now else DEFAULT_NOW
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=dt.timezone.utc)
     var = Path(args.var)
     totals = []
     for i in range(1, args.stores + 1):
@@ -605,7 +878,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             raise SystemExit(1)
         conn = orders_db.connect(db_path)
         try:
-            added = seed_store(conn, seller_id, store)
+            added = seed_store(conn, seller_id, store, now=now)
             stats = summary(conn, seller_id)
             if args.export:
                 out = Path(args.export)

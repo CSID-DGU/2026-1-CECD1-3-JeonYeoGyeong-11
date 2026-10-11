@@ -44,6 +44,17 @@ class PlatformDatasetTest(unittest.TestCase):
         event_ids = [e["purchase_event_id"] for e in data["events"]]
         self.assertEqual(len(event_ids), len(set(event_ids)))  # what an FL input attestation requires
 
+    def test_two_fresh_databases_get_the_same_history(self):
+        # B's #49 check: the same command elsewhere must give the same events and times,
+        # or each machine's FL input attestation (ids.snapshot_digest) differs.
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        other = orders_db.connect(Path(tmp.name) / "orders.sqlite")
+        self.addCleanup(other.close)
+        pd.seed_store(self.conn, "merchant-1", self.store)
+        pd.seed_store(other, "merchant-1", self.store)
+        self.assertEqual(pd.export_seller_input(self.conn, "merchant-1"), pd.export_seller_input(other, "merchant-1"))
+
     def test_new_item_is_listed_late(self):
         pd.seed_store(self.conn, "merchant-1", self.store, now=NOW)
         catalog = {c["item_id_local"]: c for c in pd.export_seller_input(self.conn, "merchant-1")["catalog"]}
