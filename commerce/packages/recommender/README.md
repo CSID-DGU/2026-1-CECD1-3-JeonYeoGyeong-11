@@ -9,12 +9,15 @@
 - `seller_runtime.py`: A의 ingest·upsert·predict_local(fallback 순서는 interfaces.md §4), C의 get_shared_manifest·export_shared_state·get_local_data_ref·train_round·install_release.
   - 모델 파일: `{model_dir}/base/{variant}/{model_version}/`(release.json·manifest.json·weights.npz)와 `CURRENT`. 검증을 모두 통과한 release만 임시 폴더→이름 바꾸기→CURRENT 순으로 반영하므로 실패하면 이전 base가 계속 서빙한다.
   - frozen 인코더는 B 설치물로 `{model_dir}/frozen_text/`에 둔다(model-lab.md §6.6). 없으면 모델을 쓰지 않고 fallback만 한다.
+  - 설치: `python -m commerce.packages.recommender.install --model-dir <MODEL_DIR> --encoder-dir <받은 인코더 폴더>`가 인코더를 확인(text_artifact_hash)한 뒤 `frozen_text/`에 둔다. `--release-dir <release 폴더> --variant …`는 FL 없이 학습된 release를 설치한다(C coordinator에서 받은 것과 같은 검사).
+    - 이 명령은 FL 없이 서빙만 하는 판매자용이다. FL에 참여할 판매자는 같은 release를 C의 `fl_coordinator.import_release`로 registry에 넣고 client `install_latest`로 받는다(model-lab.md §6의 3·5). 그렇지 않으면 첫 라운드의 `round_config.model_version`이 판매자 base와 달라 학습이 거부된다.
   - Instacart처럼 상대시간인 과거 원장은 달력이 없으므로 어떤 live as_of보다도 앞선 이력으로 본다.
   - train_round의 검증 고객(10명 중 1명)은 seller와 round_config.seed로 정하고 round_id는 쓰지 않는다. 그래서 seed를 라운드마다 바꾸면 검증 고객도 바뀐다. C coordinator는 한 실행 동안 seed를 고정한다. 학습 난수(배치 순서·음성)는 seller·seed·round_id로 정하므로, seed가 고정돼도 라운드마다 새로 뽑는다(fl_lab과 같은 성질).
   - install_release는 받은 manifest의 hash를 이 패키지가 기대하는 manifest(설치된 인코더의 text_artifact_hash와 preprocessing_version 포함)와 비교한다. 다른 인코더나 전처리로 만든 release는 MANIFEST_MISMATCH다.
   - personalize_local: 설치된 base 복사본에서 query_proj·scorer만 학습하고, 고정 검증 고객의 손실이 base보다 낮을 때만 `{model_dir}/personal/{variant}/{base_version}/{revision}/`에 두고 쓴다. base가 바뀌면 옛 결과는 붙이지 않는다. 설정 기본값은 `DEFAULT_PERSONAL`(두 variant 공통)이다.
   - 미리 계산(`open_runtime`은 `warm=True`로 연다): 백그라운드 스레드가 현재 epoch의 상품 텍스트 벡터 z, 원장 전체 관계, 설치된 base의 e를 계산해 둔다. 여는 때와 새 구매·새 카탈로그 버전·release 설치 뒤에 다시 돌고, 연달아 온 변경은 0.3초 모아 한 번에 처리한다. 그 사이 온 추천 요청은 같은 계산을 반복하지 않고 끝나기를 기다린다. now보다 뒤 시각의 이벤트가 있으면 z만 계산하고 나머지는 요청의 as_of로 계산한다. `wait_warm()`은 따라잡았는지 기다리고, `close()`는 스레드를 멈춘다(앱 종료 때 부르지 않아도 daemon이라 남지 않는다).
   - compare_local: snapshot·후보·두 variant의 handle을 한 번 고정하고 T-G·R-G·T-P·R-P를 채우거나 불가 사유(model_not_ready, personalization_not_ready, insufficient_data, validation_rejected, base_mismatch)를 준다.
+  - 비교할 base 쌍은 `pin_comparison(text_only=…, text_relation=…)`으로 미리 고정한다(comparison.md §5, `{model_dir}/comparison.json`). 고정한 variant는 서빙 base가 새 버전으로 바뀌어도 그 버전과 그 base의 개인화로 비교하고, 고정하지 않은 variant는 요청 시작 때의 서빙 base를 쓴다. 고정한 base를 읽을 수 없으면 그 칸은 model_not_ready다.
 
 ## 모델 core
 학습·평가·서비스가 같은 코드를 쓴다.
