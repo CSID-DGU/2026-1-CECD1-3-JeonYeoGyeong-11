@@ -46,9 +46,9 @@
       {% for variant, r in personalization.results.items() %}
       <tr>
         <td>{{ '텍스트' if variant == 'text_only' else '텍스트+관계' }}</td>
-        <td><span class="badge {{ 'solid' if r.status == 'installed' else 'muted' }}">{{ {'installed': '적용됨', 'rejected': '검증 미달로 미적용', 'skipped': '데이터 부족'}.get(r.status, r.status) }}</span>
-          {% if r.reason %}<span class="mono">{{ r.reason }}</span>{% endif %}</td>
-        <td class="mono">{{ r.base_model_version }}{% if r.revision %} · {{ r.revision }}{% endif %}</td>
+        <td><span class="badge {{ 'solid' if r.status == 'installed' else 'muted' }}">{{ '모델 없음' if r.reason == 'model_not_ready' else {'installed': '적용됨', 'rejected': '검증 미달로 미적용', 'skipped': '데이터 부족'}.get(r.status, r.status) }}</span>
+          {% if r.reason and r.reason != 'model_not_ready' %}<span class="mono">{{ r.reason }}</span>{% endif %}</td>
+        <td class="mono">{{ r.base_model_version or '-' }}{% if r.revision %} · {{ r.revision }}{% endif %}</td>
       </tr>
       {% endfor %}
       </tbody>

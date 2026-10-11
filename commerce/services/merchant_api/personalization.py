@@ -13,7 +13,7 @@ import datetime as dt
 import threading
 from typing import Any
 
-from commerce.packages.contracts.errors import FeatureNotImplemented, JobBusyError
+from commerce.packages.contracts.errors import ContractError, FeatureNotImplemented, JobBusyError
 
 VARIANTS = ("text_only", "text_relation")
 _lock = threading.Lock()
@@ -30,7 +30,17 @@ def _run(context) -> None:
     try:
         ref = context.runtime.get_local_data_ref()  # one snapshot for both variants
         for variant in VARIANTS:
-            r = context.runtime.personalize_local(ref, {}, model_variant=variant)
+            # Each variant on its own: a seller may have a base for one only (C's fl_demo installs
+            # one), and B answers NOT_FOUND for the other (model.md §4). That arm shows "no model";
+            # the installed one is still personalized (#49 review).
+            try:
+                r = context.runtime.personalize_local(ref, {}, model_variant=variant)
+            except ContractError as exc:
+                if exc.code != "NOT_FOUND":
+                    raise
+                results[variant] = {"status": "skipped", "reason": "model_not_ready",
+                                    "base_model_version": None, "revision": None}
+                continue
             results[variant] = {"status": r.status, "reason": r.reason,
                                 "base_model_version": r.base_model_version,
                                 "revision": r.personalization_revision}

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from commerce.packages.contracts.errors import ContractError
 from commerce.packages.contracts.types import PersonalizationResult
 from commerce.services.merchant_api import personalization
 from commerce.services.merchant_api.context import MerchantSettings, build_context
@@ -77,6 +78,32 @@ class PersonalizationScreenTest(unittest.TestCase):
         page = client.get(f"/seller/{SELLER}/compare").text
         self.assertIn("적용됨", page)
         self.assertIn("검증 미달로 미적용", page)
+
+    def test_a_variant_without_a_base_shows_no_model_and_the_other_still_runs(self):
+        # B's #49 review: only text_relation installed (as C's fl_demo does) -> text_only NOT_FOUND.
+        class OneBase(PersonalizingRuntime):
+            def personalize_local(self, local_data_ref, personal_config, *, model_variant="text_relation"):
+                if model_variant == "text_only":
+                    raise ContractError("NOT_FOUND", "/model_variant")
+                return super().personalize_local(local_data_ref, personal_config, model_variant=model_variant)
+        runtime = OneBase(SELLER)
+        client = self._client(runtime)
+        self._press(client)
+        run = self._wait_done()
+        self.assertIsNone(run["error"])
+        self.assertEqual(run["results"]["text_only"]["reason"], "model_not_ready")
+        self.assertEqual(run["results"]["text_relation"]["status"], "installed")
+        page = client.get(f"/seller/{SELLER}/compare").text
+        self.assertIn("모델 없음", page)
+        self.assertIn("적용됨", page)
+
+    def test_other_contract_errors_still_stop_the_run(self):
+        class Forbidden(PersonalizingRuntime):
+            def personalize_local(self, *a, **k):
+                raise ContractError("FORBIDDEN", "/seller_id")
+        client = self._client(Forbidden(SELLER))
+        self._press(client)
+        self.assertIn("FORBIDDEN", self._wait_done()["error"])
 
     def test_stub_runtime_says_not_connected(self):
         client = self._client(FakeRecommenderRuntime(SELLER))  # personalize_local raises FeatureNotImplemented
