@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="store-hero card">
+  <div class="store-id">
+    <span class="store-avatar" aria-hidden="true">{{ store_name[:1] }}</span>
+    <div class="grow">
+      <h1 class="page-title">{{ store_name }}</h1>
+      <p class="muted-note">{% if since %}{{ since }}부터 판매 중 · {% endif %}단골 {{ followers }}명</p>
+    </div>
+    {% if customer %}
+    <form method="post" action="/buyer/{{ seller_id }}/store/follow"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <button class="btn {{ 'secondary' if following else 'primary' }}" type="submit">{{ '단골 ✓' if following else '단골 맺기' }}</button>
+    </form>
+    {% else %}
+    <a class="btn primary" href="/buyer/{{ seller_id }}/login">로그인하고 단골 맺기</a>
+    {% endif %}
+  </div>
+  {% if intro %}<p class="body-text">{{ intro }}</p>{% endif %}
+  <div class="stat-row">
+    <div><strong>{{ product_count }}</strong><span>판매 상품</span></div>
+    <div><strong>{{ '★ ' ~ rating if rating else '-' }}</strong><span>리뷰 {{ review_count }}개</span></div>
+    <div><strong>{{ "{:,}".format(orders_done) }}</strong><span>판매된 수량</span></div>
+  </div>
+  <ul class="trade-facts">
+    <li>🏪 픽업: {{ terms.pickup_address }} · {{ terms.pickup_hours }}</li>
+    <li>📦 택배 {{ "{:,}".format(terms.delivery_fee) }}원{% if terms.free_delivery_over %} · {{ "{:,}".format(terms.free_delivery_over) }}원 이상 무료{% endif %}</li>
+    <li>✉️ 궁금한 점은 <a class="link" href="/buyer/{{ seller_id }}/messages">쪽지</a>나 <a class="link" href="/buyer/{{ seller_id }}/chat">챗봇</a>으로</li>
+  </ul>
+</section>
+
+<section class="section">
+  <h2 class="section-title">많이 팔린 상품</h2>
+  <div class="shelf">
+    {% for item in best %}
+    {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+    {%- set pic = photos.get(item.item_id_local, [none])[0] %}
+    <a class="product-card" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
+      <div class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji and not pic }}{{ ' photo' if pic }}" aria-hidden="true">{% if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="" loading="lazy">{% else %}{{ emoji or item.title_text[:1] }}{% endif %}</div>
+      <div class="product-info">
+        <p class="product-title">{{ item.title_text }}</p>
+        <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span>
+          {%- set r = ratings.get(item.item_id_local) %}{% if r %}<span class="rating">★ {{ r[0] }}</span>{% endif %}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+{% if posts %}
+<section class="section">
+  <div class="row between"><h2 class="section-title">가게 소식</h2><a class="link" href="/buyer/{{ seller_id }}/feed">전체 보기 →</a></div>
+  <div class="explore small">
+    {% for p in posts %}
+    <a class="tile" href="/buyer/{{ seller_id }}/posts/{{ p.post_id }}">
+      {% set m = p.media[0] if p.media else none %}
+      {% if m and m.type == 'video' %}<video src="{{ m.url }}" muted playsinline preload="metadata"></video>
+      {% elif m %}<img src="{{ m.url }}" alt="" loading="lazy">{% else %}<div class="tile-text">{{ p.title }}</div>{% endif %}
+      {% if p.kind == 'short_video' %}<span class="tile-kind">▶</span>{% endif %}
+      <span class="tile-stats"><span>♥ {{ p.likes }}</span><span>💬 {{ p.comments }}</span></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

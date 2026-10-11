@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import orders_service, social_service
+from commerce.services.merchant_api import fulfillment, notifications, orders_service, social_service
 from commerce.services.merchant_api.routes_sns import ScreenDeps
 
 # ContractError code -> what the buyer reads after a failed proposal or join.
@@ -71,6 +71,12 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
         except ContractError as exc:
             return RedirectResponse(f"/buyer/{seller_id}/group-buys?e={exc.code}", status_code=303)
         done = "succeeded" if gb["status"] == "succeeded" else "joined"
+        if done == "succeeded":
+            item = orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=gb["item_id_local"])
+            people = [p["customer_id_local"] for p in social_service.list_group_buy_participants(
+                conn, seller_id=seller_id, group_buy_id=group_buy_id)]
+            notifications.on_group_buy_succeeded(conn, seller_id, group_buy_id,
+                                                 item["title_text"] if item else gb["item_id_local"], people)
         return RedirectResponse(f"/buyer/{seller_id}/group-buys?ok={done}", status_code=303)
 
     @app.get("/seller/{seller_id}/group-buys")
@@ -80,6 +86,7 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
             "seller_id": seller_id, "active_tab": "group_buys", "staff": staff,
             "group_buys": _decorated(conn, seller_id, None),
             "settings": social_service.get_store_settings(conn, seller_id=seller_id), "saved": saved,
+            "terms": fulfillment.store_terms(conn, seller_id),
         })
 
     @app.post("/seller/{seller_id}/group-buys/{group_buy_id}/close")

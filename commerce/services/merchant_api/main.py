@@ -33,10 +33,13 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
-from commerce.services.merchant_api import accounts_db, accounts_service, cart_db, orders_db, chatbot, personalization, routes_chat, routes_group, routes_shop, routes_sns, shop_db, shop_service, sns_db, sns_service, orders_service, session, social_db, social_service
+from commerce.services.merchant_api import (accounts_db, accounts_service, cart_db, chatbot, fulfillment, model_status,
+                                            notifications, orders_db, orders_service, personalization, routes_chat,
+                                            routes_group, routes_shop, routes_sns, routes_store, sales, session, shop_db,
+                                            shop_service, sns_db, sns_service, social_db, social_service)
 from commerce.services.merchant_api.accounts_service import AccountError
 from commerce.services.merchant_api.context import MerchantContext, MerchantSettings, build_context, merchant_db_path_from_env
-from commerce.services.merchant_api.presentation import product_emoji
+from commerce.services.merchant_api.presentation import mask_name, product_emoji
 
 _APPS_DIR = Path(__file__).resolve().parents[2] / "apps"
 _log = logging.getLogger(__name__)
@@ -65,10 +68,24 @@ def _store_name(request: Request) -> dict:
     return {"store_name": name or seller_id}
 
 
+def _buyer_badges(request: Request) -> dict:
+    """Unread notifications for the bell in the buyer header (0 when logged out)."""
+    seller_id = request.path_params.get("seller_id", "")
+    merchant = getattr(request.app.state, "merchant", None)
+    account = session.unsign(request.cookies.get(session.customer_cookie(seller_id))) if seller_id else None
+    if merchant is None or seller_id != merchant.seller_id or not account or account.get("seller_id") != seller_id:
+        return {"unread_notifications": 0}
+    conn = orders_db.connect(merchant.merchant_db_path, schemas=(notifications.ensure_schema,))
+    try:
+        return {"unread_notifications": notifications.unread_count(conn, seller_id, account["customer_id_local"])}
+    finally:
+        conn.close()
+
+
 _seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"),
                                     context_processors=[_csrf_context(session.seller_cookie)])
 _buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
-                                   context_processors=[_csrf_context(session.customer_cookie), _store_name])
+                                   context_processors=[_csrf_context(session.customer_cookie), _store_name, _buyer_badges])
 
 # Platform name shown on every screen. Placeholder until the team settles the
 # "OO" part; change it here only.
@@ -81,6 +98,7 @@ _product_emoji = product_emoji
 for _templates in (_seller_templates, _buyer_templates):
     _templates.env.globals["brand_name"] = BRAND_NAME
     _templates.env.globals["product_emoji"] = _product_emoji
+    _templates.env.filters["mask_name"] = mask_name
 
 _STATUS_LABELS = {"requested": "접수", "accepted": "처리중", "completed": "완료", "cancelled": "취소"}
 
@@ -152,7 +170,21 @@ class LoginRequired(Exception):
 _REDELIVERY_JOIN_SECONDS = 60
 # Tables that share orders.sqlite with the order domain; created once per file (orders_db.connect).
 _SCREEN_SCHEMAS = (social_db.ensure_schema, sns_db.ensure_schema, accounts_db.ensure_schema, cart_db.ensure_schema,
-                   shop_db.ensure_schema, chatbot.ensure_schema)
+                   shop_db.ensure_schema, chatbot.ensure_schema, fulfillment.ensure_schema, notifications.ensure_schema)
+
+
+_CHECKOUT_ERRORS = {
+    "recipient": "택배로 받으려면 받는 분 이름을 입력해 주세요.",
+    "phone": "연락처를 010-1234-5678 형식으로 입력해 주세요.",
+    "address": "택배 받을 주소를 입력해 주세요.",
+    "method": "수령 방법을 골라 주세요.",
+    "stock": "남은 수량보다 많이 주문할 수 없어요.",
+}
+
+
+def _checkout_error(exc: ContractError) -> str:
+    field = exc.field_path.strip("/").split("/")[0]
+    return field if field in _CHECKOUT_ERRORS else "method"
 
 
 def _redeliver_outbox(context: MerchantContext) -> None:
@@ -416,17 +448,24 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         for order in orders:
             status_counts[order["status"]] += 1
         context: MerchantContext = request.app.state.merchant
-        # A probe for the dashboard only: a customer with no history, so B
-        # answers with its model if one is installed, or says why it cannot.
+        # A probe for the dashboard only, for a customer who has bought here, so B answers with
+        # its model if one is installed, or says why it cannot (model_status.probe_customer).
         probe = orders_service.get_recommendations_for_display(
-            conn, seller_id=seller_id, customer_id_local="dashboard-probe", runtime=context.runtime,
+            conn, seller_id=seller_id, customer_id_local=model_status.probe_customer(conn, seller_id),
+            runtime=context.runtime,
         )
         return _seller_templates.TemplateResponse(request, "overview.html", {
             "seller_id": seller_id, "active_tab": "overview", "staff": staff,
             "product_count": len(catalog), "status_counts": status_counts,
             "model_connected": probe["model_version"] != orders_service.MOCK_MODEL_VERSION,
             "model_version": probe["model_version"], "model_fallback": probe.get("fallback_reason"),
+            "fallback_label": model_status.FALLBACK_LABELS.get(probe.get("fallback_reason") or ""),
+            "installed": model_status.installed_models(context.model_dir),
             "delivery": orders_service.delivery_summary(conn, seller_id=seller_id),
+            "sales": (stats := sales.summary(orders, _catalog_titles(conn, seller_id))),
+            "chart": sales.bar_chart(stats["series"], stats["peak"]),
+            "low_stock": [(i, n) for i, n in fulfillment.stock_levels(conn, seller_id).items() if n is not None and n <= 3],
+            "titles": _catalog_titles(conn, seller_id),
         })
 
     @app.get("/seller/{seller_id}/products")
@@ -434,6 +473,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
         return _seller_templates.TemplateResponse(request, "products.html", {
             "seller_id": seller_id, "active_tab": "products", "catalog": catalog, "staff": staff,
+            "stock": fulfillment.stock_levels(conn, seller_id), "photos": shop_db.photos(conn, seller_id),
         })
 
     @app.post("/seller/{seller_id}/products")
@@ -458,15 +498,25 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
             "status_labels": _STATUS_LABELS, "staff": staff, "titles": _catalog_titles(conn, seller_id),
             "delivery_by_order": orders_service.purchase_event_status_by_order(conn, seller_id=seller_id),
+            "fulfillment": fulfillment.of_orders(conn, seller_id), "methods": fulfillment.METHODS,
+            "status_filter": request.query_params.get("status"),
         })
 
     def seller_transition_screen(seller_id: str, order_id: str, action: str, request: Request, conn, expected_status_version: int):
         context: MerchantContext = request.app.state.merchant
-        orders_service.transition_order(
+        order = orders_service.transition_order(
             conn, seller_id=seller_id, order_id=order_id, action=action,
             expected_status_version=expected_status_version, runtime=context.runtime,
         )
-        return RedirectResponse(f"/seller/{seller_id}/orders", status_code=303)
+        # A-local follow-ups: the timeline's accept time, held stock back on cancel, the buyer's bell.
+        with conn:
+            fulfillment.log_status(conn, seller_id, order_id, order["status"])
+        if action == "cancel":
+            fulfillment.release_stock(conn, seller_id, order_id)
+        notifications.on_order(conn, seller_id, order, action)
+        back = request.query_params.get("back")
+        return RedirectResponse(f"/seller/{seller_id}/orders/{order_id}" if back == "detail" else f"/seller/{seller_id}/orders",
+                                status_code=303)
 
     @app.post("/seller/{seller_id}/orders/{order_id}/accept")
     def seller_accept_order(
@@ -542,6 +592,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         if accounts_db.fetch_customer(conn, seller_id, customer_id_local) is None:
             raise ContractError("NOT_FOUND", "/customer_id_local")
         social_service.send_message(conn, seller_id=seller_id, customer_id_local=customer_id_local, sender="seller", body=body)
+        notifications.notify(conn, seller_id, [customer_id_local], "message", "판매자가 쪽지를 보냈어요: " + body.strip()[:40],
+                             f"/buyer/{seller_id}/messages")
         return RedirectResponse(f"/seller/{seller_id}/messages/{customer_id_local}", status_code=303)
 
     @app.get("/seller/{seller_id}/prices")
@@ -647,6 +699,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "wished": set(shop_db.wishlist(conn, seller_id, customer["customer_id_local"])) if customer else set(),
             "recommended": [i for i in recommended if i["listing_status"] == "active"],
             "recommendation_label": orders_service.recommendation_label(recommendation),
+            "photos": shop_db.photos(conn, seller_id), "stock": fulfillment.stock_levels(conn, seller_id),
         })
 
     @app.get("/buyer/{seller_id}/items/{item_id_local}")
@@ -667,12 +720,35 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "posts": sns_service.posts_for_item(conn, seller_id=seller_id, item_id_local=item_id_local),
             "group_price": social_service.group_price(conn, seller_id=seller_id, item_id_local=item_id_local)
             if item["listing_status"] == "active" else None,
+            "photos": shop_db.photos(conn, seller_id).get(item_id_local, []),
+            "stock_left": fulfillment.stock_levels(conn, seller_id).get(item_id_local),
+            "terms": fulfillment.store_terms(conn, seller_id), "slots": fulfillment.PICKUP_SLOTS,
+            "profile": fulfillment.profile(conn, seller_id, customer_id) if customer_id else None,
+            "checkout_error": _CHECKOUT_ERRORS.get(request.query_params.get("e") or ""),
+            "names": accounts_db.display_names(conn, seller_id),
+        })
+
+    def order_placed(request: Request, conn, seller_id: str, customer: dict, order: dict, details: dict):
+        terms = fulfillment.store_terms(conn, seller_id)
+        subtotal = _with_total(order)["total_amount"]
+        fulfillment.record(conn, seller_id, order, customer["customer_id_local"], details,
+                           fulfillment.shipping_fee(terms, details["method"], subtotal))
+        fulfillment.hold_stock(conn, seller_id, order)
+        context: MerchantContext = request.app.state.merchant
+        installed = model_status.installed_models(context.model_dir)
+        return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
+            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
+            "titles": _catalog_titles(conn, seller_id), "terms": terms,
+            "model_connected": installed["encoder"] and any(installed["variants"].values()),
+            **routes_store._order_view(conn, seller_id, order),
         })
 
     @app.post("/buyer/{seller_id}/orders")
     def buyer_place_order(
         seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer_form),
         item_id_local: str = Form(...), quantity: int = Form(...),
+        method: str = Form("pickup"), recipient: str = Form(""), phone: str = Form(""), address: str = Form(""),
+        pickup_slot: str = Form(""), memo: str = Form(""),
     ):
         # The price is the server's catalog price; the form only says which item and how many.
         item = orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local)
@@ -680,6 +756,11 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             raise ContractError("NOT_FOUND", "/item_id_local")
         if quantity < 1:
             raise ContractError("SCHEMA_INVALID", "/quantity")
+        try:
+            details = fulfillment.validate(method, recipient, phone, address, pickup_slot, memo)
+            fulfillment.check_stock(conn, seller_id, [(item_id_local, quantity)])
+        except ContractError as exc:
+            return RedirectResponse(f"/buyer/{seller_id}/items/{item_id_local}?e={_checkout_error(exc)}#order", status_code=303)
         unit_price_minor = item["display_price_minor"]
         order = orders_service.place_order(
             conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
@@ -687,10 +768,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             items=[{"item_id_local": item_id_local, "quantity": quantity, "unit_price_minor": unit_price_minor}],
             currency="KRW",
         )
-        return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
-            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
-            "titles": _catalog_titles(conn, seller_id),
-        })
+        return order_placed(request, conn, seller_id, customer, order, details)
 
     @app.get("/buyer/{seller_id}/cart")
     def buyer_cart(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
@@ -700,6 +778,11 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "titles": _catalog_titles(conn, seller_id),
             # A fresh key per rendered cart: resubmitting this page cannot order twice.
             "checkout_key": "cart-" + uuid.uuid4().hex,
+            "terms": (terms := fulfillment.store_terms(conn, seller_id)), "slots": fulfillment.PICKUP_SLOTS,
+            "profile": fulfillment.profile(conn, seller_id, customer["customer_id_local"]),
+            "delivery_fee": fulfillment.shipping_fee(terms, "delivery", cart["total"]),
+            "checkout_error": _CHECKOUT_ERRORS.get(request.query_params.get("e") or ""),
+            "photos": shop_db.photos(conn, seller_id),
         })
 
     @app.post("/buyer/{seller_id}/cart")
@@ -724,13 +807,19 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     def buyer_checkout(
         seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer_form),
         checkout_key: str = Form(...),
+        method: str = Form("pickup"), recipient: str = Form(""), phone: str = Form(""), address: str = Form(""),
+        pickup_slot: str = Form(""), memo: str = Form(""),
     ):
+        try:
+            details = fulfillment.validate(method, recipient, phone, address, pickup_slot, memo)
+            if orders_db.fetch_order_by_idempotency_key(conn, seller_id, checkout_key) is None:
+                cart = orders_service.get_cart(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"])
+                fulfillment.check_stock(conn, seller_id, [(l["item_id_local"], l["quantity"]) for l in cart["lines"]])
+        except ContractError as exc:
+            return RedirectResponse(f"/buyer/{seller_id}/cart?e={_checkout_error(exc)}", status_code=303)
         order = orders_service.checkout_cart(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
                                              checkout_key=checkout_key)
-        return _buyer_templates.TemplateResponse(request, "order_confirmation.html", {
-            "seller_id": seller_id, "active_tab": "orders", "order": _with_total(order), "customer": customer,
-            "titles": _catalog_titles(conn, seller_id),
-        })
+        return order_placed(request, conn, seller_id, customer, order, details)
 
     @app.get("/buyer/{seller_id}/orders")
     def buyer_orders(seller_id: str, request: Request, conn=Depends(get_conn), customer=Depends(require_customer)):
@@ -741,6 +830,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
         return _buyer_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
             "status_labels": _STATUS_LABELS, "customer": customer, "titles": _catalog_titles(conn, seller_id),
+            "fulfillment": fulfillment.of_orders(conn, seller_id), "methods": fulfillment.METHODS,
+            "photos": shop_db.photos(conn, seller_id),
         })
 
     @app.get("/buyer/{seller_id}/messages")
@@ -761,6 +852,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     routes_group.register(app, deps)
     routes_shop.register(app, deps)
     routes_chat.register(app, deps, BRAND_NAME)
+    routes_store.register(app, deps)
     return app
 
 

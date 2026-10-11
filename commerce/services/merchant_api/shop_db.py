@@ -1,4 +1,4 @@
-"""Reviews and wishlists in orders.sqlite (A-only, seller-local, no cross-role contract)."""
+"""Reviews, wishlists and product photos in orders.sqlite (A-only, seller-local, no cross-role contract)."""
 from __future__ import annotations
 
 import sqlite3
@@ -24,6 +24,14 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             item_id_local TEXT NOT NULL,
             created_at TEXT NOT NULL,
             PRIMARY KEY (seller_id, customer_id_local, item_id_local)
+        );
+        CREATE TABLE IF NOT EXISTS product_photos (
+            seller_id TEXT NOT NULL,
+            item_id_local TEXT NOT NULL,
+            name TEXT NOT NULL,
+            position INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (seller_id, item_id_local, name)
         );
         """
     )
@@ -82,3 +90,26 @@ def wishlist(conn, seller_id: str, customer_id: str) -> list[str]:
 def wish_counts(conn, seller_id: str) -> dict[str, int]:
     return {r["item_id_local"]: r["n"] for r in conn.execute(
         "SELECT item_id_local, COUNT(*) AS n FROM wishlist WHERE seller_id = ? GROUP BY item_id_local", (seller_id,))}
+
+
+MAX_PHOTOS = 6
+
+
+def add_photo(conn, seller_id: str, item_id: str, name: str, now: str) -> None:
+    position = conn.execute("SELECT COALESCE(MAX(position), -1) + 1 FROM product_photos WHERE seller_id = ? AND item_id_local = ?",
+                            (seller_id, item_id)).fetchone()[0]
+    conn.execute("INSERT OR IGNORE INTO product_photos (seller_id, item_id_local, name, position, created_at) VALUES (?, ?, ?, ?, ?)",
+                 (seller_id, item_id, name, position, now))
+
+
+def remove_photo(conn, seller_id: str, item_id: str, name: str) -> bool:
+    return conn.execute("DELETE FROM product_photos WHERE seller_id = ? AND item_id_local = ? AND name = ?",
+                        (seller_id, item_id, name)).rowcount == 1
+
+
+def photos(conn, seller_id: str) -> dict[str, list[str]]:
+    """item -> photo names in order (one query for a whole product grid)."""
+    out: dict[str, list[str]] = {}
+    for r in conn.execute("SELECT item_id_local, name FROM product_photos WHERE seller_id = ? ORDER BY position, rowid", (seller_id,)):
+        out.setdefault(r["item_id_local"], []).append(r["name"])
+    return out

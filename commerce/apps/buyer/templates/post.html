@@ -66,7 +66,7 @@
       <h2 class="section-title flush">댓글 {{ post.comments }}</h2>
       {% for c in post.comment_list %}
       <div class="comment {{ 'by-seller' if c.author == 'seller' else '' }}">
-        <span class="list-title">{{ '사장님' if c.author == 'seller' else c.customer_id_local }}</span>
+        <span class="list-title">{{ '사장님' if c.author == 'seller' else ((names.get(c.customer_id_local) or c.customer_id_local) | mask_name) }}</span>
         <span>{{ c.body }}</span>
         <span class="muted-note">{{ c.created_at[5:10] }}</span>
         {% if customer and c.customer_id_local == customer.customer_id_local %}

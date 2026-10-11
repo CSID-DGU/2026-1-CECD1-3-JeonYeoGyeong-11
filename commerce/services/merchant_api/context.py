@@ -47,6 +47,7 @@ class MerchantContext:
     fl_client: FLClientLifecycle
     merchant_db_path: Path = None  # type: ignore[assignment]
     seller_id: str = None  # type: ignore[assignment]
+    model_dir: Path = None  # type: ignore[assignment]  # read-only here: the dashboard lists installed models
 
 
 def build_context(
@@ -60,7 +61,7 @@ def build_context(
     try:
         return MerchantContext(
             runtime, jobs, client_factory(runtime, jobs, settings.fl),
-            settings.merchant_db_path, settings.seller_id,
+            settings.merchant_db_path, settings.seller_id, settings.model_dir,
         )
     except BaseException:
         jobs.close()

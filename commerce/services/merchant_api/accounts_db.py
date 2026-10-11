@@ -84,3 +84,9 @@ def fetch_seller_account(conn: sqlite3.Connection, seller_id: str, username: str
         "SELECT * FROM seller_accounts WHERE seller_id = ? AND username = ?", (seller_id, username)
     ).fetchone()
     return dict(row) if row else None
+
+
+def display_names(conn: sqlite3.Connection, seller_id: str) -> dict[str, str]:
+    """customer_id_local -> display name, for screens that name reviewers and commenters."""
+    return {r["customer_id_local"]: r["display_name"] for r in conn.execute(
+        "SELECT customer_id_local, display_name FROM customers WHERE seller_id = ?", (seller_id,))}

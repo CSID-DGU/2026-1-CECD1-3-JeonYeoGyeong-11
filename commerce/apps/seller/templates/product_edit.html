@@ -26,11 +26,44 @@
   </form>
 </div>
 
+<div class="grid cols-2 mt-12">
+  <div class="card stack" id="photos">
+    <h2 class="section-title flush">상품 사진 <span class="muted-note">{{ photos | length }}/6</span></h2>
+    {% if request.query_params.get('photo') == 'bad' %}<div class="notice warn">사진(JPG·PNG·GIF·WebP)만 올릴 수 있어요.</div>{% endif %}
+    {% if photos %}
+    <div class="photo-grid">
+      {% for name in photos %}
+      <div class="photo-cell"><img src="/media/{{ seller_id }}/{{ name }}" alt="상품 사진 {{ loop.index }}">
+        <form method="post" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}/photos/{{ name }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+          <button class="btn ghost sm" type="submit" aria-label="사진 {{ loop.index }} 삭제">삭제</button></form>
+        {% if loop.first %}<span class="badge solid">대표</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<p class="muted-note">사진이 없으면 구매자 화면에 상품 아이콘이 보여요.</p>{% endif %}
+    {% if photos | length < 6 %}
+    <form class="row" method="post" enctype="multipart/form-data" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}/photos"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <input type="file" name="files" accept="image/jpeg,image/png,image/gif,image/webp" multiple required>
+      <button class="btn secondary sm" type="submit">올리기</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="card stack" id="stock">
+    <h2 class="section-title flush">재고</h2>
+    <p class="muted-note">숫자를 넣으면 주문할 때마다 줄고, 취소하면 돌아와요. 0이면 품절로 보이고, 비워 두면 재고를 관리하지 않아요.</p>
+    <form class="row" method="post" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}/stock"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <label class="field grow">남은 수량<input type="number" name="stock" min="0" max="100000" value="{{ stock_left if stock_left is not none else '' }}" placeholder="관리 안 함"></label>
+      <button class="btn secondary sm" type="submit">저장</button>
+    </form>
+    {% if stock_left == 0 %}<div class="notice warn">지금 품절로 보이고 있어요.</div>{% endif %}
+  </div>
+</div>
+
 <section class="section" id="reviews">
   <h2 class="section-title">리뷰 {{ reviews | length }}</h2>
   {% for r in reviews %}
   <div class="card stack">
-    <div class="row between"><span class="list-title">{{ r.customer_id_local }}</span><span class="rating">{{ '★' * r.rating }}<span class="muted-star">{{ '★' * (5 - r.rating) }}</span></span></div>
+    <div class="row between"><span class="list-title">{{ names.get(r.customer_id_local, r.customer_id_local) }} <span class="mono muted-note">{{ r.customer_id_local }}</span></span><span class="rating">{{ '★' * r.rating }}<span class="muted-star">{{ '★' * (5 - r.rating) }}</span></span></div>
     {% if r.body %}<p class="body-text">{{ r.body }}</p>{% endif %}
     <form class="inline-form" method="post" action="/seller/{{ seller_id }}/products/{{ item.item_id_local }}/reviews/{{ r.customer_id_local }}/reply"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
       <label class="field">사장님 답글<input type="text" name="reply" maxlength="500" value="{{ r.seller_reply or '' }}"></label>

@@ -7,7 +7,7 @@
 
 <div class="card">
   <h2 class="section-title">공동구매 규칙</h2>
-  {% if saved %}<div class="notice mb-16">저장했어요. 새로 열리는 공동구매부터 적용됩니다.</div>{% endif %}
+  {% if saved and saved != 'delivery' %}<div class="notice mb-16">저장했어요. 새로 열리는 공동구매부터 적용됩니다.</div>{% endif %}
   <form class="form" method="post" action="/seller/{{ seller_id }}/store-settings"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <div class="form-row">
       <label class="field"><span>공동구매 할인율 <span class="field-hint">0~50%</span></span>
@@ -20,6 +20,22 @@
     <label class="field">매장 소개 <span class="field-hint">선택</span>
       <input type="text" name="store_intro" maxlength="200" value="{{ settings.store_intro or '' }}">
     </label>
+    <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+  </form>
+</div>
+
+<div class="card mt-12" id="delivery">
+  <h2 class="section-title">픽업·배송</h2>
+  {% if saved == 'delivery' %}<div class="notice mb-16">저장했어요. 다음 주문부터 적용됩니다.</div>{% endif %}
+  <form class="form" method="post" action="/seller/{{ seller_id }}/delivery-settings"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <div class="form-row">
+      <label class="field">픽업 장소<input type="text" name="pickup_address" maxlength="200" value="{{ terms.pickup_address }}"></label>
+      <label class="field">픽업 가능 시간<input type="text" name="pickup_hours" maxlength="100" value="{{ terms.pickup_hours }}"></label>
+    </div>
+    <div class="form-row">
+      <label class="field">택배비(원)<input type="number" name="delivery_fee" min="0" max="50000" value="{{ terms.delivery_fee }}"></label>
+      <label class="field"><span>무료배송 기준(원) <span class="field-hint">0이면 항상 택배비</span></span><input type="number" name="free_delivery_over" min="0" max="1000000" value="{{ terms.free_delivery_over }}"></label>
+    </div>
     <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
   </form>
 </div>

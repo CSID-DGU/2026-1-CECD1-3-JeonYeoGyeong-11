@@ -32,6 +32,7 @@
       <a class="brand" href="/buyer/{{ seller_id }}/"><img src="/static/logo.svg" alt="">{{ brand_name }}</a>
       <nav class="topnav">
         <a href="/buyer/{{ seller_id }}/" class="{{ 'active' if active_tab == 'home' else '' }}">홈</a>
+        <a href="/buyer/{{ seller_id }}/store" class="{{ 'active' if active_tab == 'store' else '' }}">가게</a>
         <a href="/buyer/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">소식</a>
         <a href="/buyer/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">공동구매</a>
         <a href="/buyer/{{ seller_id }}/messages" class="{{ 'active' if active_tab == 'messages' else '' }}">쪽지</a>
@@ -40,10 +41,11 @@
       </nav>
       <div class="session">
         {% if customer %}
+          <a class="icon-btn {{ 'active' if active_tab == 'notifications' else '' }}" href="/buyer/{{ seller_id }}/notifications" aria-label="알림{{ ' ' ~ unread_notifications ~ '개' if unread_notifications }}"><span class="icon-bell" aria-hidden="true">🔔</span>{% if unread_notifications %}<span class="count-dot">{{ unread_notifications if unread_notifications < 100 else '99+' }}</span>{% endif %}<span class="icon-btn-label">알림</span></a>
           <a class="icon-btn {{ 'active' if active_tab == 'wishlist' else '' }}" href="/buyer/{{ seller_id }}/wishlist" aria-label="찜한 상품"><span class="icon-heart" aria-hidden="true">♡</span><span class="icon-btn-label">찜</span></a>
           <a class="icon-btn {{ 'active' if active_tab == 'cart' else '' }}" href="/buyer/{{ seller_id }}/cart" aria-label="장바구니">{{ icon('cart') }}<span class="icon-btn-label">장바구니</span></a>
-          <span class="avatar" aria-hidden="true">{{ customer.display_name[:1] }}</span>
-          <span class="name">{{ customer.display_name }}님</span>
+          <a class="me-link {{ 'active' if active_tab == 'me' else '' }}" href="/buyer/{{ seller_id }}/me"><span class="avatar" aria-hidden="true">{{ customer.display_name[:1] }}</span>
+          <span class="name">{{ customer.display_name }}님</span></a>
           <a href="/buyer/{{ seller_id }}/logout">로그아웃</a>
         {% else %}
           <a href="/buyer/{{ seller_id }}/login">로그인</a>
@@ -60,7 +62,7 @@
     <a href="/buyer/{{ seller_id }}/feed" class="{{ 'active' if active_tab == 'feed' else '' }}">{{ icon('feed') }}소식</a>
     <a href="/buyer/{{ seller_id }}/group-buys" class="{{ 'active' if active_tab == 'group_buys' else '' }}">{{ icon('group') }}공동구매</a>
     <a href="/buyer/{{ seller_id }}/messages" class="{{ 'active' if active_tab in ('messages', 'chat') else '' }}">{{ icon('message') }}쪽지</a>
-    <a href="/buyer/{{ seller_id }}/orders" class="{{ 'active' if active_tab == 'orders' else '' }}">{{ icon('orders') }}주문내역</a>
+    <a href="/buyer/{{ seller_id }}/{{ 'me' if customer else 'orders' }}" class="{{ 'active' if active_tab in ('orders', 'me', 'wishlist', 'notifications') else '' }}">{{ icon('orders') }}나의 오이{% if unread_notifications %}<span class="count-dot">{{ unread_notifications }}</span>{% endif %}</a>
   </nav>
 </body>
 </html>

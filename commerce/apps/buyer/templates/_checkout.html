@@ -1,0 +1,25 @@
+{% macro checkout_fields(profile, terms, slots, fee_note) -%}
+{%- set method = (profile.method if profile and profile.method else 'pickup') %}
+<fieldset class="checkout">
+  <legend class="list-title">받는 방법</legend>
+  <div class="segmented" role="radiogroup">
+    <label><input type="radio" name="method" value="pickup" {{ 'checked' if method == 'pickup' }}><span>🏪 매장 픽업</span></label>
+    <label><input type="radio" name="method" value="delivery" {{ 'checked' if method == 'delivery' }}><span>📦 택배{{ ' · ' ~ fee_note if fee_note }}</span></label>
+  </div>
+  <div class="when-pickup stack">
+    <p class="muted-note">픽업 장소: {{ terms.pickup_address }} · {{ terms.pickup_hours }}</p>
+    <label class="field">픽업 시간
+      <select name="pickup_slot">{% for s in slots %}<option>{{ s }}</option>{% endfor %}</select>
+    </label>
+  </div>
+  <div class="when-delivery stack">
+    <div class="grid cols-2">
+      <label class="field">받는 분<input type="text" name="recipient" maxlength="40" value="{{ profile.recipient or '' if profile else '' }}" autocomplete="name"></label>
+      <label class="field">연락처<input type="tel" name="phone" maxlength="20" placeholder="010-1234-5678" value="{{ profile.phone or '' if profile else '' }}" autocomplete="tel"></label>
+    </div>
+    <label class="field">주소<input type="text" name="address" maxlength="200" placeholder="도로명 주소와 상세 주소" value="{{ profile.address or '' if profile else '' }}" autocomplete="street-address"></label>
+    <p class="muted-note">택배비 {{ "{:,}".format(terms.delivery_fee) }}원{% if terms.free_delivery_over %} · {{ "{:,}".format(terms.free_delivery_over) }}원 이상 무료{% endif %}. 주소와 연락처는 이 매장의 주문 처리에만 쓰이고 추천 모델로 보내지지 않아요.</p>
+  </div>
+  <label class="field">요청사항 (선택)<input type="text" name="memo" maxlength="200" placeholder="예: 문 앞에 두세요 / 얼음팩 넉넉히"></label>
+</fieldset>
+{%- endmacro %}

@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import RedirectResponse
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import orders_service, shop_db, shop_service
+from commerce.services.merchant_api import accounts_db, fulfillment, notifications, orders_service, shop_db, shop_service
 from commerce.services.merchant_api.routes_sns import ScreenDeps
 
 
@@ -48,6 +48,9 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
         try:
             shop_service.cancel_by_buyer(conn, seller_id=seller_id, customer_id_local=customer["customer_id_local"],
                                          order_id=order_id, runtime=request.app.state.merchant.runtime)
+            with conn:
+                fulfillment.log_status(conn, seller_id, order_id, "cancelled")
+            fulfillment.release_stock(conn, seller_id, order_id)
         except ContractError as exc:
             return RedirectResponse(f"/buyer/{seller_id}/orders?e={exc.code}", status_code=303)
         return RedirectResponse(f"/buyer/{seller_id}/orders?ok=cancelled", status_code=303)
@@ -65,6 +68,9 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
             "reviews": shop_db.reviews_for_item(conn, seller_id, item_id_local),
             "rating": shop_db.rating_summary(conn, seller_id).get(item_id_local),
             "wishes": shop_db.wish_counts(conn, seller_id).get(item_id_local, 0),
+            "photos": shop_db.photos(conn, seller_id).get(item_id_local, []),
+            "stock_left": fulfillment.stock_levels(conn, seller_id).get(item_id_local),
+            "names": accounts_db.display_names(conn, seller_id),
         })
 
     @app.post("/seller/{seller_id}/products/{item_id_local}")
@@ -84,4 +90,8 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
                             staff=Depends(d.require_seller_form), reply: str = Form("")):
         shop_service.reply_review(conn, seller_id=seller_id, item_id_local=item_id_local,
                                   customer_id_local=customer_id_local, reply=reply)
+        if reply.strip():
+            notifications.notify(conn, seller_id, [customer_id_local], "reply", "판매자가 내 리뷰에 답글을 남겼어요.",
+                                 f"/buyer/{seller_id}/items/{item_id_local}#reviews",
+                                 dedupe_key="review-reply:%s:%s" % (item_id_local, reply.strip()[:40]))
         return RedirectResponse(f"/seller/{seller_id}/products/{item_id_local}#reviews", status_code=303)

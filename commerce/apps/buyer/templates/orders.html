@@ -11,11 +11,13 @@
     <div class="list">
       {% for order in orders %}
       <div class="list-item">
-        <div class="thumb tone-{{ loop.index0 % 4 }}" aria-hidden="true">{{ titles.get(order['items'][0].item_id_local, order['items'][0].item_id_local)[:1] if order['items'] else '' }}</div>
-        <div class="grow">
+        {%- set first = order['items'][0].item_id_local if order['items'] else '' %}
+        {%- set pic = photos.get(first, [none])[0] %}
+        <a class="thumb tone-{{ loop.index0 % 4 }}{{ ' photo' if pic }}" href="/buyer/{{ seller_id }}/orders/{{ order.order_id }}" aria-hidden="true">{% if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="">{% else %}{{ titles.get(first, first)[:1] }}{% endif %}</a>
+        <a class="grow" href="/buyer/{{ seller_id }}/orders/{{ order.order_id }}">
           <p class="list-title">{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</p>
-          <p class="list-sub">{{ order.created_at[:10] }} · 주문번호 {{ order.order_id[:8] }}</p>
-        </div>
+          <p class="list-sub">{{ order.created_at[:10] }} · 주문번호 {{ order.order_id[:8] }}{% set f = fulfillment.get(order.order_id) %}{% if f %} · {{ methods[f.method] }}{% endif %} · 상세 보기 →</p>
+        </a>
         <div class="stack align-end">
           <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ status_labels[order.status] }}</span>
           <span class="price-now">{{ "{:,}".format(order.total_amount) }}원</span>

@@ -2,7 +2,12 @@
 {% macro product_card(item, index) -%}
 <a class="product-card" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
   {%- set emoji = product_emoji(item.category_path, item.title_text) %}
-  <div class="thumb tone-{{ index % 4 }}{{ ' emoji' if emoji }}" aria-hidden="true">{{ emoji or item.title_text[:1] }}</div>
+  {%- set pic = photos.get(item.item_id_local, [none])[0] %}
+  {%- set left = stock.get(item.item_id_local) %}
+  <div class="thumb tone-{{ index % 4 }}{{ ' emoji' if emoji and not pic }}{{ ' photo' if pic }}{{ ' soldout' if left == 0 }}" aria-hidden="true">
+    {%- if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="" loading="lazy">{% else %}{{ emoji or item.title_text[:1] }}{% endif %}
+    {%- if left == 0 %}<span class="thumb-tag">품절</span>{% elif left is not none and left <= 5 %}<span class="thumb-tag hot">{{ left }}개 남음</span>{% endif %}
+  </div>
   <div class="product-info">
     <p class="product-title">{{ item.title_text }}</p>
     {% if item.category_path %}<p class="product-meta">{{ item.category_path | join(' · ') }}</p>{% endif %}

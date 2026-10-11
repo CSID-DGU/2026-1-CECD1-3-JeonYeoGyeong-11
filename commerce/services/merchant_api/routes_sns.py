@@ -17,7 +17,7 @@ from fastapi import Depends, FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import media, orders_service, sns_service
+from commerce.services.merchant_api import accounts_db, media, notifications, orders_service, sns_db, sns_service
 
 
 @dataclass(frozen=True)
@@ -103,6 +103,7 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
         sns_service.record_view(conn, seller_id=seller_id, post_id=post_id, viewer=customer_id or "guest")
         return d.buyer_templates.TemplateResponse(request, "post.html", {
             "seller_id": seller_id, "active_tab": "feed", "customer": customer, "post": post,
+            "names": accounts_db.display_names(conn, seller_id),
         })
 
     @app.post("/buyer/{seller_id}/posts/{post_id}/like")
@@ -146,14 +147,17 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
                            staff=Depends(d.require_seller_form), kind: str = Form("article"), caption: str = Form(""),
                            item_ids: list[str] = Form(default=[]), files: list[UploadFile] = File(default=[])):
         try:
-            sns_service.create_post(conn, folder(request), seller_id=seller_id, kind=kind, caption=caption,
-                                    item_ids=item_ids, uploads=_read_uploads(files))
+            post = sns_service.create_post(conn, folder(request), seller_id=seller_id, kind=kind, caption=caption,
+                                           item_ids=item_ids, uploads=_read_uploads(files))
         except media.MediaError as exc:
             return studio(request, conn, seller_id, staff, str(exc), {"kind": kind, "caption": caption, "items": item_ids})
         except ContractError as exc:
             message = {"MISSING_REQUIRED_FIELD": "내용을 입력해 주세요.", "SCHEMA_INVALID": "내용이 너무 길거나 태그·파일이 너무 많습니다.",
                        "NOT_FOUND": "판매 중인 상품만 태그할 수 있습니다."}.get(exc.code, exc.code)
             return studio(request, conn, seller_id, staff, message, {"kind": kind, "caption": caption, "items": item_ids})
+        notifications.notify(conn, seller_id, notifications.followers(conn, seller_id), "post",
+                             "단골 가게에 새 %s: %s" % (sns_service.KINDS[kind], post["title"][:40]),
+                             f"/buyer/{seller_id}/posts/{post['post_id']}", dedupe_key="post:%s" % post["post_id"])
         return RedirectResponse(f"/seller/{seller_id}/feed", status_code=303)
 
     @app.get("/seller/{seller_id}/posts/{post_id}")
@@ -183,6 +187,9 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
     def seller_reply(seller_id: str, post_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller_form),
                      body: str = Form(...)):
         sns_service.add_comment(conn, seller_id=seller_id, post_id=post_id, body=body)
+        commenters = [c["customer_id_local"] for c in sns_db.list_comments(conn, seller_id, post_id) if c["author"] == "customer"]
+        notifications.notify(conn, seller_id, commenters, "reply", "판매자가 댓글에 답했어요: " + body.strip()[:40],
+                             f"/buyer/{seller_id}/posts/{post_id}#comments")
         return RedirectResponse(f"/seller/{seller_id}/posts/{post_id}#comments", status_code=303)
 
     @app.post("/seller/{seller_id}/posts/{post_id}/comments/{comment_id}/delete")

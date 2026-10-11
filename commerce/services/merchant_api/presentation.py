@@ -50,3 +50,15 @@ def product_emoji(category_path: Optional[list[str]], title: Optional[str] = Non
 def tone_for(key: str) -> tuple[str, str]:
     """A stable background pair for any key (same post -> same colors on every render)."""
     return TONES[int(hashlib.sha256(key.encode("utf-8")).hexdigest(), 16) % len(TONES)]
+
+
+def mask_name(name: str | None) -> str:
+    """Shown next to reviews and comments: 김하준 -> 김*준, 이준 -> 이*, a login id -> its first letters."""
+    name = (name or "").strip()
+    if not name:
+        return "고객"
+    if len(name) <= 2:
+        return name[0] + "*"
+    if name.isascii():
+        return name[:3] + "*" * min(4, len(name) - 3)
+    return name[0] + "*" * (len(name) - 2) + name[-1]
