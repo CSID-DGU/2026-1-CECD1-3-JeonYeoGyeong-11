@@ -15,6 +15,8 @@ seller's job thread calls train_round and install_release through C's client.
 - Training: train_round copies the base named by round_config, reads the snapshot
   local_data_ref pinned, and returns the shared delta. One customer in ten is held
   out for the validation loss, chosen by seller and run seed, never by round_id.
+  The training draws (batch order, negatives) come from seller, run seed and
+  round_id, so a run that keeps one seed still samples anew every round.
 - Personalization (D0019, model.md §8): a copy of the serving base learns only
   query_proj and scorer and is kept only if its validation loss beats the base's.
   It lives in models/personal/{variant}/{base_version}/{revision}/ and is used only
@@ -205,6 +207,14 @@ def personal_names(model: HarexRecommender) -> dict[str, str]:
 def is_validation_customer(seller_id: str, run_seed: int, customer: str) -> bool:
     digest = _sha256(canonical_json(["val_split", seller_id, run_seed, customer]))
     return int(digest[:8], 16) % VALIDATION_SHARE == 0
+
+
+def round_train_seed(seller_id: str, run_seed: int, round_id: str) -> int:
+    """Seed of one round's training draws. The lab varied them per round and seller
+    (fl_lab: seed * 100000 + round * 1000 + seller); a coordinator that keeps one seed
+    for the run (it must, for the validation split) would otherwise replay the same
+    batches and negatives every round."""
+    return int(_sha256(canonical_json(["train", seller_id, run_seed, round_id]))[:8], 16)
 
 
 class SellerRuntime:
@@ -695,7 +705,8 @@ class SellerRuntime:
             load_shared(model, handle.tensors)  # a training copy; the serving model stays as it is
             config = TrainConfig(steps=steps, batch_size=round_config["batch_size"],
                                  n_negatives=round_config["n_neg"], lr=float(round_config["learning_rate"]),
-                                 weight_decay=WEIGHT_DECAY, clip_norm=CLIP_NORM, seed=round_config["seed"])
+                                 weight_decay=WEIGHT_DECAY, clip_norm=CLIP_NORM,
+                                 seed=round_train_seed(self.seller_id, round_config["seed"], round_config["round_id"]))
             log = train(model, train_parts, config)
             after = shared_tensors(model)
             delta = {name: (after[name] - handle.tensors[name]).astype(np.float32) for name in handle.tensors}
