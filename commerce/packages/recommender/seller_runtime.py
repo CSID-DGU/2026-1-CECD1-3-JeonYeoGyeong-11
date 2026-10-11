@@ -22,7 +22,9 @@ seller's job thread calls train_round and install_release through C's client.
   It lives in models/personal/{variant}/{base_version}/{revision}/ and is used only
   with that base; a new base serves without it until personalized again.
 - compare_local pins one snapshot, one candidate set and both variants' handles,
-  then fills T-G, R-G, T-P, R-P or says why an arm is unavailable.
+  then fills T-G, R-G, T-P, R-P or says why an arm is unavailable. The handles are
+  the comparison pair pinned in models/comparison.json (pin_comparison, comparison.md
+  §5) or, for a variant without a pin, the serving base.
 - Warm-up (warm=True, which open_runtime sets): a background thread computes the
   catalog's z, the whole-ledger relations and each installed base's e for the
   current epoch, after opening and after every new event, catalog version or
@@ -240,6 +242,7 @@ class SellerRuntime:
         self._catalog_cache: Catalog | None = None
         self._prepared: Prepared | None = None
         self._e_cache: dict[tuple[str, str, int], torch.Tensor] = {}
+        self._pinned: dict[tuple[str, str], ModelHandle] = {}  # comparison bases other than the serving one
         self._compute = threading.RLock()  # one z / relation / e computation at a time
         self._clock = clock  # the warm-up's "now": live requests use as_of = now
         for variant in VARIANTS:
@@ -473,8 +476,14 @@ class SellerRuntime:
             if e is None:
                 e = handle.model.encode_items(data)  # personalization never changes e (model.md §7)
                 with self._state:
-                    self._e_cache = {k: v for k, v in self._e_cache.items() if k[0] != arch.variant}
-                    self._e_cache[key] = e
+                    # Per variant: this epoch's e of at most two bases, the serving one and a pinned
+                    # comparison base, so compare_local next to predict_local does not recompute both.
+                    kept = {k: v for k, v in self._e_cache.items() if k[0] != arch.variant or k[2] == epoch}
+                    same = [k for k in kept if k[0] == arch.variant]
+                    for k in same[:-1]:
+                        del kept[k]
+                    kept[key] = e
+                    self._e_cache = kept
         return e
 
     @torch.no_grad()
@@ -844,13 +853,68 @@ class SellerRuntime:
 
     # ------------------------------------------------------------------ comparison
 
+    # ------------------------------------------------------------------ comparison pair
+
+    def _pin_path(self) -> Path:
+        return self.model_dir / "comparison.json"
+
+    def comparison_pin(self) -> dict[str, str]:
+        """variant -> base version compare_local uses; a variant missing here uses its serving base."""
+        path = self._pin_path()
+        if not path.is_file():
+            return {}
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def pin_comparison(self, *, text_only: str | None = None, text_relation: str | None = None) -> None:
+        """Fix the base pair compare_local uses (comparison.md §5: a pair chosen beforehand, not the
+        latest). Each version must be a base this seller installed; None leaves that variant on its
+        serving base, and both None removes the pin. Local, survives a restart."""
+        pair = {v: version for v, version in (("text_only", text_only), ("text_relation", text_relation))
+                if version is not None}
+        for variant, version in pair.items():
+            if not (self._base_dir(variant) / version / "release.json").is_file():
+                raise ContractError("NOT_FOUND", "/%s" % variant)
+            self._pinned_base(variant, version, strict=True)
+        path = self._pin_path()
+        with self._state:
+            if not pair:
+                path.unlink(missing_ok=True)
+                return
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temp = path.with_name("comparison.%s" % uuid.uuid4().hex)
+            temp.write_bytes(canonical_json(pair))
+            os.replace(temp, path)
+
+    def _pinned_base(self, variant: ModelVariant, version: str, *, strict: bool = False) -> ModelHandle | None:
+        with self._state:
+            handle = self._pinned.get((variant, version))
+        if handle is not None:
+            return handle
+        try:
+            handle = self._read_base(variant, version)
+        except Exception as error:
+            if strict:
+                raise ContractError("MANIFEST_MISMATCH", "/%s" % variant) from error
+            self.load_errors["%s.comparison" % variant] = "%s: %s" % (type(error).__name__, error)
+            return None
+        with self._state:
+            self._pinned = {k: v for k, v in self._pinned.items() if k[0] != variant}
+            self._pinned[(variant, version)] = handle
+        return handle
+
     def compare_local(self, request: Payload) -> ComparisonResult:
         """T-G, R-G, T-P, R-P on one pinned snapshot, candidate set and handle set (interfaces.md §4.1)."""
         check_payload("recommendation_request.v1", request)
         if request["seller_id"] != self.seller_id:
             raise ContractError("FORBIDDEN", "/seller_id")
+        pin = self.comparison_pin()
         with self._state:
             pinned = {v: (self._handles.get(v), self._personal.get(v)) for v in VARIANTS}
+        for variant, version in pin.items():
+            base, _ = pinned[variant]
+            if base is None or base.model_version != version:
+                base = self._pinned_base(variant, version)  # None: the arm says model_not_ready
+                pinned[variant] = (base, self._load_personal(variant, base))
         snap = self.store.snapshot()
         candidates = self._candidates(request, snap)
         top_n = request["top_n"] if request["top_n"] is not None else DEFAULT_TOP_N
