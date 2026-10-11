@@ -140,6 +140,18 @@ class FulfillmentScreensTest(unittest.TestCase):
         self._seller_action(order, "cancel", 2)  # a second cancel is refused and changes nothing
         self.assertEqual(fulfillment.stock_levels(self._db(), SELLER)["sku-egg"], 2)
 
+    def test_recommendations_skip_sold_out_items(self):
+        self.runtime.recommendation = {
+            "schema_version": "recommendation.v1", "seller_id": SELLER, "customer_id_local": "cust-1",
+            "as_of": "2026-10-06T00:00:00.000000Z", "model_version": "ic100-R_lm-r500", "score_semantics": "next_purchase",
+            "horizon_days": None, "is_cold_start": False, "fallback_reason": None,
+            "items": [{"item_id_local": "sku-egg", "score": 0.9}, {"item_id_local": "sku-fish", "score": 0.5}]}
+        self.client.post(f"/seller/{SELLER}/products/sku-egg/stock", data={"stock": "0", "csrf_token": self._seller_csrf()})
+        shelf = self.client.get(f"/buyer/{SELLER}/").text.split("상품 둘러보기")[0]
+        self.assertIn("제주 은갈치", shelf)
+        self.assertNotIn("유정란 10구", shelf)
+        self.assertEqual(self.runtime.requests[-1]["top_n"], 8)
+
     def test_buyer_cancel_returns_stock(self):
         self.client.post(f"/seller/{SELLER}/products/sku-egg/stock", data={"stock": "5", "csrf_token": self._seller_csrf()})
         self._order("sku-egg", 2)

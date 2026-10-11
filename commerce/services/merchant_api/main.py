@@ -682,15 +682,18 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
                    q: Optional[str] = None, cat: Optional[str] = None):
         context: MerchantContext = request.app.state.merchant
         catalog = orders_service.list_catalog_for_display(conn, seller_id=seller_id)
+        # Ask for a few more than the shelf shows: sold-out items (A-local stock, which B does not
+        # know about) are skipped and the next ones fill their place.
         recommendation = orders_service.get_recommendations_for_display(
             conn, seller_id=seller_id, customer_id_local=(customer["customer_id_local"] if customer else "guest"),
-            runtime=context.runtime,
+            runtime=context.runtime, top_n=8,
         )
         catalog_by_id = {item["item_id_local"]: item for item in catalog}
+        stock = fulfillment.stock_levels(conn, seller_id)
         recommended = [
             catalog_by_id[entry["item_id_local"]] for entry in recommendation["items"]
-            if entry["item_id_local"] in catalog_by_id
-        ]
+            if entry["item_id_local"] in catalog_by_id and stock.get(entry["item_id_local"]) != 0
+        ][:4]
         return _buyer_templates.TemplateResponse(request, "home.html", {
             "seller_id": seller_id, "active_tab": "home", "customer": customer,
             "catalog": shop_service.search(catalog, q, cat), "q": q or "", "cat": cat,
@@ -699,7 +702,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             "wished": set(shop_db.wishlist(conn, seller_id, customer["customer_id_local"])) if customer else set(),
             "recommended": [i for i in recommended if i["listing_status"] == "active"],
             "recommendation_label": orders_service.recommendation_label(recommendation),
-            "photos": shop_db.photos(conn, seller_id), "stock": fulfillment.stock_levels(conn, seller_id),
+            "photos": shop_db.photos(conn, seller_id), "stock": stock,
         })
 
     @app.get("/buyer/{seller_id}/items/{item_id_local}")
