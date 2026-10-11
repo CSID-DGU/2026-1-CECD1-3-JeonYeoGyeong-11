@@ -10,7 +10,7 @@
   - 모델 파일: `{model_dir}/base/{variant}/{model_version}/`(release.json·manifest.json·weights.npz)와 `CURRENT`. 검증을 모두 통과한 release만 임시 폴더→이름 바꾸기→CURRENT 순으로 반영하므로 실패하면 이전 base가 계속 서빙한다.
   - frozen 인코더는 B 설치물로 `{model_dir}/frozen_text/`에 둔다(model-lab.md §6.6). 없으면 모델을 쓰지 않고 fallback만 한다.
   - Instacart처럼 상대시간인 과거 원장은 달력이 없으므로 어떤 live as_of보다도 앞선 이력으로 본다.
-  - train_round의 검증 고객(10명 중 1명)은 seller와 round_config.seed로 정하고 round_id는 쓰지 않는다. 그래서 seed를 라운드마다 바꾸면 검증 고객도 바뀐다. C coordinator는 한 실행 동안 seed를 고정한다.
+  - train_round의 검증 고객(10명 중 1명)은 seller와 round_config.seed로 정하고 round_id는 쓰지 않는다. 그래서 seed를 라운드마다 바꾸면 검증 고객도 바뀐다. C coordinator는 한 실행 동안 seed를 고정한다. 학습 난수(배치 순서·음성)는 seller·seed·round_id로 정하므로, seed가 고정돼도 라운드마다 새로 뽑는다(fl_lab과 같은 성질).
   - install_release는 받은 manifest의 hash를 이 패키지가 기대하는 manifest(설치된 인코더의 text_artifact_hash와 preprocessing_version 포함)와 비교한다. 다른 인코더나 전처리로 만든 release는 MANIFEST_MISMATCH다.
   - personalize_local: 설치된 base 복사본에서 query_proj·scorer만 학습하고, 고정 검증 고객의 손실이 base보다 낮을 때만 `{model_dir}/personal/{variant}/{base_version}/{revision}/`에 두고 쓴다. base가 바뀌면 옛 결과는 붙이지 않는다. 설정 기본값은 `DEFAULT_PERSONAL`(두 variant 공통)이다.
   - 미리 계산(`open_runtime`은 `warm=True`로 연다): 백그라운드 스레드가 현재 epoch의 상품 텍스트 벡터 z, 원장 전체 관계, 설치된 base의 e를 계산해 둔다. 여는 때와 새 구매·새 카탈로그 버전·release 설치 뒤에 다시 돌고, 연달아 온 변경은 0.3초 모아 한 번에 처리한다. 그 사이 온 추천 요청은 같은 계산을 반복하지 않고 끝나기를 기다린다. now보다 뒤 시각의 이벤트가 있으면 z만 계산하고 나머지는 요청의 as_of로 계산한다. `wait_warm()`은 따라잡았는지 기다리고, `close()`는 스레드를 멈춘다(앱 종료 때 부르지 않아도 daemon이라 남지 않는다).
@@ -21,7 +21,7 @@
 - `text_encoder.py`: frozen 텍스트 인코더(평균 pooling·L2·text_artifact_hash). `z_cache.py`: 판매자 로컬 z cache(SQLite, key = artifact·preprocessing·텍스트 해시)
 - `examples.py`: "이전 방문 → 다음 방문 상품 집합" 예제와 서빙 질의(`query_example`). `replay.py`: Instacart 진행률 replay(판매자가 target 시점에 볼 수 있는 구매)
 - `relations.py`: 판매자 로컬 상품 관계 snapshot(고객·장바구니·방향별 시간)
-- `model.py`: 초기 설계의 두 variant(text_only 6개·text_relation 9개 공유 그룹)와 OQ01 손실. `training.py`: 판매자·snapshot별 배치 학습·고정 검증 손실·전체 후보 점수
+- `model.py`: 초기 설계의 두 variant(text_only 6개·text_relation 9개 공유 그룹)와 손실(정의는 모델 경계 §6). `training.py`: 판매자·snapshot별 배치 학습·고정 검증 손실·전체 후보 점수
 - `harex.py`: D0022 비교용 HAREX(GCI)식 공통 뼈대(1층 Transformer)와 네 상품 표현 T_hx·R_hx·T_lm·R_lm. 서비스는 이 중 lm 두 가지를 쓴다. hx 단어 토큰 표는 판매자 로컬이라 공유·집계하지 않는다
 
 b2 selfcheck는 작은 무작위 BERT와 가짜 인코더로 CI에서 돈다.

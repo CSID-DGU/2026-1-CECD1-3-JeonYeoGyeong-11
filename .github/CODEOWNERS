@@ -3,21 +3,21 @@
 # 이 목록 밖의 경로는 승인 없이 병합된다. 누가 검토하는지는 docs/team/git-workflow.md의 표를 따른다.
 
 # 계약 — A·B·C가 모두 소비한다
-/commerce/packages/contracts/   @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/commerce/packages/contracts/   @2-mean @DGUCSE-geonlee22 @jiwoo0120
 
 # 환경 — 세 머신의 재현성을 결정한다
-/commerce/requirements-dev.txt  @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/commerce/requirements-lock.txt @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/commerce/requirements-dev.txt  @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/commerce/requirements-lock.txt @2-mean @DGUCSE-geonlee22 @jiwoo0120
 
 # 검사 장치 자체 — 게이트 정의와 통과 판정
-/commerce/tools/                @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/.github/workflows/             @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/.github/CODEOWNERS             @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/commerce/tools/                @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/.github/workflows/             @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/.github/CODEOWNERS             @2-mean @DGUCSE-geonlee22 @jiwoo0120
 
 # 게이트가 검사할 수 없는 동작 의미와 팀 규칙
-/docs/design/interfaces.md      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/docs/design/model.md           @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/docs/design/decisions.md       @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/docs/team/working-agreement.md @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/docs/team/git-workflow.md      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
-/AGENTS.md                      @2-mean @DGUCSE-geonlee22 @zzziwoo0120
+/docs/design/interfaces.md      @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/docs/design/model.md           @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/docs/design/decisions.md       @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/docs/team/working-agreement.md @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/docs/team/git-workflow.md      @2-mean @DGUCSE-geonlee22 @jiwoo0120
+/AGENTS.md                      @2-mean @DGUCSE-geonlee22 @jiwoo0120
