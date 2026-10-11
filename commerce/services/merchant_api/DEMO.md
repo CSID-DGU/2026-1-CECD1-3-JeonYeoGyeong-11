@@ -138,5 +138,5 @@ python -m commerce.packages.recommender.install --model-dir commerce\deploy\var\
 
 - 확인: 판매자 개요의 "추천 모델" 칸이 "실제 모델로 추천 중"이 되고 설치된 두 버전이 보인다. 홈의 추천 칸에서 "임시" 배지가 사라진다.
 - 모델 파일은 `models/` 아래에 있다. 주문 DB를 다시 만들어도(8단계) `models/`는 지우지 않아도 된다.
-- 실제 runtime을 쓰면 판매자 하나가 뜨는 데 10초쯤 걸린다(torch·인코더 로딩). `run_local`이 판매자당 20초 안에 응답을 기다리므로 6곳을 한 번에 띄우면 "merchant health timeout"이 날 수 있다. 그때는 판매자 수를 줄여 띄우거나, C에게 대기 시간 조정을 요청한다(C 파일).
+- 실제 runtime을 쓰면 판매자 하나가 뜨는 데 10초쯤 걸린다(torch·인코더 로딩). `run_local`이 판매자당 20초 안에 응답을 기다리므로 6곳을 한 번에 띄우면 "merchant health timeout"이 날 수 있다. 화면 시연만 할 때는 판매자 앱만 대기 시간을 길게 잡아 띄운다: `python -m commerce.services.merchant_api.serve_demo --merchants 6`(FL·central은 띄우지 않음, C의 대기 시간이 늘면 없앨 임시 도구).
 - 이 모델은 Instacart로 학습한 공통 모델이다. 데모 가게의 숫자(적중률 등)는 성능 근거로 쓰지 않는다(#49 B 의견).

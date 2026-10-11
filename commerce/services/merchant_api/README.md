@@ -30,6 +30,7 @@
 - 판매자 매출 — `sales.py`: 완료 주문 기준(한국 시간) 오늘·7일(전주 대비)·30일 매출, 객단가, 재구매 고객 비율, 30일 인기 상품, 14일 막대 차트. 개요 화면에 보인다.
 - 추천 모델 상태 — `model_status.py`: 개요가 "모델 준비 중"으로 잘못 보이지 않게, 구매 이력이 있는 고객으로 B에 묻고 `MODEL_DIR`에 설치된 인코더·variant별 base 버전을 보여 준다(읽기만 함).
 - 상품 사진: 판매자가 상품마다 사진을 6장까지 올린다(`shop_db.product_photos`, 업로드 검사는 `media.py`와 같고 사진만 허용). 없으면 지금처럼 아이콘을 쓴다. 리뷰·댓글 작성자는 이름을 가려 보여 준다(`presentation.mask_name`).
+- `serve_demo.py`: 화면 시연용으로 판매자 앱만 `run_local`과 같은 배치(포트 8100+i, `commerce/deploy/var/merchant_i`)로 띄우고 기동을 최대 180초 기다린다. 학습된 모델이 있으면 torch·인코더 로딩으로 `run_local`의 20초를 넘길 수 있어서 둔 임시 도구다.
 - `personalization.py`: variant마다 따로 실행한다. base가 없는 variant는 B가 `NOT_FOUND`를 내므로 그 칸만 "모델 없음"이 되고, 다른 variant는 그대로 개인화된다(#49 B 리뷰).
 - `tests/test_sns.py`(순위·미디어·게시물·이전 DB 이전), `tests/test_fulfillment.py`(픽업/택배·택배비·주소 검사·재고·주문 상세 권한·알림·단골·사진·매출), `tests/test_platform_screens.py`(스튜디오·탐색·좋아요 CSRF·공동구매 제안/성사/마감·리뷰 자격·찜·취소·상품 수정→B·챗봇).
 시연 순서(데이터 만들기·서버 켜기·발표 흐름·B 연결 확인)는 [DEMO.md](DEMO.md)에 있다.
