@@ -1,0 +1,107 @@
+{% extends "layout.html" %}
+{% block content %}
+<a class="link" href="/buyer/{{ seller_id }}/feed">← 소식</a>
+<article class="post-view">
+  <div class="post-media {{ 'reel' if post.kind == 'short_video' else '' }}">
+    {% if post.media %}
+    <div class="carousel">
+      {% for m in post.media %}
+      <div class="slide">
+        {% if m.type == 'video' %}<video src="{{ m.url }}" controls autoplay muted loop playsinline></video>
+        {% else %}<img src="{{ m.url }}" alt="{{ post.title }}">{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% if post.media | length > 1 %}<p class="muted-note center">옆으로 넘겨 보세요 · {{ post.media | length }}장</p>{% endif %}
+    {% else %}
+    <div class="tile-text big">{{ post.title }}</div>
+    {% endif %}
+  </div>
+
+  <div class="post-side">
+    <div class="row between">
+      <div class="row">
+        <img class="avatar-img" src="/static/logo.svg" alt="">
+        <div><p class="list-title">{{ store_name }}</p><p class="list-sub">{{ post.kind_label }} · {{ post.created_at[:10] }}</p></div>
+      </div>
+    </div>
+
+    <div class="post-actions row">
+      {% if customer %}
+      <form method="post" action="/buyer/{{ seller_id }}/posts/{{ post.post_id }}/like"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <button class="heart {{ 'on' if post.liked_by_me else '' }}" type="submit" aria-label="좋아요">{{ '♥' if post.liked_by_me else '♡' }}</button>
+      </form>
+      {% else %}
+      <a class="heart" href="/buyer/{{ seller_id }}/login" aria-label="로그인하고 좋아요">♡</a>
+      {% endif %}
+      <span class="list-title">좋아요 {{ post.likes }}개</span>
+      <span class="muted-note">· 댓글 {{ post.comments }} · 조회 {{ post.views }}</span>
+    </div>
+
+    <p class="caption">{{ post.body | caption(seller_id) }}</p>
+
+    {% if post['items'] %}
+    <section class="stack">
+      <h2 class="section-title flush">이 게시물의 상품</h2>
+      {% for item in post['items'] %}
+      {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+      <div class="tag-product">
+        <a class="thumb cell-thumb {{ 'emoji' if emoji }}" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">{{ emoji or item.title_text[:1] }}</a>
+        <a class="grow" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">
+          <p class="list-title">{{ item.title_text }}</p>
+          <p class="list-sub">{{ "{:,}".format(item.display_price_minor) }}원</p>
+        </a>
+        {% if customer and item.listing_status == 'active' %}
+        <form method="post" action="/buyer/{{ seller_id }}/cart"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+          <input type="hidden" name="item_id_local" value="{{ item.item_id_local }}"><input type="hidden" name="quantity" value="1">
+          <button class="btn secondary sm" type="submit">담기</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="stack" id="comments">
+      <h2 class="section-title flush">댓글 {{ post.comments }}</h2>
+      {% for c in post.comment_list %}
+      <div class="comment {{ 'by-seller' if c.author == 'seller' else '' }}">
+        <span class="list-title">{{ '사장님' if c.author == 'seller' else ((names.get(c.customer_id_local) or c.customer_id_local) | mask_name) }}</span>
+        <span>{{ c.body }}</span>
+        <span class="muted-note">{{ c.created_at[5:10] }}</span>
+        {% if customer and c.customer_id_local == customer.customer_id_local %}
+        <form method="post" action="/buyer/{{ seller_id }}/posts/{{ post.post_id }}/comments/{{ c.comment_id }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+          <button class="btn ghost sm" type="submit">삭제</button>
+        </form>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="muted-note">첫 댓글을 남겨 보세요.</p>
+      {% endfor %}
+      {% if customer %}
+      <form class="composer flat" method="post" action="/buyer/{{ seller_id }}/posts/{{ post.post_id }}/comments"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="text" name="body" maxlength="500" placeholder="댓글 달기…" aria-label="댓글" required>
+        <button class="btn primary" type="submit">게시</button>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+</article>
+
+{% if post.related %}
+<section class="section">
+  <h2 class="section-title">관련 게시물</h2>
+  <div class="explore small">
+    {% for p in post.related %}
+    <a class="tile" href="/buyer/{{ seller_id }}/posts/{{ p.post_id }}">
+      {% set m = p.media[0] if p.media else none %}
+      {% if m and m.type == 'video' %}<video src="{{ m.url }}" muted playsinline preload="metadata"></video>
+      {% elif m %}<img src="{{ m.url }}" alt="" loading="lazy">{% else %}<div class="tile-text">{{ p.title }}</div>{% endif %}
+      {% if p.kind == 'short_video' %}<span class="tile-kind">▶</span>{% endif %}
+      <span class="tile-stats"><span>♥ {{ p.likes }}</span><span>💬 {{ p.comments }}</span></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -85,6 +85,72 @@ def list_feed(conn: sqlite3.Connection, *, seller_id: str) -> list[dict[str, Any
 
 
 # --- group buys (M29) ---------------------------------------------------------
+#
+# Buyers propose group buys (propose_group_buy); the seller does not recruit.
+# The price is the catalog price minus the store's group discount, so a
+# proposal opens at once without waiting for the seller, who can still close
+# one that should not run (close_group_buy). create_group_buy remains for
+# seller-made campaigns and old callers.
+
+MAX_GROUP_BUY_DAYS = 14
+
+
+def get_store_settings(conn: sqlite3.Connection, *, seller_id: str) -> dict[str, Any]:
+    return db.get_store_settings(conn, seller_id)
+
+
+def save_store_settings(conn: sqlite3.Connection, *, seller_id: str, group_discount_pct: int,
+                        group_min_target: int, store_intro: Optional[str] = None) -> dict[str, Any]:
+    if not 0 <= group_discount_pct <= 50:
+        raise ContractError("INVALID_TYPE", "/group_discount_pct")
+    if not 2 <= group_min_target <= 100:
+        raise ContractError("INVALID_TYPE", "/group_min_target")
+    with conn:
+        db.save_store_settings(conn, seller_id, group_discount_pct, group_min_target,
+                               (store_intro or "").strip() or None)
+    return db.get_store_settings(conn, seller_id)
+
+
+def group_price(conn: sqlite3.Connection, *, seller_id: str, item_id_local: str) -> int:
+    item = orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item_id_local)
+    if item is None or item["listing_status"] != "active":
+        raise ContractError("NOT_FOUND", "/item_id_local")
+    discount = db.get_store_settings(conn, seller_id)["group_discount_pct"]
+    return int(round(item["display_price_minor"] * (100 - discount) / 100, -1))  # to the nearest 10 won
+
+
+def propose_group_buy(conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str, item_id_local: str,
+                      target_quantity: int, quantity: int, days: int, message: Optional[str] = None) -> dict[str, Any]:
+    """A buyer opens a group buy and joins it with their own quantity."""
+    settings = db.get_store_settings(conn, seller_id)
+    if target_quantity < settings["group_min_target"] or target_quantity > 500:
+        raise ContractError("INVALID_TYPE", "/target_quantity")
+    if not 1 <= quantity < target_quantity:
+        raise ContractError("INVALID_TYPE", "/quantity")
+    if not 1 <= days <= MAX_GROUP_BUY_DAYS:
+        raise ContractError("INVALID_TYPE", "/days")
+    unit_price = group_price(conn, seller_id=seller_id, item_id_local=item_id_local)
+    settle_due_group_buys(conn, seller_id=seller_id)
+    if any(gb["item_id_local"] == item_id_local and gb["status"] == "open" for gb in db.list_group_buys(conn, seller_id)):
+        # One running group buy per item: a second proposal would split the same demand.
+        raise ContractError("DUPLICATE_EVENT", "/item_id_local")
+    now = dt.datetime.now(dt.timezone.utc)
+    group_buy_id = _new_id()
+    deadline = (now + dt.timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    with conn:
+        db.insert_group_buy(conn, seller_id, group_buy_id, item_id_local, target_quantity, unit_price, deadline,
+                            _now_iso(), proposer_customer_id=customer_id_local,
+                            message=(message or "").strip()[:200] or None)
+    return join_group_buy(conn, seller_id=seller_id, group_buy_id=group_buy_id,
+                          customer_id_local=customer_id_local, quantity=quantity)
+
+
+def close_group_buy(conn: sqlite3.Connection, *, seller_id: str, group_buy_id: str) -> None:
+    """The seller stops a proposal that should not run (e.g. out of stock)."""
+    with conn:
+        if not db.close_group_buy(conn, seller_id, group_buy_id, "closed_by_seller"):
+            raise ContractError("ILLEGAL_STATE_TRANSITION", "/status")
+
 
 def create_group_buy(conn: sqlite3.Connection, *, seller_id: str, item_id_local: str,
                       target_quantity: int, unit_price_minor: int, deadline_at: str) -> dict[str, Any]:
@@ -110,6 +176,10 @@ def create_group_buy(conn: sqlite3.Connection, *, seller_id: str, item_id_local:
 def _with_progress(conn: sqlite3.Connection, seller_id: str, group_buy: dict[str, Any]) -> dict[str, Any]:
     joined = db.sum_group_buy_quantity(conn, seller_id, group_buy["group_buy_id"])
     return {**group_buy, "joined_quantity": joined}
+
+
+def list_group_buy_participants(conn: sqlite3.Connection, *, seller_id: str, group_buy_id: str) -> list[dict[str, Any]]:
+    return db.list_group_buy_participants(conn, seller_id, group_buy_id)
 
 
 def list_group_buys(conn: sqlite3.Connection, *, seller_id: str) -> list[dict[str, Any]]:

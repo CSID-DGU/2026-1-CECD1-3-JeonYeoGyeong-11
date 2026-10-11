@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "_checkout.html" import checkout_fields %}
 {% block content %}
 <div class="narrow-inner stack-lg">
   <div class="page-head">
@@ -11,8 +12,9 @@
     <div class="list">
       {% for line in cart.lines %}
       {%- set emoji = product_emoji(line.category_path, line.title_text) %}
+      {%- set pic = photos.get(line.item_id_local, [none])[0] %}
       <div class="list-item">
-        <a class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji }}" href="/buyer/{{ seller_id }}/items/{{ line.item_id_local }}" aria-hidden="true">{{ emoji or line.title_text[:1] }}</a>
+        <a class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji and not pic }}{{ ' photo' if pic }}" href="/buyer/{{ seller_id }}/items/{{ line.item_id_local }}" aria-hidden="true">{% if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="">{% else %}{{ emoji or line.title_text[:1] }}{% endif %}</a>
         <div class="grow">
           <p class="list-title">{{ line.title_text }}</p>
           <p class="list-sub">{{ "{:,}".format(line.unit_price_minor) }}원</p>
@@ -37,13 +39,28 @@
   </div>
   {% endif %}
 
-  <form class="card stack" method="post" action="/buyer/{{ seller_id }}/checkout"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+  {% if checkout_error %}<div class="notice warn">{{ checkout_error }}</div>{% endif %}
+  <form class="card stack" method="post" action="/buyer/{{ seller_id }}/checkout" id="checkout"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
     <input type="hidden" name="checkout_key" value="{{ checkout_key }}">
-    <div class="row between"><span class="muted-note">상품 {{ cart.lines | length }}종</span><span class="muted-note">수량 {{ cart.lines | sum(attribute='quantity') }}개</span></div>
+    {{ checkout_fields(profile, terms, slots, ('+' ~ "{:,}".format(delivery_fee) ~ '원') if delivery_fee else '무료') }}
     <hr class="divider">
-    <div class="row between"><span class="list-title">결제 예정 금액</span><span class="price-now lg">{{ "{:,}".format(cart.total) }}원</span></div>
-    <button class="btn primary block" type="submit">{{ "{:,}".format(cart.total) }}원 주문하기</button>
+    <div class="row between"><span class="muted-note">상품 {{ cart.lines | length }}종 · 수량 {{ cart.lines | sum(attribute='quantity') }}개</span><span>{{ "{:,}".format(cart.total) }}원</span></div>
+    <div class="row between when-delivery"><span class="muted-note">택배비</span><span>{{ "{:,}".format(delivery_fee) ~ '원' if delivery_fee else '무료' }}</span></div>
+    <div class="row between"><span class="list-title">결제 예정 금액</span><span class="price-now lg" data-subtotal="{{ cart.total }}" data-fee="{{ delivery_fee }}" id="grand-total">{{ "{:,}".format(cart.total) }}원</span></div>
+    <button class="btn primary block" type="submit">주문하기</button>
+    <p class="muted-note">결제는 이 데모에 없어요. 판매자가 주문을 확인한 뒤 픽업 또는 배송을 준비합니다.</p>
   </form>
+  <script>
+  (function () {
+    var form = document.getElementById('checkout'), total = document.getElementById('grand-total');
+    function update() {
+      var delivery = form.querySelector('input[name=method]:checked').value === 'delivery';
+      var sum = +total.dataset.subtotal + (delivery ? +total.dataset.fee : 0);
+      total.textContent = sum.toLocaleString('ko-KR') + '원';
+    }
+    form.addEventListener('change', update); update();
+  })();
+  </script>
   {% else %}
   <div class="card empty">
     장바구니가 비어 있어요.

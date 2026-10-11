@@ -1,44 +1,97 @@
 {% extends "layout.html" %}
 {% block content %}
 <div class="page-head">
-  <h1 class="page-title">소식 관리</h1>
-  <p>올린 소식은 구매자 화면의 '소식' 탭에 최신순으로 보입니다.</p>
+  <h1 class="page-title">소식 스튜디오</h1>
+  <p>사진·영상과 상품을 올리면 구매자 '소식' 탭에 고객마다 다른 순서로 보입니다(산 상품·좋아요·AI 추천 기반).</p>
 </div>
 
 <div class="card">
-  <h2 class="section-title">새 소식 올리기</h2>
-  <form class="form" method="post" action="/seller/{{ seller_id }}/feed"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-    <div class="form-row">
-      <label class="field">종류
-        <select name="kind">
-          <option value="article">글</option>
-          <option value="short_video">숏폼 영상 소개</option>
-        </select>
-      </label>
-      <label class="field">제목
-        <input type="text" name="title" required>
-      </label>
+  <h2 class="section-title">새 게시물</h2>
+  <form class="form" method="post" action="/seller/{{ seller_id }}/feed" enctype="multipart/form-data" id="post-form"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+    <div class="segmented" role="radiogroup" aria-label="종류">
+      <label><input type="radio" name="kind" value="article" {{ 'checked' if form.kind != 'short_video' else '' }}><span>📷 게시물</span></label>
+      <label><input type="radio" name="kind" value="short_video" {{ 'checked' if form.kind == 'short_video' else '' }}><span>🎬 릴스</span></label>
     </div>
-    <label class="field">내용
-      <textarea name="body" rows="3"></textarea>
+
+    <label class="drop" for="files">
+      <span class="drop-icon" aria-hidden="true">＋</span>
+      <span><strong>사진·영상 올리기</strong> <span class="field-hint">JPG·PNG·GIF·WebP·MP4·WebM·MOV, 최대 {{ max_files }}개, 개당 30MB</span></span>
+      <span class="field-hint">파일이 없으면 첫 번째로 태그한 상품으로 사진(릴스는 움직이는 그래픽)을 만들어 올립니다.</span>
+      <input id="files" type="file" name="files" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime" multiple>
     </label>
-    <p class="muted-note">숏폼은 영상 업로드 대신 소개 글로 대체합니다 (별도 미디어 저장소 미구현).</p>
-    <div class="form-actions"><button class="btn primary" type="submit">올리기</button></div>
+    <div class="preview" id="preview" aria-live="polite"></div>
+
+    <label class="field"><span>내용 <span class="field-hint">#해시태그를 쓰면 검색·추천에 쓰입니다</span></span>
+      <textarea name="caption" id="caption" rows="4" maxlength="2200" placeholder="오늘 들어온 감귤, 당도가 정말 좋아요! #감귤 #제철" required>{{ form.caption or '' }}</textarea>
+    </label>
+    <p class="field-hint"><span id="count">0</span>/2200 · <span id="tags"></span></p>
+
+    <fieldset class="tag-picker">
+      <legend class="field-hint">상품 태그 (최대 5개)</legend>
+      {% for item in catalog %}
+      {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+      <label class="pick"><input type="checkbox" name="item_ids" value="{{ item.item_id_local }}" {{ 'checked' if item.item_id_local in (form['items'] or []) else '' }}>
+        <span>{{ emoji or '🏷️' }} {{ item.title_text }}</span></label>
+      {% endfor %}
+    </fieldset>
+    <div class="form-actions"><button class="btn primary" type="submit">공유하기</button></div>
   </form>
 </div>
 
-<div class="card-list">
-  {% for post in posts %}
-  <article class="card stack">
-    <div class="row">
-      <span class="badge {{ 'brand' if post.kind == 'short_video' else 'muted' }}">{{ '숏폼' if post.kind == 'short_video' else '소식' }}</span>
-      <span class="muted-note">{{ post.created_at[:10] }}</span>
-    </div>
-    <h2 class="section-title flush">{{ post.title }}</h2>
-    {% if post.body %}<p class="body-text">{{ post.body }}</p>{% endif %}
-  </article>
+<section class="section">
+  <h2 class="section-title">게시물 {{ posts | length }}개 <span class="field-hint">조회·좋아요·댓글과, 게시 뒤 태그 상품이 포함된 주문 수</span></h2>
+  {% if posts %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>게시물</th><th class="num">조회</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">반응률</th><th class="num">게시 후 주문</th><th></th></tr></thead>
+      <tbody>
+      {% for p in posts %}
+      <tr>
+        <td>
+          <a class="row" href="/seller/{{ seller_id }}/posts/{{ p.post_id }}">
+            <span class="mini-thumb">{% set m = p.media[0] if p.media else none %}{% if m and m.type == 'video' %}<video src="{{ m.url }}" muted preload="metadata"></video>{% elif m %}<img src="{{ m.url }}" alt="">{% else %}📝{% endif %}</span>
+            <span class="grow"><span class="list-title">{{ p.title }}</span><br><span class="list-sub">{{ p.kind_label }} · {{ p.created_at[:10] }}{% if p['items'] %} · {{ p['items'] | map(attribute='title_text') | join(', ') }}{% endif %}</span></span>
+          </a>
+        </td>
+        <td class="num">{{ p.views }}</td><td class="num">{{ p.likes }}</td><td class="num">{{ p.comments }}</td>
+        <td class="num">{{ '%.1f%%' % p.engagement_rate if p.engagement_rate is not none else '-' }}</td>
+        <td class="num">{{ p.orders_after }}</td>
+        <td><a class="btn secondary sm" href="/seller/{{ seller_id }}/posts/{{ p.post_id }}">관리</a></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% else %}
-  <div class="card empty">아직 올린 소식이 없습니다.</div>
-  {% endfor %}
-</div>
+  <div class="card empty">아직 올린 게시물이 없습니다.</div>
+  {% endif %}
+</section>
+
+<script>
+(function () {
+  var input = document.getElementById('files'), preview = document.getElementById('preview');
+  var caption = document.getElementById('caption'), count = document.getElementById('count'), tags = document.getElementById('tags');
+  input.addEventListener('change', function () {
+    preview.innerHTML = '';
+    Array.prototype.slice.call(input.files, 0, {{ max_files }}).forEach(function (f) {
+      var url = URL.createObjectURL(f), el;
+      if (f.type.indexOf('video') === 0) { el = document.createElement('video'); el.muted = true; el.autoplay = true; el.loop = true; }
+      else { el = document.createElement('img'); el.alt = f.name; }
+      el.src = url; preview.appendChild(el);
+    });
+  });
+  function refresh() {
+    count.textContent = caption.value.length;
+    var found = caption.value.match(/#[0-9A-Za-z_가-힣]{1,30}/g) || [];
+    tags.textContent = found.length ? '해시태그 ' + found.slice(0, 15).join(' ') : '해시태그 없음';
+  }
+  caption.addEventListener('input', refresh); refresh();
+  document.querySelectorAll('.tag-picker input').forEach(function (box) {
+    box.addEventListener('change', function () {
+      if (document.querySelectorAll('.tag-picker input:checked').length > 5) { box.checked = false; alert('상품 태그는 5개까지입니다.'); }
+    });
+  });
+})();
+</script>
 {% endblock %}

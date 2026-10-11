@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="narrow-inner stack-lg">
+  <div class="page-head">
+    <h1 class="page-title">알림</h1>
+    <p>주문 진행, 공동구매, 답글, 단골 가게의 새 소식을 모아 보여 드려요.</p>
+  </div>
+  <div class="card flush">
+    <div class="list">
+      {% for n in items %}
+      <a class="list-item {{ 'unread' if not n.read_at }}" href="{{ n.link or '#' }}">
+        <span class="noti-icon" aria-hidden="true">{{ n.icon }}</span>
+        <div class="grow">
+          <p class="list-title">{{ n.title }}</p>
+          <p class="list-sub">{{ n.created_at[:16] | replace('T', ' ') }}</p>
+        </div>
+        {% if not n.read_at %}<span class="badge brand">새 알림</span>{% endif %}
+      </a>
+      {% else %}
+      <div class="empty">아직 알림이 없어요. 가게를 <a class="link" href="/buyer/{{ seller_id }}/store">단골로 맺으면</a> 새 소식을 알려 드려요.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

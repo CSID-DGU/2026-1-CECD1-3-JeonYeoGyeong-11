@@ -72,3 +72,71 @@ $env:MODEL_DIR="$PWD\commerce\deploy\var\merchant_1\models"; $env:MERCHANT_SECRE
 | 포트 사용 중 | 다른 서버가 8101을 쓰고 있다. 끄거나 `--port`를 바꾼다(URL도 함께) |
 | 시뮬레이터 "seller login failed" | seed를 먼저 실행한다 |
 | 화면은 뜨는데 데이터가 비어 있음 | seed의 `MERCHANT_ID`와 서버의 `MERCHANT_ID`가 다르다 |
+
+## 7. 통합 리허설: 판매자 여러 곳
+
+FL은 판매자가 여럿이어야 한다. C의 런처(`run_local.py`)는 판매자 i를 `merchant-i`, `commerce/deploy/var/merchant_i/`, 포트 `8100+i`로 띄운다. 같은 규칙으로 데이터를 한 번에 만든다(서버를 끈 상태, 초기화는 2단계처럼 판매자 폴더마다 `orders.sqlite*`·`features.sqlite*`를 함께 지운 뒤).
+
+```powershell
+.venv\Scripts\python.exe -m commerce.services.merchant_api.seed_demo_data --all 4 --bulk 40
+.venv\Scripts\python.exe -m commerce.deploy.run_local --merchants 4
+```
+
+| 판매자 | 가게 | 상품 | 주소 |
+| --- | --- | --- | --- |
+| merchant-1 | 제주 유기농 농장 (기본 + bulk) | 34종 | http://127.0.0.1:8101/buyer/merchant-1/ |
+| merchant-2 | 제주 바다 수산 | 8종 | http://127.0.0.1:8102/buyer/merchant-2/ |
+| merchant-3 | 한라 베이커리 & 커피 | 12종 | http://127.0.0.1:8103/buyer/merchant-3/ |
+| merchant-4 | 오이네 청과·정육 | 13종 | http://127.0.0.1:8104/buyer/merchant-4/ |
+
+- 가게마다 고객 30명(`cust-001`~`cust-030`, 비밀번호 `demo-pass-1234`, 가게마다 따로인 계정)과 60일치 주문이 있다. 판매자는 모두 `owner-1`. 우유·계란·쌀은 여러 가게가 함께 판다.
+- 한 브라우저로 여러 가게에 동시에 로그인해도 된다(쿠키가 판매자별이다).
+- 판매자 "모델 비교" 화면의 **개인화 실행** 버튼은 그 가게 기록으로 두 모델의 마지막 층을 학습한다(OQ08). FL 라운드가 도는 중이면 "이미 학습 중"으로 거절된다.
+- `--merchants 5` 이상이면 5번부터 수산·베이커리·청과가 다시 돌아온다.
+
+## 8. 플랫폼 데이터셋: 매장 6곳 + SNS·공동구매·리뷰 (발표용 권장)
+
+7단계의 `seed_demo_data --all` 대신, 발표 화면이 "실제 SNS·장터처럼" 보이도록 매장 6곳의 90일 활동을 만든다(서버를 끈 상태, 판매자 폴더의 `orders.sqlite*`·`features.sqlite*`·`media/`를 함께 지운 뒤).
+
+```powershell
+.venv\Scripts\python.exe -m commerce.services.merchant_api.platform_dataset --stores 6 --export commerce\deploy\var\platform_export
+.venv\Scripts\python.exe -m commerce.deploy.run_local --merchants 6
+```
+
+| 판매자 | 가게 | 상품 | 고객 | 기간 | 역할 |
+| --- | --- | --- | --- | --- | --- |
+| merchant-1 | 제주 유기농 농장 | 40 | 80 | 90일 | FL 참여 |
+| merchant-2 | 제주 바다 수산 | 40 | 70 | 90일 | FL 참여 |
+| merchant-3 | 한라 베이커리 & 커피 | 38 | 85 | 90일 | FL 참여 |
+| merchant-4 | 오이네 청과 | 40 | 75 | 90일 | FL 참여 |
+| merchant-5 | 돌담 정육 | 40 | 70 | 90일 | FL 참여 |
+| merchant-6 | 할망 반찬가게 | 20 | 40 | 30일 | 신규 판매자(라운드 불참, 공유 모델만 설치) |
+
+- 로그인: 판매자 `owner-1`, 고객 `cust-001`~ (가게마다 따로), 비밀번호 모두 `demo-pass-1234`.
+- 같은 명령은 어느 PC에서든 같은 데이터를 만든다: 끝 시각이 `2026-10-10T09:00Z`로 고정되고(`--now`로 바꿀 수 있음), 주문 ID를 주문 키에서 만든다. 그래서 export JSON과 `ids.snapshot_digest`가 PC마다 같다(#49 B 확인 반영).
+- 고객마다 방문 주기(매주·격주·매달·한 번), 좋아하는 분류 1~2개, 단골 상품 3개가 있고, 가게별로 함께 사는 상품 쌍과 "다음 방문에 사는" 순서가 있다. 각 가게에는 기간 후반에 올라온 신상품 1개가 있다(B의 신상품 경로 확인용). 우유·계란·쌀은 여러 가게가 함께 판다.
+- 소식 탭: 가게마다 게시물·릴스 8~18개(자동 생성 그래픽), 고객 취향에 따른 조회·좋아요·댓글, 판매자 답글. 같은 가게라도 로그인한 고객마다 탐색 순서가 다르다.
+- 공동구매: 가게마다 구매자 제안 4건(성사 1·실패 1·모집 중 2).
+- 직거래: 가게별 픽업 장소·시간과 택배비·무료배송 기준, 주문마다 픽업 또는 택배(지어낸 이름·연락처·주소, 완료된 택배는 송장번호), 일부 상품 재고(하나는 품절), 단골, 최근 3일 주문의 알림.
+- `--export` 폴더의 `merchant-N.json`은 B `SellerInput` 모양이라, FL 실행기가 같은 이력을 그대로 읽을 수 있다(`summary.json`에 매장별 통계).
+- 주의(D0025): 이 데이터는 A 화면 경로로 만든 것이라 C의 `fl_demo` 증명(attestation) 규칙상 그대로는 FL 코호트 입력이 아니다. `fl_demo`는 B의 g3 시나리오를 쓴다. 이 데이터로 라운드를 돌리려면 C가 `--dataset` 같은 입력 경로를 정해야 한다(팀 결정).
+
+## 9. 학습된 모델 연결 (드라이브의 임시 모델, FL 없이)
+
+B가 공유 드라이브에 올린 `models.zip`(Instacart 판매자 100곳, FL 500라운드: `ic100-T_lm-r500` text_only, `ic100-R_lm-r500` text_relation)을 판매자마다 설치하면 홈 추천이 인기순 대신 실제 모델로 나온다. 설치 명령은 B의 #53(`commerce.packages.recommender.install`)이다. torch가 있는 환경에서 실행한다.
+
+```powershell
+# 1) 받은 파일 확인 (models/ 폴더가 있는 곳에서)
+sha256sum -c SHA256SUMS.txt
+# 2) 인코더(MiniLM-L12, 고정 리비전) 내려받기
+python -m commerce.evaluation.encoder_probe --download --only minilm-l12 --cache-dir commerce\evaluation\cache\encoders
+# 3) 판매자마다 설치 (i = 1..6)
+python -m commerce.packages.recommender.install --model-dir commerce\deploy\var\merchant_1\models --encoder-dir <인코더 폴더>
+python -m commerce.packages.recommender.install --model-dir commerce\deploy\var\merchant_1\models --release-dir models\ic100-R_lm-r500 --variant text_relation
+python -m commerce.packages.recommender.install --model-dir commerce\deploy\var\merchant_1\models --release-dir models\ic100-T_lm-r500 --variant text_only
+```
+
+- 확인: 판매자 개요의 "추천 모델" 칸이 "실제 모델로 추천 중"이 되고 설치된 두 버전이 보인다. 홈의 추천 칸에서 "임시" 배지가 사라진다.
+- 모델 파일은 `models/` 아래에 있다. 주문 DB를 다시 만들어도(8단계) `models/`는 지우지 않아도 된다.
+- 실제 runtime을 쓰면 판매자 하나가 뜨는 데 10초쯤 걸린다(torch·인코더 로딩). `run_local`이 판매자당 20초 안에 응답을 기다리므로 6곳을 한 번에 띄우면 "merchant health timeout"이 날 수 있다. 화면 시연만 할 때는 판매자 앱만 대기 시간을 길게 잡아 띄운다: `python -m commerce.services.merchant_api.serve_demo --merchants 6`(FL·central은 띄우지 않음, C의 대기 시간이 늘면 없앨 임시 도구).
+- 이 모델은 Instacart로 학습한 공통 모델이다. 데모 가게의 숫자(적중률 등)는 성능 근거로 쓰지 않는다(#49 B 의견).

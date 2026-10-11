@@ -26,7 +26,7 @@
 <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>상품</th><th class="num">가격</th><th>상태</th></tr>
+      <tr><th>상품</th><th class="num">가격</th><th class="num">재고</th><th>상태</th><th></th></tr>
     </thead>
     <tbody>
       {% for item in catalog %}
@@ -34,22 +34,26 @@
       <tr>
         <td>
           <div class="row">
-            <span class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji }} cell-thumb" aria-hidden="true">{{ emoji or item.title_text[:1] }}</span>
+            {%- set pic = photos.get(item.item_id_local, [none])[0] %}
+            <span class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji and not pic }}{{ ' photo' if pic }} cell-thumb" aria-hidden="true">{% if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="">{% else %}{{ emoji or item.title_text[:1] }}{% endif %}</span>
             <div class="grow">
-              <p class="list-title">{{ item.title_text }}</p>
+              <a class="list-title link-plain" href="/seller/{{ seller_id }}/products/{{ item.item_id_local }}">{{ item.title_text }}</a>
               <p class="mono">{{ item.item_id_local }}</p>
             </div>
           </div>
         </td>
         <td class="num">{{ "{:,}".format(item.display_price_minor) }}원</td>
+        {%- set left = stock.get(item.item_id_local) %}
+        <td class="num">{% if left is none %}<span class="muted-note">관리 안 함</span>{% elif left == 0 %}<span class="badge warn">품절</span>{% else %}{{ left }}개{% endif %}</td>
         <td>
           <span class="badge {{ 'brand' if item.listing_status == 'active' else 'muted' }}">
             {{ '판매중' if item.listing_status == 'active' else '중지' }}
           </span>
         </td>
+        <td><a class="btn secondary sm" href="/seller/{{ seller_id }}/products/{{ item.item_id_local }}">수정</a></td>
       </tr>
       {% else %}
-      <tr><td colspan="3"><div class="empty">등록된 상품이 없습니다.</div></td></tr>
+      <tr><td colspan="5"><div class="empty">등록된 상품이 없습니다.</div></td></tr>
       {% endfor %}
     </tbody>
   </table>

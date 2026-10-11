@@ -2,15 +2,64 @@
 {% block content %}
 <div class="narrow-inner stack-lg">
   <div class="page-head">
-    <div class="row"><h1 class="page-title">챗봇 상담</h1><span class="badge warn">준비 중</span></div>
-    <p>아래는 실제 모델과 연결되지 않은 예시 대화입니다.</p>
+    <div class="row"><h1 class="page-title">상담 챗봇</h1>
+      {% if mode == 'llm' %}<span class="badge solid">AI 상담</span>{% else %}<span class="badge muted">기본 상담</span>{% endif %}</div>
+    <p>상품 찾기, 추천, 장바구니 담기, 공동구매, 주문 방법을 물어보세요.
+      {% if mode == 'llm' %}답변은 Claude가 이 매장 정보를 확인해 만듭니다{% if not customer_data %} — 주문 내역 같은 개인 정보는 보내지 않아요{% endif %}.{% else %}지금은 AI 키 없이 규칙 기반으로 답해요.{% endif %}</p>
   </div>
+
   <div class="card flush">
-    <div class="chat">
-      <div class="chat-row"><div class="chat-bubble them">안녕하세요! 무엇을 도와드릴까요?</div></div>
-      <div class="chat-row me"><div class="chat-bubble me">이 상품 재고 있나요?</div></div>
-      <div class="chat-row"><div class="chat-bubble them">네, 현재 주문 가능합니다. 상품 상세 페이지에서 바로 주문하실 수 있어요.</div></div>
+    <div class="chat" id="chat" aria-live="polite">
+      <div class="chat-row"><div class="chat-bubble them">안녕하세요! 무엇을 도와드릴까요? 🥒</div></div>
+      {% for m in messages %}
+      <div class="chat-row {{ 'me' if m.role == 'user' else '' }}">
+        <div class="chat-bubble {{ 'me' if m.role == 'user' else 'them' }}">{{ m.body }}</div>
+      </div>
+      {% endfor %}
+      <span id="end"></span>
     </div>
+    <div class="chip-row chat-suggest">
+      {% for s in suggestions %}<button class="chip" type="button" data-q="{{ s }}">{{ s }}</button>{% endfor %}
+    </div>
+    <form class="composer" id="chat-form" method="post" action="/buyer/{{ seller_id }}/chat"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <input type="text" name="question" id="question" maxlength="500" placeholder="메시지 입력" aria-label="메시지" autocomplete="off" required>
+      <button class="btn primary" type="submit">전송</button>
+    </form>
   </div>
+  {% if customer and messages %}
+  <form method="post" action="/buyer/{{ seller_id }}/chat/clear"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <button class="btn ghost sm" type="submit">대화 지우기</button>
+  </form>
+  {% endif %}
+  <p class="muted-note">판매자에게 직접 물어보려면 <a href="/buyer/{{ seller_id }}/messages">쪽지</a>를 이용하세요.</p>
 </div>
+
+<script>
+(function () {
+  var form = document.getElementById('chat-form'), input = document.getElementById('question'), chat = document.getElementById('chat');
+  function bubble(text, mine, extra) {
+    var row = document.createElement('div'); row.className = 'chat-row' + (mine ? ' me' : '');
+    var b = document.createElement('div'); b.className = 'chat-bubble ' + (mine ? 'me' : 'them');
+    b.textContent = text; row.appendChild(b);
+    if (extra) { var n = document.createElement('div'); n.className = 'chat-action'; n.textContent = extra; row.appendChild(n); }
+    chat.insertBefore(row, document.getElementById('end')); chat.scrollTop = chat.scrollHeight; return b;
+  }
+  function send(text) {
+    if (!text.trim()) return;
+    bubble(text, true); input.value = '';
+    var wait = bubble('…', false); wait.classList.add('typing');
+    var data = new FormData(form); data.set('question', text);
+    fetch(form.action, {method: 'POST', body: data, headers: {'Accept': 'application/json'}, credentials: 'same-origin'})
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) {
+        wait.classList.remove('typing'); wait.textContent = j.reply;
+        if (j.actions && j.actions.length) bubble('✓ ' + j.actions.join(' · '), false).classList.add('chat-note');
+      })
+      .catch(function () { wait.classList.remove('typing'); wait.textContent = '잠시 후 다시 시도해 주세요.'; });
+  }
+  form.addEventListener('submit', function (e) { e.preventDefault(); send(input.value); });
+  document.querySelectorAll('.chat-suggest .chip').forEach(function (c) { c.addEventListener('click', function () { send(c.dataset.q); }); });
+  chat.scrollTop = chat.scrollHeight;
+})();
+</script>
 {% endblock %}

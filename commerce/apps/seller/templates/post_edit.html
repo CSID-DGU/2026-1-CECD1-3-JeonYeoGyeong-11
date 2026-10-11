@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <a class="link" href="/seller/{{ seller_id }}/feed">← 소식 스튜디오</a>
+  <h1 class="page-title">게시물 관리</h1>
+  <p>조회 {{ post.views }} · 좋아요 {{ post.likes }} · 댓글 {{ post.comments }} · {{ post.kind_label }} · {{ post.created_at[:10] }}</p>
+</div>
+
+<div class="post-view">
+  <div class="post-media {{ 'reel' if post.kind == 'short_video' else '' }}">
+    {% if post.media %}
+    <div class="carousel">
+      {% for m in post.media %}
+      <div class="slide">{% if m.type == 'video' %}<video src="{{ m.url }}" controls muted loop playsinline></video>{% else %}<img src="{{ m.url }}" alt="">{% endif %}</div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="tile-text big">{{ post.title }}</div>{% endif %}
+  </div>
+
+  <div class="post-side">
+    <form class="form" method="post" action="/seller/{{ seller_id }}/posts/{{ post.post_id }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <label class="field">내용
+        <textarea name="caption" rows="5" maxlength="2200" required>{{ post.body or post.title }}</textarea>
+      </label>
+      {% set tagged = post['items'] | map(attribute='item_id_local') | list %}
+      <fieldset class="tag-picker">
+        <legend class="field-hint">상품 태그 (최대 5개)</legend>
+        {% for item in catalog %}
+        <label class="pick"><input type="checkbox" name="item_ids" value="{{ item.item_id_local }}" {{ 'checked' if item.item_id_local in tagged else '' }}>
+          <span>{{ product_emoji(item.category_path, item.title_text) or '🏷️' }} {{ item.title_text }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+    </form>
+    <form method="post" action="/seller/{{ seller_id }}/posts/{{ post.post_id }}/delete" onsubmit="return confirm('이 게시물을 삭제할까요?');"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <button class="btn ghost sm danger" type="submit">게시물 삭제</button>
+    </form>
+
+    <section class="stack" id="comments">
+      <h2 class="section-title flush">댓글 {{ post.comments }}</h2>
+      {% for c in post.comment_list %}
+      <div class="comment {{ 'by-seller' if c.author == 'seller' else '' }}">
+        <span class="list-title">{{ '사장님' if c.author == 'seller' else c.customer_id_local }}</span>
+        <span>{{ c.body }}</span>
+        <span class="muted-note">{{ c.created_at[5:10] }}</span>
+        <form method="post" action="/seller/{{ seller_id }}/posts/{{ post.post_id }}/comments/{{ c.comment_id }}/delete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+          <button class="btn ghost sm" type="submit">삭제</button>
+        </form>
+      </div>
+      {% else %}<p class="muted-note">아직 댓글이 없습니다.</p>{% endfor %}
+      <form class="composer flat" method="post" action="/seller/{{ seller_id }}/posts/{{ post.post_id }}/comments"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="text" name="body" maxlength="500" placeholder="사장님 답글…" aria-label="답글" required>
+        <button class="btn primary" type="submit">답글</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}
