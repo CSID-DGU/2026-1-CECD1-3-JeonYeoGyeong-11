@@ -22,6 +22,7 @@
 | [독립 모델 실험](design/model-lab.md) | 화면 없는 학습·checkpoint·초기 release | B, C | LAB_WORKFLOW |
 | [모델 비교](design/comparison.md) | T-G/R-G/T-P/R-P·동일 snapshot 시연 | A, B | COMPARISON |
 | [NLP 인코더 선정](design/nlp-encoder.md) | 인코더 ID·revision·길이·측정 근거 | B, C | 새 문서 |
+| [B 결과 요약](design/results.md) | B 산출물·주요 결과·한계·인계 | 넘겨받는 사람, 모두 | 새 문서 |
 | [채택한 설계 결정](design/decisions.md) | D0017~D0021 및 초기 뼈대 선택 이유 | 필요한 경우 | 현행 결정 요약 |
 | [열린 구현 항목](design/open-questions.md) | 미확정 부분·담당·완료 증거 | 해당 담당 | 현행 검토 항목 |
 
