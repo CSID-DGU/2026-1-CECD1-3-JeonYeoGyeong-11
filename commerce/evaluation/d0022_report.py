@@ -49,8 +49,12 @@ def condition_label(cond: tuple) -> str:
 
 
 def per_seller(result: dict, metric: str) -> list[float]:
-    """Per-seller macro values in seller order; every run lists sellers in sorted order."""
-    return [s[metric] for s in result.get("per_seller", [])]
+    """Per-seller macro values in seller order. Records scored with B's temporary scoring list
+    sellers in sorted order; A's metrics module keys them by seller, so they are sorted here."""
+    sellers = result.get("per_seller", [])
+    if isinstance(sellers, dict):
+        sellers = [sellers[k] for k in sorted(sellers)]
+    return [s[metric] for s in sellers]
 
 
 def paired_bootstrap(a: np.ndarray, b: np.ndarray, draws: int = 10000, seed: int = 0) -> tuple[float, float, float]:

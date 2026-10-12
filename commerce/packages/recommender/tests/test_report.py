@@ -32,6 +32,16 @@ def fl_record(variant, seed, value, frac=0.0, protocol="next_visit", **settings)
             "training": {"best_round": 480, "plateaued": True}}
 
 
+def keyed(record):
+    """The record as A's metrics module writes it: per_seller keyed by seller, not a list."""
+    for which in ("final_round", "best_round"):
+        for arm in record["metrics"][which].values():
+            for res in arm.values():
+                if isinstance(res["per_seller"], list):
+                    res["per_seller"] = {"s%d" % i: x for i, x in enumerate(res["per_seller"])}
+    return record
+
+
 def report(records):
     with tempfile.TemporaryDirectory() as root:
         for i, record in enumerate(records):
@@ -78,7 +88,8 @@ class Report(unittest.TestCase):
 
     def test_continued_runs_sit_beside_their_seeds_instead_of_replacing_them(self):
         records = [fl_record(v, s, x) for v, x in (("T_lm", 0.10), ("R_lm", 0.15)) for s in (0, 1, 2)]
-        records += [fl_record(v, s, x, rounds=1000) for v, x in (("T_lm", 0.13), ("R_lm", 0.17)) for s in (0, 1)]
+        # The continued runs were scored with A's module; the 500-round ones with B's temporary scoring.
+        records += [keyed(fl_record(v, s, x, rounds=1000)) for v, x in (("T_lm", 0.13), ("R_lm", 0.17)) for s in (0, 1)]
         text = report(records)
         self.assertIn("| T_lm | FL | 3 | 0.1250 |", text)  # the 500-round seed mean
         self.assertIn("### 더 긴 학습 — basket, 판매자 100곳", text)
