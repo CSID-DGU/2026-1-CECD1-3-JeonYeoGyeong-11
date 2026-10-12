@@ -16,4 +16,6 @@
 
 B의 임시 `commerce/evaluation/scoring.py`와 함수 이름·인자가 같다. `from commerce.evaluation.scoring import ...`를 `from commerce.evaluation.metrics.ranking import ...`로 바꾸면 된다. `tests/test_ranking.py`가 손계산 예제와 함께, `scoring.py`가 있는 동안 무작위 예제 500개(동점 많음)·기준선·평균에서 두 구현이 소수 12자리까지 같은지 확인한다. `scoring.py`가 지워지면 그 교차 검사는 건너뛴다.
 
+`expected_metrics`는 max(ks) 안에 들 수 있는 후보만 정렬한다(경계에 걸친 동점 구간은 통째로 넣는다). 후보 전체를 정렬한 결과와 소수점까지 같고(`tests/test_ranking.py`), 상품 약 4,400개 판매자에서 한 번에 8ms가 0.08ms가 된다.
+
 재구매·첫 구매·신상품 구간은 정답이 비면 그 예제를 그 구간에서 뺀다(`expected_metrics`는 정답 없는 예제를 거부한다).

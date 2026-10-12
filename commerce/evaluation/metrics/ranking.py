@@ -136,11 +136,21 @@ def expected_metrics(scores: Sequence[float], relevant: Iterable[int], ks: Seque
     `scores[i]` is candidate i's score; `relevant` are candidate indices. An
     example needs at least one relevant candidate (ValueError otherwise), so a
     subset with nothing in it -- e.g. no explore item -- is skipped by the caller.
+
+    Only candidates scoring at least the max(ks)-th best score can enter any top k
+    (a tied group across that cutoff is kept whole), so only they are sorted. The
+    result is the same as sorting every candidate; a seller's catalog of thousands
+    of items, scored per example, made the full sort the cost of a whole FL run.
     """
+    import numpy as np
     relevant_ids = {str(int(i)) for i in relevant}
     if not relevant_ids:
         raise ValueError("an example needs at least one relevant candidate")
-    ranked = _sorted_by_score((str(i), float(s)) for i, s in enumerate(scores))
+    values = np.asarray(scores, dtype=np.float64)
+    reach = range(len(values))
+    if ks and len(values) > max(ks) and not np.isnan(values).any():
+        reach = np.flatnonzero(values >= np.partition(values, -max(ks))[-max(ks)])
+    ranked = _sorted_by_score((str(int(i)), float(values[i])) for i in reach)
     out: dict[str, float] = {}
     for k in ks:
         out["recall@%d" % k] = recall_at_k(ranked, relevant_ids, k)
