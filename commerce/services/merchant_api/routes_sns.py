@@ -150,11 +150,11 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
             post = sns_service.create_post(conn, folder(request), seller_id=seller_id, kind=kind, caption=caption,
                                            item_ids=item_ids, uploads=_read_uploads(files))
         except media.MediaError as exc:
-            return studio(request, conn, seller_id, staff, str(exc), {"kind": kind, "caption": caption, "items": item_ids})
+            return studio(request, conn, seller_id, staff, str(exc), {"kind": kind, "caption": caption, "item_ids": item_ids})
         except ContractError as exc:
             message = {"MISSING_REQUIRED_FIELD": "내용을 입력해 주세요.", "SCHEMA_INVALID": "내용이 너무 길거나 태그·파일이 너무 많습니다.",
                        "NOT_FOUND": "판매 중인 상품만 태그할 수 있습니다."}.get(exc.code, exc.code)
-            return studio(request, conn, seller_id, staff, message, {"kind": kind, "caption": caption, "items": item_ids})
+            return studio(request, conn, seller_id, staff, message, {"kind": kind, "caption": caption, "item_ids": item_ids})
         notifications.notify(conn, seller_id, notifications.followers(conn, seller_id), "post",
                              "단골 가게에 새 %s: %s" % (sns_service.KINDS[kind], post["title"][:40]),
                              f"/buyer/{seller_id}/posts/{post['post_id']}", dedupe_key="post:%s" % post["post_id"])

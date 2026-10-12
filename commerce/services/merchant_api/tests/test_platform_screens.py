@@ -102,6 +102,23 @@ class PlatformScreensTest(unittest.TestCase):
         self.assertEqual(sns_db.like_counts(conn, SELLER)[post["post_id"]], 1)
         self.assertEqual(sns_db.view_counts(conn, SELLER)[post["post_id"]], 2)
 
+    def test_studio_opens_with_products_and_a_reel_takes_one_video(self):
+        # regression: the empty form's form['items'] resolved to dict.items and the studio was a 500
+        page = self.client.get(f"/seller/{SELLER}/feed")
+        self.assertEqual(page.status_code, 200, page.text[:300])
+        self.assertIn("제주 은갈치", page.text)
+        r = self.client.post(f"/seller/{SELLER}/feed", data={"kind": "short_video", "caption": "릴스", "csrf_token": self._seller_csrf()},
+                             files=[("files", ("a.png", PNG, "image/png"))])
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("릴스에는 영상 1개만", r.text)
+        mp4 = bytes(3) + bytes([0x18]) + b"ftypmp42" + bytes(64)
+        r = self.client.post(f"/seller/{SELLER}/feed", data={"kind": "short_video", "caption": "손질 영상 #갈치", "item_ids": ["sku-fish"],
+                                                           "csrf_token": self._seller_csrf()}, files=[("files", ("a.mp4", mp4, "video/mp4"))])
+        self.assertEqual(r.status_code, 303)
+        post = sns_db.list_posts(self._db(), SELLER)[0]
+        self.assertEqual((post["kind"], post["media"][0]["type"]), ("short_video", "video"))
+        self.assertEqual(self.client.get(f"/media/{SELLER}/{post['media'][0]['name']}").headers["content-type"], "video/mp4")
+
     def test_like_without_csrf_is_refused(self):
         self._post()
         pid = sns_db.list_posts(self._db(), SELLER)[0]["post_id"]

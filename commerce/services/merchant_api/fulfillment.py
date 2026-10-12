@@ -23,6 +23,8 @@ from commerce.packages.contracts.errors import ContractError
 from commerce.services.merchant_api.migrate import add_columns
 
 METHODS = {"pickup": "매장 픽업", "delivery": "택배"}
+COURIERS = ("CJ대한통운", "한진택배", "롯데택배", "우체국택배", "로젠택배", "CU 편의점택배", "GS Postbox", "직접 배달")
+_TRACKING = re.compile(r"^[0-9A-Za-z-]{6,30}$")
 PICKUP_SLOTS = ("오늘 17:00~19:00", "내일 10:00~12:00", "내일 14:00~16:00", "내일 17:00~19:00", "모레 10:00~12:00")
 DEFAULT_DELIVERY_FEE = 3000
 DEFAULT_FREE_OVER = 30000
@@ -81,6 +83,7 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
     # Pickup place, hours and delivery pricing are the seller's store settings.
     conn.execute("CREATE TABLE IF NOT EXISTS store_settings (seller_id TEXT PRIMARY KEY, "
                  "group_discount_pct INTEGER NOT NULL DEFAULT 10, group_min_target INTEGER NOT NULL DEFAULT 3, store_intro TEXT)")
+    add_columns(conn, "order_fulfillment", {"courier": "TEXT", "ready_at": "TEXT"})
     add_columns(conn, "store_settings", {"pickup_address": "TEXT", "pickup_hours": "TEXT",
                                          "delivery_fee": "INTEGER", "free_delivery_over": "INTEGER"})
 
@@ -177,13 +180,32 @@ def of_orders(conn, seller_id: str) -> dict[str, dict[str, Any]]:
     return {r["order_id"]: dict(r) for r in conn.execute("SELECT * FROM order_fulfillment WHERE seller_id = ?", (seller_id,))}
 
 
-def set_tracking(conn, seller_id: str, order_id: str, tracking_no: str) -> None:
-    tracking_no = re.sub(r"[^0-9A-Za-z-]", "", tracking_no or "")[:30]
+def set_tracking(conn, seller_id: str, order_id: str, tracking_no: str, courier: Optional[str] = None) -> str:
+    """Store a delivery order's courier and tracking number; returns the cleaned number.
+    Spaces are dropped (people paste '1234 5678 9012'); anything but digits, letters and '-' is refused
+    instead of being silently cut, so the seller sees what was wrong. '직접 배달' needs no number."""
+    courier = courier if courier in COURIERS else (COURIERS[0] if courier is None else None)
+    if courier is None:
+        raise ContractError("INVALID_ENUM_VALUE", "/courier")
+    tracking_no = re.sub(r"\s+", "", tracking_no or "")
+    if courier == "직접 배달":
+        tracking_no = tracking_no[:30]
+    elif not _TRACKING.match(tracking_no):
+        raise ContractError("SCHEMA_INVALID", "/tracking_no")
     with conn:
-        cur = conn.execute("UPDATE order_fulfillment SET tracking_no = ? WHERE seller_id = ? AND order_id = ? AND method = 'delivery'",
-                           (tracking_no or None, seller_id, order_id))
+        cur = conn.execute("UPDATE order_fulfillment SET tracking_no = ?, courier = ? WHERE seller_id = ? AND order_id = ? "
+                           "AND method = 'delivery'", (tracking_no or None, courier, seller_id, order_id))
     if cur.rowcount != 1:
         raise ContractError("NOT_FOUND", "/order_id")
+    return tracking_no
+
+
+def mark_ready(conn, seller_id: str, order_id: str) -> bool:
+    """A pickup order is packed and waiting. False if it was already marked (notify once)."""
+    with conn:
+        cur = conn.execute("UPDATE order_fulfillment SET ready_at = ? WHERE seller_id = ? AND order_id = ? AND method = 'pickup' "
+                           "AND ready_at IS NULL", (_now(), seller_id, order_id))
+    return cur.rowcount == 1
 
 
 def masked_phone(phone: Optional[str]) -> str:

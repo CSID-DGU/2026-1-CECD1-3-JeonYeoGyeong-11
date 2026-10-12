@@ -497,12 +497,15 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     @app.get("/seller/{seller_id}/orders")
     def seller_orders(seller_id: str, request: Request, conn=Depends(get_conn), staff=Depends(require_seller)):
         orders = [_with_total(o) for o in orders_service.list_orders(conn, seller_id=seller_id)]
+        # What needs the seller first: new orders, then ones in progress, then the rest; newest first in each.
+        orders.sort(key=lambda o: o["created_at"], reverse=True)
+        orders.sort(key=lambda o: {"requested": 0, "accepted": 1}.get(o["status"], 2))
         return _seller_templates.TemplateResponse(request, "orders.html", {
             "seller_id": seller_id, "active_tab": "orders", "orders": orders,
             "status_labels": _STATUS_LABELS, "staff": staff, "titles": _catalog_titles(conn, seller_id),
             "delivery_by_order": orders_service.purchase_event_status_by_order(conn, seller_id=seller_id),
             "fulfillment": fulfillment.of_orders(conn, seller_id), "methods": fulfillment.METHODS,
-            "status_filter": request.query_params.get("status"),
+            "status_filter": request.query_params.get("status"), "couriers": fulfillment.COURIERS,
         })
 
     def seller_transition_screen(seller_id: str, order_id: str, action: str, request: Request, conn, expected_status_version: int):
@@ -518,8 +521,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
             fulfillment.release_stock(conn, seller_id, order_id)
         notifications.on_order(conn, seller_id, order, action)
         back = request.query_params.get("back")
-        return RedirectResponse(f"/seller/{seller_id}/orders/{order_id}" if back == "detail" else f"/seller/{seller_id}/orders",
-                                status_code=303)
+        return RedirectResponse(f"/seller/{seller_id}/orders/{order_id}" if back == "detail"
+                                else f"/seller/{seller_id}/orders?order={order_id}#o-{order_id[:8]}", status_code=303)
 
     @app.post("/seller/{seller_id}/orders/{order_id}/accept")
     def seller_accept_order(

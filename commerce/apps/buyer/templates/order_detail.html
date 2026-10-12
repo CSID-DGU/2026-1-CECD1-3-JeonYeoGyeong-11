@@ -37,10 +37,11 @@
     {% if fulfillment.method == 'pickup' %}
     <div class="row between"><span class="muted-note">픽업 시간</span><span>{{ fulfillment.pickup_slot }}</span></div>
     <div class="row between"><span class="muted-note">픽업 장소</span><span>{{ terms.pickup_address }}</span></div>
+    <div class="row between"><span class="muted-note">준비</span><span>{{ '✓ 준비 완료, 받아 가세요' if fulfillment.ready_at else '판매자가 준비 중이에요' }}</span></div>
     {% else %}
     <div class="row between"><span class="muted-note">받는 분</span><span>{{ fulfillment.recipient }} · {{ fulfillment.phone }}</span></div>
     <div class="row between"><span class="muted-note">주소</span><span>{{ fulfillment.address }}</span></div>
-    <div class="row between"><span class="muted-note">송장번호</span><span class="mono">{{ fulfillment.tracking_no or '판매자가 발송하면 표시돼요' }}</span></div>
+    <div class="row between"><span class="muted-note">배송</span><span>{% if fulfillment.tracking_no or fulfillment.courier %}{{ fulfillment.courier or '택배' }} <span class="mono">{{ fulfillment.tracking_no or '' }}</span>{% else %}판매자가 발송하면 표시돼요{% endif %}</span></div>
     {% endif %}
     {% if fulfillment.memo %}<div class="row between"><span class="muted-note">요청사항</span><span>{{ fulfillment.memo }}</span></div>{% endif %}
     <hr class="divider">

@@ -95,7 +95,13 @@ def create_post(conn, folder: Path, *, seller_id: str, kind: str, caption: str, 
         raise ContractError("SCHEMA_INVALID", "/media")
     catalog = _catalog(conn, seller_id)
     items = _check_items(catalog, item_ids)
-    stored = [media.save_upload(folder, data) for data in uploads if data]  # MediaError -> caller
+    uploads = [data for data in uploads if data]
+    if kind == "short_video" and uploads:
+        # A reel is one video (Instagram's rule too); photos go in a post.
+        kinds = [(media.sniff(data) or ("",))[0] for data in uploads]
+        if len(uploads) != 1 or kinds[0] != "video":
+            raise media.MediaError("릴스에는 영상 1개만 올릴 수 있어요. 사진은 '게시물'로 올려 주세요.")
+    stored = [media.save_upload(folder, data) for data in uploads]  # MediaError -> caller
     post_id = uuid.uuid4().hex
     if not stored:
         stored = [generated_media(folder, kind, catalog.get(items[0]) if items else None, caption, post_id)]

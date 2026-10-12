@@ -169,15 +169,42 @@ class FulfillmentScreensTest(unittest.TestCase):
         self.assertIn("판매자 확인·준비 중", detail)
         self.assertEqual(notifications.unread_count(self._db(), SELLER, "cust-1"), 1)
         self.assertIn('class="count-dot">1<', self.client.get(f"/buyer/{SELLER}/").text)
-        self.client.post(f"/seller/{SELLER}/orders/{order['order_id']}/tracking",
-                         data={"tracking_no": "CJ-1234567", "csrf_token": self._seller_csrf()})
+        bad = self.client.post(f"/seller/{SELLER}/orders/{order['order_id']}/tracking",
+                               data={"tracking_no": "한진 12", "courier": "한진택배", "csrf_token": self._seller_csrf()})
+        self.assertIn("tracking=bad", bad.headers["location"])
+        r = self.client.post(f"/seller/{SELLER}/orders/{order['order_id']}/tracking",
+                             data={"tracking_no": "CJ-1234 567", "courier": "CJ대한통운", "csrf_token": self._seller_csrf()})
+        self.assertIn("tracking=saved", r.headers["location"])
+        f = fulfillment.of_order(self._db(), SELLER, order["order_id"])
+        self.assertEqual((f["courier"], f["tracking_no"]), ("CJ대한통운", "CJ-1234567"))  # the space is dropped
         self.assertIn("CJ-1234567", self.client.get(f"/buyer/{SELLER}/orders/{order['order_id']}").text)
         page = self.client.get(f"/buyer/{SELLER}/notifications").text
-        self.assertIn("송장번호 CJ-1234567", page)
+        self.assertIn("CJ대한통운 CJ-1234567", page)
         self.assertIn("주문을 확인했어요", page)
         self.assertEqual(notifications.unread_count(self._db(), SELLER, "cust-1"), 0)  # opened = read
         seller_view = self.client.get(f"/seller/{SELLER}/orders/{order['order_id']}").text
         self.assertIn("제주시 첨단로 1", seller_view)
+
+    def test_pickup_ready_notifies_once_and_shows_on_both_sides(self):
+        self._order()  # pickup by default
+        order = self._last_order()
+        self._seller_action(order, "accept", 1)
+        listing = self.client.get(f"/seller/{SELLER}/orders").text
+        self.assertIn("픽업 준비 완료 알림 보내기", listing)
+        for _ in range(2):
+            r = self.client.post(f"/seller/{SELLER}/orders/{order['order_id']}/ready", data={"back": "list", "csrf_token": self._seller_csrf()})
+            self.assertIn("ready=1", r.headers["location"])
+        titles = [n["title"] for n in notifications.recent(self._db(), SELLER, "cust-1")]
+        self.assertEqual(sum(t.startswith("픽업 준비가 끝났어요") for t in titles), 1)
+        self.assertIn("준비 완료, 받아 가세요", self.client.get(f"/buyer/{SELLER}/orders/{order['order_id']}").text)
+        self.assertIn("픽업 완료 처리", self.client.get(f"/seller/{SELLER}/orders/{order['order_id']}").text)
+
+    def test_order_list_actions_return_to_the_card(self):
+        self._order()
+        order = self._last_order()
+        r = self._seller_action(order, "accept", 1)
+        self.assertTrue(r.headers["location"].endswith("#o-" + order["order_id"][:8]))
+        self.assertIn('class="ocard accepted focus"', self.client.get(r.headers["location"]).text)
 
     def test_another_customer_cannot_open_the_order(self):
         self._order()

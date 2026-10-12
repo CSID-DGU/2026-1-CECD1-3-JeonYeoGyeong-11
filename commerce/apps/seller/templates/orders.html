@@ -1,70 +1,59 @@
 {% extends "layout.html" %}
+{% from "_order_actions.html" import order_actions %}
 {% block content %}
 <div class="page-head">
   <h1 class="page-title">주문 관리</h1>
-  <p>접수된 주문을 수락하고, 픽업·배송이 끝나면 완료 처리해 주세요. 완료된 주문만 추천 모델 학습에 쓰입니다.</p>
+  <p>새 주문을 수락하고, 택배는 송장을 넣고, 픽업은 준비 알림을 보낸 뒤 전달이 끝나면 완료 처리해 주세요. 완료된 주문만 추천 모델 학습에 쓰여요.</p>
 </div>
 
 {%- set counts = {'all': orders | length} %}
 {%- for s in ('requested', 'accepted', 'completed', 'cancelled') %}{% set _ = counts.update({s: orders | selectattr('status', 'equalto', s) | list | length}) %}{% endfor %}
 <div class="chip-row mb-16" aria-label="주문 상태">
   <a class="chip {{ 'active' if not status_filter }}" href="/seller/{{ seller_id }}/orders">전체 {{ counts.all }}</a>
-  {% for s in ('requested', 'accepted', 'completed', 'cancelled') %}
-  <a class="chip {{ 'active' if status_filter == s }}" href="/seller/{{ seller_id }}/orders?status={{ s }}">{{ status_labels[s] }} {{ counts[s] }}</a>
+  {% for s, label in (('requested', '새 주문'), ('accepted', '준비 중'), ('completed', '완료'), ('cancelled', '취소')) %}
+  <a class="chip {{ 'active' if status_filter == s }}{{ ' attention' if s == 'requested' and counts[s] }}" href="/seller/{{ seller_id }}/orders?status={{ s }}">{{ label }} {{ counts[s] }}</a>
   {% endfor %}
 </div>
 
-<div class="table-wrap">
-  <table>
-    <thead>
-      <tr><th>주문</th><th>고객</th><th>상품</th><th>받는 방법</th><th class="num">금액</th><th>상태</th><th></th></tr>
-    </thead>
-    <tbody>
-      {% for order in orders if not status_filter or order.status == status_filter %}
-      {% set f = fulfillment.get(order.order_id) %}
-      <tr>
-        <td><a class="link mono" href="/seller/{{ seller_id }}/orders/{{ order.order_id }}">{{ order.order_id[:8] }}</a><p class="list-sub">{{ order.created_at[:10] }}</p></td>
-        <td>{{ order.customer_id_local }}</td>
-        <td>{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</td>
-        <td>{% if f %}<span class="badge {{ 'brand' if f.method == 'delivery' else 'muted' }}">{{ methods[f.method] }}</span>
-          <p class="list-sub">{{ f.pickup_slot if f.method == 'pickup' else (f.address or '')[:14] ~ '…' }}</p>{% else %}<span class="muted-note">-</span>{% endif %}</td>
-        <td class="num">{{ "{:,}".format(order.total_amount + (f.shipping_fee if f else 0)) }}원</td>
-        <td>
-          <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">
-            {{ status_labels[order.status] }}
-          </span>
-          {% if order.status == 'completed' %}
-          {% set sent = delivery_by_order.get(order.order_id) %}
-          <p class="list-sub mt-8">{{ '모델에 반영됨' if sent == 'delivered' else ('보류됨' if sent == 'quarantined' else '모델 전달 대기') }}</p>
-          {% endif %}
-        </td>
-        <td>
-          <div class="row">
-          {% if order.status == 'requested' %}
-          <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/accept"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-            <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
-            <button class="btn secondary sm" type="submit">수락</button>
-          </form>
-          {% elif order.status == 'accepted' %}
-          <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/complete"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-            <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
-            <button class="btn primary sm" type="submit">완료 처리</button>
-          </form>
-          {% endif %}
-          {% if order.status in ('requested', 'accepted') %}
-          <form method="post" action="/seller/{{ seller_id }}/orders/{{ order.order_id }}/cancel"
-                onsubmit="return confirm('이 주문을 취소할까요?');"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-            <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
-            <button class="btn ghost sm" type="submit">취소</button>
-          </form>
-          {% endif %}
-          </div>
-        </td>
-      </tr>
-      {% else %}
-      <tr><td colspan="7"><div class="empty">해당하는 주문이 없습니다.</div></td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+{% set qp = request.query_params %}
+{% if qp.get('tracking') == 'saved' %}<div class="notice mb-16">송장을 저장하고 구매자에게 알림을 보냈어요.</div>
+{% elif qp.get('tracking') == 'bad' %}<div class="notice warn mb-16">송장번호는 숫자·영문·하이픈 6~30자로 입력해 주세요. 띄어쓰기는 지워져요.</div>
+{% elif qp.get('ready') %}<div class="notice mb-16">구매자에게 픽업 준비 완료 알림을 보냈어요.</div>{% endif %}
+
+<div class="olist">
+  {% for order in orders if not status_filter or order.status == status_filter %}
+  {% set f = fulfillment.get(order.order_id) %}
+  <article class="ocard {{ order.status }}{{ ' focus' if qp.get('order') == order.order_id }}" id="o-{{ order.order_id[:8] }}">
+    <header class="ocard-head">
+      <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ {'requested': '새 주문', 'accepted': '준비 중', 'completed': '완료', 'cancelled': '취소'}[order.status] }}</span>
+      <a class="mono link-plain" href="/seller/{{ seller_id }}/orders/{{ order.order_id }}">#{{ order.order_id[:8] }}</a>
+      <span class="muted-note">{{ order.created_at[5:16] | replace('T', ' ') }}</span>
+      <span class="grow"></span>
+      <span class="ocard-total">{{ "{:,}".format(order.total_amount + (f.shipping_fee if f else 0)) }}원</span>
+    </header>
+    <div class="ocard-main">
+      <div class="ocard-info">
+        <p class="list-title">{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</p>
+        <p class="list-sub">
+          {{ order.customer_id_local }} ·
+          {% if f and f.method == 'delivery' %}📦 택배 · {{ f.recipient }} · {{ (f.address or '')[:22] }}{{ '…' if (f.address or '') | length > 22 }}
+          {% elif f %}🏪 픽업 · {{ f.pickup_slot }}
+          {% else %}🏪 픽업 (수령 정보 없음){% endif %}
+          {% if f and f.memo %} · “{{ f.memo }}”{% endif %}
+        </p>
+        {% if order.status == 'completed' %}
+        {% set sent = delivery_by_order.get(order.order_id) %}
+        <p class="list-sub">추천 모델: {{ '반영됨' if sent == 'delivered' else ('보류됨' if sent == 'quarantined' else '전달 대기') }}</p>
+        {% endif %}
+      </div>
+      <div class="ocard-actions">
+        {{ order_actions(seller_id, order, f, couriers, csrf_token, 'list') }}
+      </div>
+    </div>
+    <a class="ocard-more" href="/seller/{{ seller_id }}/orders/{{ order.order_id }}">상세 보기 →</a>
+  </article>
+  {% else %}
+  <div class="card empty">해당하는 주문이 없어요.</div>
+  {% endfor %}
 </div>
 {% endblock %}

@@ -129,21 +129,46 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
                                                                       customer_id_local=order["customer_id_local"])
                    if o["status"] == "completed"]
         return d.seller_templates.TemplateResponse(request, "order_detail.html", {
-            "seller_id": seller_id, "active_tab": "orders", "staff": staff,
+            "seller_id": seller_id, "active_tab": "orders", "staff": staff, "couriers": fulfillment.COURIERS,
+            "terms": fulfillment.store_terms(conn, seller_id),
+            "tracking_state": request.query_params.get("tracking"), "tracking_field": request.query_params.get("field"),
+            "ready_sent": request.query_params.get("ready"),
             "customer_name": customer["display_name"] if customer else order["customer_id_local"],
             "past_orders": len(history), "delivery_status": orders_service.purchase_event_status_by_order(
                 conn, seller_id=seller_id).get(order_id), **_order_view(conn, seller_id, order)})
 
     @app.post("/seller/{seller_id}/orders/{order_id}/tracking")
     def seller_tracking(seller_id: str, order_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller_form),
-                        tracking_no: str = Form("")):
-        fulfillment.set_tracking(conn, seller_id, order_id, tracking_no)
+                        tracking_no: str = Form(""), courier: Optional[str] = Form(None), back: str = Form("detail")):
         order = orders_service.get_order(conn, seller_id=seller_id, order_id=order_id)
-        if tracking_no.strip():
+        target = f"/seller/{seller_id}/orders" if back == "list" else f"/seller/{seller_id}/orders/{order_id}"
+        anchor = f"#o-{order_id[:8]}" if back == "list" else "#ship"
+        try:
+            number = fulfillment.set_tracking(conn, seller_id, order_id, tracking_no, courier)
+        except ContractError as exc:
+            sep = "&" if "?" in target else "?"
+            return RedirectResponse(f"{target}{sep}tracking=bad&field={exc.field_path.strip('/')}&order={order_id}{anchor}", status_code=303)
+        label = courier or fulfillment.COURIERS[0]
+        notifications.notify(conn, seller_id, [order["customer_id_local"]], "order",
+                             "택배가 출발했어요. %s %s" % (label, number) if number else "판매자가 직접 배달을 시작했어요.",
+                             f"/buyer/{seller_id}/orders/{order_id}", dedupe_key="tracking:%s:%s:%s" % (order_id, label, number))
+        return RedirectResponse(f"{target}?tracking=saved&order={order_id}{anchor}", status_code=303)
+
+    @app.post("/seller/{seller_id}/orders/{order_id}/ready")
+    def seller_pickup_ready(seller_id: str, order_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller_form),
+                            back: str = Form("detail")):
+        order = orders_service.get_order(conn, seller_id=seller_id, order_id=order_id)
+        detail = fulfillment.of_order(conn, seller_id, order_id)
+        if detail is None or detail["method"] != "pickup":
+            raise ContractError("NOT_FOUND", "/order_id")
+        if fulfillment.mark_ready(conn, seller_id, order_id):
+            terms = fulfillment.store_terms(conn, seller_id)
             notifications.notify(conn, seller_id, [order["customer_id_local"]], "order",
-                                 "택배가 출발했어요. 송장번호 %s" % tracking_no.strip()[:30],
-                                 f"/buyer/{seller_id}/orders/{order_id}", dedupe_key="tracking:%s:%s" % (order_id, tracking_no.strip()))
-        return RedirectResponse(f"/seller/{seller_id}/orders/{order_id}", status_code=303)
+                                 "픽업 준비가 끝났어요. %s, %s에서 받아 가세요." % (detail["pickup_slot"] or terms["pickup_hours"],
+                                                                         terms["pickup_address"]),
+                                 f"/buyer/{seller_id}/orders/{order_id}", dedupe_key="ready:%s" % order_id)
+        target = f"/seller/{seller_id}/orders" if back == "list" else f"/seller/{seller_id}/orders/{order_id}"
+        return RedirectResponse(f"{target}?ready=1&order={order_id}" + (f"#o-{order_id[:8]}" if back == "list" else "#ship"), status_code=303)
 
     @app.post("/seller/{seller_id}/delivery-settings")
     def seller_delivery_settings(seller_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller_form),
