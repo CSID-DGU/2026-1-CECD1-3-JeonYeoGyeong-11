@@ -819,6 +819,39 @@ class PersonalizationTest(Base):
         expected = hashlib.sha256(json_bytes(sorted("item-%02d" % i for i in range(1, N_ITEMS + 1)))).hexdigest()
         self.assertEqual(result.candidate_set_hash, expected)
 
+    def test_a_pinned_pair_is_compared_while_the_serving_base_moves_on(self):
+        result = self.personalize()  # on base-r1
+        self.runtime.pin_comparison(text_only="base-t1", text_relation="base-r1")
+        req = request("cust-05", self.late, top_n=5)
+        before = self.runtime.compare_local(req)
+        self.install(variant="text_relation", version="base-r2", seed=4)
+        self.assertEqual(self.runtime.predict_local(req, mode="global")["model_version"], "base-r2")
+        tg, rg, tp, rp = self.runtime.compare_local(req).arms
+        self.assertEqual((tg.base_model_version, rg.base_model_version), ("base-t1", "base-r1"))
+        self.assertEqual(rg.recommendation["model_version"], "base-r1")
+        self.assertEqual(rg.recommendation, before.arms[1].recommendation)
+        self.assertEqual((rp.available, rp.personalization_revision), (True, result.personalization_revision))
+        self.assertEqual(rp.recommendation, before.arms[3].recommendation)
+        # A restart keeps the pin; removing it makes compare follow the serving bases again.
+        self.assertEqual(self.open().compare_local(req).arms[1].base_model_version, "base-r1")
+        self.runtime.pin_comparison()
+        unpinned = self.runtime.compare_local(req).arms
+        self.assertEqual(unpinned[1].base_model_version, "base-r2")
+        self.assertEqual(unpinned[3].unavailable_reason, "personalization_not_ready")
+
+    def test_only_installed_readable_bases_are_compared(self):
+        with self.assertRaises(ContractError) as caught:
+            self.runtime.pin_comparison(text_relation="base-r9")
+        self.assertEqual(caught.exception.code, "NOT_FOUND")
+        self.assertEqual(self.runtime.comparison_pin(), {})
+        self.runtime.pin_comparison(text_relation="base-r1")
+        self.install(variant="text_relation", version="base-r2", seed=4)
+        (self.root / "models" / "base" / "text_relation" / "base-r1" / "weights.npz").write_bytes(b"not weights")
+        reopened = self.open()  # nothing of base-r1 left in memory
+        rg = reopened.compare_local(request("cust-05", self.late)).arms[1]
+        self.assertEqual((rg.available, rg.unavailable_reason), (False, "model_not_ready"))
+        self.assertIn("text_relation.comparison", reopened.load_errors)
+
     def test_compare_without_models_says_not_ready(self):
         fresh = SellerRuntime(SELLER, self.root / "other.sqlite", self.root / "other-models", text=self.text,
                               architectures=TINY)
