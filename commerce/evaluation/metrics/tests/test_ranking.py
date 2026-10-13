@@ -9,7 +9,7 @@ import random
 import unittest
 
 from commerce.evaluation.metrics.ranking import (
-    MacroAverager, classify_relevant_items, expected_metrics, local_popularity_ranking, ndcg_at_k,
+    MacroAverager, classify_relevant_items, expected_metrics, hit_rate_at_k, local_popularity_ranking, ndcg_at_k,
     new_item_indices, p_topfreq_ranking, p_topfreq_scores, popularity_scores, recall_at_k,
     repeat_explore_indices, split_recall_by_repeat_explore,
 )
@@ -73,6 +73,26 @@ class ArrayEntryPointTest(unittest.TestCase):
     def test_example_without_relevant_items_is_rejected(self):
         with self.assertRaises(ValueError):
             expected_metrics([1.0, 2.0], relevant=[])
+
+    def test_sorting_only_the_reachable_top_gives_the_full_ranking_result(self):
+        # expected_metrics sorts only candidates that can reach max(ks); the ranked-list
+        # functions over every candidate must give exactly the same numbers.
+        import numpy as np
+        rng = random.Random(3)
+        for _ in range(300):
+            n = rng.randint(1, 300)
+            distinct = rng.choice((2, 5, 50, 10**6))  # few values -> tied groups across the cutoff
+            scores = np.array([rng.randrange(distinct) for _ in range(n)], dtype=np.float32) / 7
+            relevant = rng.sample(range(n), k=rng.randint(1, min(n, 12)))
+            ks = rng.choice(((10, 20), (1,), (3, 50)))
+            ranked = sorted(((str(i), float(s)) for i, s in enumerate(scores)), key=lambda p: (-p[1], p[0]))
+            ids = {str(i) for i in relevant}
+            full = {}
+            for k in ks:
+                full["recall@%d" % k] = recall_at_k(ranked, ids, k)
+                full["ndcg@%d" % k] = ndcg_at_k(ranked, ids, k)
+                full["hr@%d" % k] = hit_rate_at_k(ranked, ids, k)
+            self.assertEqual(expected_metrics(scores, relevant, ks), full)
 
 
 class AggregationTest(unittest.TestCase):
