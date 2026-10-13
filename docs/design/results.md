@@ -22,16 +22,19 @@ Instacart 판매자 100곳, 비보호 FL 시뮬레이션(D0020), 다음 장바�
 | 기존 판매자 (seed 3개) | T_hx 0.171 · R_hx 0.213 · T_lm 0.140 · R_lm 0.196 | D0024 |
 | 신규 판매자, 학습 미참여(A-0, seed 3개) | T_hx 0.018 · R_hx 0.077 · T_lm 0.143 · R_lm 0.198. hx는 단어 표가 판매자 로컬이라 신규 판매자에게 쓸 수 없다 | D0024 |
 | 구매 관계(R)의 효과 | 기존 판매자 R_lm − T_lm +0.056 [+0.051, +0.061]. 신규 판매자 R-G − T-G +0.041 [+0.025, +0.057] | D0024, [모델 비교](comparison.md) §9 |
-| FL과 단독 학습 | R_lm 0.136(단독) → 0.196(FL), T_lm 0.102 → 0.140. 단독 학습이 자기 검증으로 checkpoint를 고르는 이점을 가지므로 보수적인 비교다 | [평가](evaluation.md) §5 |
+| FL과 단독 학습 | R_lm 0.136(단독) → 0.196(FL), T_lm 0.102 → 0.140. 단독 학습은 seed 1개다. 단독 학습이 자기 검증으로 checkpoint를 고르는 이점을 가지므로 보수적인 비교다(조건은 [평가](evaluation.md) §5) | #26 본문 결과표 |
 | 판매자 개인화 | 검증을 통과한 판매자만 쓴다. 신규 판매자 10곳에서 채택 T 3곳·R 5곳, 채택된 곳에서 R +0.007 | comparison.md §9, model.md §8 |
 | 판매자 한 곳의 비용(CPU, GPU 없음) | 라운드 학습 2.2초(T)·8.2초(R), 추천 40ms·9ms, 최대 메모리 1.8 GB | [독립 모델 실험](model-lab.md) §5 |
-| 기준선 | 인기순 0.098, 고객 자기 구매 빈도(P-TopFreq) 0.403 | D0022 결과표 |
+| 기준선 | 인기순 0.098, 고객 자기 구매 빈도(P-TopFreq) 0.403 | #26 본문 결과표 |
 
 결론: 서비스는 R_lm(text_relation)을 기본으로 쓰고, 개인화는 검증을 통과할 때만 쓰는 작은 보정이다.
 
 ## 3. 서비스에 넘기는 것
 
-- 첫 release 두 개: `ic100-T_lm-r500`, `ic100-R_lm-r500`(판매자 100곳, 500라운드). 가중치는 Git에 없고 팀 공유 드라이브의 `models.zip`에 있다(`SHA256SUMS.txt`로 확인). 출처 라벨은 "비보호 FL 시뮬레이션"이다.
+- 첫 release 두 개: `ic100-T_lm-r500`, `ic100-R_lm-r500`(판매자 100곳, 500라운드). 가중치는 Git에 없고 팀 공유 드라이브의 `models.zip`에 있다. 드라이브 주소는 팀 채팅에만 둔다(공개 저장소라 여기 적지 않는다). 출처 라벨은 "비보호 FL 시뮬레이션"이다.
+  - 받은 파일은 드라이브에서 `models.zip` 옆에 있는 `SHA256SUMS.txt`(`sha256sum -c SHA256SUMS.txt`)나 아래 SHA-256으로 확인한다.
+  - `ic100-T_lm-r500/weights.npz`: `2b32dfb73833b097eb075e9f1c1d86a71007502111fe83cefa706434c4e42d94`
+  - `ic100-R_lm-r500/weights.npz`: `9ceb2d16660070e17b1d6c984b379dbb1354b7f7782956b8c8de55a42d99f087`
 - 인코더: `encoder_probe --download --only minilm-l12`로 고정 revision을 받는다. 설치할 때 해시가 다르면 거부한다.
 - 설치: `python -m commerce.packages.recommender.install --model-dir … --encoder-dir … / --release-dir … --variant …`(FL 없이 서빙만 하는 판매자). FL에 참여하는 판매자는 C의 registry로 받는다.
 
