@@ -1,5 +1,32 @@
 # 판매자 앱 시연 순서 · A
 
+## 0. 식당 POS 버전 시연 (지금 버전, 이 절만 보면 됨)
+
+```powershell
+# 1) 데이터: 식당 6곳, 지금 시각까지 (서버를 끈 상태, 가게 폴더의 orders.sqlite*·features.sqlite*를 지운 뒤. models/는 그대로)
+.venv\Scripts\python.exe -m commerce.services.merchant_api.restaurant_dataset --stores 6 --now today
+# 2) 서버: torch가 있는 환경에서 (가게당 약 10초)
+python -m commerce.services.merchant_api.serve_demo --merchants 6
+```
+
+| 가게 | POS | 사장님 화면 |
+| --- | --- | --- |
+| 오이네 한식당 | http://127.0.0.1:8101/pos/merchant-1/ | http://127.0.0.1:8101/seller/merchant-1/today |
+| 돌담 흑돼지 | http://127.0.0.1:8102/pos/merchant-2/ | http://127.0.0.1:8102/seller/merchant-2/today |
+| 한라 분식 | http://127.0.0.1:8103/pos/merchant-3/ | http://127.0.0.1:8103/seller/merchant-3/today |
+| 오름 카페 & 브런치 | http://127.0.0.1:8104/pos/merchant-4/ | http://127.0.0.1:8104/seller/merchant-4/today |
+| 바다향 중화요리 | http://127.0.0.1:8105/pos/merchant-5/ | http://127.0.0.1:8105/seller/merchant-5/today |
+| 그린볼 샐러드 (신규, 학습 불참) | http://127.0.0.1:8106/pos/merchant-6/ | http://127.0.0.1:8106/seller/merchant-6/today |
+
+로그인은 가게마다 `owner-1` / `demo-pass-1234`다(마스터 계정 없음). 시연 흐름은 다음과 같다.
+1. POS 테이블 → 메뉴 담기 → 적립 번호 입력(오른쪽 AI 추천·단골 메뉴) → 주방 전송 → 결제(나눠 내기·현금 거스름돈) → 영수증
+2. 사장님 화면 오늘·매출에 바로 반영
+3. 손님 → 단골 상세의 "다음에 주문할 것 같은 메뉴"
+4. 메뉴에 새 메뉴 등록 → "새 메뉴를 알릴 손님"
+5. 연합학습 → "이 PC에만 있는 것 / 밖으로 나가는 것"
+
+아래 1~9절은 이전 온라인 플랫폼 버전 기준이다(태그 `legacy-platform-20261013`).
+
 중간발표에서 판매자 한 곳(`merchant-1`)의 구매자·판매자 화면과 추천 연결을 보여주는 순서다. 모든 명령은 저장소 루트에서 PowerShell로 실행한다. 데이터는 전부 합성이다([데이터](../../../docs/design/data.md) §6).
 
 ## 1. 준비 (한 번)

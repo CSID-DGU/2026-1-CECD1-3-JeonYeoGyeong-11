@@ -1,5 +1,27 @@
 # 판매자 서비스 · A
 
+## 식당 POS 버전 (2026-10-13~, 지금 제품)
+
+서비스를 쓰는 사람은 **식당 사장님과 직원**이다. 구매자는 이 사이트에 들어오지 않는다. 손님 주문은 매장 POS에서 받고, 결제가 끝난 주문만 이 가게 PC의 추천 모델(B) 학습 기록이 된다. 가게끼리 서로 링크되지 않고, 중앙에서 모든 가게를 보는 화면도 없다. 이전 온라인 통합 플랫폼 버전(구매자 쇼핑몰·소식·공동구매·택배·마스터 계정)은 태그 `legacy-platform-20261013`과 브랜치 `commerce/a/legacy-platform`에 있다.
+
+- `pos_db.py`/`pos_service.py`/`routes_pos.py`(`/pos/{seller_id}/...`): 실제 POS와 같은 흐름이다.
+  - 테이블 현황판 → 테이블 주문서(같은 메뉴는 주방 전송 전까지 합침, 전송 후 빼면 "취소"로 남김, 요청사항) → 주방 전송 → 주방 화면(나감 처리).
+  - 결제: 카드·현금(거스름돈)·간편결제·계좌이체·포인트, 나눠 내기, 할인, 테이블 이동, 주문 취소, 영수증(일련번호), 결제 취소(환불), 일일 마감.
+  - 회원 적립: 전화번호는 저장하지 않는다. 가게별 salt를 섞은 해시와 뒤 4자리만 남는다. 회원 ID(= B가 보는 customer_id_local)는 해시에서 만든다. 적립하지 않은 손님은 결제마다 다른 `guest-…` 고객이다.
+  - 결제가 끝나는 순간 그 주문서가 A 주문 1건이 되고, 바로 수락·완료되어 기존 outbox로 B에 간다(interfaces.md §2). 결제 수단·전화번호·영수증은 B에 가지 않는다(`tests/test_pos.py`). 환불해도 purchase_event는 철회 계약이 없어 남는다(화면에 그렇게 적음).
+  - 주문서 오른쪽에는 두 가지가 따로 나온다. "AI 추천"은 B `predict_local`(품절·이미 담은 메뉴 제외)이고, "이 손님 단골 메뉴"는 주문 기록에서 센 값이다.
+- `routes_owner.py`(사장님 화면 `/seller/{seller_id}/...`):
+  - 오늘(매출·결제·회원 비율·시간대별/14일 차트·인기 메뉴·AI 상태), 매출(날짜별 결제 내역·수단별·영수증 링크)
+  - 메뉴(분류별, 등록·품절·수정, 설명이 AI 입력임을 안내), 손님(적립 회원, 단골 상세와 B 예측, 같이 주문되는 메뉴는 주문 기록에서 센 값, 새 메뉴를 알릴 손님)
+  - 연합학습(이 PC에만 있는 것과 밖으로 나가는 공유 층·크기, 받은 모델 버전, 맞춤 학습 버튼), 설정(테이블 수·적립률·영업시간·소개, 계정 보안 설명)
+- `restaurant_dataset.py`: 식당 6곳(한식·흑돼지·분식·카페브런치·중식, 그리고 학습 불참·메뉴 비중복의 샐러드 신규 가게)의 메뉴(설명 포함), 회원 리듬·단골 메뉴·같이 시키는 메뉴·늦게 추가된 신메뉴, 90일(신규 30일) POS 결제를 `pos_service` 경로로 만든다.
+  - 끝 시각을 고정해 PC마다 같은 데이터가 나오고(`--now today`는 지금 시각까지), 다시 돌려도 늘지 않는다. `--export`는 매장별 SellerInput JSON이다.
+  - 실행: `python -m commerce.services.merchant_api.restaurant_dataset --stores 6 [--now today] [--export DIR]`.
+- 이전 버전 화면: 구매자 화면(`/buyer/...`)은 C의 리허설(`fl_demo --rehearse` R2~R5)이 아직 쓰므로 코드를 남겼다. `LEGACY_BUYER_SCREENS=0`이면 404가 된다(`serve_demo` 기본). 4칸 모델 비교(`/compare`)는 사장님 메뉴에 없고, `LAB_SCREENS=1`일 때만 메뉴에 보인다.
+- `tests/test_pos.py`: POS 서비스·API(CSRF)·로그인 후 되돌아가기·추천 칸·사장님 화면·이전 화면 차단·식당 데이터셋 재현성.
+
+## 모듈 (이전 버전부터 이어지는 것 포함)
+
 - `main.py`: FastAPI lifespan·health·주문/카탈로그 JSON 라우트(`/sellers/...`) + 구매자·판매자 화면 HTML 라우트(`/buyer/{seller_id}/...`, `/seller/{seller_id}/...`, `commerce/apps/buyer|seller/templates` 렌더). 화면은 로그인과 폼별 CSRF 토큰을 확인하고, 주문 가격은 폼이 아니라 서버의 카탈로그 가격으로 정한다. JSON `/sellers/...` 라우트는 아직 호출자 인증이 없다(OQ13·OQ15 대기, 아래 참고).
 - `context.py`: 판매자별 B runtime 하나를 만들고 같은 객체·작업 실행기를 C client에 주입한다. `merchant_db_path`(orders.sqlite 위치)도 여기서 들고 있다.
 - `jobs.py`: FL/개인화가 함께 쓰는 단일 background 실행기. 중복 제출은 JobBusyError, 완료/실패 후 다시 제출할 수 있다.
@@ -44,7 +66,7 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 
 `gate docs`가 첫 줄을 이 서비스 디렉터리의 코드 전체와 대조한다. 코드에서 새 값을 읽으면 같은 PR에서 이 줄을 고친다.
 
-- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `DEMO_MASTER`
+- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `DEMO_MASTER`, `LEGACY_BUYER_SCREENS`, `LAB_SCREENS`
 - 구현 시 추가: `COORDINATOR_URL`, `FL_CLIENT_TOKEN`
 
 `MERCHANT_SECRET`은 선택값이다. 지금은 세션 쿠키·CSRF 서명 키를 만드는 데만 쓰며, 판매자마다 다른 충분히 긴 임의 문자열을 넣는다. 비워두면 재시작할 때마다 모든 사용자가 로그아웃된다. 저장소나 로그에 남기지 않는다.
@@ -56,3 +78,5 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 `CHATBOT_MODE`(`auto`·`llm`·`rules`), `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`(`1`이면 주문 내역·개인 추천 도구를 LLM에 연다, 기본 꺼짐)는 선택값이다. `ANTHROPIC_API_KEY` 또는 `ANTHROPIC_AUTH_TOKEN`이 없으면 챗봇은 규칙 기반으로만 답한다. 키는 저장소·로그에 남기지 않는다. `anthropic` 패키지는 챗봇이 LLM을 쓸 때만 import한다(설치하지 않아도 앱은 뜬다).
 
 `DEMO_MASTER=1`은 시연용이다. 로그인 화면에 마스터 계정(`master` / `master-1234`, `platform_dataset`이 가게마다 만든다) 원클릭 로그인 버튼을 보인다. `serve_demo`가 기본으로 켠다. 실제 운영에서는 켜지 않는다.
+
+`LEGACY_BUYER_SCREENS`(기본 `1`)를 `0`으로 두면 이전 버전의 구매자 화면이 꺼진다. 식당 POS 시연(`serve_demo`)은 `0`으로 켠다. `LAB_SCREENS=1`이면 사장님 메뉴에 4칸 모델 비교(팀·질의응답용)가 보인다.
