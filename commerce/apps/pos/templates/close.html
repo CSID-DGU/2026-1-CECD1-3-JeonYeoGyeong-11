@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="pos-close">
+  <div class="pos-section-head"><h1>{{ summary.day }} 마감</h1>
+    {% if summary.closed %}<span class="badge solid">마감 완료 · {{ summary.closed.closed_at | kst('%H:%M') }}</span>{% endif %}</div>
+  {% if error %}<div class="notice warn">아직 결제하지 않은 테이블·포장이 있어요. 결제하거나 취소한 뒤 마감해 주세요.</div>{% endif %}
+  <div class="pos-strip">
+    <div><span>매출</span><strong>{{ "{:,}".format(summary.revenue) }}원</strong></div>
+    <div><span>결제</span><strong>{{ summary.count }}건</strong></div>
+    <div><span>손님</span><strong>{{ summary.guests }}명</strong></div>
+    <div><span>객단가</span><strong>{{ "{:,}".format(summary.per_guest) }}원</strong></div>
+    <div><span>회원 결제</span><strong>{{ summary.member_share }}%</strong></div>
+  </div>
+  <div class="grid cols-2 mt-12">
+    <div class="card stack">
+      <h2 class="section-title flush">결제 수단별</h2>
+      <table class="mini-table"><tbody>
+        {% for label, amount in summary.by_method %}<tr><td>{{ label }}</td><td class="num">{{ "{:,}".format(amount) }}원</td></tr>{% else %}<tr><td colspan="2">아직 결제가 없어요.</td></tr>{% endfor %}
+        {% if summary.discount %}<tr><td>할인</td><td class="num">−{{ "{:,}".format(summary.discount) }}원</td></tr>{% endif %}
+        {% if summary.refunds %}<tr><td>결제 취소 {{ summary.refunds }}건</td><td class="num">−{{ "{:,}".format(summary.refunded_amount) }}원</td></tr>{% endif %}
+      </tbody></table>
+    </div>
+    <div class="card stack">
+      <h2 class="section-title flush">많이 나간 메뉴</h2>
+      <table class="mini-table"><tbody>
+        {% for title, n in summary.top_items %}<tr><td>{{ title }}</td><td class="num">{{ n }}개</td></tr>{% else %}<tr><td>-</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </div>
+  <form method="post" action="/pos/{{ seller_id }}/close" class="mt-12"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <button class="btn primary pos-big" type="submit" {{ 'disabled' if open_tables }}>{{ '다시 마감' if summary.closed else '오늘 마감하기' }}</button>
+    {% if open_tables %}<span class="muted-note">진행 중인 주문 {{ open_tables }}건</span>{% endif %}
+  </form>
+</div>
+{% endblock %}

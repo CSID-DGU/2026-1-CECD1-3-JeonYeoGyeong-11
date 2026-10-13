@@ -17,10 +17,12 @@ state-changing form of a logged-in user carries a session-bound CSRF token
 never from the form. OQ13's error-code question and OQ15 stay open.
 """
 import asyncio
+from datetime import datetime, timedelta, timezone
 import logging
 import os
 import threading
 import uuid
+from urllib.parse import urlencode
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Callable, Optional
@@ -34,7 +36,8 @@ from pydantic import BaseModel  # ships with fastapi; no separate lock entry nee
 from commerce.packages.contracts.errors import ContractError
 from commerce.packages.fl_client.lifecycle import FLClientConfig
 from commerce.services.merchant_api import (accounts_db, accounts_service, cart_db, chatbot, fulfillment, model_status,
-                                            notifications, orders_db, orders_service, personalization, routes_chat,
+                                            notifications, orders_db, orders_service, personalization, pos_db,
+                                            routes_chat, routes_owner, routes_pos,
                                             routes_group, routes_shop, routes_sns, routes_store, sales, session, shop_db,
                                             shop_service, sns_db, sns_service, social_db, social_service)
 from commerce.services.merchant_api.accounts_service import AccountError
@@ -82,10 +85,31 @@ def _buyer_badges(request: Request) -> dict:
         conn.close()
 
 
+def _kst(ts: Optional[str], fmt: str = "%Y-%m-%d %H:%M") -> str:
+    """An ISO UTC time as Korean time for the screens (stores run on KST)."""
+    if not ts:
+        return ""
+    try:
+        when = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return ts
+    return when.astimezone(timezone(timedelta(hours=9))).strftime(fmt)
+
+
 _seller_templates = Jinja2Templates(directory=str(_APPS_DIR / "seller" / "templates"),
-                                    context_processors=[_csrf_context(session.seller_cookie)])
+                                    context_processors=[_csrf_context(session.seller_cookie), _store_name])
 _buyer_templates = Jinja2Templates(directory=str(_APPS_DIR / "buyer" / "templates"),
                                    context_processors=[_csrf_context(session.customer_cookie), _store_name, _buyer_badges])
+# The restaurant POS (staff session, same as the owner web).
+_pos_templates = Jinja2Templates(directory=str(_APPS_DIR / "pos" / "templates"),
+                                 context_processors=[_csrf_context(session.seller_cookie), _store_name])
+
+# The buyer web shop of the earlier platform version (tag legacy-platform-20261013). The product is
+# now the owner's web + a store POS; buyers never visit. The routes stay because C's rehearsal
+# (fl_demo --rehearse R2-R5) still drives them; LEGACY_BUYER_SCREENS=0 turns them off (404).
+_LEGACY_BUYER = os.environ.get("LEGACY_BUYER_SCREENS", "1") != "0"
+# The four-arm model comparison and personalization lab: for the team and Q&A, not for owners.
+_LAB_SCREENS = os.environ.get("LAB_SCREENS") == "1"
 
 # Platform name shown on every screen. Placeholder until the team settles the
 # "OO" part; change it here only.
@@ -95,13 +119,15 @@ BRAND_NAME = "오이OO"
 _product_emoji = product_emoji
 
 
-for _templates in (_seller_templates, _buyer_templates):
+for _templates in (_seller_templates, _buyer_templates, _pos_templates):
     _templates.env.globals["brand_name"] = BRAND_NAME
     _templates.env.globals["product_emoji"] = _product_emoji
     _templates.env.filters["mask_name"] = mask_name
     # Demo only: DEMO_MASTER=1 shows a one-click login for the presenter's master account
     # (platform_dataset.MASTER_ID) on both login screens. Off by default.
     _templates.env.globals["demo_master"] = os.environ.get("DEMO_MASTER") == "1"
+    _templates.env.globals["lab_screens"] = _LAB_SCREENS
+    _templates.env.filters["kst"] = _kst
 
 _STATUS_LABELS = {"requested": "접수", "accepted": "처리중", "completed": "완료", "cancelled": "취소"}
 
@@ -173,7 +199,8 @@ class LoginRequired(Exception):
 _REDELIVERY_JOIN_SECONDS = 60
 # Tables that share orders.sqlite with the order domain; created once per file (orders_db.connect).
 _SCREEN_SCHEMAS = (social_db.ensure_schema, sns_db.ensure_schema, accounts_db.ensure_schema, cart_db.ensure_schema,
-                   shop_db.ensure_schema, chatbot.ensure_schema, fulfillment.ensure_schema, notifications.ensure_schema)
+                   shop_db.ensure_schema, chatbot.ensure_schema, fulfillment.ensure_schema, notifications.ensure_schema,
+                   pos_db.ensure_schema)
 
 
 _CHECKOUT_ERRORS = {
@@ -282,7 +309,19 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
 
     @app.exception_handler(LoginRequired)
     async def handle_login_required(request: Request, exc: "LoginRequired"):
-        return RedirectResponse(exc.login_url, status_code=303)
+        target = exc.login_url
+        if request.method == "GET" and "/seller/" in target:  # come back to the POS or page that asked
+            target += "?" + urlencode({"next": request.url.path})
+        return RedirectResponse(target, status_code=303)
+
+    @app.middleware("http")
+    async def legacy_buyer_gate(request: Request, call_next):
+        if not _LEGACY_BUYER and request.url.path.startswith("/buyer/"):
+            return JSONResponse(status_code=404, content={"detail": "구매자 화면은 이 버전에 없어요. 매장 POS를 쓰세요."})
+        if not _LAB_SCREENS and not _LEGACY_BUYER and request.url.path.startswith("/seller/") \
+                and request.url.path.endswith("/compare"):
+            return JSONResponse(status_code=404, content={"detail": "실험 화면은 LAB_SCREENS=1일 때만 열려요."})
+        return await call_next(request)
 
     def get_conn(request: Request):
         context: MerchantContext = request.app.state.merchant
@@ -379,7 +418,7 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     @app.get("/")
     def root(request: Request):
         context: MerchantContext = request.app.state.merchant
-        return RedirectResponse(f"/buyer/{context.seller_id}/")
+        return RedirectResponse(f"/seller/{context.seller_id}/today")
 
     # --- Seller auth (business-registration gated signup) ------------------
 
@@ -408,30 +447,36 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
                          "business_open_date": business_open_date, "business_rep_name": business_rep_name},
             })
         token = session.sign({"role": "seller", "seller_id": seller_id, "username": username, "display_name": display_name})
-        response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
+        response = RedirectResponse(f"/seller/{seller_id}/today", status_code=303)
         response.set_cookie(session.seller_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
+    def safe_next(seller_id: str, target: Optional[str]) -> str:
+        # Only this store's own pages: never an open redirect to another host or store.
+        if target and (target.startswith(f"/seller/{seller_id}/") or target.startswith(f"/pos/{seller_id}/")) and "//" not in target[1:]:
+            return target
+        return f"/seller/{seller_id}/today"
+
     @app.get("/seller/{seller_id}/login")
-    def seller_login_form(seller_id: str, request: Request):
+    def seller_login_form(seller_id: str, request: Request, next: Optional[str] = None):
         return _seller_templates.TemplateResponse(request, "login.html", {
-            "seller_id": seller_id, "active_tab": "", "error": None,
+            "seller_id": seller_id, "active_tab": "", "error": None, "next": safe_next(seller_id, next),
         })
 
     @app.post("/seller/{seller_id}/login")
     def seller_login(
         seller_id: str, request: Request, conn=Depends(get_conn),
-        username: str = Form(...), password: str = Form(...),
+        username: str = Form(...), password: str = Form(...), next: Optional[str] = Form(None),
     ):
         try:
             account = accounts_service.authenticate_seller(conn, seller_id=seller_id, username=username, password=password)
         except AccountError as exc:
             return _seller_templates.TemplateResponse(request, "login.html", {
-                "seller_id": seller_id, "active_tab": "", "error": str(exc),
+                "seller_id": seller_id, "active_tab": "", "error": str(exc), "next": safe_next(seller_id, next),
             })
         token = session.sign({"role": "seller", "seller_id": seller_id, "username": username,
                                "display_name": account["display_name"]})
-        response = RedirectResponse(f"/seller/{seller_id}/overview", status_code=303)
+        response = RedirectResponse(safe_next(seller_id, next), status_code=303)
         response.set_cookie(session.seller_cookie(seller_id), token, httponly=True, samesite="lax")
         return response
 
@@ -573,7 +618,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
                            customer_id_local: str = Form("")):
         context: MerchantContext = request.app.state.merchant
         outcome = personalization.start(context)
-        back = f"/seller/{seller_id}/compare?p={outcome}"
+        back = (f"/seller/{seller_id}/fl?p={outcome}" if request.query_params.get("back") == "fl"
+                else f"/seller/{seller_id}/compare?p={outcome}")
         return RedirectResponse(back + (f"&customer_id_local={customer_id_local}" if customer_id_local else ""), status_code=303)
 
     # --- Seller social screens (M25 DM, M26/M27 feed, M29 group-buy, M30 price) --
@@ -862,6 +908,8 @@ def create_app(settings: MerchantSettings | None = None, *, context_factory: Cal
     routes_shop.register(app, deps)
     routes_chat.register(app, deps, BRAND_NAME)
     routes_store.register(app, deps)
+    routes_pos.register(app, deps, _pos_templates)
+    routes_owner.register(app, deps)
     return app
 
 

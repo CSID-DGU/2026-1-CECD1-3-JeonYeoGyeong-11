@@ -1,0 +1,337 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="pos-order">
+  <!-- menu -->
+  <section class="pos-menu" aria-label="메뉴">
+    <div class="menu-tabs" role="tablist" id="menu-tabs">
+      <button type="button" class="active" data-section="" role="tab">전체</button>
+      {% for s in sections %}<button type="button" data-section="{{ s }}" role="tab">{{ s }}</button>{% endfor %}
+    </div>
+    <input type="search" class="menu-search" id="menu-search" placeholder="메뉴 찾기" aria-label="메뉴 찾기">
+    <div class="menu-grid" id="menu-grid">
+      {% for m in menu %}
+      {%- set emoji = product_emoji(m.category_path, m.title) %}
+      <button type="button" class="menu-btn{{ ' soldout' if m.sold_out }}" data-id="{{ m.item_id }}" data-section="{{ m.section }}" data-name="{{ m.title }}" {{ 'disabled' if m.sold_out }}>
+        <span class="mb-emoji" aria-hidden="true">{{ emoji or '🍽' }}</span>
+        <span class="mb-name">{{ m.title }}</span>
+        <span class="mb-price">{{ "{:,}".format(m.price) }}</span>
+        {% if m.sold_out %}<span class="mb-tag">품절</span>{% elif m.stock is not none and m.stock <= 5 %}<span class="mb-tag low">{{ m.stock }}개</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- the check -->
+  <section class="pos-check" aria-label="주문서">
+    <header class="check-head">
+      <a class="check-back" href="/pos/{{ seller_id }}/" aria-label="테이블로">←</a>
+      <div class="grow"><h1 id="check-label">{{ ticket.label }}</h1><p class="muted-note" id="check-meta"></p></div>
+      <button type="button" class="btn ghost sm" id="open-more">더보기</button>
+    </header>
+    <div class="member-bar" id="member-bar"></div>
+    <ol class="check-lines" id="check-lines" aria-live="polite"></ol>
+    <div class="check-sum" id="check-sum"></div>
+    <div class="check-actions">
+      <button type="button" class="btn secondary pos-big" id="send">주방 전송</button>
+      <button type="button" class="btn primary pos-big" id="open-pay">결제</button>
+    </div>
+  </section>
+
+  <!-- AI -->
+  <aside class="pos-ai" aria-label="추천">
+    <div class="ai-card" id="ai-card"></div>
+    <div class="ai-card usual" id="usual-card" hidden></div>
+    <p class="muted-note ai-note">추천은 이 가게 PC 안의 모델이 이 가게 기록만 보고 계산해요. 손님 번호는 저장하지 않고 가린 값(뒤 4자리)만 남아요.</p>
+  </aside>
+</div>
+
+<!-- member keypad -->
+<div class="pos-modal" id="m-member" hidden role="dialog" aria-modal="true" aria-labelledby="m-member-title">
+  <div class="pos-sheet narrow">
+    <h2 id="m-member-title">포인트 적립 번호</h2>
+    <p class="muted-note">손님 휴대폰 번호를 눌러 주세요. 처음이면 바로 회원이 돼요.</p>
+    <div class="keypad-display" id="phone-display">010-</div>
+    <div class="keypad" id="phone-pad">
+      {% for k in ['1','2','3','4','5','6','7','8','9','지움','0','⌫'] %}<button type="button" data-k="{{ k }}">{{ k }}</button>{% endfor %}
+    </div>
+    <div class="sheet-actions"><button type="button" class="btn ghost" data-close>닫기</button><button type="button" class="btn primary" id="phone-ok">확인</button></div>
+  </div>
+</div>
+
+<!-- payment -->
+<div class="pos-modal" id="m-pay" hidden role="dialog" aria-modal="true" aria-labelledby="m-pay-title">
+  <div class="pos-sheet">
+    <div class="row between"><h2 id="m-pay-title">결제</h2><span class="pay-due">남은 금액 <b id="pay-due"></b></span></div>
+    <div class="pay-methods" role="radiogroup" aria-label="결제 수단">
+      {% for key, label in methods.items() %}<button type="button" data-method="{{ key }}" class="{{ 'active' if key == 'card' }}">{{ {'card': '💳', 'cash': '💵', 'easy': '📱', 'transfer': '🏦', 'points': '⭐'}[key] }} {{ label }}</button>{% endfor %}
+    </div>
+    <div class="pay-grid">
+      <label class="field">이번에 받을 금액 <span class="field-hint">나눠 내면 일부만 입력</span>
+        <input type="number" id="pay-amount" min="1" inputmode="numeric"></label>
+      <div class="pay-split" id="pay-split"></div>
+      <div id="cash-box" hidden>
+        <label class="field">받은 현금<input type="number" id="pay-received" min="0" inputmode="numeric"></label>
+        <div class="quick-cash" id="quick-cash">
+          <button type="button" data-add="exact">딱 맞게</button><button type="button" data-add="10000">+1만</button><button type="button" data-add="50000">+5만</button><button type="button" data-add="clear">지움</button>
+        </div>
+        <p class="pay-change">거스름돈 <b id="pay-change">0원</b></p>
+      </div>
+      <p class="muted-note" id="points-box" hidden></p>
+      <p class="muted-note" id="card-box">카드를 단말기에 꽂거나 대 주세요. (데모: 누르면 바로 승인돼요)</p>
+    </div>
+    <div class="sheet-actions"><button type="button" class="btn ghost" data-close>닫기</button><button type="button" class="btn primary pos-big" id="pay-ok">승인</button></div>
+  </div>
+</div>
+
+<!-- more -->
+<div class="pos-modal" id="m-more" hidden role="dialog" aria-modal="true" aria-labelledby="m-more-title">
+  <div class="pos-sheet narrow">
+    <h2 id="m-more-title">주문 정보</h2>
+    <label class="field">손님 수<span class="stepper"><button type="button" data-g="-1">−</button><b id="guests">1</b><button type="button" data-g="1">＋</button></span></label>
+    <label class="field">할인
+      <span class="chip-row"><button type="button" class="chip" data-dc="0">없음</button><button type="button" class="chip" data-dc="5">5%</button><button type="button" class="chip" data-dc="10">10%</button><button type="button" class="chip" data-dcw="1000">−1,000원</button><button type="button" class="chip" data-dcw="3000">−3,000원</button></span></label>
+    <label class="field">테이블 이동
+      <select id="move-table"><option value="">이동하지 않음</option>{% for n in range(1, tables + 1) %}<option value="{{ n }}">{{ n }}번 테이블</option>{% endfor %}</select></label>
+    <div class="sheet-actions">
+      <button type="button" class="btn-link danger" id="void">주문 전체 취소</button>
+      <span class="grow"></span>
+      <button type="button" class="btn primary" data-close>닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- line memo -->
+<div class="pos-modal" id="m-line" hidden role="dialog" aria-modal="true" aria-labelledby="m-line-title">
+  <div class="pos-sheet narrow">
+    <h2 id="m-line-title">요청사항</h2>
+    <div class="chip-row wrap" id="memo-chips">
+      <button type="button" class="chip" data-memo="">없음</button>
+      {% for m in memos %}<button type="button" class="chip" data-memo="{{ m }}">{{ m }}</button>{% endfor %}
+    </div>
+    <div class="sheet-actions"><button type="button" class="btn ghost" data-close>닫기</button></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var SELLER = {{ seller_id | tojson }}, TICKET = {{ ticket.ticket_id | tojson }}, CSRF = {{ (csrf_token or '') | tojson }};
+  var base = '/pos/' + SELLER + '/api/tickets/' + TICKET;
+  var S = {{ {"ticket": ticket, "recommend": recommend} | tojson }};
+  var won = function (n) { return (n || 0).toLocaleString('ko-KR') + '원'; };
+  var $ = function (id) { return document.getElementById(id); };
+  var busy = false;
+
+  function call(path, body, method) {
+    if (busy) return Promise.resolve(null);
+    busy = true;
+    return fetch(base + path, {method: method || 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF, 'Accept': 'application/json'},
+        body: method === 'GET' ? undefined : JSON.stringify(body || {})})
+      .then(function (r) { return r.json().catch(function () { throw new Error('login'); }); })
+      .then(function (j) {
+        busy = false;
+        if (j.error) { posToast(j.error, true); return null; }
+        S = {ticket: j.ticket, recommend: j.recommend}; render();
+        if (j.redirect) { location.href = j.redirect; }
+        return j;
+      })
+      .catch(function () { busy = false; posToast('연결이 끊겼어요. 다시 로그인해 주세요.', true); return null; });
+  }
+
+  var STATE = {new: ['새 주문', 'new'], sent: ['조리 중', 'sent'], served: ['나감', 'served'], void: ['취소', 'void']};
+  function render() {
+    var t = S.ticket;
+    $('check-label').textContent = t.label;
+    var mins = Math.max(0, Math.round((Date.now() - Date.parse(t.opened_at)) / 60000));
+    $('check-meta').textContent = t.kind_label + ' · ' + t.guests + '명 · ' + mins + '분 경과';
+    $('guests').textContent = t.guests;
+
+    // member
+    var mb = $('member-bar');
+    if (t.member) {
+      mb.innerHTML = '<span class="mb-star">⭐</span><span class="grow"><b>' + t.member.label + '</b> · 방문 ' + t.member.visits + '회 · 포인트 ' +
+        t.member.points.toLocaleString('ko-KR') + 'P</span><button type="button" class="btn-link" id="member-clear">해제</button>';
+      $('member-clear').onclick = function () { call('/member', {}); };
+    } else {
+      mb.innerHTML = '<span class="grow muted-note">적립 회원이 아니에요</span><button type="button" class="btn secondary sm" id="member-open">📱 적립 번호 입력</button>';
+      $('member-open').onclick = function () { openModal('m-member'); };
+    }
+
+    // lines
+    var ol = $('check-lines'); ol.innerHTML = '';
+    if (!t.lines.length) { ol.innerHTML = '<li class="check-empty">왼쪽에서 메뉴를 눌러 담아 주세요.</li>'; }
+    t.lines.forEach(function (l) {
+      var li = document.createElement('li'); li.className = 'check-line ' + l.state;
+      var st = STATE[l.state];
+      li.innerHTML = '<div class="cl-main"><span class="cl-name">' + esc(l.title) + '</span>' +
+        (l.memo ? '<span class="cl-memo">' + esc(l.memo) + '</span>' : '') + '<span class="cl-state ' + st[1] + '">' + st[0] + '</span></div>' +
+        '<div class="cl-qty">' + (l.state === 'void' ? '' :
+          '<button type="button" data-q="-1" aria-label="하나 빼기">−</button><b>' + l.quantity + '</b><button type="button" data-q="1" aria-label="하나 더">＋</button>') + '</div>' +
+        '<span class="cl-total">' + won(l.total) + '</span>';
+      li.querySelectorAll('[data-q]').forEach(function (b) {
+        b.onclick = function () {
+          var q = l.quantity + Number(b.dataset.q);
+          if (q <= 0 && l.state !== 'new' && !confirm('주방에 들어간 메뉴예요. 취소할까요?')) return;
+          call('/lines/' + l.line_id, {quantity: q});
+        };
+      });
+      if (l.state === 'new') { li.querySelector('.cl-name').onclick = function () { memoLine = l.line_id; openModal('m-line'); }; li.querySelector('.cl-name').classList.add('tap'); }
+      ol.appendChild(li);
+    });
+
+    // totals
+    var sum = '<div><span>소계</span><span>' + won(t.subtotal) + '</span></div>';
+    if (t.discount_minor) sum += '<div class="disc"><span>할인</span><span>−' + won(t.discount_minor) + '</span></div>';
+    if (t.paid) sum += '<div><span>받은 금액</span><span>' + won(t.paid) + '</span></div>';
+    sum += '<div class="total"><span>' + (t.paid ? '남은 금액' : '합계') + '</span><span>' + won(t.paid ? t.due : t.total) + '</span></div>';
+    if (t.member && t.points_preview) sum += '<div class="pts"><span>적립 예정</span><span>' + t.points_preview.toLocaleString('ko-KR') + 'P (' + t.point_rate + '%)</span></div>';
+    $('check-sum').innerHTML = sum;
+    $('send').textContent = t.unsent ? '주방 전송 (' + t.unsent + ')' : '주방 전송';
+    $('send').disabled = !t.unsent;
+    $('open-pay').disabled = t.total <= 0;
+    $('open-pay').textContent = t.total > 0 ? won(t.paid ? t.due : t.total) + ' 결제' : '결제';
+
+    // AI
+    var r = S.recommend, card = $('ai-card');
+    var head = t.member ? (r.personal ? '이 손님에게 추천' : '이 손님 추천 (기록 쌓는 중)') : '오늘 많이 찾는 메뉴';
+    var sub = t.member ? (r.personal ? 'AI가 이 손님의 지난 주문으로 고른 다음 메뉴' : (r.label || '')) : '적립 번호를 넣으면 손님별 추천으로 바뀌어요';
+    card.innerHTML = '<p class="ai-head">✨ ' + head + '</p><p class="ai-sub">' + esc(sub) + '</p>' +
+      (r.items.length ? '' : '<p class="muted-note">추천할 메뉴가 없어요.</p>');
+    r.items.forEach(function (m) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'ai-item';
+      b.innerHTML = '<span class="grow">' + esc(m.title) + '</span><span>' + won(m.price) + '</span><span class="ai-add">＋</span>';
+      b.onclick = function () { call('/lines', {item_id: m.item_id}).then(function (j) { if (j) posToast('추천 메뉴를 담았어요'); }); };
+      card.appendChild(b);
+    });
+    if (r.model) { var p = document.createElement('p'); p.className = 'ai-model'; p.textContent = r.personal ? '모델 ' + r.model : ''; card.appendChild(p); }
+    var usual = $('usual-card');
+    if (t.member && r.usual && r.usual.length) {
+      usual.hidden = false;
+      usual.innerHTML = '<p class="ai-head">🧾 이 손님 단골 메뉴</p><p class="ai-sub">지난 주문에서 센 횟수예요 (AI 예측 아님)</p>';
+      r.usual.forEach(function (m) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'ai-item';
+        b.innerHTML = '<span class="grow">' + esc(m.title) + '</span><span class="muted-note">' + m.times + '번</span><span class="ai-add">＋</span>';
+        b.onclick = function () { call('/lines', {item_id: m.item_id}); };
+        usual.appendChild(b);
+      });
+    } else { usual.hidden = true; }
+  }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+  // menu
+  document.querySelectorAll('.menu-btn').forEach(function (b) {
+    b.addEventListener('click', function () { b.classList.add('pressed'); setTimeout(function () { b.classList.remove('pressed'); }, 160); call('/lines', {item_id: b.dataset.id}); });
+  });
+  var section = '';
+  function filterMenu() {
+    var q = $('menu-search').value.trim();
+    document.querySelectorAll('.menu-btn').forEach(function (b) {
+      b.hidden = (section && b.dataset.section !== section) || (q && b.dataset.name.indexOf(q) < 0);
+    });
+  }
+  $('menu-tabs').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () { section = b.dataset.section; $('menu-tabs').querySelectorAll('button').forEach(function (x) { x.classList.toggle('active', x === b); }); filterMenu(); };
+  });
+  $('menu-search').addEventListener('input', filterMenu);
+
+  // modals
+  function openModal(id) { $(id).hidden = false; }
+  function closeModals() { document.querySelectorAll('.pos-modal').forEach(function (m) { m.hidden = true; }); }
+  document.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = closeModals; });
+  document.querySelectorAll('.pos-modal').forEach(function (m) { m.addEventListener('click', function (e) { if (e.target === m) closeModals(); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModals(); });
+
+  // phone keypad
+  var digits = '010';
+  function showPhone() {
+    var d = digits, out = d.slice(0, 3) + (d.length > 3 ? '-' + d.slice(3, 7) : '-') + (d.length > 7 ? '-' + d.slice(7, 11) : '');
+    $('phone-display').textContent = out;
+  }
+  $('phone-pad').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () {
+      var k = b.dataset.k;
+      if (k === '지움') digits = '010'; else if (k === '⌫') digits = digits.length > 3 ? digits.slice(0, -1) : digits;
+      else if (digits.length < 11) digits += k;
+      showPhone();
+    };
+  });
+  $('phone-ok').onclick = function () {
+    call('/member', {phone: digits}).then(function (j) { if (j) { closeModals(); posToast(j.member_new ? '새 회원으로 등록했어요' : '회원을 찾았어요'); digits = '010'; showPhone(); } });
+  };
+
+  // memo
+  var memoLine = null;
+  $('memo-chips').querySelectorAll('[data-memo]').forEach(function (b) {
+    b.onclick = function () { call('/lines/' + memoLine, {memo: b.dataset.memo}).then(closeModals); };
+  });
+
+  // kitchen
+  $('send').onclick = function () { call('/send').then(function (j) { if (j) posToast('주방에 ' + j.sent + '개 메뉴를 보냈어요'); }); };
+
+  // more
+  $('open-more').onclick = function () { openModal('m-more'); };
+  document.querySelectorAll('[data-g]').forEach(function (b) { b.onclick = function () { call('/details', {guests: S.ticket.guests + Number(b.dataset.g)}); }; });
+  document.querySelectorAll('[data-dc]').forEach(function (b) { b.onclick = function () { call('/details', {discount_percent: Number(b.dataset.dc), discount: 0}); }; });
+  document.querySelectorAll('[data-dcw]').forEach(function (b) { b.onclick = function () { call('/details', {discount: Number(b.dataset.dcw)}); }; });
+  $('move-table').onchange = function (e) { if (e.target.value) call('/details', {table_no: Number(e.target.value)}).then(function (j) { if (j) { posToast('테이블을 옮겼어요'); closeModals(); } e.target.value = ''; }); };
+  $('void').onclick = function () { if (confirm('이 주문을 전부 취소할까요? 결제 기록이 남지 않아요.')) call('/void', {reason: '주문 취소'}); };
+
+  // pay
+  var method = 'card';
+  function payView() {
+    var t = S.ticket;
+    $('pay-due').textContent = won(t.due);
+    var amt = $('pay-amount');
+    if (!amt.value || Number(amt.value) > t.due) amt.value = t.due;
+    $('cash-box').hidden = method !== 'cash';
+    $('card-box').hidden = !(method === 'card' || method === 'easy');
+    var pb = $('points-box'); pb.hidden = method !== 'points';
+    if (method === 'points') {
+      pb.textContent = t.member ? '쓸 수 있는 포인트 ' + t.member.points.toLocaleString('ko-KR') + 'P' : '적립 회원만 포인트로 낼 수 있어요.';
+      if (t.member && Number(amt.value) > t.member.points) amt.value = Math.min(t.due, t.member.points);
+    }
+    var split = $('pay-split'); split.innerHTML = '';
+    [2, 3, 4].forEach(function (n) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = n + '명이 나눠 내기';
+      b.onclick = function () { amt.value = Math.ceil(t.due / n / 10) * 10; if (Number(amt.value) > t.due) amt.value = t.due; changeView(); };
+      split.appendChild(b);
+    });
+    changeView();
+  }
+  function changeView() {
+    var amt = Number($('pay-amount').value || 0), rec = Number($('pay-received').value || 0);
+    $('pay-change').textContent = won(Math.max(0, rec - amt));
+  }
+  document.querySelectorAll('[data-method]').forEach(function (b) {
+    b.onclick = function () { method = b.dataset.method; document.querySelectorAll('[data-method]').forEach(function (x) { x.classList.toggle('active', x === b); }); payView(); };
+  });
+  $('pay-amount').addEventListener('input', changeView);
+  $('pay-received').addEventListener('input', changeView);
+  $('quick-cash').querySelectorAll('button').forEach(function (b) {
+    b.onclick = function () {
+      var r = $('pay-received'), a = b.dataset.add;
+      if (a === 'exact') r.value = $('pay-amount').value; else if (a === 'clear') r.value = ''; else r.value = Number(r.value || 0) + Number(a);
+      changeView();
+    };
+  });
+  $('open-pay').onclick = function () { $('pay-amount').value = ''; $('pay-received').value = ''; payView(); openModal('m-pay'); };
+  $('pay-ok').onclick = function () {
+    var body = {method: method, amount: Number($('pay-amount').value || 0)};
+    if (method === 'cash') body.received = Number($('pay-received').value || body.amount);
+    var btn = $('pay-ok'); btn.disabled = true; btn.textContent = method === 'card' || method === 'easy' ? '승인 중…' : '처리 중…';
+    setTimeout(function () {
+      call('/pay', body).then(function (j) {
+        btn.disabled = false; btn.textContent = '승인';
+        if (!j) return;
+        if (j.change) posToast('거스름돈 ' + won(j.change));
+        if (!j.redirect) { payView(); posToast('나머지 ' + won(S.ticket.due) + '를 받아 주세요'); }
+      });
+    }, method === 'card' || method === 'easy' ? 700 : 0);
+  };
+
+  render();
+})();
+</script>
+{% endblock %}

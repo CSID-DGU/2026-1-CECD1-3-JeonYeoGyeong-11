@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ store_name }} POS · {{ brand_name }}</title>
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="pos-body">
+  <header class="pos-top">
+    <a class="pos-brand" href="/pos/{{ seller_id }}/"><img src="/static/logo.svg" alt=""><span>{{ store_name }}</span><em>POS</em></a>
+    <nav class="pos-nav" aria-label="POS 메뉴">
+      <a href="/pos/{{ seller_id }}/" class="{{ 'active' if screen in ('floor', 'ticket') }}">🍽 테이블</a>
+      <a href="/pos/{{ seller_id }}/kitchen" class="{{ 'active' if screen == 'kitchen' }}">👩‍🍳 주방</a>
+      <a href="/pos/{{ seller_id }}/close" class="{{ 'active' if screen == 'close' }}">🧾 마감</a>
+    </nav>
+    <div class="pos-meta">
+      <span class="pos-clock" id="pos-clock"></span>
+      <a class="pos-owner" href="/seller/{{ seller_id }}/today">사장님 화면 →</a>
+    </div>
+  </header>
+  <main class="pos-main">
+    {% block content %}{% endblock %}
+  </main>
+  <div class="pos-toast" id="pos-toast" role="status" aria-live="polite" hidden></div>
+  <script>
+  (function () {
+    var c = document.getElementById('pos-clock');
+    function tick() { var d = new Date(); c.textContent = d.toLocaleDateString('ko-KR', {month: 'long', day: 'numeric', weekday: 'short'}) + ' ' + d.toLocaleTimeString('ko-KR', {hour: '2-digit', minute: '2-digit'}); }
+    tick(); setInterval(tick, 15000);
+  })();
+  window.posToast = function (msg, bad) {
+    var t = document.getElementById('pos-toast'); t.textContent = msg; t.className = 'pos-toast' + (bad ? ' bad' : ''); t.hidden = false;
+    clearTimeout(window._posToastTimer); window._posToastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  };
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

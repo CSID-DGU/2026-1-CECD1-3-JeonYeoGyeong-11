@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">연합학습</h1>
+  <p>우리 가게 손님 기록은 이 PC 밖으로 나가지 않아요. 여러 식당이 각자 학습한 결과(숫자 묶음)만 모아서 더 나은 공통 모델을 만들고, 그 모델을 다시 각 가게가 받아요.</p>
+</div>
+
+<div class="fl-flow" aria-label="연합학습 흐름">
+  <div class="fl-node here"><b>🍽 우리 가게 PC</b><span>POS 결제 기록 → 이 PC에서 학습</span></div>
+  <div class="fl-arrow"><span>학습 결과(가중치)만 ↑</span><span>↓ 새 공통 모델</span></div>
+  <div class="fl-node"><b>🔁 모으는 곳(코디네이터)</b><span>여러 가게 결과를 평균 → 새 공통 모델</span></div>
+  <div class="fl-arrow"><span>↔</span></div>
+  <div class="fl-node"><b>🍜 🍰 🥩 다른 식당들</b><span>각자 자기 PC에서 똑같이</span></div>
+</div>
+
+<div class="grid cols-2 mt-12">
+  <div class="card stack fl-keep">
+    <h2 class="section-title flush">🔒 이 PC에만 있는 것</h2>
+    <ul class="plain-list">
+      <li>결제 <b>{{ "{:,}".format(kept.tickets) }}</b>건, 결제 수단 기록 <b>{{ "{:,}".format(kept.payments) }}</b>건</li>
+      <li>적립 회원 <b>{{ "{:,}".format(kept.members) }}</b>명 (전화번호는 저장하지 않음, 가린 뒤 4자리와 해시만)</li>
+      <li>학습용 구매 기록 <b>{{ "{:,}".format(delivery.purchase_event.delivered) }}</b>건 (메뉴·시각만, 이 PC의 추천 모델 원장에)</li>
+    </ul>
+    <p class="muted-note">이 기록들은 다른 가게나 서버로 보내지 않아요.</p>
+  </div>
+  <div class="card stack fl-send">
+    <h2 class="section-title flush">📤 밖으로 나가는 것</h2>
+    {% for r in releases %}
+    <p><b>{{ r.label }} 모델</b>의 공유 층 가중치{% if r.size_kb %} 약 <b>{{ r.size_kb }}KB</b>{% endif %}</p>
+    <p class="muted-note mono">{{ r.groups | join(' · ') }}</p>
+    {% endfor %}
+    <p class="muted-note">문장 인코더(상품 글을 읽는 부분)는 모든 가게가 같은 걸 고정해서 써서 보내지 않아요. 우리 가게에만 맞춘 마지막 층(개인화)도 보내지 않아요.</p>
+  </div>
+</div>
+
+<div class="grid cols-2 mt-12">
+  <div class="card stack">
+    <h2 class="section-title flush">지금 받은 공통 모델</h2>
+    <dl class="kv">
+      <dt>문장 인코더</dt><dd>{{ '설치됨 (다국어 MiniLM-L12)' if encoder else '없음' }}</dd>
+      {% for r in releases %}<dt>{{ r.label }}</dt><dd class="mono">{{ r.version or '미설치' }}</dd>{% endfor %}
+      <dt>라운드 참여</dt><dd>{{ '켜짐' if fl_enabled else '이 시연 PC에서는 꺼짐 (라운드 시연은 팀의 FL 데모로)' }}</dd>
+    </dl>
+    <p class="muted-note">지금 모델은 장보기 매장 100곳 데이터로 500라운드 학습한 첫 공통 모델이에요(보호 집계 전 시뮬레이션).</p>
+  </div>
+  <div class="card stack">
+    <h2 class="section-title flush">우리 가게 맞춤 학습</h2>
+    <p class="body-text">공통 모델의 마지막 층만 우리 가게 기록으로 다시 학습해요. 검사에서 더 나을 때만 써요.</p>
+    {% if notice == 'busy' %}<div class="notice warn">이미 학습 중이에요. 끝난 뒤 다시 눌러 주세요.</div>{% endif %}
+    {% if personalization %}
+      {% if personalization.state == 'running' %}<div class="notice">학습 중… 몇 초 걸려요. 새로 고침해 보세요.</div>
+      {% elif personalization.error %}<div class="notice warn">{{ '추천 모델이 연결되지 않았어요.' if personalization.error == 'not_connected' else personalization.error }}</div>
+      {% else %}
+      <ul class="plain-list">
+        {% for variant, r in personalization.results.items() %}
+        <li>{{ '텍스트+관계' if variant == 'text_relation' else '텍스트' }}: <b>{{ {'installed': '적용됨', 'rejected': '검사 결과 공통 모델이 더 좋아 그대로 씀', 'skipped': '데이터가 부족하거나 모델 없음'}.get(r.status, r.status) }}</b></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    {% endif %}
+    <form method="post" action="/seller/{{ seller_id }}/personalize?back=fl"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+      <button class="btn primary sm" type="submit">맞춤 학습 실행</button></form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block content %}
+<section class="pos-strip" aria-label="지금 매장">
+  <div><span>사용 중 테이블</span><strong>{{ floor.busy }} / {{ floor.settings.tables }}</strong></div>
+  <div><span>진행 중 금액</span><strong>{{ "{:,}".format(floor.open_total) }}원</strong></div>
+  <div><span>오늘 매출</span><strong>{{ "{:,}".format(today.revenue) }}원</strong></div>
+  <div><span>오늘 결제</span><strong>{{ today.count }}건 · {{ today.guests }}명</strong></div>
+  <a class="{{ 'hot' if kitchen }}" href="/pos/{{ seller_id }}/kitchen"><span>주방 대기</span><strong>{{ kitchen }}건</strong></a>
+</section>
+
+<div class="pos-floor">
+  <section class="pos-tables" aria-label="테이블">
+    <div class="pos-section-head"><h1>홀</h1><span class="pos-legend"><i class="dot free"></i>빈 테이블 <i class="dot busy"></i>식사 중 <i class="dot wait"></i>조리 대기</span></div>
+    <div class="table-grid">
+      {% for t in floor.tables %}
+      {% set v = t.ticket %}
+      <a class="table-tile {{ 'busy' if v }}{{ ' wait' if v and v.waiting }}{{ ' long' if v and v.minutes >= 90 }}" href="/pos/{{ seller_id }}/tables/{{ t.no }}">
+        <span class="tt-no">{{ t.no }}</span>
+        {% if v %}
+        <span class="tt-amount">{{ "{:,}".format(v.total) }}원</span>
+        <span class="tt-meta">{{ v.guests }}명 · {{ v.minutes }}분{% if v.member %} · ⭐{% endif %}</span>
+        <span class="tt-lines">{% for l in v.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% endfor %}</span>
+        {% if v.waiting %}<span class="tt-badge">조리 {{ v.waiting }}</span>{% elif v.unsent %}<span class="tt-badge new">미전송 {{ v.unsent }}</span>{% endif %}
+        {% else %}
+        <span class="tt-free">비어 있음</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="pos-side" aria-label="포장">
+    <div class="pos-section-head"><h1>포장</h1></div>
+    <a class="btn primary block pos-big" href="/pos/{{ seller_id }}/takeout">＋ 포장 주문 받기</a>
+    <div class="takeout-list">
+      {% for v in floor.takeout %}
+      <a class="takeout-item" href="/pos/{{ seller_id }}/tickets/{{ v.ticket_id }}">
+        <span class="row between"><b>포장 #{{ loop.index }}</b><span>{{ v.minutes }}분 전</span></span>
+        <span class="tt-lines">{% for l in v.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% else %}메뉴 고르는 중{% endfor %}</span>
+        <span class="row between"><span class="muted-note">{{ '결제 대기' if v.lines else '' }}</span><b>{{ "{:,}".format(v.total) }}원</b></span>
+      </a>
+      {% else %}
+      <p class="muted-note">진행 중인 포장 주문이 없어요.</p>
+      {% endfor %}
+    </div>
+    <div class="pos-tip">
+      <b>사용법</b>
+      <span>테이블을 누르면 주문 화면이 열려요. 메뉴를 담고 <b>주방 전송</b>, 식사가 끝나면 <b>결제</b>. 적립 번호를 넣으면 그 손님에게 맞춘 추천 메뉴가 떠요.</span>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>setTimeout(function () { location.reload(); }, 30000);</script>
+{% endblock %}

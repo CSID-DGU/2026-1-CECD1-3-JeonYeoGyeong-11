@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">메뉴</h1>
+  <p>메뉴를 바꾸면 POS와 우리 가게 AI에 바로 반영돼요. 설명을 자세히 쓸수록 처음 내놓는 메뉴도 어울리는 손님에게 잘 추천돼요.</p>
+</div>
+{% if saved == 'stock' %}<div class="notice mb-16">품절 상태를 바꿨어요. POS에도 바로 보여요.</div>{% endif %}
+
+<details class="card menu-add" {{ 'open' if not items }}>
+  <summary class="list-title">＋ 새 메뉴 등록</summary>
+  <form class="form mt-12" method="post" action="/seller/{{ seller_id }}/menu"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <div class="form-row">
+      <label class="field">메뉴 이름<input type="text" name="title_text" required maxlength="60" placeholder="예: 들기름 막국수"></label>
+      <label class="field">가격(원)<input type="number" name="display_price_minor" min="0" step="100" required></label>
+      <label class="field">분류<input type="text" name="section" list="sections" value="{{ sections[0] if sections else '식사' }}" maxlength="20"></label>
+    </div>
+    <datalist id="sections">{% for s in sections %}<option value="{{ s }}">{% endfor %}</datalist>
+    <label class="field">설명 <span class="field-hint">재료·맛·양을 적어 주세요. AI가 이 글로 메뉴를 이해해요</span>
+      <textarea name="description_text" rows="2" maxlength="300" placeholder="강원도 메밀면에 고소한 들기름과 김가루를 듬뿍"></textarea></label>
+    <div class="form-actions"><button class="btn primary" type="submit">등록하고 좋아할 손님 보기</button></div>
+  </form>
+</details>
+
+{% for s in sections %}
+<section class="section">
+  <h2 class="section-title">{{ s }}</h2>
+  <div class="menu-admin">
+    {% for m in items if m.section == s %}
+    {%- set emoji = product_emoji(m.category_path, m.title) %}
+    <article class="menu-row{{ ' soldout' if m.sold_out }}" id="m-{{ m.item_id }}">
+      <span class="thumb tone-{{ loop.index0 % 4 }} emoji cell-thumb" aria-hidden="true">{{ emoji or '🍽' }}</span>
+      <div class="grow">
+        <p class="list-title">{{ m.title }} {% if m.sold_out %}<span class="badge warn">품절</span>{% endif %}</p>
+        <p class="list-sub">{{ m.description or '설명 없음' }}</p>
+      </div>
+      <span class="num"><b>{{ "{:,}".format(m.price) }}원</b><br><span class="muted-note">누적 {{ counts.get(m.item_id, 0) }}개</span></span>
+      <form method="post" action="/seller/{{ seller_id }}/menu/{{ m.item_id }}/soldout"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="sold_out" value="{{ '0' if m.sold_out else '1' }}">
+        <button class="btn {{ 'secondary' if m.sold_out else 'ghost' }} sm" type="submit">{{ '판매 재개' if m.sold_out else '품절' }}</button></form>
+      <a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ m.item_id }}">수정</a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+{% if inactive %}
+<section class="section">
+  <h2 class="section-title">판매 중지 {{ inactive | length }}개</h2>
+  <div class="menu-admin">
+    {% for i in inactive %}
+    <article class="menu-row soldout"><div class="grow"><p class="list-title">{{ i.title_text }}</p></div>
+      <a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ i.item_id_local }}">다시 팔기·수정</a></article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

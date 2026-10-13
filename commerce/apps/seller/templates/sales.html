@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% from "_chart.html" import bars %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">매출</h1>
+  <div class="row">
+    <a class="btn ghost sm" href="/seller/{{ seller_id }}/sales?day={{ prev }}">‹ 전날</a>
+    <form method="get" action="/seller/{{ seller_id }}/sales"><input type="date" name="day" value="{{ day }}" aria-label="날짜" onchange="this.form.submit()"></form>
+    {% if next %}<a class="btn ghost sm" href="/seller/{{ seller_id }}/sales?day={{ next }}">다음날 ›</a>{% endif %}
+    {% if summary.closed %}<span class="badge solid">마감 완료</span>{% endif %}
+  </div>
+</div>
+
+<div class="grid cols-4 kpis">
+  <div class="card kpi"><span class="kpi-label">매출</span><span class="kpi-value">{{ "{:,}".format(summary.revenue) }}원</span><span class="kpi-sub">할인 {{ "{:,}".format(summary.discount) }}원 · 포인트 {{ "{:,}".format(summary.points_used) }}P</span></div>
+  <div class="card kpi"><span class="kpi-label">결제</span><span class="kpi-value">{{ summary.count }}건</span><span class="kpi-sub">결제 취소 {{ summary.refunds }}건</span></div>
+  <div class="card kpi"><span class="kpi-label">손님</span><span class="kpi-value">{{ summary.guests }}명</span><span class="kpi-sub">객단가 {{ "{:,}".format(summary.per_guest) }}원</span></div>
+  <div class="card kpi"><span class="kpi-label">결제 수단</span><span class="kpi-value small">{% for label, amount in summary.by_method[:2] %}{{ label }} {{ (100 * amount / summary.revenue) | round | int if summary.revenue else 0 }}%{{ ' · ' if not loop.last }}{% else %}-{% endfor %}</span><span class="kpi-sub">{% for label, amount in summary.by_method[2:] %}{{ label }} {{ "{:,}".format(amount) }}원{{ ' · ' if not loop.last }}{% endfor %}</span></div>
+</div>
+
+<figure class="card chart-card mt-12">
+  <figcaption class="list-title">시간대별 매출</figcaption>
+  {{ bars(hours, day ~ ' 시간대별 매출', highlight_last=False) }}
+</figure>
+
+<section class="section">
+  <h2 class="section-title">결제 내역 {{ tickets | length }}건</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>시각</th><th>영수증</th><th>자리</th><th>메뉴</th><th>결제</th><th>회원</th><th class="num">금액</th></tr></thead>
+      <tbody>
+      {% for t in tickets %}
+      <tr class="{{ 'refunded' if t.status == 'refunded' }}">
+        <td class="mono">{{ t.paid_at | kst('%H:%M') }}</td>
+        <td><a class="link mono" href="/pos/{{ seller_id }}/receipts/{{ t.ticket_id }}">{{ t.receipt_no }}</a></td>
+        <td>{{ t.label }} · {{ t.guests }}명</td>
+        <td>{% for l in t.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% endfor %}</td>
+        <td>{% for p in t.payments %}{{ p.method_label }}{{ ' + ' if not loop.last }}{% endfor %}{% if t.status == 'refunded' %} <span class="badge muted">취소</span>{% endif %}</td>
+        <td>{% if t.member %}<a class="link" href="/seller/{{ seller_id }}/guests/{{ t.member_id }}">{{ t.member.label }}</a>{% else %}<span class="muted-note">-</span>{% endif %}</td>
+        <td class="num">{{ "{:,}".format(t.total) }}원</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7"><div class="empty">이 날 결제가 없어요.</div></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted-note">영수증 번호를 누르면 영수증과 결제 취소가 있어요.</p>
+</section>
+{% endblock %}

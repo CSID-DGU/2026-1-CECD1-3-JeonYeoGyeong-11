@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="pos-section-head"><h1>주방 주문 {{ queue | length }}건</h1><span class="muted-note">메뉴를 누르면 "나감"으로 표시돼요. 20초마다 새로 고쳐요.</span></div>
+<div class="kds">
+  {% for t in queue %}
+  {%- set mins = t.minutes %}
+  <article class="kds-card{{ ' late' if mins >= 15 }}">
+    <header><b>{{ t.label }}</b><span>{{ mins }}분 전</span></header>
+    <ul>
+      {% for l in t.lines %}
+      <li><button type="button" class="kds-line" data-line="{{ l.line_id }}"><span class="grow">{{ l.title }}{% if l.memo %} <em>({{ l.memo }})</em>{% endif %}</span><b>× {{ l.quantity }}</b></button></li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% else %}
+  <div class="card empty">대기 중인 주문이 없어요.</div>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  document.querySelectorAll('.kds-line').forEach(function (b) {
+    b.onclick = function () {
+      fetch('/pos/{{ seller_id }}/api/lines/' + b.dataset.line + '/served', {method: 'POST', credentials: 'same-origin',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': {{ (csrf_token or '') | tojson }}}, body: '{}'})
+        .then(function (r) { return r.json(); }).then(function (j) {
+          if (j.error) { posToast(j.error, true); return; }
+          var li = b.closest('li'), card = b.closest('.kds-card'); li.remove();
+          if (!card.querySelector('li')) card.remove();
+        });
+    };
+  });
+  setTimeout(function () { location.reload(); }, 20000);
+})();
+</script>
+{% endblock %}

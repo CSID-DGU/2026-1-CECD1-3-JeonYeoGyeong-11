@@ -1,4 +1,4 @@
-"""Start only the seller apps for a screen demo, with run_local's layout but a longer start-up wait.
+"""Start only the seller apps (owner web + POS) for a screen demo, with run_local's layout but a longer start-up wait.
 
 run_local (C) waits 20 s per service. With trained models installed each seller loads torch and
 the frozen encoder first (about 10 s alone, more when several start together), so a six-store
@@ -36,7 +36,7 @@ def main(argv=None) -> int:
             base = VAR / f"merchant_{i}"
             base.mkdir(parents=True, exist_ok=True)
             env = {k: v for k, v in os.environ.items() if not k.startswith(("MERCHANT_ID", "FEATURE_", "MODEL_", "FL_"))}
-            env.setdefault("DEMO_MASTER", "1")  # one-click master login on the login screens
+            env.setdefault("LEGACY_BUYER_SCREENS", "0")  # the restaurant version: owner web + POS only
             env.update({"MERCHANT_ID": f"merchant-{i}", "FEATURE_DB_PATH": str(base / "features.sqlite"),
                         "MODEL_DIR": str(base / "models"), "FL_ENABLED": "false", "FL_MODE": "protected"})
             log = open(base / "server.log", "ab")
@@ -50,7 +50,7 @@ def main(argv=None) -> int:
                 try:
                     with opener.open(f"http://127.0.0.1:{8100 + i}/healthz", timeout=1) as response:
                         json.load(response)
-                    print(f"merchant-{i}: http://127.0.0.1:{8100 + i}/buyer/merchant-{i}/", flush=True)
+                    print(f"merchant-{i}: POS http://127.0.0.1:{8100 + i}/pos/merchant-{i}/ · 사장님 http://127.0.0.1:{8100 + i}/seller/merchant-{i}/today", flush=True)
                     break
                 except OSError:
                     if process.poll() is not None or time.monotonic() > deadline:

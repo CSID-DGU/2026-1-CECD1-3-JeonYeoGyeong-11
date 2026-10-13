@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">설정</h1>
+  <p>POS와 손님 적립에 쓰는 가게 정보예요.</p>
+</div>
+{% if saved %}<div class="notice mb-16">저장했어요.</div>{% endif %}
+<form class="card form" method="post" action="/seller/{{ seller_id }}/settings"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+  <div class="form-row">
+    <label class="field">테이블 수<input type="number" name="tables" min="1" max="60" value="{{ pos.tables }}"></label>
+    <label class="field"><span>포인트 적립률 <span class="field-hint">결제 금액의 %</span></span><input type="number" name="point_rate" min="0" max="20" value="{{ pos.point_rate }}"></label>
+    <label class="field">영업시간<input type="text" name="open_hours" maxlength="60" value="{{ pos.open_hours or '' }}" placeholder="11:00~21:00 (브레이크 15:00~17:00)"></label>
+  </div>
+  <label class="field">가게 소개<input type="text" name="store_intro" maxlength="200" value="{{ store.store_intro or '' }}"></label>
+  <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+</form>
+<div class="card stack mt-12">
+  <h2 class="section-title flush">계정과 보안</h2>
+  <ul class="plain-list">
+    <li>비밀번호는 원문 없이 해시(PBKDF2, 20만 회)로만 저장돼요.</li>
+    <li>로그인은 서명된 쿠키로 유지되고, 화면의 모든 저장 버튼은 위조 방지 토큰(CSRF)을 확인해요.</li>
+    <li>손님 전화번호는 가게마다 다른 값(salt)과 섞은 해시로만 남고, 화면에는 뒤 4자리만 보여요.</li>
+    <li>이 가게의 기록은 이 가게 DB 한 곳에만 있고, 다른 가게 화면과 연결된 링크가 없어요.</li>
+  </ul>
+</div>
+{% endblock %}
