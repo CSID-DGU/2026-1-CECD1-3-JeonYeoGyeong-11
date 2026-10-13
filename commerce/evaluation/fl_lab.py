@@ -76,13 +76,18 @@ def local_round(model: HarexRecommender, global_shared: dict, train_parts, epoch
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--instacart-dir", type=Path)
+    parser.add_argument("--dunnhumby-dir", type=Path)  # --protocol dunnhumby
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
     parser.add_argument("--variant", required=True, choices=VARIANTS)
     parser.add_argument("--target", default="basket", choices=TARGETS)
     parser.add_argument("--sellers", type=int, default=5)
     parser.add_argument("--rounds", type=int, default=300)
+    # Continue a run: its final shared weights and the rounds it already ran (lm variants only;
+    # each local round starts a fresh optimizer, so 500 + 500 is the same as 1000 from round 0).
+    parser.add_argument("--init-from", type=Path)  # a run folder's shared_weights.pt
+    parser.add_argument("--start-round", type=int, default=0)
     parser.add_argument("--local-epochs", type=int, default=1)
     parser.add_argument("--val-every", type=int, default=5)  # and always the last round
     # GCI's early stopping (patience 20 rounds on the validation loss), for --protocol gci only:
@@ -97,7 +102,8 @@ def main(argv=None):
     parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
-    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    # dunnhumby: the auxiliary DH cohort with week splits (dunnhumby_protocol.py).
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci", "dunnhumby"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -125,7 +131,16 @@ def main(argv=None):
         from commerce.evaluation.gci_protocol import build as gci_build
         record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
         sellers, first = gci_build(args, record)
+    elif args.protocol == "dunnhumby":
+        if args.target != "basket":
+            raise SystemExit("Dunnhumby has no cart order: use --target basket")
+        from commerce.evaluation.dunnhumby_protocol import build as dh_build
+        record["labels"] = [l for l in record["labels"] if l != "stand-in seller sizes"] + [
+            "Dunnhumby auxiliary cohort (evaluation.md §4): week splits, answers split by unique text"]
+        sellers, first = dh_build(args, record)
     else:
+        if args.instacart_dir is None:
+            raise SystemExit("--instacart-dir is needed unless --protocol dunnhumby")
         sellers, first = build(args, record)
 
     # One model on the device; a seller's own part is its hx token table, made with the same
@@ -134,6 +149,16 @@ def main(argv=None):
     torch.manual_seed(args.seed)
     model = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"] if hx else None).to(device)
     global_shared = {k: v.detach().clone() for k, v in model.shared_state().items()}
+    if args.init_from is not None:
+        if hx:
+            raise SystemExit("--init-from continues lm variants only: hx token tables are never saved")
+        saved = torch.load(args.init_from, map_location="cpu")
+        if saved["variant"] != args.variant:
+            raise SystemExit("--init-from holds %s, not %s" % (saved["variant"], args.variant))
+        global_shared = {k: saved["final_round_shared"][k].to(device) for k in global_shared}
+        record["resumed"] = {"from": str(args.init_from), "start_round": args.start_round}
+    elif args.start_round:
+        raise SystemExit("--start-round needs --init-from")
     local = {}
     for seller, info in sellers.items():
         tables = None
@@ -166,7 +191,7 @@ def main(argv=None):
 
     best, history, discarded = None, [], 0
     started = time.perf_counter()
-    for rnd in range(args.rounds):
+    for rnd in range(args.start_round, args.rounds):
         deltas = [local_round(turn(s), global_shared, placed(s["train"]), args.local_epochs, args.batch_size,
                               args.lr, args.seed * 100000 + rnd * 1000 + i, args.negatives)
                   for i, s in enumerate(local.values())]
