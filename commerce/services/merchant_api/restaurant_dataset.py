@@ -10,6 +10,11 @@ order a main per guest plus shared sides and drinks; every store has dishes orde
 (a new menu with little history: the case where the shared text model helps most). Walk-ins
 (about 40% of checks) have no member id; each walk-in check is its own customer for B.
 
+Each store is set up its own way, like real ones (STYLE and PLANS): its floor plan (zones, tables
+named as the staff call them, seats, kitchen and counter), postpaid table service (한식, 흑돼지 with a
+two-hour limit, 중식) or prepaid counter service with call numbers (분식, 카페, 샐러드). The owner can
+change all of it later in the floor editor and settings.
+
 Everything is invented (data.md §6). The end time is fixed (DEFAULT_NOW) so two machines make
 the same data; `--now today` ends the history at the current minute for a live demo (tables still eating if it
 is meal time). Phone numbers are generated, and stored only as salted hashes (the salt is
@@ -30,7 +35,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from commerce.services.merchant_api import (accounts_db, accounts_service, fulfillment, orders_db, orders_service, pos_db,
-                                            pos_service as pos, social_db)
+                                            pos_layout, pos_service as pos, social_db)
 from commerce.services.merchant_api.platform_dataset import export_seller_input
 
 KST = pos.KST
@@ -214,6 +219,103 @@ STORES: list[Restaurant] = [
 ]
 
 
+# --- how each store works and what its floor looks like (24 x 14 grid cells) -----------------
+
+STYLE = {  # service mode, table time limit (minutes, 0 none), takeout
+    "hansik": ("postpay", 0, True), "bbq": ("postpay", 120, False), "bunsik": ("prepay", 0, True),
+    "cafe": ("prepay", 0, True), "chinese": ("postpay", 0, True), "salad": ("prepay", 0, True),
+}
+
+
+def _t(zone, name, seats, shape, x, y, w, h):
+    return {"kind": "table", "zone": zone, "name": str(name), "seats": seats, "shape": shape, "x": x, "y": y, "w": w, "h": h}
+
+
+def _f(zone, shape, x, y, w, h, name=None):
+    return {"kind": "fixture", "zone": zone, "shape": shape, "name": name or pos_layout.FIXTURES[shape], "seats": 0,
+            "x": x, "y": y, "w": w, "h": h}
+
+
+def _hansik():
+    hall = [_f("홀", "kitchen", 0, 0, 6, 3), _f("홀", "window", 8, 0, 15, 1, "창가"), _f("홀", "restroom", 0, 7, 2, 2),
+            _f("홀", "counter", 0, 11, 4, 1), _f("홀", "entrance", 20, 13, 3, 1)]
+    n = 1
+    for y in (1, 4):
+        for x in (8, 12, 16, 20):
+            hall.append(_t("홀", n, 4, "square", x, y, 3, 2)); n += 1
+    hall += [_t("홀", 9, 2, "square", 8, 8, 2, 2), _t("홀", 10, 2, "square", 11, 8, 2, 2), _t("홀", 11, 6, "rect", 15, 8, 5, 2)]
+    room = [_t("방", "방1", 8, "floor", 2, 2, 6, 4), _t("방", "방2", 8, "floor", 10, 2, 6, 4), _t("방", "방3", 6, "floor", 18, 2, 5, 4),
+            _f("방", "wall", 9, 0, 1, 7), _f("방", "wall", 17, 0, 1, 7), _f("방", "entrance", 10, 12, 4, 1, "방 복도")]
+    return {"zones": ["홀", "방"], "items": hall + room}
+
+
+def _bbq():
+    hall = [_f("홀", "selfbar", 1, 9, 6, 1, "셀프바 (쌈채소)"), _f("홀", "kitchen", 8, 11, 6, 3, "주방·숯 준비"),
+            _f("홀", "restroom", 1, 12, 2, 2), _f("홀", "counter", 15, 12, 4, 1), _f("홀", "entrance", 21, 13, 3, 1)]
+    n = 1
+    for y in (1, 5):
+        for x in (1, 5, 9, 13):
+            hall.append(_t("홀", n, 4, "round", x, y, 3, 3)); n += 1
+    for y in (1, 4, 7):
+        hall.append(_t("홀", n, 6, "booth", 18, y, 5, 2)); n += 1
+    terrace = [_t("테라스", "T%d" % (k + 1), 4, "round", 2 + 5 * k, 2, 3, 3) for k in range(4)]
+    terrace += [_f("테라스", "entrance", 10, 12, 4, 1, "홀 출입문"), _f("테라스", "wall", 0, 7, 24, 1, "난간")]
+    return {"zones": ["홀", "테라스"], "items": hall + terrace}
+
+
+def _bunsik():
+    hall = [_f("홀", "counter", 0, 0, 6, 2, "주문 카운터"), _f("홀", "kitchen", 0, 2, 6, 5), _f("홀", "selfbar", 0, 9, 4, 1, "물·단무지"),
+            _f("홀", "window", 8, 13, 10, 1, "창가"), _f("홀", "entrance", 21, 13, 3, 1)]
+    n = 1
+    for y in (1, 4):
+        for x in (9, 13, 17):
+            hall.append(_t("홀", n, 4, "square", x, y, 3, 2)); n += 1
+    hall += [_t("홀", 7, 2, "square", 9, 8, 2, 2), _t("홀", 8, 2, "square", 12, 8, 2, 2)]
+    hall += [_t("홀", "바%d" % (k + 1), 1, "bar", 9 + k, 12, 1, 1) for k in range(6)]
+    return {"zones": ["홀"], "items": hall}
+
+
+def _cafe():
+    one = [_f("1층", "counter", 0, 0, 7, 2, "주문·픽업"), _f("1층", "kitchen", 0, 3, 5, 4, "주방"), _f("1층", "stairs", 0, 11, 2, 3, "2층 계단"),
+           _f("1층", "window", 8, 13, 12, 1, "오름 뷰 창"), _f("1층", "entrance", 21, 12, 3, 2)]
+    n = 1
+    for x in (9, 12, 15, 18):
+        one.append(_t("1층", n, 2, "round", x, 1, 2, 2)); n += 1
+    for x in (9, 13, 17):
+        one.append(_t("1층", n, 4, "square", x, 5, 3, 2)); n += 1
+    one += [_t("1층", "바%d" % (k + 1), 1, "bar", 9 + k, 12, 1, 1) for k in range(6)]
+    two = [_f("2층", "window", 6, 0, 16, 1, "통창"), _f("2층", "stairs", 21, 11, 2, 3, "계단"), _f("2층", "restroom", 18, 11, 2, 2)]
+    two += [_t("2층", 201 + k, 4, "booth", 1, 1 + 3 * k, 3, 2) for k in range(3)]
+    two += [_t("2층", 204 + k, 2, "round", 8 + 3 * k, 2, 2, 2) for k in range(3)]
+    two += [_t("2층", 207, 8, "rect", 8, 7, 6, 2)]
+    return {"zones": ["1층", "2층"], "items": one + two}
+
+
+def _chinese():
+    hall = [_f("홀", "kitchen", 0, 0, 7, 4, "주방 (웍)"), _f("홀", "restroom", 0, 6, 2, 2), _f("홀", "counter", 0, 11, 5, 2),
+            _f("홀", "entrance", 18, 13, 4, 1)]
+    n = 1
+    for y in (1, 4, 7):
+        for x in (9, 13, 17):
+            hall.append(_t("홀", n, 4, "square", x, y, 3, 2)); n += 1
+    hall += [_t("홀", 10, 6, "round", 21, 1, 3, 3), _t("홀", 11, 6, "round", 21, 5, 3, 3)]
+    rooms = [_t("룸", "룸1", 10, "round", 2, 2, 5, 5), _t("룸", "룸2", 8, "round", 10, 2, 5, 5), _t("룸", "룸3", 6, "rect", 18, 2, 5, 3),
+             _f("룸", "wall", 8, 0, 1, 9), _f("룸", "wall", 16, 0, 1, 9), _f("룸", "entrance", 10, 12, 4, 1, "룸 복도")]
+    return {"zones": ["홀", "룸"], "items": hall + rooms}
+
+
+def _salad():
+    hall = [_f("홀", "counter", 0, 0, 6, 2, "주문 카운터"), _f("홀", "kitchen", 0, 2, 6, 4, "샐러드 바"), _f("홀", "selfbar", 0, 8, 4, 1, "수저·소스"),
+            _f("홀", "window", 8, 11, 10, 1, "창가"), _f("홀", "entrance", 20, 12, 3, 2)]
+    hall += [_t("홀", 1 + k, 2, "square", 9 + 3 * k, 1, 2, 2) for k in range(4)]
+    hall += [_t("홀", 5, 4, "square", 9, 5, 3, 2), _t("홀", 6, 4, "square", 13, 5, 3, 2)]
+    hall += [_t("홀", "바%d" % (k + 1), 1, "bar", 9 + k, 10, 1, 1) for k in range(8)]
+    return {"zones": ["홀"], "items": hall}
+
+
+PLANS = {"hansik": _hansik, "bbq": _bbq, "bunsik": _bunsik, "cafe": _cafe, "chinese": _chinese, "salad": _salad}
+
+
 def store_index(i: int) -> Restaurant:
     return STORES[(i - 1) % len(STORES)]
 
@@ -287,10 +389,17 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
         accounts_service.signup_seller(conn, seller_id=seller_id, username=OWNER, display_name=store.name, password=PASSWORD,
                                        business_reg_no=store.reg_no, business_open_date="20190301", business_rep_name="데모")
     pos.settings(conn, seller_id)
+    mode, time_limit, takeout_ok = STYLE.get(store.key, ("postpay", 0, True))
     with conn:  # a fixed salt so the generated member ids repeat (a real store's is random)
-        conn.execute("UPDATE pos_settings SET tables = ?, point_rate = 5, open_hours = ?, member_salt = ? WHERE seller_id = ?",
-                     (store.tables, store.hours, hashlib.sha256(("salt/" + store.key).encode()).hexdigest()[:32], seller_id))
+        conn.execute("UPDATE pos_settings SET member_salt = ? WHERE seller_id = ?",
+                     (hashlib.sha256(("salt/" + store.key).encode()).hexdigest()[:32], seller_id))
         social_db.save_store_settings(conn, seller_id, 10, 3, store.intro)
+    pos.save_settings(conn, seller_id, point_rate=5, open_hours=store.hours, service_mode=mode, takeout_enabled=takeout_ok,
+                      time_limit=time_limit)
+    if store.key in PLANS:
+        pos_layout.install(conn, seller_id, PLANS[store.key]())
+    tables = pos_layout.tables(conn, seller_id)
+    prepay = mode == "prepay"
     start = now - dt.timedelta(days=store.history_days)
     new_from = now - dt.timedelta(days=store.history_days * 0.3)
     for item_id, title, price, section, desc in store.menu:
@@ -327,9 +436,14 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
         plan.sort(key=lambda p: (p[0], p[1]))  # the counter sees them in time order
         for opened, k, member in plan:
             ticket_id = pos._id(seller_id, "ticket", day.isoformat(), str(k))
-            takeout = drng.random() < store.takeout_share
+            takeout = takeout_ok and drng.random() < store.takeout_share
             guests = 1 if takeout and drng.random() < 0.6 else (member.party if member else drng.choice([1, 2, 2, 2, 3, 4, 5]))
-            stay = dt.timedelta(minutes=drng.uniform(8, 15) if takeout else drng.uniform(30, 75))
+            if prepay:  # paid at the counter a minute or two after ordering
+                stay = dt.timedelta(minutes=drng.uniform(1, 3))
+            else:
+                stay = dt.timedelta(minutes=drng.uniform(8, 15) if takeout else drng.uniform(30, 75))
+                if time_limit:
+                    stay = min(stay + dt.timedelta(minutes=drng.uniform(20, 50)), dt.timedelta(minutes=time_limit + 10))
             if opened >= now:
                 continue  # later today
             open_now = opened + stay > now
@@ -337,13 +451,17 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
                 continue
             available = {i[0] for i in store.menu if not (i[0] == store.new_item and opened < new_from)}
             lines = _basket(store, drng, guests, member, available, popularity)
-            table = None if takeout else (k % store.tables) + 1
-            if table is not None:
+            table = None
+            if not takeout and not prepay:  # a free table that seats the party (the smallest such, like a host would)
                 busy = {r[0] for r in conn.execute("SELECT table_no FROM pos_tickets WHERE seller_id = ? AND status = 'open' "
                                                    "AND table_no IS NOT NULL", (seller_id,))}
-                free = [t for t in range(1, store.tables + 1) if t not in busy]
-                table = table if table not in busy else (free[k % len(free)] if free else None)
-            pos.open_ticket(conn, seller_id, table_no=table, guests=guests, at=_iso(opened), ticket_id=ticket_id)
+                free = [t for t in tables if t["no"] not in busy and t["seats"] >= guests]
+                if free:
+                    fit = min(t["seats"] for t in free)
+                    snug = [t for t in free if t["seats"] <= max(fit, 4)]
+                    table = snug[k % len(snug)]["no"]
+            pos.open_ticket(conn, seller_id, table_no=table, guests=guests, at=_iso(opened), ticket_id=ticket_id,
+                            kind="takeout" if takeout else "dine_in")
             for j, (item, qty) in enumerate(lines):
                 memo = drng.choice(pos.MEMOS) if drng.random() < 0.08 else None
                 pos.add_line(conn, seller_id, ticket_id, item, qty, memo, at=_iso(opened + dt.timedelta(minutes=1)),
@@ -351,9 +469,12 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
             if member:
                 pos.attach_member(conn, seller_id, ticket_id, member.phone, at=_iso(opened))
             sent = opened + dt.timedelta(minutes=2)
-            if sent < now:
+            if sent < now and not prepay:  # a prepaid order goes to the kitchen with its payment
                 pos.send_to_kitchen(conn, seller_id, ticket_id, at=_iso(sent))
             served = opened + dt.timedelta(minutes=drng.uniform(8, 18))
+            if prepay and open_now:
+                added["open"] += 1  # still at the counter
+                continue
             if open_now:
                 if served < now:
                     with conn:
@@ -361,9 +482,10 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
                                      (_iso(served), seller_id, ticket_id))
                 added["open"] += 1
                 continue
-            with conn:
-                conn.execute("UPDATE pos_lines SET served_at = ? WHERE seller_id = ? AND ticket_id = ? AND sent_at IS NOT NULL",
-                             (_iso(served), seller_id, ticket_id))
+            if not prepay:
+                with conn:
+                    conn.execute("UPDATE pos_lines SET served_at = ? WHERE seller_id = ? AND ticket_id = ? AND sent_at IS NOT NULL",
+                                 (_iso(served), seller_id, ticket_id))
             paid_at = opened + stay
             v = pos.view(conn, seller_id, ticket_id)
             if drng.random() < 0.03:
@@ -391,6 +513,12 @@ def seed_store(conn, seller_id: str, store: Restaurant, now: Optional[dt.datetim
                     received = -(-v["due"] // 10000) * 10000
                 pos.pay(conn, seller_id, ticket_id, method=method, received=received, at=_iso(paid_at),
                         payment_id=pos._id(ticket_id, "pay", str(pay_n)))
+            if prepay:  # the kitchen hands it over later; one still cooking stays on the kitchen screen
+                done = paid_at + dt.timedelta(minutes=drng.uniform(5, 14))
+                if done < now:
+                    with conn:
+                        conn.execute("UPDATE pos_lines SET served_at = ? WHERE seller_id = ? AND ticket_id = ? AND sent_at IS NOT NULL",
+                                     (_iso(done), seller_id, ticket_id))
             if drng.random() < 0.006:
                 pos.refund(conn, seller_id, ticket_id, at=_iso(paid_at + dt.timedelta(minutes=10)))
             added["tickets"] += 1

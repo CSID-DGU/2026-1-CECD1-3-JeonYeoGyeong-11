@@ -1,6 +1,7 @@
 """The restaurant POS: table checks, kitchen, members by phone (never stored), split and cash
 payments, settling into one A order that reaches B with only menu items and time, refunds,
-day closing; the POS JSON calls (CSRF) and the owner's pages; the restaurant dataset."""
+day closing; each store's own floor plan (zones, table names, seats) and counter style; the POS
+JSON calls (CSRF) and the owner's pages; the restaurant dataset."""
 from __future__ import annotations
 
 import dataclasses
@@ -13,7 +14,7 @@ from unittest import mock
 from fastapi.testclient import TestClient
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import fulfillment, orders_db, orders_service, pos_db, pos_service as pos, session
+from commerce.services.merchant_api import fulfillment, orders_db, orders_service, pos_db, pos_layout, pos_service as pos, session
 from commerce.services.merchant_api.context import MerchantSettings, build_context
 from commerce.services.merchant_api.tests.fakes import FakeRecommenderRuntime, ScriptedRuntime
 
@@ -51,6 +52,79 @@ class PosServiceTest(unittest.TestCase):
         self.assertEqual([(l["quantity"], l["state"]) for l in lines], [(2, "sent"), (1, "new")])
         with self.assertRaises(ContractError):
             pos.open_ticket(self.conn, S, table_no=99)
+
+    def _plan(self, **rename):
+        """The default hall with some tables renamed / dropped (value None) and a second zone."""
+        p = pos_layout.plan(self.conn, S)
+        items = []
+        for i in p["items"]:
+            if i["kind"] == "table" and i["name"] in rename:
+                if rename[i["name"]] is None:
+                    continue
+                i = dict(i, name=rename[i["name"]])
+            items.append(i)
+        items.append({"no": None, "kind": "table", "zone": "룸", "name": "룸1", "seats": 10, "shape": "round", "x": 2, "y": 2, "w": 5, "h": 5})
+        return {"zones": ["홀", "룸"], "items": items}
+
+    def test_a_store_without_a_plan_gets_its_old_table_count_as_a_hall(self):
+        p = pos_layout.plan(self.conn, S)
+        tables = [i for i in p["items"] if i["kind"] == "table"]
+        self.assertEqual(p["zones"], ["홀"])
+        self.assertEqual([t["name"] for t in tables][:3], ["1", "2", "3"])
+        self.assertEqual(len(tables), 12)
+        self.assertEqual(pos.floor(self.conn, S)["table_count"], 12)
+
+    def test_renaming_and_moving_tables_keeps_checks_and_old_receipts(self):
+        paid = self._ticket(3)
+        pos.add_line(self.conn, S, paid, "m-kimchi")
+        pos.pay(self.conn, S, paid, method="card", runtime=self.runtime)
+        live = self._ticket(5)
+        pos.add_line(self.conn, S, live, "m-cola")
+        pos_layout.save(self.conn, S, self._plan(**{"3": "A3", "5": "창가1", "12": None}))
+        self.assertEqual(pos.view(self.conn, S, paid)["label"], "3번 테이블")  # the receipt keeps the name it was paid under
+        self.assertEqual(pos.view(self.conn, S, live)["label"], "창가1")      # the open check follows the table
+        floor = pos.floor(self.conn, S)
+        self.assertEqual([z["name"] for z in floor["zones"]], ["홀", "룸"])
+        self.assertEqual(floor["table_count"], 12)  # 12 - 1 dropped + 룸1
+        room = pos_layout.tables(self.conn, S)[-1]
+        self.assertEqual((room["name"], room["seats"], room["zone"]), ("룸1", 10, "룸"))
+        t = pos.open_ticket(self.conn, S, table_no=room["no"], guests=8)
+        self.assertEqual(pos.view(self.conn, S, t["ticket_id"])["label"], "룸1")
+        with self.assertRaises(ContractError):
+            pos.open_ticket(self.conn, S, table_no=12)  # dropped from the plan
+        eleven = next(t["no"] for t in pos_layout.tables(self.conn, S) if t["name"] == "11")
+        pos.move_table(self.conn, S, live, eleven)
+        self.assertEqual(pos.view(self.conn, S, live)["label"], "11번 테이블")
+
+    def test_a_plan_that_cannot_work_is_refused_with_a_reason(self):
+        busy = self._ticket(2)
+        with self.assertRaisesRegex(pos_layout.LayoutError, "아직 결제하지 않은"):
+            pos_layout.save(self.conn, S, self._plan(**{"2": None}))
+        pos.void_ticket(self.conn, S, busy)
+        bad = self._plan(**{"4": "1"})
+        with self.assertRaisesRegex(pos_layout.LayoutError, "두 번"):
+            pos_layout.save(self.conn, S, bad)
+        bad = self._plan()
+        bad["items"][1] = dict(bad["items"][1], x=bad["items"][0]["x"], y=bad["items"][0]["y"])
+        with self.assertRaisesRegex(pos_layout.LayoutError, "겹쳐"):
+            pos_layout.save(self.conn, S, bad)
+        bad = self._plan()
+        bad["items"][0] = dict(bad["items"][0], x=pos_layout.COLS - 1)
+        with self.assertRaisesRegex(pos_layout.LayoutError, "도면 밖"):
+            pos_layout.save(self.conn, S, bad)
+        self.assertEqual(len(pos_layout.tables(self.conn, S)), 12)  # nothing half-saved
+
+    def test_counter_orders_get_the_days_call_numbers_and_prepay_sends_with_payment(self):
+        pos.save_settings(self.conn, S, point_rate=5, open_hours="", service_mode="prepay", time_limit=0)
+        a = pos.open_ticket(self.conn, S, table_no=None)["ticket_id"]
+        b = pos.open_ticket(self.conn, S, table_no=None, kind="dine_in")["ticket_id"]
+        self.assertEqual((pos.view(self.conn, S, a)["label"], pos.view(self.conn, S, b)["label"]), ("포장 1", "매장 2"))
+        pos.add_line(self.conn, S, b, "m-kimchi")
+        pos.pay(self.conn, S, b, method="card", runtime=self.runtime)
+        self.assertEqual([t["label"] for t in pos.kitchen_queue(self.conn, S)], ["매장 2"])  # paid, still cooking
+        self.assertEqual(pos.settings(self.conn, S)["service_mode"], "prepay")
+        with self.assertRaises(ContractError):
+            pos.save_settings(self.conn, S, point_rate=5, open_hours="", service_mode="buffet")
 
     def test_a_sent_line_is_voided_not_deleted_and_kitchen_sees_only_live_lines(self):
         t = self._ticket()
@@ -178,7 +252,7 @@ class PosScreensTest(unittest.TestCase):
     def test_full_table_flow_over_the_pos_api(self):
         floor = self.client.get(f"/pos/{S}/")
         self.assertEqual(floor.status_code, 200)
-        self.assertIn("table-tile", floor.text)
+        self.assertIn("fp-table", floor.text)
         r = self.client.get(f"/pos/{S}/tables/4")
         ticket = r.headers["location"].rsplit("/", 1)[1]
         page = self.client.get(r.headers["location"])
@@ -228,10 +302,37 @@ class PosScreensTest(unittest.TestCase):
                                                        "description_text": "메밀면", "csrf_token": self._h()["X-CSRF-Token"]})
         self.assertIn("/guests?item=menu-", r.headers["location"])
         self.assertIn("들기름 막국수", self.client.get(r.headers["location"]).text)
-        r = self.client.post(f"/seller/{S}/settings", data={"tables": "20", "point_rate": "3", "open_hours": "11~21",
-                                                           "store_intro": "", "csrf_token": self._h()["X-CSRF-Token"]})
+        r = self.client.post(f"/seller/{S}/settings", data={"point_rate": "3", "open_hours": "11~21", "service_mode": "prepay",
+                                                           "time_limit": "90", "store_intro": "", "csrf_token": self._h()["X-CSRF-Token"]})
         self.assertEqual(r.status_code, 303)
-        self.assertEqual(self.client.get(f"/pos/{S}/").text.count('class="table-tile'), 20)
+        floor = self.client.get(f"/pos/{S}/").text
+        self.assertIn("＋ 매장 주문", floor)   # prepay counter
+        self.assertNotIn("＋ 포장 주문", floor)  # takeout box left unticked
+        self.assertIn("90분 넘음", floor)
+
+    def test_owner_draws_the_floor_and_the_pos_shows_it(self):
+        self.assertEqual(self.client.get(f"/seller/{S}/floor").status_code, 200)
+        plan = {"zones": ["1층", "2층"], "items": [
+            {"no": None, "kind": "table", "zone": "1층", "name": "A1", "seats": 2, "shape": "round", "x": 0, "y": 0, "w": 2, "h": 2},
+            {"no": None, "kind": "table", "zone": "2층", "name": "201", "seats": 6, "shape": "booth", "x": 4, "y": 4, "w": 4, "h": 2},
+            {"no": None, "kind": "fixture", "zone": "1층", "name": "", "seats": 0, "shape": "kitchen", "x": 10, "y": 0, "w": 5, "h": 3}]}
+        self.assertEqual(self.client.post(f"/seller/{S}/floor", json=plan).status_code, 403)  # no CSRF
+        r = self.client.post(f"/seller/{S}/floor", json=plan, headers=self._h())
+        self.assertEqual(r.status_code, 200, r.text)
+        saved = r.json()["plan"]
+        self.assertEqual(saved["zones"], ["1층", "2층"])
+        self.assertEqual(sorted(i["name"] for i in saved["items"]), ["201", "A1", "주방"])
+        floor = self.client.get(f"/pos/{S}/").text
+        self.assertIn("2층", floor)
+        self.assertIn(">A1<", floor)
+        self.assertEqual(floor.count("fp-table"), 2)
+        bad = dict(plan, items=plan["items"] + [dict(plan["items"][0], x=1)])
+        r = self.client.post(f"/seller/{S}/floor", json=bad, headers=self._h())
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("두 번", r.json()["error"])
+        no = next(i["no"] for i in saved["items"] if i["name"] == "201")
+        r = self.client.get(f"/pos/{S}/tables/{no}")
+        self.assertIn("201", self.client.get(r.headers["location"]).text)
 
 
 class LegacyGateTest(unittest.TestCase):
@@ -273,6 +374,26 @@ class RestaurantDatasetTest(unittest.TestCase):
         self.assertEqual(rd.seed_store(conn, "merchant-1", store)["tickets"], 0)  # a re-run adds nothing
         names = {r[0] for r in conn.execute("SELECT customer_id_local FROM orders")}
         self.assertTrue(any(n.startswith("m-") for n in names) and any(n.startswith("guest-") for n in names))
+
+    def test_each_store_has_its_own_floor_and_counter_style(self):
+        from commerce.services.merchant_api import restaurant_dataset as rd
+        for store in rd.STORES:  # every drawn plan is one the editor would accept
+            pos_layout._validate(rd.PLANS[store.key]())
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        conn = orders_db.connect(Path(tmp.name) / "orders.sqlite")
+        self.addCleanup(conn.close)
+        hansik = dataclasses.replace(rd.STORES[0], members=8, per_day=(4, 6), history_days=6)
+        bunsik = dataclasses.replace(rd.STORES[2], members=8, per_day=(4, 6), history_days=6)
+        rd.seed_store(conn, "merchant-1", hansik)
+        rd.seed_store(conn, "merchant-3", bunsik)
+        self.assertEqual(pos_layout.plan(conn, "merchant-1")["zones"], ["홀", "방"])
+        seats = {t["no"]: t["seats"] for t in pos_layout.tables(conn, "merchant-1")}
+        for no, guests in conn.execute("SELECT table_no, guests FROM pos_tickets WHERE seller_id = 'merchant-1' AND table_no IS NOT NULL"):
+            self.assertLessEqual(guests, seats[no])  # a party sits at a table that seats it
+        self.assertEqual(pos.settings(conn, "merchant-3")["service_mode"], "prepay")
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM pos_tickets WHERE seller_id = 'merchant-3' AND table_no IS NOT NULL").fetchone()[0], 0)
+        self.assertGreater(conn.execute("SELECT MAX(call_no) FROM pos_tickets WHERE seller_id = 'merchant-3'").fetchone()[0], 1)
 
 
 if __name__ == "__main__":

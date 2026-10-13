@@ -22,6 +22,7 @@ ERRORS = {
     "/received": "받은 현금이 결제 금액보다 적어요.", "/points": "쓸 수 있는 포인트보다 많아요.", "/status": "이미 결제가 끝난 주문이에요.",
     "/table_no": "그 테이블은 지금 다른 주문이 있어요.", "/lines": "담긴 메뉴가 없어요.", "/discount": "할인 금액을 확인해 주세요.",
     "/member": "포인트를 쓴 주문은 회원을 바꿀 수 없어요.", "/open_tickets": "아직 결제하지 않은 테이블이 있어요.",
+    "/table": "지금 배치도에 없는 테이블이에요. 사장님 화면의 테이블 배치를 확인해 주세요.",
 }
 
 
@@ -78,8 +79,8 @@ def register(app: FastAPI, d: ScreenDeps, templates: Jinja2Templates) -> None:
         return RedirectResponse(f"/pos/{seller_id}/tickets/{t['ticket_id']}", status_code=303)
 
     @app.get("/pos/{seller_id}/takeout")
-    def pos_takeout(seller_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller)):
-        t = pos.open_ticket(conn, seller_id, table_no=None)
+    def pos_takeout(seller_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller), kind: str = "takeout"):
+        t = pos.open_ticket(conn, seller_id, table_no=None, kind="dine_in" if kind == "dine_in" else "takeout")
         return RedirectResponse(f"/pos/{seller_id}/tickets/{t['ticket_id']}", status_code=303)
 
     @app.get("/pos/{seller_id}/tickets/{ticket_id}")
@@ -90,10 +91,10 @@ def register(app: FastAPI, d: ScreenDeps, templates: Jinja2Templates) -> None:
         items = pos.menu(conn, seller_id)
         rec = recommendations(conn, seller_id, v["member_id"], request.app.state.merchant.runtime,
                               {l["item_id_local"] for l in v["lines"] if not l["voided_at"]})
-        cfg = pos.settings(conn, seller_id)
         return templates.TemplateResponse(request, "ticket.html", {
             "seller_id": seller_id, "staff": staff, "screen": "ticket", "ticket": v, "menu": items,
-            "sections": pos.sections(items), "recommend": rec, "memos": pos.MEMOS, "tables": cfg["tables"],
+            "sections": pos.sections(items), "recommend": rec, "memos": pos.MEMOS,
+            "table_choices": pos.table_choices(conn, seller_id), "settings": pos.settings(conn, seller_id),
             "methods": pos.METHODS})
 
     @app.get("/pos/{seller_id}/receipts/{ticket_id}")
@@ -114,7 +115,8 @@ def register(app: FastAPI, d: ScreenDeps, templates: Jinja2Templates) -> None:
         day = day or _today()
         return templates.TemplateResponse(request, "close.html", {
             "seller_id": seller_id, "staff": staff, "screen": "close", "summary": pos.day_summary(conn, seller_id, day),
-            "open_tables": pos.floor(conn, seller_id)["busy"] + len(pos.floor(conn, seller_id)["takeout"]),
+            "open_tables": conn.execute("SELECT COUNT(*) FROM pos_tickets WHERE seller_id = ? AND status = 'open'",
+                                        (seller_id,)).fetchone()[0],
             "error": request.query_params.get("e")})
 
     @app.post("/pos/{seller_id}/close")

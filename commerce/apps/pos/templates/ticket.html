@@ -35,6 +35,7 @@
       <button type="button" class="btn secondary pos-big" id="send">주방 전송</button>
       <button type="button" class="btn primary pos-big" id="open-pay">결제</button>
     </div>
+    {% if settings.service_mode == 'prepay' %}<p class="muted-note check-mode">선불 매장: 결제하면 주문이 주방으로 함께 들어가요.</p>{% endif %}
   </section>
 
   <!-- AI -->
@@ -91,7 +92,9 @@
     <label class="field">할인
       <span class="chip-row"><button type="button" class="chip" data-dc="0">없음</button><button type="button" class="chip" data-dc="5">5%</button><button type="button" class="chip" data-dc="10">10%</button><button type="button" class="chip" data-dcw="1000">−1,000원</button><button type="button" class="chip" data-dcw="3000">−3,000원</button></span></label>
     <label class="field">테이블 이동
-      <select id="move-table"><option value="">이동하지 않음</option>{% for n in range(1, tables + 1) %}<option value="{{ n }}">{{ n }}번 테이블</option>{% endfor %}</select></label>
+      <select id="move-table"><option value="">이동하지 않음</option>
+        {% for z in table_choices %}<optgroup label="{{ z.zone }}">{% for t in z.tables %}<option value="{{ t.no }}" {{ 'disabled' if t.busy }}>{{ t.label }} · {{ t.seats }}석{{ ' (사용 중)' if t.busy }}</option>{% endfor %}</optgroup>{% endfor %}
+      </select></label>
     <div class="sheet-actions">
       <button type="button" class="btn-link danger" id="void">주문 전체 취소</button>
       <span class="grow"></span>
@@ -119,6 +122,7 @@
   var SELLER = {{ seller_id | tojson }}, TICKET = {{ ticket.ticket_id | tojson }}, CSRF = {{ (csrf_token or '') | tojson }};
   var base = '/pos/' + SELLER + '/api/tickets/' + TICKET;
   var S = {{ {"ticket": ticket, "recommend": recommend} | tojson }};
+  var PREPAY = {{ (settings.service_mode == 'prepay') | tojson }};
   var won = function (n) { return (n || 0).toLocaleString('ko-KR') + '원'; };
   var $ = function (id) { return document.getElementById(id); };
   var busy = false;
@@ -190,8 +194,9 @@
     $('check-sum').innerHTML = sum;
     $('send').textContent = t.unsent ? '주방 전송 (' + t.unsent + ')' : '주방 전송';
     $('send').disabled = !t.unsent;
+    $('send').hidden = PREPAY && !t.paid;  // a prepaid order goes to the kitchen with its payment
     $('open-pay').disabled = t.total <= 0;
-    $('open-pay').textContent = t.total > 0 ? won(t.paid ? t.due : t.total) + ' 결제' : '결제';
+    $('open-pay').textContent = t.total > 0 ? won(t.paid ? t.due : t.total) + (PREPAY && !t.paid && t.unsent ? ' 결제하고 주문' : ' 결제') : '결제';
 
     // AI
     var r = S.recommend, card = $('ai-card');

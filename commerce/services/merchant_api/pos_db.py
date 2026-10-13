@@ -1,7 +1,11 @@
 """Restaurant POS tables in orders.sqlite (A-only, seller-local, no cross-role contract).
 
 A table's open check is a ticket; its lines are what the guests ordered (sent to the kitchen
-or not, served or not, voided after sending). Payments settle a ticket, possibly in several
+or not, served or not, voided after sending). The floor plan is the store's own: zones (hall,
+rooms, terrace, 2nd floor), tables with the number the staff call them by, seats, shape and place
+on a grid, plus fixtures (kitchen, counter, door) drawn for orientation. A ticket's table_no is the
+table's stable id, so renaming or moving a table never touches past checks; the ticket also keeps
+the name the table had when the check was opened, for receipts. Payments settle a ticket, possibly in several
 parts (split bill). Members are the store's point-card customers, known only by a salted
 hash of their phone number plus its last four digits. A day closing keeps the totals the
 owner saw when closing.
@@ -83,6 +87,21 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             PRIMARY KEY (seller_id, member_id),
             UNIQUE (seller_id, phone_hash)
         );
+        CREATE TABLE IF NOT EXISTS pos_floor (
+            seller_id TEXT NOT NULL,
+            item_no INTEGER NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('table', 'fixture')),
+            zone TEXT NOT NULL,
+            name TEXT NOT NULL,
+            seats INTEGER NOT NULL DEFAULT 0,
+            shape TEXT NOT NULL,
+            x INTEGER NOT NULL,
+            y INTEGER NOT NULL,
+            w INTEGER NOT NULL,
+            h INTEGER NOT NULL,
+            active INTEGER NOT NULL DEFAULT 1,
+            PRIMARY KEY (seller_id, item_no)
+        );
         CREATE TABLE IF NOT EXISTS pos_closings (
             seller_id TEXT NOT NULL,
             business_date TEXT NOT NULL,
@@ -92,6 +111,19 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    # Columns added after the first POS release (an existing orders.sqlite gets them on start).
+    _add_column(conn, "pos_settings", "zones", "TEXT")
+    _add_column(conn, "pos_settings", "service_mode", "TEXT NOT NULL DEFAULT 'postpay'")
+    _add_column(conn, "pos_settings", "takeout_enabled", "INTEGER NOT NULL DEFAULT 1")
+    _add_column(conn, "pos_settings", "time_limit", "INTEGER NOT NULL DEFAULT 0")
+    _add_column(conn, "pos_tickets", "table_name", "TEXT")
+    _add_column(conn, "pos_tickets", "call_no", "INTEGER")
+
+
+def _add_column(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
+    if column not in {r[1] for r in conn.execute("PRAGMA table_info(%s)" % table)}:
+        with conn:
+            conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, column, decl))
 
 
 def row(conn, sql: str, args: tuple) -> Optional[dict[str, Any]]:

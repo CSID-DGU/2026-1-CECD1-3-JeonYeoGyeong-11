@@ -1,5 +1,5 @@
 """The owner's web (/seller/{seller_id}/...) for a restaurant: today, sales, menu, guests (what
-the shared model says about this store's members), federated learning, settings.
+the shared model says about this store's members), the floor plan, federated learning, settings.
 
 Everything here reads this store's orders.sqlite and asks this store's B runtime; there is no
 link to any other store and no central view.
@@ -12,12 +12,12 @@ import uuid
 from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import Depends, FastAPI, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi import Body, Depends, FastAPI, Form, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import (fulfillment, model_status, orders_service, personalization, pos_service as pos,
-                                            sales, social_db)
+from commerce.services.merchant_api import (fulfillment, model_status, orders_service, personalization, pos_layout,
+                                            pos_service as pos, sales, session, social_db)
 from commerce.services.merchant_api.orders_service import build_recommendation_request
 from commerce.services.merchant_api.routes_sns import ScreenDeps
 
@@ -214,9 +214,30 @@ def register(app: FastAPI, d: ScreenDeps) -> None:
 
     @app.post("/seller/{seller_id}/settings")
     def owner_settings_save(seller_id: str, conn=Depends(d.get_conn), staff=Depends(d.require_seller_form),
-                            tables: int = Form(12), point_rate: int = Form(5), open_hours: str = Form(""), store_intro: str = Form("")):
-        pos.save_settings(conn, seller_id, tables=tables, point_rate=point_rate, open_hours=open_hours)
+                            point_rate: int = Form(5), open_hours: str = Form(""), store_intro: str = Form(""),
+                            service_mode: str = Form("postpay"), takeout_enabled: str = Form(""), time_limit: int = Form(0)):
+        pos.save_settings(conn, seller_id, point_rate=point_rate, open_hours=open_hours, service_mode=service_mode,
+                          takeout_enabled=bool(takeout_enabled), time_limit=time_limit)
         current = social_db.get_store_settings(conn, seller_id)
         with conn:
             social_db.save_store_settings(conn, seller_id, current["group_discount_pct"], current["group_min_target"], store_intro)
         return RedirectResponse(f"/seller/{seller_id}/settings?saved=1", status_code=303)
+
+    @app.get("/seller/{seller_id}/floor")
+    def owner_floor(seller_id: str, request: Request, conn=Depends(d.get_conn), staff=Depends(d.require_seller)):
+        busy = [r[0] for r in conn.execute("SELECT table_no FROM pos_tickets WHERE seller_id = ? AND status = 'open' "
+                                           "AND table_no IS NOT NULL", (seller_id,))]
+        return T.TemplateResponse(request, "floor_edit.html", {
+            "seller_id": seller_id, "active_tab": "floor", "staff": staff, "plan": pos_layout.plan(conn, seller_id),
+            "busy": busy, "shapes": pos_layout.TABLE_SHAPES, "fixtures": pos_layout.FIXTURES, "settings": pos.settings(conn, seller_id)})
+
+    @app.post("/seller/{seller_id}/floor")
+    def owner_floor_save(seller_id: str, request: Request, payload: dict = Body(...), conn=Depends(d.get_conn),
+                         staff=Depends(d.require_seller)):
+        if not session.check_csrf(request.cookies.get(session.seller_cookie(seller_id)), request.headers.get("x-csrf-token")):
+            return JSONResponse({"error": "화면이 오래됐어요. 새로고침한 뒤 다시 저장해 주세요."}, status_code=403)
+        try:
+            plan = pos_layout.save(conn, seller_id, payload)
+        except pos_layout.LayoutError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=422)
+        return JSONResponse({"ok": True, "plan": plan})

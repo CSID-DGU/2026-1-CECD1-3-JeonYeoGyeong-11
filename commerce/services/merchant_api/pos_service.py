@@ -28,12 +28,13 @@ from collections import Counter, defaultdict
 from typing import Any, Iterable, Optional
 
 from commerce.packages.contracts.errors import ContractError
-from commerce.services.merchant_api import fulfillment, orders_db, orders_service
+from commerce.services.merchant_api import fulfillment, orders_db, orders_service, pos_layout
 from commerce.services.merchant_api.pos_db import row, rows
 
 KST = dt.timezone(dt.timedelta(hours=9))
 METHODS = {"card": "카드", "cash": "현금", "easy": "간편결제", "transfer": "계좌이체", "points": "포인트"}
 KINDS = {"dine_in": "매장", "takeout": "포장"}
+SERVICE_MODES = {"postpay": "후불 (식사 후 결제)", "prepay": "선불 (주문할 때 결제)"}
 _NS = uuid.UUID("2b1f7c61-8a1e-5d4b-9c3e-6f7a8b9c0d1e")
 _PHONE = re.compile(r"^01[016789]\d{7,8}$")
 MEMOS = ("덜 맵게", "맵게", "곱빼기", "양 적게", "얼음 적게", "따로 포장", "빨리 부탁")
@@ -59,23 +60,30 @@ def _id(*parts: str) -> str:
 
 def settings(conn, seller_id: str) -> dict[str, Any]:
     s = row(conn, "SELECT * FROM pos_settings WHERE seller_id = ?", (seller_id,))
-    if s is None:
+    if s is None or not s["member_salt"]:
         with conn:
-            conn.execute("INSERT OR IGNORE INTO pos_settings (seller_id, member_salt) VALUES (?, ?)",
-                         (seller_id, secrets.token_hex(16)))
+            conn.execute("INSERT OR IGNORE INTO pos_settings (seller_id) VALUES (?)", (seller_id,))
+            conn.execute("UPDATE pos_settings SET member_salt = ? WHERE seller_id = ? AND member_salt IS NULL",
+                         (secrets.token_hex(16), seller_id))
         s = row(conn, "SELECT * FROM pos_settings WHERE seller_id = ?", (seller_id,))
+    s["service_mode_label"] = SERVICE_MODES.get(s["service_mode"], s["service_mode"])
     return s
 
 
-def save_settings(conn, seller_id: str, *, tables: int, point_rate: int, open_hours: str) -> None:
-    if not 1 <= tables <= 60:
-        raise ContractError("INVALID_TYPE", "/tables")
+def save_settings(conn, seller_id: str, *, point_rate: int, open_hours: str, service_mode: str = "postpay",
+                  takeout_enabled: bool = True, time_limit: int = 0) -> None:
+    """How this store runs its counter (the floor plan itself is pos_layout)."""
     if not 0 <= point_rate <= 20:
         raise ContractError("INVALID_TYPE", "/point_rate")
+    if service_mode not in SERVICE_MODES:
+        raise ContractError("INVALID_ENUM_VALUE", "/service_mode")
+    if not 0 <= time_limit <= 600:
+        raise ContractError("INVALID_TYPE", "/time_limit")
     settings(conn, seller_id)
     with conn:
-        conn.execute("UPDATE pos_settings SET tables = ?, point_rate = ?, open_hours = ? WHERE seller_id = ?",
-                     (tables, point_rate, (open_hours or "").strip()[:60] or None, seller_id))
+        conn.execute("UPDATE pos_settings SET point_rate = ?, open_hours = ?, service_mode = ?, takeout_enabled = ?, time_limit = ? "
+                     "WHERE seller_id = ?", (point_rate, (open_hours or "").strip()[:60] or None, service_mode,
+                                             1 if takeout_enabled else 0, int(time_limit), seller_id))
 
 
 # --- menu ----------------------------------------------------------------------------
@@ -119,23 +127,40 @@ def _open(conn, seller_id: str, ticket_id: str) -> dict[str, Any]:
 
 
 def open_ticket(conn, seller_id: str, *, table_no: Optional[int], guests: int = 1, at: Optional[str] = None,
-                ticket_id: Optional[str] = None) -> dict[str, Any]:
-    """The table's open check, or a new one. table_no None is a takeout order."""
-    cfg = settings(conn, seller_id)
+                ticket_id: Optional[str] = None, kind: Optional[str] = None) -> dict[str, Any]:
+    """The table's open check, or a new one. Without a table it is a counter order: takeout, or
+    (kind dine_in) eaten in the store at no particular table; it gets the day's call number."""
+    settings(conn, seller_id)
+    table_name = call_no = None
+    at = at or _now()
     if table_no is not None:
-        if not 1 <= table_no <= cfg["tables"]:
-            raise ContractError("NOT_FOUND", "/table_no")
+        t = pos_layout.table(conn, seller_id, int(table_no))
+        if t is None:
+            raise ContractError("NOT_FOUND", "/table")
+        table_name = t["name"]
         existing = row(conn, "SELECT * FROM pos_tickets WHERE seller_id = ? AND table_no = ? AND status = 'open'",
                        (seller_id, table_no))
         if existing:
             return existing
+        kind = "dine_in"
+    else:
+        kind = kind if kind in KINDS else "takeout"
+        call_no = _next_call_no(conn, seller_id, at)
     ticket_id = ticket_id or uuid.uuid4().hex
     with conn:
-        conn.execute("INSERT INTO pos_tickets (seller_id, ticket_id, table_no, kind, guests, status, opened_at) "
-                     "VALUES (?, ?, ?, ?, ?, 'open', ?)",
-                     (seller_id, ticket_id, table_no, "takeout" if table_no is None else "dine_in",
-                      max(1, min(int(guests or 1), 30)), at or _now()))
+        conn.execute("INSERT INTO pos_tickets (seller_id, ticket_id, table_no, table_name, call_no, kind, guests, status, opened_at) "
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?)",
+                     (seller_id, ticket_id, table_no, table_name, call_no, kind, max(1, min(int(guests or 1), 30)), at))
     return _ticket(conn, seller_id, ticket_id)
+
+
+def _next_call_no(conn, seller_id: str, at: str) -> int:
+    """The number called out at the counter ("12번 손님"), counted per business day."""
+    day = dt.datetime.fromisoformat(business_date(at)).replace(tzinfo=KST).astimezone(dt.timezone.utc)
+    lo, hi = day.strftime("%Y-%m-%dT%H:%M:%S"), (day + dt.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%S")
+    n = conn.execute("SELECT COALESCE(MAX(call_no), 0) FROM pos_tickets WHERE seller_id = ? AND opened_at >= ? AND opened_at < ?",
+                     (seller_id, lo, hi)).fetchone()[0]
+    return n + 1
 
 
 def set_guests(conn, seller_id: str, ticket_id: str, guests: int) -> None:
@@ -147,14 +172,15 @@ def set_guests(conn, seller_id: str, ticket_id: str, guests: int) -> None:
 
 def move_table(conn, seller_id: str, ticket_id: str, table_no: int) -> None:
     _open(conn, seller_id, ticket_id)
-    if not 1 <= table_no <= settings(conn, seller_id)["tables"]:
-        raise ContractError("NOT_FOUND", "/table_no")
+    t = pos_layout.table(conn, seller_id, int(table_no))
+    if t is None:
+        raise ContractError("NOT_FOUND", "/table")
     if row(conn, "SELECT 1 FROM pos_tickets WHERE seller_id = ? AND table_no = ? AND status = 'open' AND ticket_id != ?",
            (seller_id, table_no, ticket_id)):
         raise ContractError("DUPLICATE_EVENT", "/table_no")  # that table is busy
     with conn:
-        conn.execute("UPDATE pos_tickets SET table_no = ?, kind = 'dine_in' WHERE seller_id = ? AND ticket_id = ?",
-                     (table_no, seller_id, ticket_id))
+        conn.execute("UPDATE pos_tickets SET table_no = ?, table_name = ?, kind = 'dine_in' WHERE seller_id = ? AND ticket_id = ?",
+                     (table_no, t["name"], seller_id, ticket_id))
 
 
 def add_line(conn, seller_id: str, ticket_id: str, item_id: str, quantity: int = 1, memo: Optional[str] = None,
@@ -325,8 +351,18 @@ def view(conn, seller_id: str, ticket_id: str) -> dict[str, Any]:
     return {**t, "lines": lines, "subtotal": subtotal, "total": total, "paid": paid, "due": max(0, total - paid),
             "payments": [dict(p, method_label=METHODS[p["method"]]) for p in payments], "member": m,
             "unsent": sum(1 for l in lines if l["state"] == "new"), "kind_label": KINDS[t["kind"]],
-            "label": ("%d번 테이블" % t["table_no"]) if t["table_no"] else "포장",
+            "label": ticket_label(conn, seller_id, t, long=True), "short_label": ticket_label(conn, seller_id, t),
             "points_preview": int(max(0, total - t["points_used"]) * rate / 100) if m else 0, "point_rate": rate}
+
+
+def ticket_label(conn, seller_id: str, t: dict[str, Any], long: bool = False) -> str:
+    """How the screens name a check: the table's name when it was opened ("3번 테이블", "룸1"), or
+    a counter order's call number ("포장 12", "매장 7")."""
+    if t["table_no"]:
+        name = t.get("table_name") or pos_layout.name_of(conn, seller_id, t["table_no"]) or str(t["table_no"])
+        return pos_layout.label(name, long)
+    base = KINDS[t["kind"]]
+    return "%s %d" % (base, t["call_no"]) if t.get("call_no") else base
 
 
 def _approval(payment_id: str) -> str:
@@ -455,26 +491,49 @@ def refund(conn, seller_id: str, ticket_id: str, at: Optional[str] = None) -> No
 # --- screens' read side --------------------------------------------------------------------
 
 def floor(conn, seller_id: str, now: Optional[dt.datetime] = None) -> dict[str, Any]:
-    """Every table with its open check (if any), plus open takeout orders."""
+    """The store's floor plan with each table's open check, plus open counter orders."""
     now = now or dt.datetime.now(dt.timezone.utc)
     cfg = settings(conn, seller_id)
+    plan = pos_layout.plan(conn, seller_id)
     open_tickets = rows(conn, "SELECT ticket_id FROM pos_tickets WHERE seller_id = ? AND status = 'open' ORDER BY opened_at", (seller_id,))
     views = [view(conn, seller_id, t["ticket_id"]) for t in open_tickets]
+    limit = cfg["time_limit"] or 0
     for v in views:
         v["minutes"] = max(0, int((now - _parse(v["opened_at"])).total_seconds() // 60))
         v["waiting"] = sum(1 for l in v["lines"] if l["state"] == "sent")
+        v["overtime"] = bool(limit) and v["minutes"] >= limit
     by_table = {v["table_no"]: v for v in views if v["table_no"]}
-    tables = [{"no": n, "ticket": by_table.get(n)} for n in range(1, cfg["tables"] + 1)]
-    return {"tables": tables, "takeout": [v for v in views if not v["table_no"]], "settings": cfg,
-            "busy": len(by_table), "open_total": sum(v["total"] for v in views)}
+    zones = []
+    for z in plan["zones"]:
+        items = [dict(i, ticket=by_table.get(i["no"]) if i["kind"] == "table" else None,
+                      label=pos_layout.label(i["name"]) if i["kind"] == "table" else i["name"])
+                 for i in plan["items"] if i["zone"] == z]
+        tables_in = [i for i in items if i["kind"] == "table"]
+        zones.append({"name": z, "spots": items, "tables": len(tables_in), "busy": sum(1 for i in tables_in if i["ticket"]),
+                      "seats": sum(i["seats"] for i in tables_in)})
+    table_count = sum(z["tables"] for z in zones)
+    return {"zones": zones, "cols": plan["cols"], "rows": plan["rows"], "counter": [v for v in views if not v["table_no"]],
+            "settings": cfg, "busy": len(by_table), "table_count": table_count,
+            "seats": sum(z["seats"] for z in zones), "open_total": sum(v["total"] for v in views)}
+
+
+def table_choices(conn, seller_id: str) -> list[dict[str, Any]]:
+    """Tables to move a check to, by zone, with whether each is taken."""
+    busy = {r["table_no"] for r in rows(conn, "SELECT table_no FROM pos_tickets WHERE seller_id = ? AND status = 'open' "
+                                             "AND table_no IS NOT NULL", (seller_id,))}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for t in pos_layout.tables(conn, seller_id):
+        out.setdefault(t["zone"], []).append({"no": t["no"], "label": pos_layout.label(t["name"], long=True), "seats": t["seats"],
+                                              "busy": t["no"] in busy})
+    return [{"zone": z, "tables": ts} for z, ts in out.items()]
 
 
 def kitchen_queue(conn, seller_id: str) -> list[dict[str, Any]]:
     tickets: dict[str, dict[str, Any]] = {}
-    for l in rows(conn, "SELECT l.*, t.table_no, t.kind FROM pos_lines l JOIN pos_tickets t USING (seller_id, ticket_id) "
+    for l in rows(conn, "SELECT l.*, t.table_no, t.table_name, t.call_no, t.kind FROM pos_lines l JOIN pos_tickets t USING (seller_id, ticket_id) "
                         "WHERE l.seller_id = ? AND l.sent_at IS NOT NULL AND l.served_at IS NULL AND l.voided_at IS NULL "
                         "AND t.status IN ('open', 'paid') ORDER BY l.sent_at, l.rowid", (seller_id,)):
-        t = tickets.setdefault(l["ticket_id"], {"ticket_id": l["ticket_id"], "label": ("%d번" % l["table_no"]) if l["table_no"] else "포장",
+        t = tickets.setdefault(l["ticket_id"], {"ticket_id": l["ticket_id"], "label": ticket_label(conn, seller_id, l),
                                                  "sent_at": l["sent_at"], "lines": []})
         t["lines"].append(l)
     now = dt.datetime.now(dt.timezone.utc)

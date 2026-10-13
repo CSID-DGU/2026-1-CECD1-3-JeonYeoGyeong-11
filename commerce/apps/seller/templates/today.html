@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <h1 class="page-title">오늘 우리 가게</h1>
-  <p>{{ today.day }} · 지금 테이블 {{ floor.busy }}/{{ floor.settings.tables }} 사용 중{% if floor.takeout %} · 포장 {{ floor.takeout | length }}건{% endif %}{% if kitchen %} · 주방 대기 {{ kitchen }}건{% endif %}</p>
+  <p>{{ today.day }} · 지금 테이블 {{ floor.busy }}/{{ floor.table_count }} 사용 중{% if floor.counter %} · 카운터 주문 {{ floor.counter | length }}건{% endif %}{% if kitchen %} · 주방 대기 {{ kitchen }}건{% endif %}</p>
 </div>
 
 <div class="grid cols-4 kpis">

@@ -1,0 +1,294 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">테이블 배치</h1>
+  <p>우리 가게 모양대로 테이블을 놓고 번호를 붙여요. POS 첫 화면이 이 배치 그대로 보여요. 끌어서 옮기고, 오른쪽 아래 모서리를 끌면 크기가 바뀌어요.</p>
+</div>
+
+<div class="fe-zones" id="fe-zones" role="tablist" aria-label="구역"></div>
+
+<div class="fe-wrap">
+  <section class="fe-stage" aria-label="배치도">
+    <div class="floorplan editing" id="fe-canvas" tabindex="0" style="--cols: {{ plan.cols }}; --rows: {{ plan.rows }}" aria-label="배치도 편집"></div>
+    <div class="fe-bar">
+      <span id="fe-summary" class="muted-note"></span>
+      <span class="grow"></span>
+      <span id="fe-status" class="fe-status" aria-live="polite"></span>
+      <button type="button" class="btn ghost" id="fe-reset">되돌리기</button>
+      <button type="button" class="btn primary" id="fe-save">배치 저장</button>
+    </div>
+  </section>
+
+  <aside class="card fe-tools" aria-label="추가하기">
+    <h2 class="fe-h">테이블 놓기</h2>
+    <div class="fe-tool-grid" id="fe-add-tables"></div>
+    <h2 class="fe-h mt-12">시설 표시</h2>
+    <div class="fe-tool-grid" id="fe-add-fixtures"></div>
+    <h2 class="fe-h mt-12">번호 다시 매기기</h2>
+    <div class="stack fe-number">
+      <select id="fe-num-mode" aria-label="번호 방식">
+        <option value="seq">1, 2, 3 … (전체 이어서)</option>
+        <option value="letter">구역마다 A1, B1 …</option>
+        <option value="hundred">구역마다 101, 201 …</option>
+      </select>
+      <label class="fe-check"><input type="checkbox" id="fe-num-bar" checked> 바 좌석은 바1, 바2 …</label>
+      <label class="fe-check"><input type="checkbox" id="fe-num-room" checked> 좌식은 방1, 방2 …</label>
+      <button type="button" class="btn ghost sm" id="fe-num-go">왼쪽 위부터 번호 붙이기</button>
+    </div>
+  </aside>
+
+  <aside class="card fe-props" id="fe-props" aria-label="선택한 항목"></aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var PLAN = {{ plan | tojson }}, BUSY = {{ busy | tojson }}, SHAPES = {{ shapes | tojson }}, FIXTURES = {{ fixtures | tojson }};
+  var CSRF = {{ (csrf_token or '') | tojson }}, URL = '/seller/{{ seller_id }}/floor';
+  var COLS = PLAN.cols, ROWS = PLAN.rows;
+  var ICON = {kitchen: '🍳', counter: '🧾', entrance: '🚪', restroom: '🚻', window: '🪟', wall: '', selfbar: '🥢', stairs: '🪜'};
+  var TABLE_PRESETS = [
+    {label: '2인 사각', shape: 'square', seats: 2, w: 2, h: 2}, {label: '4인 사각', shape: 'square', seats: 4, w: 3, h: 2},
+    {label: '6인 직사각', shape: 'rect', seats: 6, w: 4, h: 2}, {label: '원형 4인', shape: 'round', seats: 4, w: 2, h: 2},
+    {label: '부스 4인', shape: 'booth', seats: 4, w: 3, h: 2}, {label: '바 1석', shape: 'bar', seats: 1, w: 1, h: 1},
+    {label: '좌식 6인', shape: 'floor', seats: 6, w: 4, h: 3}, {label: '단체 10인', shape: 'rect', seats: 10, w: 6, h: 2}];
+  var FIXTURE_SIZE = {kitchen: [5, 3], counter: [4, 1], entrance: [2, 1], restroom: [2, 2], window: [6, 1], wall: [1, 4], selfbar: [3, 1], stairs: [2, 2]};
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('fe-canvas');
+  var state, zone = 0, selected = null, dirty = false, uid = 0;
+
+  function load(plan) {
+    state = {zones: plan.zones.slice(), items: plan.items.map(function (i) { return Object.assign({uid: ++uid}, i); })};
+    if (zone >= state.zones.length) zone = 0;
+    selected = null;
+  }
+  function setDirty(v) { dirty = v; $('fe-status').textContent = v ? '저장 안 된 변경이 있어요' : ''; $('fe-status').className = 'fe-status' + (v ? ' warn' : ''); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); }
+  function inZone(z) { return state.items.filter(function (i) { return i.zone === state.zones[z]; }); }
+  function byUid(u) { return state.items.find(function (i) { return i.uid === u; }); }
+  function isBusy(i) { return i.kind === 'table' && i.no != null && BUSY.indexOf(i.no) >= 0; }
+  function overlap(a, b) { return a.zone === b.zone && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h; }
+  function clashes() {
+    var bad = {};
+    state.items.forEach(function (a, k) { state.items.slice(k + 1).forEach(function (b) { if (overlap(a, b)) { bad[a.uid] = bad[b.uid] = true; } }); });
+    return bad;
+  }
+  function label(name) { return /^\d+$/.test(name) ? name + '번' : name; }
+
+  // --- drawing --------------------------------------------------------------------
+  function renderZones() {
+    var html = state.zones.map(function (z, k) {
+      var n = state.items.filter(function (i) { return i.zone === z && i.kind === 'table'; }).length;
+      return '<button type="button" role="tab" class="' + (k === zone ? 'active' : '') + '" data-z="' + k + '">' + esc(z) + ' <small>' + n + '</small></button>';
+    }).join('');
+    html += '<button type="button" class="fe-zone-op" data-op="add">＋ 구역</button>' +
+            '<button type="button" class="fe-zone-op" data-op="rename">이름 바꾸기</button>' +
+            (state.zones.length > 1 ? '<button type="button" class="fe-zone-op danger" data-op="del">구역 삭제</button>' : '');
+    $('fe-zones').innerHTML = html;
+  }
+  function itemHtml(i, bad) {
+    var cls = 'fp-item ' + (i.kind === 'table' ? 'fp-table shape-' + i.shape : 'fp-fixture fx-' + i.shape) +
+      (i.uid === selected ? ' sel' : '') + (bad[i.uid] ? ' clash' : '') + (isBusy(i) ? ' busy' : '') + (i.w * i.h <= 2 ? ' tiny' : '');
+    var body = i.kind === 'table'
+      ? '<span class="tt-no">' + esc(i.name) + '</span><span class="tt-free">' + i.seats + '석' + (isBusy(i) ? ' · 사용 중' : '') + '</span>'
+      : '<span>' + (ICON[i.shape] || '') + ' ' + esc(i.name) + '</span>';
+    return '<div class="' + cls + '" data-uid="' + i.uid + '" style="--x:' + i.x + ';--y:' + i.y + ';--w:' + i.w + ';--h:' + i.h + '">' +
+      body + '<span class="fe-resize" data-resize="1" aria-hidden="true"></span></div>';
+  }
+  function renderCanvas() {
+    var bad = clashes();
+    canvas.innerHTML = inZone(zone).map(function (i) { return itemHtml(i, bad); }).join('') ||
+      '<p class="fp-empty">왼쪽에서 테이블을 눌러 놓아 보세요.</p>';
+    var tables = state.items.filter(function (i) { return i.kind === 'table'; });
+    var zt = inZone(zone).filter(function (i) { return i.kind === 'table'; });
+    var n = Object.keys(bad).length;
+    $('fe-summary').innerHTML = esc(state.zones[zone]) + ' 테이블 ' + zt.length + '개 · ' + zt.reduce(function (s, i) { return s + i.seats; }, 0) + '석' +
+      ' / 전체 ' + tables.length + '개 · ' + tables.reduce(function (s, i) { return s + i.seats; }, 0) + '석' +
+      (n ? ' · <b class="danger-text">겹친 자리가 있어요</b>' : '');
+  }
+  function renderProps() {
+    var i = byUid(selected), box = $('fe-props');
+    if (!i) {
+      box.innerHTML = '<h2 class="fe-h">선택한 것 없음</h2><p class="muted-note">배치도에서 테이블이나 시설을 누르면 여기서 이름(번호), 좌석, 모양, 크기를 바꿀 수 있어요.</p>' +
+        '<ul class="plain-list small"><li>방향키: 한 칸씩 옮기기</li><li>Shift + 방향키: 크기 바꾸기</li><li>Delete: 지우기</li></ul>';
+      return;
+    }
+    var zoneOpts = state.zones.map(function (z) { return '<option' + (z === i.zone ? ' selected' : '') + '>' + esc(z) + '</option>'; }).join('');
+    var html = '<h2 class="fe-h">' + (i.kind === 'table' ? '테이블 ' + esc(label(i.name)) : esc(FIXTURES[i.shape])) + '</h2>';
+    if (i.kind === 'table') {
+      html += '<label class="field">이름(번호)<input id="p-name" maxlength="8" value="' + esc(i.name) + '"></label>' +
+        '<label class="field">좌석 수<input id="p-seats" type="number" min="1" max="20" value="' + i.seats + '"></label>' +
+        '<label class="field">모양<select id="p-shape">' + Object.keys(SHAPES).map(function (k) { return '<option value="' + k + '"' + (k === i.shape ? ' selected' : '') + '>' + SHAPES[k] + '</option>'; }).join('') + '</select></label>';
+    } else {
+      html += '<label class="field">표시 글자<input id="p-name" maxlength="10" value="' + esc(i.name) + '"></label>' +
+        '<label class="field">종류<select id="p-shape">' + Object.keys(FIXTURES).map(function (k) { return '<option value="' + k + '"' + (k === i.shape ? ' selected' : '') + '>' + FIXTURES[k] + '</option>'; }).join('') + '</select></label>';
+    }
+    html += '<div class="form-row two"><label class="field">가로 칸<input id="p-w" type="number" min="1" max="' + COLS + '" value="' + i.w + '"></label>' +
+      '<label class="field">세로 칸<input id="p-h" type="number" min="1" max="' + ROWS + '" value="' + i.h + '"></label></div>' +
+      '<label class="field">구역<select id="p-zone">' + zoneOpts + '</select></label>' +
+      '<div class="row gap-8"><button type="button" class="btn ghost sm" id="p-dup">복제</button>' +
+      '<button type="button" class="btn ghost sm danger" id="p-del"' + (isBusy(i) ? ' disabled' : '') + '>지우기</button></div>' +
+      (isBusy(i) ? '<p class="muted-note">지금 이 테이블에 결제 전 주문이 있어서 지울 수 없어요. 옮기거나 이름을 바꾸는 건 돼요(주문은 그대로 따라가요).</p>' : '');
+    box.innerHTML = html;
+    var on = function (id, ev, fn) { var el = $(id); if (el) el.addEventListener(ev, fn); };
+    on('p-name', 'input', function (e) { i.name = e.target.value.trim(); changed(false); });
+    on('p-seats', 'input', function (e) { i.seats = Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)); changed(false); });
+    on('p-shape', 'change', function (e) { i.shape = e.target.value; if (i.kind === 'fixture' && i.name === '') i.name = FIXTURES[i.shape]; changed(true); });
+    on('p-w', 'input', function (e) { i.w = clamp(parseInt(e.target.value, 10) || 1, 1, COLS - i.x); changed(false); });
+    on('p-h', 'input', function (e) { i.h = clamp(parseInt(e.target.value, 10) || 1, 1, ROWS - i.y); changed(false); });
+    on('p-zone', 'change', function (e) {
+      var spot = findSpot(state.zones.indexOf(e.target.value), i.w, i.h, i);
+      i.zone = e.target.value; if (spot) { i.x = spot[0]; i.y = spot[1]; }
+      zone = state.zones.indexOf(i.zone); changed(true);
+    });
+    on('p-dup', 'click', function () {
+      var spot = findSpot(zone, i.w, i.h);
+      if (!spot) return say('이 구역에 빈 자리가 없어요.', true);
+      var c = Object.assign({}, i, {uid: ++uid, no: null, x: spot[0], y: spot[1], name: i.kind === 'table' ? nextName(i) : i.name});
+      state.items.push(c); selected = c.uid; changed(true);
+    });
+    on('p-del', 'click', function () { remove(i); });
+  }
+  function render() { renderZones(); renderCanvas(); renderProps(); }
+  function changed(full) { setDirty(true); renderZones(); renderCanvas(); if (full) renderProps(); }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function say(msg, bad) { var s = $('fe-status'); s.textContent = msg; s.className = 'fe-status' + (bad ? ' warn' : ' ok'); }
+
+  // --- adding ---------------------------------------------------------------------
+  function findSpot(z, w, h, except) {
+    var others = inZone(z).filter(function (i) { return i !== except; });
+    for (var y = 0; y + h <= ROWS; y++) for (var x = 0; x + w <= COLS; x++) {
+      var probe = {zone: state.zones[z], x: x, y: y, w: w, h: h};
+      if (!others.some(function (o) { return overlap(probe, o); })) return [x, y];
+    }
+    return null;
+  }
+  function nextName(like) {
+    var names = state.items.filter(function (i) { return i.kind === 'table'; }).map(function (i) { return i.name; });
+    if (like && like.shape === 'bar') { var b = 1; while (names.indexOf('바' + b) >= 0) b++; return '바' + b; }
+    if (like && like.shape === 'floor') { var r = 1; while (names.indexOf('방' + r) >= 0) r++; return '방' + r; }
+    var n = 1; while (names.indexOf(String(n)) >= 0) n++; return String(n);
+  }
+  function add(item) {
+    var spot = findSpot(zone, item.w, item.h);
+    if (!spot) return say('이 구역에 그 크기로 놓을 빈 자리가 없어요. 크기를 줄이거나 다른 구역에 놓아 주세요.', true);
+    item = Object.assign({uid: ++uid, no: null, zone: state.zones[zone], x: spot[0], y: spot[1]}, item);
+    if (item.kind === 'table') item.name = nextName(item);
+    state.items.push(item); selected = item.uid; changed(true);
+  }
+  function remove(i) {
+    if (isBusy(i)) return say('결제 전 주문이 있는 테이블은 지울 수 없어요.', true);
+    state.items = state.items.filter(function (o) { return o !== i; }); selected = null; changed(true);
+  }
+  $('fe-add-tables').innerHTML = TABLE_PRESETS.map(function (p, k) {
+    return '<button type="button" class="fe-tool" data-t="' + k + '"><i class="fe-ico shape-' + p.shape + '"></i>' + p.label + '</button>'; }).join('');
+  $('fe-add-fixtures').innerHTML = Object.keys(FIXTURES).map(function (k) {
+    return '<button type="button" class="fe-tool" data-f="' + k + '"><span aria-hidden="true">' + (ICON[k] || '▭') + '</span>' + FIXTURES[k] + '</button>'; }).join('');
+  $('fe-add-tables').onclick = function (e) {
+    var b = e.target.closest('[data-t]'); if (!b) return; var p = TABLE_PRESETS[+b.dataset.t];
+    add({kind: 'table', shape: p.shape, seats: p.seats, w: p.w, h: p.h});
+  };
+  $('fe-add-fixtures').onclick = function (e) {
+    var b = e.target.closest('[data-f]'); if (!b) return; var k = b.dataset.f, sz = FIXTURE_SIZE[k];
+    add({kind: 'fixture', shape: k, seats: 0, name: FIXTURES[k], w: sz[0], h: sz[1]});
+  };
+
+  // --- zones -------------------------------------------------------------------------
+  $('fe-zones').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.z != null) { zone = +b.dataset.z; selected = null; render(); return; }
+    var op = b.dataset.op, cur = state.zones[zone];
+    if (op === 'add') {
+      if (state.zones.length >= 8) return say('구역은 8개까지예요.', true);
+      var name = (prompt('새 구역 이름 (예: 룸, 테라스, 2층)') || '').trim().slice(0, 10);
+      if (!name) return; if (state.zones.indexOf(name) >= 0) return say('같은 이름의 구역이 있어요.', true);
+      state.zones.push(name); zone = state.zones.length - 1; selected = null; changed(true);
+    } else if (op === 'rename') {
+      var nn = (prompt('구역 이름', cur) || '').trim().slice(0, 10);
+      if (!nn || nn === cur) return; if (state.zones.indexOf(nn) >= 0) return say('같은 이름의 구역이 있어요.', true);
+      state.zones[zone] = nn; state.items.forEach(function (i) { if (i.zone === cur) i.zone = nn; }); changed(true);
+    } else if (op === 'del') {
+      var items = inZone(zone);
+      if (items.some(isBusy)) return say('결제 전 주문이 있는 테이블이 있어서 이 구역은 지울 수 없어요.', true);
+      if (items.length && !confirm("'" + cur + "' 구역과 안에 있는 " + items.length + '개를 지울까요?')) return;
+      state.items = state.items.filter(function (i) { return i.zone !== cur; });
+      state.zones.splice(zone, 1); zone = 0; selected = null; changed(true);
+    }
+  };
+
+  // --- numbering ---------------------------------------------------------------------
+  $('fe-num-go').onclick = function () {
+    if (!confirm('모든 테이블 이름을 왼쪽 위부터 다시 붙일까요? (진행 중인 주문은 새 이름으로 따라가요)')) return;
+    var mode = $('fe-num-mode').value, bar = $('fe-num-bar').checked, room = $('fe-num-room').checked, seq = 1;
+    var counters = {bar: 1, floor: 1};
+    state.zones.forEach(function (z, k) {
+      var n = 1;
+      state.items.filter(function (i) { return i.kind === 'table' && i.zone === z; })
+        .sort(function (a, b) { return a.y - b.y || a.x - b.x; })
+        .forEach(function (i) {
+          if (bar && i.shape === 'bar') { i.name = '바' + counters.bar++; return; }
+          if (room && i.shape === 'floor') { i.name = '방' + counters.floor++; return; }
+          i.name = mode === 'seq' ? String(seq++) : mode === 'letter' ? String.fromCharCode(65 + k) + n++ : String((k + 1) * 100 + n++);
+        });
+    });
+    changed(true); say('번호를 다시 붙였어요. 저장해야 POS에 반영돼요.');
+  };
+
+  // --- dragging ---------------------------------------------------------------------
+  var drag = null;
+  canvas.addEventListener('pointerdown', function (e) {
+    var el = e.target.closest('.fp-item'); if (!el) { selected = null; renderCanvas(); renderProps(); return; }
+    var i = byUid(+el.dataset.uid); if (!i) return;
+    if (selected !== i.uid) { selected = i.uid; renderProps(); }
+    var cell = canvas.getBoundingClientRect().width / COLS;
+    drag = {i: i, el: el, resize: !!e.target.dataset.resize, sx: e.clientX, sy: e.clientY, x: i.x, y: i.y, w: i.w, h: i.h, cell: cell, moved: false};
+    canvas.querySelectorAll('.fp-item.sel').forEach(function (n) { n.classList.remove('sel'); }); el.classList.add('sel');
+    el.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = Math.round((e.clientX - drag.sx) / drag.cell), dy = Math.round((e.clientY - drag.sy) / drag.cell), i = drag.i;
+    if (drag.resize) { i.w = clamp(drag.w + dx, 1, COLS - i.x); i.h = clamp(drag.h + dy, 1, ROWS - i.y); }
+    else { i.x = clamp(drag.x + dx, 0, COLS - i.w); i.y = clamp(drag.y + dy, 0, ROWS - i.h); }
+    if (i.x !== drag.x || i.y !== drag.y || i.w !== drag.w || i.h !== drag.h) drag.moved = true;
+    drag.el.style.cssText = '--x:' + i.x + ';--y:' + i.y + ';--w:' + i.w + ';--h:' + i.h;
+  });
+  function endDrag() { if (!drag) return; var moved = drag.moved; drag = null; if (moved) changed(true); }
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  document.addEventListener('keydown', function (e) {
+    var i = byUid(selected); if (!i || /INPUT|SELECT|TEXTAREA/.test((e.target.tagName || ''))) return;
+    var d = {ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]}[e.key];
+    if (d) {
+      if (e.shiftKey) { i.w = clamp(i.w + d[0], 1, COLS - i.x); i.h = clamp(i.h + d[1], 1, ROWS - i.y); }
+      else { i.x = clamp(i.x + d[0], 0, COLS - i.w); i.y = clamp(i.y + d[1], 0, ROWS - i.h); }
+      e.preventDefault(); changed(true);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); remove(i); }
+    else if (e.key === 'Escape') { selected = null; render(); }
+  });
+
+  // --- saving -----------------------------------------------------------------------
+  $('fe-save').onclick = function () {
+    if (Object.keys(clashes()).length) return say('겹친 자리를 먼저 떼어 주세요 (빨간 테두리).', true);
+    var body = {zones: state.zones, items: state.items.map(function (i) {
+      return {no: i.no, kind: i.kind, zone: i.zone, name: i.name, seats: i.seats, shape: i.shape, x: i.x, y: i.y, w: i.w, h: i.h}; })};
+    $('fe-save').disabled = true;
+    fetch(URL, {method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+                body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); })
+      .then(function (j) {
+        $('fe-save').disabled = false;
+        if (j.error) return say(j.error, true);
+        var keepZone = state.zones[zone]; PLAN = j.plan; load(j.plan); zone = Math.max(0, state.zones.indexOf(keepZone));
+        setDirty(false); render(); say('저장했어요. POS에 바로 반영돼요.');
+      })
+      .catch(function () { $('fe-save').disabled = false; say('저장하지 못했어요. 다시 로그인해 주세요.', true); });
+  };
+  $('fe-reset').onclick = function () { if (!dirty || confirm('저장 안 한 변경을 버릴까요?')) { load(PLAN); setDirty(false); render(); } };
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  load(PLAN); render();
+})();
+</script>
+{% endblock %}
