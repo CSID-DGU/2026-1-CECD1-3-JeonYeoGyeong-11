@@ -67,6 +67,11 @@ def bundle(run: Path, out: Path, model_version: str, text_artifact_hash: str, *,
         "rounds": settings["rounds"], "seed": settings["seed"], "code": record.get("code"),
         "labels": record.get("labels"),
     }
+    if record.get("resumed"):
+        # fl_lab --init-from: the first start_round rounds are another run's (its folder name only).
+        resumed = record["resumed"]
+        provenance["continued_from"] = {"run": Path(resumed["from"]).parent.name,
+                                        "start_round": resumed["start_round"]}
     (out / "provenance.json").write_text(json.dumps(provenance, indent=1, ensure_ascii=False), encoding="utf-8")
     return {"release": release, "provenance": provenance}
 

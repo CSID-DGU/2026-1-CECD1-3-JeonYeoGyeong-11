@@ -79,6 +79,7 @@ text_only와 text_relation을 각각 학습하고 global/personalized를 비교�
   - 구조를 바꾸면 1·2를 다시 쓰지 않고 새 architecture_version을 등록한다([모델 실험](model-lab.md) §6의 2).
   - 재구매 경로(#27에서 D0023으로 제안했고 병합하지 않는다)는 넣지 않는다. hx(판매자별 단어 토큰 표)는 HAREX 비교 기준으로만 남긴다.
   - 첫 release는 Instacart 판매자 100곳 비보호 FL 시뮬레이션(500라운드, 마지막 라운드)의 공유 가중치다. FL로 만든 release이며 보호 FL 결과가 아니라고 출처에 적는다(D0020).
+  - 같은 seed 0 실행을 1,000라운드까지 이어 학습한 release `ic100-T_lm-r1000`·`ic100-R_lm-r1000`도 있다(출처의 continued_from). 기존 판매자 NDCG@10은 R_lm 0.214, T_lm 0.154(seed 3개)다. R_lm은 기존 판매자에서도 R_hx(0.213, 310~380라운드에서 수렴)와 차이를 확인하지 못했다(+0.001 [−0.002, +0.004]). 서비스가 어느 release를 쓸지는 C의 registry에서 고른다.
 - **왜 hx가 아니라 lm인가.** 판매자 100곳 비보호 FL 시뮬레이션(D0022 1차 표, 다음 장바구니) 기준이다.
 
   | 상황 | T_hx | R_hx | T_lm | R_lm |

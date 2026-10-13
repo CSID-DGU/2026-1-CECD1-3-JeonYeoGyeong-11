@@ -714,6 +714,15 @@ class BundleTest(Base):
         self.assertEqual(served["model_version"], "lab-R-1")
         self.assertFalse(served["is_cold_start"])
         self.assertTrue((out / "provenance.json").is_file())
+        self.assertNotIn("continued_from", json.loads((out / "provenance.json").read_text(encoding="utf-8")))
+        # A run continued with fl_lab --init-from names the run it continued, not the path it read.
+        resumed = dict(record, resumed={"from": "/home/lab/runs/fl_100/20260928T221732Z_R_lm_basket_s0_1/shared_weights.pt",
+                                        "start_round": 500})
+        (run / "record.json").write_text(json.dumps(resumed), encoding="utf-8")
+        bundle(run, self.root / "release-c", "lab-R-1c", FakeText.text_artifact_hash, architectures=TINY)
+        provenance = json.loads((self.root / "release-c" / "provenance.json").read_text(encoding="utf-8"))
+        self.assertEqual(provenance["continued_from"],
+                         {"run": "20260928T221732Z_R_lm_basket_s0_1", "start_round": 500})
         wrong = dict(record, encoder=dict(record["encoder"], preprocessing_version="0" * 64))
         (run / "record.json").write_text(json.dumps(wrong), encoding="utf-8")
         with self.assertRaises(SystemExit):
