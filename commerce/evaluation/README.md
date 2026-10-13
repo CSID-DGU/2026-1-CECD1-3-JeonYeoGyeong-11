@@ -9,6 +9,7 @@
 - `gci_protocol.py`: GCI 논문의 평가 조건(상품 단위 5개 창, 무작위 분할). `--protocol gci`로 두 실행기에 쓰는 추가 범위 재현이며 본 결과를 대신하지 않는다.
 - `dunnhumby_protocol.py`: Dunnhumby 보조 cohort(evaluation.md §4). `--protocol dunnhumby --dunnhumby-dir <transactions.rds·products.rda 폴더>`로 두 실행기에 쓴다. 판매자는 roster 점포를 점포 번호순으로 `--sellers`곳, 주 기준 분할(train 2~39 / validation 40~43 / test 44~52), 관계·인기순은 target 주 이전 방문만 읽는다. 결과는 정답을 "텍스트가 고유한 상품"과 "같은 텍스트가 있는 상품"으로 나눠 보고하고, `d0022_report`가 따로 표를 만든다.
 - `gci_original.py`: GCI 원 모델(상품명 생성 + Jaccard 매칭, glocal FL)을 같은 조건에서 재현한다. 단독 학습·FL·데이터 통합 학습을 논문 Table 4처럼 낸다. 추가 범위다.
+- `a_few.py`: 보류 판매자에서 모델 비교의 2×2(T-G·R-G = A-0, T-P·R-P = A-few)를 실제 판매자 runtime으로 평가한다. 고객마다 마지막 방문이 정답이고 그 전 방문만 원장·개인화에 쓴다. 기본은 보류 판매자 11~20번(1~10번은 개인화 설정을 고르는 데 썼다).
 - `d0022_report.py`: 실행 기록을 모아 결과표와 1차 대비의 판매자 단위 paired bootstrap 구간을 Markdown으로 낸다.
 - `release_bundle.py`: lm 계열 FL 실행의 공유 가중치를 서비스 첫 release 폴더(release.json·manifest.json·weights.npz와 출처 provenance.json)로 만든다. 실행의 텍스트 artifact·전처리가 지금 코드와 다르면 거부한다.
 - `service_check.py`: 보류 판매자를 실제 판매자 runtime에 넣어(카탈로그·마지막 방문 전까지의 이벤트) release 설치 전후의 추천을 마지막 방문으로 채점하고 지연을 잰다. 서비스 경로 점검이며 D0022 표가 아니다.
