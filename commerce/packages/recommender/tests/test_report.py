@@ -32,6 +32,28 @@ def fl_record(variant, seed, value, frac=0.0, protocol="next_visit", **settings)
             "training": {"best_round": 480, "plateaued": True}}
 
 
+def keyed(record):
+    """The record as A's metrics module writes it: per_seller keyed by seller, not a list."""
+    for which in ("final_round", "best_round"):
+        for arm in record["metrics"][which].values():
+            for res in arm.values():
+                if isinstance(res["per_seller"], list):
+                    res["per_seller"] = {"s%d" % i: x for i, x in enumerate(res["per_seller"])}
+    return record
+
+
+def report(records):
+    with tempfile.TemporaryDirectory() as root:
+        for i, record in enumerate(records):
+            folder = Path(root) / str(i)
+            folder.mkdir()
+            (folder / "record.json").write_text(json.dumps(record), encoding="utf-8")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            main(["--runs", root])
+    return out.getvalue()
+
+
 class Bootstrap(unittest.TestCase):
     def test_a_constant_difference_has_a_point_interval(self):
         mean, low, high = paired_bootstrap(np.full(10, 0.3), np.full(10, 0.1))
@@ -46,20 +68,12 @@ class Bootstrap(unittest.TestCase):
 
 class Report(unittest.TestCase):
     def test_tables_from_records(self):
-        with tempfile.TemporaryDirectory() as root:
-            records = [fl_record(v, s, x) for v, x in (("T_hx", 0.12), ("R_hx", 0.15)) for s in (0, 1, 2)]
-            records.append(fl_record("R_hx", 0, 0.14, frac=0.1))
-            records.append(fl_record("T_hx", 0, 0.5, protocol="gci"))  # must stay out of the main tables
-            records.append(fl_record("T_hx", 0, 0.3, protocol="gci", menu_size=200))  # its own gci table
-            records.append(fl_record("T_hx", 0, 0.9, seller_size=200))  # small sellers: their own table
-            for i, record in enumerate(records):
-                folder = Path(root) / str(i)
-                folder.mkdir()
-                (folder / "record.json").write_text(json.dumps(record), encoding="utf-8")
-            out = io.StringIO()
-            with contextlib.redirect_stdout(out):
-                main(["--runs", root])
-        text = out.getvalue()
+        records = [fl_record(v, s, x) for v, x in (("T_hx", 0.12), ("R_hx", 0.15)) for s in (0, 1, 2)]
+        records.append(fl_record("R_hx", 0, 0.14, frac=0.1))
+        records.append(fl_record("T_hx", 0, 0.5, protocol="gci"))  # must stay out of the main tables
+        records.append(fl_record("T_hx", 0, 0.3, protocol="gci", menu_size=200))  # its own gci table
+        records.append(fl_record("T_hx", 0, 0.9, seller_size=200))  # small sellers: their own table
+        text = report(records)
         self.assertIn("| R_hx | FL | 3 | 0.1750 |", text)
         self.assertIn("| 1차 대비 | R_hx − T_hx | 3 | +0.0300 | [+0.0300, +0.0300] | R_hx가 높다 |", text)
         self.assertIn("### 콜드스타트", text)
@@ -71,6 +85,17 @@ class Report(unittest.TestCase):
         self.assertIn("### basket — 판매자 100곳, train 주문 200건", text)
         self.assertIn("| T_hx | FL | 1 | 0.9250 |", text)
         self.assertLess(text.index("train 주문 1,040건"), text.index("train 주문 200건"))  # the main one first
+
+    def test_continued_runs_sit_beside_their_seeds_instead_of_replacing_them(self):
+        records = [fl_record(v, s, x) for v, x in (("T_lm", 0.10), ("R_lm", 0.15)) for s in (0, 1, 2)]
+        # The continued runs were scored with A's module; the 500-round ones with B's temporary scoring.
+        records += [keyed(fl_record(v, s, x, rounds=1000)) for v, x in (("T_lm", 0.13), ("R_lm", 0.17)) for s in (0, 1)]
+        text = report(records)
+        self.assertIn("| T_lm | FL | 3 | 0.1250 |", text)  # the 500-round seed mean
+        self.assertIn("### 더 긴 학습 — basket, 판매자 100곳", text)
+        self.assertIn("| T_lm | 2 | 0.1250 → 0.1550 | +0.0300 | [+0.0300, +0.0300] |", text)
+        self.assertIn("| R_lm − T_lm | 500 | 2 | +0.0500 |", text)
+        self.assertIn("| R_lm − T_lm | 1000 | 2 | +0.0400 |", text)
 
 
 if __name__ == "__main__":

@@ -10,8 +10,10 @@ interval. An interval that holds 0 is written "차이를 확인하지 못했다"
 under GCI's conditions (--protocol gci) get their own table next to the paper's
 HR@10 and never enter the main ones. Runs under different data or loss settings
 (seller count, seller size, menu, negatives) get separate tables, so a small-seller
-run never joins a 1,040-order seed mean. Tables hold aggregates only, so they can
-go into a PR once C has checked them.
+run never joins a 1,040-order seed mean. Runs continued past the fixed ROUNDS
+(fl_lab --init-from) share their seeds with the runs they continue, so they get
+their own table next to those runs instead of replacing them in a seed mean.
+Tables hold aggregates only, so they can go into a PR once C has checked them.
 """
 import argparse
 import json
@@ -20,6 +22,7 @@ from pathlib import Path
 import numpy as np
 
 METRICS = ("ndcg@10", "recall@20", "hr@10")
+ROUNDS = 500  # the fixed FL round count (evaluation.md §5)
 # GCI Table 4, HR@10: (local, glocal FL) per client.
 GCI_PAPER = {"BBQ 1": (0.443, 0.478), "BBQ 2": (0.455, 0.522), "Ulsan Pedal 1": (0.110, 0.147),
              "Ulsan Pedal 2": (0.117, 0.140)}
@@ -46,8 +49,12 @@ def condition_label(cond: tuple) -> str:
 
 
 def per_seller(result: dict, metric: str) -> list[float]:
-    """Per-seller macro values in seller order; every run lists sellers in sorted order."""
-    return [s[metric] for s in result.get("per_seller", [])]
+    """Per-seller macro values in seller order. Records scored with B's temporary scoring list
+    sellers in sorted order; A's metrics module keys them by seller, so they are sorted here."""
+    sellers = result.get("per_seller", [])
+    if isinstance(sellers, dict):
+        sellers = [sellers[k] for k in sorted(sellers)]
+    return [s[metric] for s in sellers]
 
 
 def paired_bootstrap(a: np.ndarray, b: np.ndarray, draws: int = 10000, seed: int = 0) -> tuple[float, float, float]:
@@ -95,6 +102,8 @@ def main(argv=None):
     dh_local = [r for r in local if r["settings"].get("protocol") == "dunnhumby"]
     fl = [r for r in fl if r["settings"].get("protocol", "next_visit") == "next_visit"]
     local = [r for r in local if r["settings"].get("protocol", "next_visit") == "next_visit"]
+    longer = [r for r in fl if r["settings"].get("rounds", ROUNDS) != ROUNDS]
+    fl = [r for r in fl if r["settings"].get("rounds", ROUNDS) == ROUNDS]
     out = []
 
     # FL runs by (condition, target, holdout, variant) -> {seed: record}
@@ -207,6 +216,8 @@ def main(argv=None):
                 cell([loc["metrics"]["all"]] if loc else []),
                 cell(r["final_round"]["%s FL A-0" % variant]["cnew"] for r in a0_new)))
         out.append("")
+    if longer:
+        out += longer_table(longer, runs)
     for cond in sorted({condition(r["settings"]) for r in gci_fl + gci_local}):
         out += gci_table([r for r in gci_fl if condition(r["settings"]) == cond],
                          [r for r in gci_local if condition(r["settings"]) == cond], cond)
@@ -214,6 +225,56 @@ def main(argv=None):
         out += dh_table([r for r in dh_fl if r["settings"]["sellers"] == sellers],
                         [r for r in dh_local if r["settings"]["sellers"] == sellers], sellers)
     print("\n".join(out))
+
+
+def seller_ndcg(records, seeds, arm):
+    """Per-seller last-round NDCG@10, averaged over the seeds."""
+    return np.mean([per_seller(records[s]["metrics"]["final_round"][arm]["all"], "ndcg@10") for s in seeds], axis=0)
+
+
+def longer_table(longer, runs):
+    """Runs continued past ROUNDS beside the same seeds at ROUNDS: what training longer adds."""
+    by = {}
+    for record in longer:
+        s = record["settings"]
+        key = (s["rounds"], condition(s), s["target"], s.get("holdout_frac", 0.0), s["variant"])
+        by.setdefault(key, {})[s["seed"]] = record
+    out = []
+    for rounds, cond, target, frac in sorted({k[:4] for k in by}):
+        out += ["### 더 긴 학습 — %s, %s, 같은 seed를 %d라운드에서 %d라운드까지 이어 학습, 판매자 macro\n"
+                % (target, condition_label(cond), ROUNDS, rounds),
+                "| 모델 | seed | NDCG@10 (%d → %d) | 차이 | 판매자 bootstrap 95%% | HR@10 | 첫 구매 NDCG@10 | 최적 라운드 | 수렴 |"
+                % (ROUNDS, rounds),
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+        for key in sorted(k for k in by if k[:4] == (rounds, cond, target, frac)):
+            variant, new = key[4], by[key]
+            old = runs.get((cond, target, frac, variant), {})
+            seeds = sorted(set(new) & set(old))
+            if not seeds:
+                continue
+            arm = "%s FL" % variant
+            diff, low, high = paired_bootstrap(seller_ndcg(new, seeds, arm), seller_ndcg(old, seeds, arm))
+
+            def change(part, metric):
+                return " → ".join(fmt(np.mean([macro(r[s]["metrics"]["final_round"][arm][part], metric) for s in seeds]))
+                                  for r in (old, new))
+            best = ", ".join(str(new[s]["training"]["best_round"]) for s in seeds)
+            plateau = all(new[s]["training"]["plateaued"] for s in seeds)
+            out.append("| %s | %d | %s | %+.4f | [%+.4f, %+.4f] | %s | %s | %s | %s |" % (
+                variant, len(seeds), change("all", "ndcg@10"), diff, low, high, change("all", "hr@10"),
+                change("explore", "ndcg@10"), best, "예" if plateau else "아니오(더 길게)"))
+        out.append("")
+        # Does the relation gain hold at the longer round count? Same seeds at both counts.
+        ka, kb = (rounds, cond, target, frac, "R_lm"), (rounds, cond, target, frac, "T_lm")
+        oa, ob = runs.get((cond, target, frac, "R_lm"), {}), runs.get((cond, target, frac, "T_lm"), {})
+        seeds = sorted(set(by.get(ka, {})) & set(by.get(kb, {})) & set(oa) & set(ob))
+        if seeds:
+            out += ["| 비교 | 라운드 | seed | NDCG@10 차이 | 판매자 bootstrap 95% |", "| --- | --- | --- | --- | --- |"]
+            for count, ra, rb in ((ROUNDS, oa, ob), (rounds, by[ka], by[kb])):
+                diff, low, high = paired_bootstrap(seller_ndcg(ra, seeds, "R_lm FL"), seller_ndcg(rb, seeds, "T_lm FL"))
+                out.append("| R_lm − T_lm | %d | %d | %+.4f | [%+.4f, %+.4f] |" % (count, len(seeds), diff, low, high))
+            out.append("")
+    return out
 
 
 def dh_table(fl, local, sellers):
