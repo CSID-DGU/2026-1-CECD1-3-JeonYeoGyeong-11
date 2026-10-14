@@ -9,9 +9,10 @@ table (hx) stays with it and is never aggregated, as in GCI's glocalization.
 The simulation keeps one model on the device and swaps each seller's table in
 for its turn; the shared weights are reloaded every turn anyway.
 The round is kept only if every seller completed; then the global model adds
-the uniform mean of the deltas (D0017). aggregate_uniform is a TEMPORARY copy
-of that rule until C's aggregation core lands (working-agreement §8, D3); swap
-it in then and check the result is the same.
+the uniform mean of the deltas (D0017). Both steps are C's aggregation core,
+fl_coordinator.round_core.aggregate_uniform, called directly (D0018; the
+simulation stays unprotected, D0020). It takes CPU arrays and averages in
+float64, so each delta leaves the device as soon as its seller finishes.
 
 The run has a fixed number of rounds (evaluation.md §5) and its result is the
 last round. Beside it, as an auxiliary, the round with the lowest validation
@@ -39,16 +40,13 @@ from commerce.evaluation.harex_compare import (
 )
 from commerce.packages.recommender.harex import HarexRecommender
 from commerce.packages.recommender.training import TrainConfig, seller_on, train, validation_loss
+from commerce.services.fl_coordinator.round_core import aggregate_uniform
 
 
-def aggregate_uniform(deltas: list[dict[str, torch.Tensor] | None]) -> dict[str, torch.Tensor] | None:
-    """TEMPORARY stand-in for C's aggregation core: all complete or discard, then the uniform mean."""
-    if not deltas or any(d is None for d in deltas):
-        return None
-    keys = set(deltas[0])
-    if any(set(d) != keys for d in deltas):
-        raise ValueError("sellers returned different tensor sets")
-    return {k: torch.stack([d[k] for d in deltas]).mean(0) for k in keys}
+def aggregate(deltas: list[dict[str, torch.Tensor] | None], device) -> dict[str, torch.Tensor] | None:
+    """C's core on the CPU deltas; the mean (float32) goes back to the device, None if discarded."""
+    mean = aggregate_uniform(deltas)
+    return None if mean is None else {k: torch.from_numpy(v).to(device) for k, v in mean.items()}
 
 
 def on_device(seller_parts, device):
@@ -73,18 +71,23 @@ def local_round(model: HarexRecommender, global_shared: dict, train_parts, epoch
     train(model, [p for _, p in train_parts],
           TrainConfig(steps=steps, batch_size=batch_size, lr=lr, seed=seed, n_negatives=negatives))
     after = model.shared_state()
-    return {k: (after[k] - before[k]) for k in before if before[k].is_floating_point()}
+    return {k: (after[k] - before[k]).detach().cpu() for k in before if before[k].is_floating_point()}
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
-    parser.add_argument("--instacart-dir", type=Path, required=True)
+    parser.add_argument("--instacart-dir", type=Path)
+    parser.add_argument("--dunnhumby-dir", type=Path)  # --protocol dunnhumby
     parser.add_argument("--encoder-cache", type=Path, default=Path("commerce/evaluation/cache/encoders"))
     parser.add_argument("--z-cache", type=Path, default=Path("commerce/evaluation/cache/z/instacart.sqlite"))
     parser.add_argument("--variant", required=True, choices=VARIANTS)
     parser.add_argument("--target", default="basket", choices=TARGETS)
     parser.add_argument("--sellers", type=int, default=5)
     parser.add_argument("--rounds", type=int, default=300)
+    # Continue a run: its final shared weights and the rounds it already ran (lm variants only;
+    # each local round starts a fresh optimizer, so 500 + 500 is the same as 1000 from round 0).
+    parser.add_argument("--init-from", type=Path)  # a run folder's shared_weights.pt
+    parser.add_argument("--start-round", type=int, default=0)
     parser.add_argument("--local-epochs", type=int, default=1)
     parser.add_argument("--val-every", type=int, default=5)  # and always the last round
     # GCI's early stopping (patience 20 rounds on the validation loss), for --protocol gci only:
@@ -99,7 +102,8 @@ def main(argv=None):
     parser.add_argument("--holdout-seed", type=int, default=0)
     parser.add_argument("--seller-size", type=int, default=0)  # train orders per seller; 0 keeps 1,040
     # gci: GCI's item-level units and random split (gci_protocol.py), an added-scope reproduction.
-    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci"))
+    # dunnhumby: the auxiliary DH cohort with week splits (dunnhumby_protocol.py).
+    parser.add_argument("--protocol", default="next_visit", choices=("next_visit", "gci", "dunnhumby"))
     parser.add_argument("--menu-size", type=int, default=0)  # with --protocol gci: a BBQ-like menu
     parser.add_argument("--threads", type=int, default=8)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -114,13 +118,12 @@ def main(argv=None):
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     record = {"run": "D0022 federated_lab_sim", "mode": "비보호 FL 시뮬레이션 (unprotected FL simulation, D0020)",
-              "aggregation": "temporary uniform mean, all complete or discard (stand-in for C's core)",
+              "aggregation": "C core fl_coordinator.round_core.aggregate_uniform: all complete or discard, uniform mean in float64",
               "started_at": stamp, "code": code_version(), "settings": {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()},
               "machine": {"os": platform.platform(), "torch": torch.__version__, "device": str(device),
                           "gpu": torch.cuda.get_device_name(0) if device.type == "cuda" else None,
                           "cpu_count": os.cpu_count()},
-              "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation",
-                         "temporary aggregation"]
+              "labels": ["pilot", "single seed", "stand-in seller sizes", "unprotected FL simulation"]
               + (["C-new: items held out of training"] if args.holdout_frac > 0 else [])}
     if args.protocol == "gci":
         if args.target != "basket":
@@ -128,7 +131,16 @@ def main(argv=None):
         from commerce.evaluation.gci_protocol import build as gci_build
         record["labels"].append("HAREX conditions (added scope, evaluation.md §4): item-level units, random split")
         sellers, first = gci_build(args, record)
+    elif args.protocol == "dunnhumby":
+        if args.target != "basket":
+            raise SystemExit("Dunnhumby has no cart order: use --target basket")
+        from commerce.evaluation.dunnhumby_protocol import build as dh_build
+        record["labels"] = [l for l in record["labels"] if l != "stand-in seller sizes"] + [
+            "Dunnhumby auxiliary cohort (evaluation.md §4): week splits, answers split by unique text"]
+        sellers, first = dh_build(args, record)
     else:
+        if args.instacart_dir is None:
+            raise SystemExit("--instacart-dir is needed unless --protocol dunnhumby")
         sellers, first = build(args, record)
 
     # One model on the device; a seller's own part is its hx token table, made with the same
@@ -137,6 +149,16 @@ def main(argv=None):
     torch.manual_seed(args.seed)
     model = HarexRecommender(config, vocab_size=next(iter(sellers.values()))["vocab_size"] if hx else None).to(device)
     global_shared = {k: v.detach().clone() for k, v in model.shared_state().items()}
+    if args.init_from is not None:
+        if hx:
+            raise SystemExit("--init-from continues lm variants only: hx token tables are never saved")
+        saved = torch.load(args.init_from, map_location="cpu")
+        if saved["variant"] != args.variant:
+            raise SystemExit("--init-from holds %s, not %s" % (saved["variant"], args.variant))
+        global_shared = {k: saved["final_round_shared"][k].to(device) for k in global_shared}
+        record["resumed"] = {"from": str(args.init_from), "start_round": args.start_round}
+    elif args.start_round:
+        raise SystemExit("--start-round needs --init-from")
     local = {}
     for seller, info in sellers.items():
         tables = None
@@ -169,11 +191,11 @@ def main(argv=None):
 
     best, history, discarded = None, [], 0
     started = time.perf_counter()
-    for rnd in range(args.rounds):
+    for rnd in range(args.start_round, args.rounds):
         deltas = [local_round(turn(s), global_shared, placed(s["train"]), args.local_epochs, args.batch_size,
                               args.lr, args.seed * 100000 + rnd * 1000 + i, args.negatives)
                   for i, s in enumerate(local.values())]
-        mean = aggregate_uniform(deltas)
+        mean = aggregate(deltas, device)
         if mean is None:
             discarded += 1
             continue
