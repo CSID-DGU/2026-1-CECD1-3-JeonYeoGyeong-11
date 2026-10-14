@@ -10,9 +10,7 @@
     <input type="search" class="menu-search" id="menu-search" placeholder="메뉴 찾기" aria-label="메뉴 찾기">
     <div class="menu-grid" id="menu-grid">
       {% for m in menu %}
-      {%- set emoji = product_emoji(m.category_path, m.title) %}
-      <button type="button" class="menu-btn{{ ' soldout' if m.sold_out }}" data-id="{{ m.item_id }}" data-section="{{ m.section }}" data-name="{{ m.title }}" {{ 'disabled' if m.sold_out }}>
-        <span class="mb-emoji" aria-hidden="true">{{ emoji or '🍽' }}</span>
+      <button type="button" class="menu-btn sec-{{ sections.index(m.section) % 6 }}{{ ' soldout' if m.sold_out }}" data-id="{{ m.item_id }}" data-section="{{ m.section }}" data-name="{{ m.title }}" {{ 'disabled' if m.sold_out }}>
         <span class="mb-name">{{ m.title }}</span>
         <span class="mb-price">{{ "{:,}".format(m.price) }}</span>
         {% if m.sold_out %}<span class="mb-tag">품절</span>{% elif m.stock is not none and m.stock <= 5 %}<span class="mb-tag low">{{ m.stock }}개</span>{% endif %}

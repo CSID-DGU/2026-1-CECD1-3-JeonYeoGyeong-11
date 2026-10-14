@@ -60,13 +60,10 @@
   {% if staff %}
   <div class="shell">
     <nav class="sidenav" aria-label="판매자 메뉴">
+      <a href="/pos/{{ seller_id }}/" class="sidenav-pos">{{ icon('pos') }}<span>POS 열기<small>테이블 주문·결제</small></span></a>
       <div class="sidenav-label">우리 가게</div>
-      {% for key, path, label in nav %}
-      {% if key == 'pos' %}
-      <a href="/pos/{{ seller_id }}/" class="sidenav-pos">{{ icon('pos') }}{{ label }}</a>
-      {% else %}
-      <a href="/seller/{{ seller_id }}{{ path }}" class="{{ 'active' if active_tab == key else '' }}">{{ icon(icons[key]) }}{{ label }}</a>
-      {% endif %}
+      {% for key, path, label in nav if key != 'pos' %}
+      <a href="/seller/{{ seller_id }}{{ path }}" class="{{ 'active' if active_tab == key else '' }}"{{ ' aria-current="page"' if active_tab == key }}>{{ icon(icons[key]) }}{{ label }}</a>
       {% endfor %}
     </nav>
     <main class="page">

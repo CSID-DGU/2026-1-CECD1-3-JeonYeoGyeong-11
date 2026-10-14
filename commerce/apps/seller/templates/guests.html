@@ -42,16 +42,17 @@
 <div class="grid cols-2">
   <section class="section">
     <h2 class="section-title">단골 손님</h2>
-    <div class="card flush">
-      <div class="list">
+    <div class="table-wrap">
+      <table class="dense">
+        <thead><tr><th>회원</th><th class="num">방문</th><th>최근 방문</th><th class="num">포인트</th><th class="num">누적 결제</th></tr></thead>
+        <tbody>
         {% for m in members[:25] %}
-        <a class="list-item" href="/seller/{{ seller_id }}/guests/{{ m.member_id }}">
-          <span class="noti-icon" aria-hidden="true">{{ '⭐' if m.visits >= 3 else '🙂' }}</span>
-          <div class="grow"><p class="list-title mono">{{ m.label }}</p><p class="list-sub">방문 {{ m.visits }}회 · 최근 {{ m.last_visit_at | kst('%m-%d') or '-' }} · {{ "{:,}".format(m.points) }}P</p></div>
-          <span class="num">{{ "{:,}".format(m.spend) }}원</span>
-        </a>
-        {% else %}<div class="empty">POS에서 적립 번호를 넣으면 여기에 쌓여요.</div>{% endfor %}
-      </div>
+        <tr class="row-link"><td><a class="mono strong" href="/seller/{{ seller_id }}/guests/{{ m.member_id }}">{{ m.label }}</a></td>
+          <td class="num">{{ m.visits }}회</td><td class="mono muted">{{ m.last_visit_at | kst('%m-%d') or '-' }}</td>
+          <td class="num muted">{{ "{:,}".format(m.points) }}P</td><td class="num">{{ "{:,}".format(m.spend) }}원</td></tr>
+        {% else %}<tr><td colspan="5"><div class="empty">POS에서 적립 번호를 넣으면 여기에 쌓여요.</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
     </div>
     {% if members | length > 25 %}<p class="muted-note">방문이 많은 순서로 25명만 보여요.</p>{% endif %}
   </section>

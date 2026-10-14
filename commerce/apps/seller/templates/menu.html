@@ -21,36 +21,59 @@
   </form>
 </details>
 
-{% for s in sections %}
-<section class="section">
-  <h2 class="section-title">{{ s }}</h2>
-  <div class="menu-admin">
+<div class="menu-summary" role="status">
+  <span>판매 중 <b>{{ items | rejectattr('sold_out') | list | length }}</b></span>
+  <span>품절 <b class="{{ 'warn-text' if items | selectattr('sold_out') | list }}">{{ items | selectattr('sold_out') | list | length }}</b></span>
+  <span>분류 <b>{{ sections | length }}</b></span>
+  {% if inactive %}<span>판매 중지 <b>{{ inactive | length }}</b></span>{% endif %}
+</div>
+
+<div class="menu-table" role="table" aria-label="메뉴 목록">
+  <div class="mt-head" role="row">
+    <span role="columnheader">메뉴</span><span role="columnheader">상태</span>
+    <span role="columnheader" class="num">누적 판매</span><span role="columnheader" class="num">가격</span><span role="columnheader"><span class="sr-only">관리</span></span>
+  </div>
+  {% for s in sections %}
+  <div class="mt-group" role="rowgroup">
+    <h2 class="mt-section" role="row"><span role="rowheader">{{ s }}</span><small>{{ items | selectattr('section', 'equalto', s) | list | length }}개</small></h2>
     {% for m in items if m.section == s %}
     {%- set emoji = product_emoji(m.category_path, m.title) %}
-    <article class="menu-row{{ ' soldout' if m.sold_out }}" id="m-{{ m.item_id }}">
-      <span class="thumb tone-{{ loop.index0 % 4 }} emoji cell-thumb" aria-hidden="true">{{ emoji or '🍽' }}</span>
-      <div class="grow">
-        <p class="list-title">{{ m.title }} {% if m.sold_out %}<span class="badge warn">품절</span>{% endif %}</p>
-        <p class="list-sub">{{ m.description or '설명 없음' }}</p>
+    <div class="mt-row{{ ' soldout' if m.sold_out }}" role="row" id="m-{{ m.item_id }}">
+      <div class="mt-item" role="cell">
+        <span class="mt-thumb" aria-hidden="true">{{ emoji or m.title[:1] }}</span>
+        <div class="grow">
+          <a class="mt-name" href="/seller/{{ seller_id }}/products/{{ m.item_id }}">{{ m.title }}</a>
+          <p class="mt-desc">{{ m.description or '설명 없음 — 설명을 쓰면 AI가 이 메뉴를 더 잘 이해해요' }}</p>
+        </div>
       </div>
-      <span class="num"><b>{{ "{:,}".format(m.price) }}원</b><br><span class="muted-note">누적 {{ counts.get(m.item_id, 0) }}개</span></span>
-      <form method="post" action="/seller/{{ seller_id }}/menu/{{ m.item_id }}/soldout"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-        <input type="hidden" name="sold_out" value="{{ '0' if m.sold_out else '1' }}">
-        <button class="btn {{ 'secondary' if m.sold_out else 'ghost' }} sm" type="submit">{{ '판매 재개' if m.sold_out else '품절' }}</button></form>
-      <a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ m.item_id }}">수정</a>
-    </article>
+      <div role="cell" class="mt-status">
+        {% if m.sold_out %}<span class="status-pill warn">품절</span>
+        {% elif m.stock is not none and m.stock <= 5 %}<span class="status-pill low">남은 {{ m.stock }}개</span>
+        {% else %}<span class="status-pill on">판매 중</span>{% endif %}
+      </div>
+      <div role="cell" class="num mt-count">{{ "{:,}".format(counts.get(m.item_id, 0)) }}개</div>
+      <div role="cell" class="num mt-price">{{ "{:,}".format(m.price) }}원</div>
+      <div role="cell" class="mt-actions">
+        <form method="post" action="/seller/{{ seller_id }}/menu/{{ m.item_id }}/soldout"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+          <input type="hidden" name="sold_out" value="{{ '0' if m.sold_out else '1' }}">
+          <button class="btn {{ 'secondary' if m.sold_out else 'ghost' }} sm" type="submit">{{ '판매 재개' if m.sold_out else '품절 처리' }}</button></form>
+        <a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ m.item_id }}">수정</a>
+      </div>
+    </div>
     {% endfor %}
   </div>
-</section>
-{% endfor %}
+  {% endfor %}
+</div>
 
 {% if inactive %}
 <section class="section">
   <h2 class="section-title">판매 중지 {{ inactive | length }}개</h2>
-  <div class="menu-admin">
+  <div class="menu-table">
     {% for i in inactive %}
-    <article class="menu-row soldout"><div class="grow"><p class="list-title">{{ i.title_text }}</p></div>
-      <a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ i.item_id_local }}">다시 팔기·수정</a></article>
+    <div class="mt-row soldout"><div class="mt-item"><span class="mt-thumb" aria-hidden="true">{{ i.title_text[:1] }}</span>
+      <div class="grow"><span class="mt-name">{{ i.title_text }}</span></div></div>
+      <div class="mt-status"><span class="status-pill off">판매 중지</span></div><div></div><div></div>
+      <div class="mt-actions"><a class="btn ghost sm" href="/seller/{{ seller_id }}/products/{{ i.item_id_local }}">다시 팔기·수정</a></div></div>
     {% endfor %}
   </div>
 </section>

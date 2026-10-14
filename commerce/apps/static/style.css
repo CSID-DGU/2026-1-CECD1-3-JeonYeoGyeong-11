@@ -34,11 +34,11 @@
   --warn-bg: #fbf1dc;  --warn-fg: #8a5a12;
   --danger-bg: #fbe9e5; --danger-fg: #b23b2a;
 
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 20px;
+  --radius-sm: 7px;
+  --radius: 10px;
+  --radius-lg: 12px;
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 2px rgba(24, 35, 27, .05);
+  --shadow-sm: none;
   --shadow: 0 1px 2px rgba(24, 35, 27, .04), 0 8px 24px rgba(24, 35, 27, .06);
   --ring: 0 0 0 3px rgba(90, 159, 65, .25);
 
@@ -46,7 +46,7 @@
           "Malgun Gothic", "Segoe UI", Roboto, sans-serif;
   --topbar-h: 60px;
   --tabbar-h: 64px;
-  --page-max: 1080px;
+  --page-max: 1200px;
 }
 
 /* ── base ─────────────────────────────────────────────────────────────── */
@@ -1110,3 +1110,125 @@ fieldset.field legend { font-weight: 600; margin-bottom: 8px; padding: 0; }
   .pos-tables .fp-table.tiny .tt-meta, .pos-tables .fp-table.tiny .tt-free { display: block; }
 }
 .fe-h { font-size: 14px; font-weight: 800; margin: 0; color: var(--ink); }
+
+/* ══ back-office pass (2026-10-14) ══════════════════════════════════════════════════════════
+   The owner web and the POS are work tools used all day at a counter, not a storefront.
+   So: one quiet surface per job instead of a card around every number, flat panels
+   (a hairline border, no drop shadow), tighter corners, numbers right-aligned in
+   tabular figures, and colour kept for state (판매 중 / 품절 / 사용 중 / 넘음) and the one
+   primary action on each screen. */
+
+/* the page itself: a solid header (no blur), wider working area */
+.topbar { background: var(--surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.brand-chip { background: transparent; border-color: var(--border-strong); color: var(--muted); }
+.card { box-shadow: none; padding: 18px 20px; }
+h1.page-title { font-size: 22px; }
+.page-head p { font-size: 14px; max-width: 72ch; }
+h2.section-title { font-size: 15px; margin-bottom: 10px; }
+.page { gap: 24px; }
+
+/* controls share one height scale: 40 regular, 32 small */
+.btn { height: 40px; padding: 0 16px; font-size: 14px; }
+.btn.sm { height: 32px; padding: 0 10px; font-size: 13px; }
+.btn:disabled, .btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+.btn:focus-visible { box-shadow: var(--ring); outline: none; }
+.btn.ghost { color: var(--brand-700); }
+.btn.secondary:hover { border-color: var(--brand-300); background: var(--surface); }
+input[type=text], input[type=tel], input[type=search], input[type=number], input[type=email], input[type=password],
+input[type=datetime-local], input[type=date], select, textarea { height: 40px; border-radius: var(--radius-sm); font-size: 14px; }
+input[type=date] { width: auto; padding: 0 10px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+textarea { height: auto; }
+input:disabled, select:disabled { background: var(--surface-2); color: var(--muted); }
+
+/* sidebar: the POS is the one thing an owner opens most, so it leads; the active page is a
+   tinted row with a bar, not a floating white pill */
+.sidenav { gap: 1px; padding-top: 24px; }
+.sidenav a { border-radius: var(--radius-sm); font-size: 14.5px; }
+.sidenav a:hover { background: var(--surface-2); }
+.sidenav a.active { background: var(--brand-50); color: var(--brand-800); box-shadow: inset 3px 0 0 var(--brand-600); }
+.sidenav a.sidenav-pos { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 12px;
+  background: var(--brand-700); color: #fff; border-radius: var(--radius); }
+.sidenav a.sidenav-pos:hover { background: var(--brand-800); color: #fff; }
+.sidenav a.sidenav-pos svg { color: var(--brand-100); }
+.sidenav a.sidenav-pos span { display: grid; line-height: 1.25; font-weight: 700; }
+.sidenav a.sidenav-pos small { font-size: 12px; font-weight: 500; color: var(--brand-100); }
+@media (max-width: 860px) { .sidenav a.sidenav-pos { margin: 0 6px 0 0; padding: 8px 12px; } .sidenav a.sidenav-pos small { display: none; } }
+
+/* KPIs: one strip with hairline dividers (the outer edges are clipped by the -1px trick, so
+   it also works when the four wrap to two rows on a phone) */
+.grid.kpis { gap: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.grid.kpis > .card.kpi { border: 0; border-radius: 0; background: transparent; padding: 16px 20px;
+  border-left: 1px solid var(--border); border-top: 1px solid var(--border); margin: -1px 0 0 -1px; }
+.kpi-label { font-size: 12.5px; }
+.kpi-value { font-size: 22px; font-variant-numeric: tabular-nums; }
+.grid.kpis > .card.kpi:first-child .kpi-value { color: var(--brand-800); }
+
+/* tables: lighter header, denser rows, a row is clickable where it links somewhere */
+.table-wrap { border-radius: var(--radius-lg); }
+table thead th { background: var(--surface); border-bottom: 1px solid var(--border-strong); font-size: 12.5px; font-weight: 600; color: var(--muted); }
+table tbody td { padding: 12px 16px; }
+table.dense tbody td { padding: 10px 16px; }
+table tbody tr:hover td { background: var(--brand-50); }
+td .strong, a.strong { color: var(--ink); font-weight: 600; }
+td.muted, .muted { color: var(--muted); }
+tr.row-link td a.strong:hover { color: var(--brand-700); text-decoration: underline; }
+
+/* status pills: the one place a list row uses colour */
+.status-pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; white-space: nowrap; color: var(--text-2); }
+.status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.status-pill.on::before { background: var(--brand-500); }
+.status-pill.low { color: var(--warn-fg); } .status-pill.low::before { background: #e0a43a; }
+.status-pill.warn { color: var(--danger-fg); } .status-pill.warn::before { background: var(--danger-fg); }
+.status-pill.off { color: var(--muted); }
+.warn-text { color: var(--danger-fg); }
+
+/* menu: one table per store, section headers inside it; name, status, sales and price in
+   fixed columns so the eye runs straight down the prices */
+.menu-summary { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 13.5px; color: var(--muted); margin-bottom: -10px; }
+.menu-summary b { color: var(--ink); font-variant-numeric: tabular-nums; margin-left: 4px; }
+.menu-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.mt-head, .mt-row { display: grid; grid-template-columns: minmax(0, 1fr) 96px 88px 92px 168px; align-items: center; gap: 12px; padding: 0 16px; }
+.mt-head { height: 38px; font-size: 12.5px; font-weight: 600; color: var(--muted); border-bottom: 1px solid var(--border-strong); }
+.mt-section { display: flex; align-items: baseline; gap: 8px; margin: 0; padding: 14px 16px 6px; font-size: 13px; font-weight: 700; color: var(--brand-800);
+  background: var(--bg); border-bottom: 1px solid var(--border); }
+.mt-section small { font-weight: 500; color: var(--muted); }
+.mt-row { min-height: 60px; border-bottom: 1px solid var(--border); }
+.mt-group:last-child .mt-row:last-child, .menu-table > .mt-row:last-child { border-bottom: 0; }
+.mt-row:hover { background: #fbfcf9; }
+.mt-row.soldout .mt-name, .mt-row.soldout .mt-price { color: var(--muted); }
+.mt-item { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 8px 0; }
+.mt-thumb { flex: none; width: 40px; height: 40px; border-radius: var(--radius-sm); display: grid; place-items: center;
+  background: var(--surface-2); color: var(--brand-700); font-size: 20px; font-weight: 700; }
+.mt-row.soldout .mt-thumb { filter: grayscale(1); opacity: .6; }
+.mt-name { font-weight: 600; color: var(--ink); }
+a.mt-name:hover { color: var(--brand-700); text-decoration: underline; }
+.mt-desc { margin: 0; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-count { font-size: 13px; color: var(--muted); }
+.mt-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+.mt-actions { display: flex; justify-content: flex-end; gap: 4px; }
+.mt-actions form { margin: 0; }
+@media (max-width: 760px) {
+  .mt-head { display: none; }
+  .mt-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "item price" "status actions"; row-gap: 2px; padding: 8px 14px; }
+  .mt-item { grid-area: item; padding: 0; } .mt-price { grid-area: price; } .mt-status { grid-area: status; padding-left: 52px; }
+  .mt-actions { grid-area: actions; } .mt-count { display: none; }
+}
+
+/* POS keys: name first, price under it, the section's colour as a 4px edge so a busy cook
+   finds 찌개 vs 음료 by colour; sold out is struck through, not just faded */
+.menu-btn { border-radius: var(--radius); grid-template-rows: 1fr auto; padding: 12px 12px 10px 14px; box-shadow: inset 4px 0 0 var(--sec, var(--border-strong)); }
+.menu-btn:hover { border-color: var(--brand-400); background: #fbfcf9; }
+.menu-btn:focus-visible { outline: none; box-shadow: inset 4px 0 0 var(--sec, var(--border-strong)), var(--ring); }
+.menu-btn .mb-name { font-size: 15px; align-self: start; }
+.menu-btn .mb-price { color: var(--text-2); font-size: 14px; }
+.menu-btn.soldout { opacity: 1; background: var(--surface-2); }
+.menu-btn.soldout .mb-name, .menu-btn.soldout .mb-price { color: var(--faint); text-decoration: line-through; }
+.menu-btn.sec-0 { --sec: #5a9f41; } .menu-btn.sec-1 { --sec: #d08a2e; } .menu-btn.sec-2 { --sec: #3f8a8c; }
+.menu-btn.sec-3 { --sec: #b5534a; } .menu-btn.sec-4 { --sec: #7a6bb0; } .menu-btn.sec-5 { --sec: #8a8f3a; }
+.menu-grid { grid-auto-rows: 92px; }
+
+/* POS top bar tabs and panels follow the same flatter look */
+.pos-strip > * { border-radius: var(--radius); }
+.pos-check, .pos-ai .ai-card { box-shadow: none; }
+.mt-head .num, .mt-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 860px) { .sidenav a.active { box-shadow: inset 0 -2px 0 var(--brand-600); background: transparent; } }
