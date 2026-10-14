@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">손님</h1>
+  <p>POS에서 적립한 손님(전화번호는 저장하지 않고 뒤 4자리만)과, 우리 가게 AI가 이 기록으로 알려 주는 것들이에요.</p>
+</div>
+
+<div class="grid cols-3 kpis">
+  <div class="card kpi"><span class="kpi-label">적립 회원</span><span class="kpi-value">{{ members | length }}명</span><span class="kpi-sub">단골(3회 이상) {{ regulars }}명</span></div>
+  <div class="card kpi"><span class="kpi-label">회원 누적 결제</span><span class="kpi-value">{{ "{:,}".format(members | sum(attribute='spend')) }}원</span><span class="kpi-sub">1인 평균 {{ "{:,}".format(((members | sum(attribute='spend')) / members | length) | round | int if members else 0) }}원</span></div>
+  <div class="card kpi"><span class="kpi-label">남은 포인트</span><span class="kpi-value">{{ "{:,}".format(members | sum(attribute='points')) }}P</span><span class="kpi-sub">손님이 쓸 수 있는 포인트 합계</span></div>
+</div>
+
+<section class="section" id="new-menu">
+  <div class="card stack ai-panel">
+    <div class="row between"><h2 class="section-title flush">📣 새 메뉴를 알릴 손님</h2></div>
+    <p class="muted-note">새 메뉴는 아직 판매 기록이 없어요. 같은 분류의 메뉴를 자주 먹은 단골부터 보여 드려요. 신메뉴 안내·시식 권유 대상을 고를 때 쓰세요.</p>
+    <form class="row" method="get" action="/seller/{{ seller_id }}/guests#new-menu">
+      <select name="item" aria-label="메뉴 고르기" onchange="this.form.submit()">
+        {% for m in menu %}<option value="{{ m.item_id }}" {{ 'selected' if m.item_id == target }}>{{ m.title }}{{ ' (최근 등록)' if loop.first }}</option>{% endfor %}
+      </select>
+    </form>
+    {% if targets and targets.ok %}
+    {% if targets.ai %}<p class="ai-line">✨ AI 예측: 단골 손님들에게 이 메뉴는 가게 메뉴 {{ targets.ai.of }}개 중 보통 <b>{{ targets.ai.median }}위</b>(가장 높게는 {{ targets.ai.best }}위)로 추천돼요.</p>{% endif %}
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>손님</th><th class="num">방문</th><th>최근 방문</th><th class="num">'{{ targets.section }}' 메뉴 주문</th><th></th></tr></thead>
+        <tbody>
+        {% for m in targets.members %}
+        <tr><td class="mono">{{ m.label }}</td><td class="num">{{ m.visits }}회</td><td class="mono">{{ m.last_visit_at | kst('%Y-%m-%d') }}</td>
+          <td class="num">{{ m.same_count }}개</td>
+          <td><a class="link" href="/seller/{{ seller_id }}/guests/{{ m.member_id }}">자세히</a></td></tr>
+        {% else %}<tr><td colspan="5"><div class="empty">이 분류의 메뉴를 먹은 회원이 아직 없어요.</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted-note">손님 순서는 이 가게 주문 기록에서 직접 센 값이에요. 위 한 줄만 AI 모델의 예측이에요.</p>
+    {% elif targets %}<div class="notice">{{ targets.reason }}</div>{% endif %}
+  </div>
+</section>
+
+<div class="grid cols-2">
+  <section class="section">
+    <h2 class="section-title">단골 손님</h2>
+    <div class="table-wrap">
+      <table class="dense">
+        <thead><tr><th>회원</th><th class="num">방문</th><th>최근 방문</th><th class="num">포인트</th><th class="num">누적 결제</th></tr></thead>
+        <tbody>
+        {% for m in members[:25] %}
+        <tr class="row-link"><td><a class="mono strong" href="/seller/{{ seller_id }}/guests/{{ m.member_id }}">{{ m.label }}</a></td>
+          <td class="num">{{ m.visits }}회</td><td class="mono muted">{{ m.last_visit_at | kst('%m-%d') or '-' }}</td>
+          <td class="num muted">{{ "{:,}".format(m.points) }}P</td><td class="num">{{ "{:,}".format(m.spend) }}원</td></tr>
+        {% else %}<tr><td colspan="5"><div class="empty">POS에서 적립 번호를 넣으면 여기에 쌓여요.</div></td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if members | length > 25 %}<p class="muted-note">방문이 많은 순서로 25명만 보여요.</p>{% endif %}
+  </section>
+  <section class="section">
+    <h2 class="section-title">같이 주문되는 메뉴</h2>
+    <div class="card stack">
+      {% for p in pairs %}
+      <div class="pair-row"><span class="grow"><b>{{ p.a }}</b> + <b>{{ p.b }}</b></span>
+        <span class="muted-note">{{ p.count }}번 · 우연보다 {{ p.lift }}배</span></div>
+      {% else %}<p class="muted-note">결제가 더 쌓이면 보여요.</p>{% endfor %}
+      <p class="muted-note">이 가게 결제 기록에서 직접 센 조합이에요. 세트 메뉴나 "함께 드시면 좋아요" 안내에 쓰세요.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

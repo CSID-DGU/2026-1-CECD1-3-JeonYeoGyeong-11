@@ -1,0 +1,77 @@
+{#- The next thing to do with an order, as three steps: confirm, ship (courier + tracking) or ready for
+    pickup, then hand over. Used on the order detail ('detail') and on each card of the list ('list'). -#}
+{% macro order_actions(seller_id, order, f, couriers, csrf_token, back) -%}
+{%- set delivery = f and f.method == 'delivery' %}
+{%- set st = order.status %}
+{%- set q = '?back=detail' if back == 'detail' else '' %}
+{%- set base = '/seller/' ~ seller_id ~ '/orders/' ~ order.order_id %}
+{% if st == 'cancelled' %}
+<p class="muted-note">취소된 주문이에요{% if order.cancelled_at %} ({{ order.cancelled_at[5:16] | replace('T', ' ') }}){% endif %}.</p>
+{% elif st == 'completed' and back == 'list' %}
+<p class="odone">✓ {{ '전달' if delivery else '픽업' }} 완료{% if order.completed_at %} · {{ order.completed_at[5:16] | replace('T', ' ') }}{% endif %}{% if delivery and (f.tracking_no or f.courier) %} · {{ f.courier or '택배' }} <span class="mono">{{ f.tracking_no or '' }}</span>{% endif %}</p>
+{% else %}
+<ol class="osteps">
+  <li class="{{ 'done' if st != 'requested' else 'now' }}">
+    <span class="ostep-dot" aria-hidden="true"></span>
+    <div class="ostep-body">
+      <p class="ostep-title">주문 확인</p>
+      {% if st == 'requested' %}
+      <form method="post" action="{{ base }}/accept{{ q }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+        <button class="btn primary sm" type="submit">주문 수락</button></form>
+      {% else %}<p class="ostep-note">수락했어요</p>{% endif %}
+    </div>
+  </li>
+
+  <li class="{{ 'done' if st == 'completed' or (delivery and f.tracking_no) or (not delivery and f and f.ready_at) else ('now' if st == 'accepted' else 'wait') }}">
+    <span class="ostep-dot" aria-hidden="true"></span>
+    <div class="ostep-body">
+      {% if delivery %}
+      <p class="ostep-title">발송 정보 <span class="field-hint">택배사·송장번호를 저장하면 구매자에게 알림이 가요</span></p>
+      {% if st == 'accepted' %}
+      <form class="ship-form" method="post" action="{{ base }}/tracking"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="back" value="{{ back }}">
+        <select name="courier" aria-label="택배사">
+          {% for c in couriers %}<option {{ 'selected' if (f.courier or couriers[0]) == c }}>{{ c }}</option>{% endfor %}
+        </select>
+        <input type="text" name="tracking_no" value="{{ f.tracking_no or '' }}" placeholder="송장번호 (예: 6894 1234 5678)" aria-label="송장번호"
+               inputmode="text" autocomplete="off" maxlength="40">
+        <button class="btn {{ 'secondary' if f.tracking_no else 'primary' }} sm" type="submit">{{ '송장 수정' if f.tracking_no else '송장 저장·알림' }}</button>
+      </form>
+      {% elif f.tracking_no or f.courier %}<p class="ostep-note">{{ f.courier or '택배' }} <span class="mono">{{ f.tracking_no or '' }}</span></p>
+      {% elif st == 'completed' %}<p class="ostep-note">송장 없이 완료됐어요</p>
+      {% else %}<p class="ostep-note">수락하면 입력할 수 있어요</p>{% endif %}
+      {% else %}
+      <p class="ostep-title">픽업 준비 <span class="field-hint">{{ f.pickup_slot if f else '매장 픽업' }}</span></p>
+      {% if st == 'accepted' and f and not f.ready_at %}
+      <form method="post" action="{{ base }}/ready"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="back" value="{{ back }}">
+        <button class="btn primary sm" type="submit">픽업 준비 완료 알림 보내기</button></form>
+      {% elif f and f.ready_at %}<p class="ostep-note">준비 완료 알림 보냄 · {{ f.ready_at[5:16] | replace('T', ' ') }}</p>
+      {% elif st == 'accepted' %}<p class="ostep-note">수령 정보 없는 주문: 쪽지로 픽업 시간을 알려 주세요</p>
+      {% else %}<p class="ostep-note">{{ '픽업 완료' if st == 'completed' else '수락하면 알림을 보낼 수 있어요' }}</p>{% endif %}
+      {% endif %}
+    </div>
+  </li>
+
+  <li class="{{ 'done' if st == 'completed' else ('now' if st == 'accepted' else 'wait') }}">
+    <span class="ostep-dot" aria-hidden="true"></span>
+    <div class="ostep-body">
+      <p class="ostep-title">{{ '전달 완료' if delivery else '픽업 완료' }}</p>
+      {% if st == 'accepted' %}
+      <form method="post" action="{{ base }}/complete{{ q }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+        <button class="btn {{ 'primary' if (delivery and f.tracking_no) or (not delivery and (not f or f.ready_at)) else 'secondary' }} sm" type="submit">{{ '전달 완료 처리' if delivery else '픽업 완료 처리' }}</button></form>
+      {% if delivery and not f.tracking_no %}<p class="ostep-note">송장 없이도 완료할 수 있어요</p>{% endif %}
+      {% elif st == 'completed' %}<p class="ostep-note">{{ order.completed_at[5:16] | replace('T', ' ') if order.completed_at else '완료' }}</p>
+      {% else %}<p class="ostep-note">수락한 뒤에 할 수 있어요</p>{% endif %}
+    </div>
+  </li>
+</ol>
+{% if st in ('requested', 'accepted') %}
+<form class="cancel-form" method="post" action="{{ base }}/cancel{{ q }}" onsubmit="return confirm('이 주문을 취소할까요? 구매자에게 알림이 가요.');"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+  <input type="hidden" name="expected_status_version" value="{{ order.status_version }}">
+  <button class="btn-link danger" type="submit">주문 취소</button></form>
+{% endif %}
+{% endif %}
+{%- endmacro %}

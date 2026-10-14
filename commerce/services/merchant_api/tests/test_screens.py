@@ -215,7 +215,7 @@ class ScreenTest(unittest.TestCase):
     def test_compare_screen_requires_seller_login(self):
         r = self.client.get(f"/seller/{SELLER}/compare")
         self.assertEqual(r.status_code, 303)
-        self.assertTrue(r.headers["location"].endswith("/login"))
+        self.assertIn(f"/seller/{SELLER}/login?next=", r.headers["location"])  # comes back to compare after login
 
 
     # --- dashboard and cancel ----------------------------------------------------

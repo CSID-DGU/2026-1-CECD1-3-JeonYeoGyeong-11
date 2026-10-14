@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">설정</h1>
+  <p>우리 가게가 일하는 방식에 맞춰 POS를 정해요. 테이블 자리와 번호는 <a class="link" href="/seller/{{ seller_id }}/floor">테이블 배치</a>에서 바꿔요.</p>
+</div>
+{% if saved %}<div class="notice mb-16">저장했어요.</div>{% endif %}
+<form class="card form" method="post" action="/seller/{{ seller_id }}/settings"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+  <fieldset class="field">
+    <legend>결제 방식</legend>
+    <div class="choice-row">
+      <label class="choice-card"><input type="radio" name="service_mode" value="postpay" {{ 'checked' if pos.service_mode != 'prepay' }}>
+        <b>후불</b><span>테이블에서 주문 → 주방 전송 → 식사 후 계산 (한식·고깃집·중식)</span></label>
+      <label class="choice-card"><input type="radio" name="service_mode" value="prepay" {{ 'checked' if pos.service_mode == 'prepay' }}>
+        <b>선불</b><span>카운터에서 주문과 동시에 결제, 호출 번호로 부르기 (분식·카페·샐러드)</span></label>
+    </div>
+  </fieldset>
+  <div class="form-row">
+    <label class="field"><span>테이블 이용 시간 <span class="field-hint">분 · 넘으면 POS에서 빨갛게, 0은 끔</span></span>
+      <input type="number" name="time_limit" min="0" max="600" step="10" value="{{ pos.time_limit }}"></label>
+    <label class="field"><span>포인트 적립률 <span class="field-hint">결제 금액의 %</span></span><input type="number" name="point_rate" min="0" max="20" value="{{ pos.point_rate }}"></label>
+    <label class="field">영업시간<input type="text" name="open_hours" maxlength="60" value="{{ pos.open_hours or '' }}" placeholder="11:00~21:00 (브레이크 15:00~17:00)"></label>
+  </div>
+  <label class="fe-check"><input type="checkbox" name="takeout_enabled" value="1" {{ 'checked' if pos.takeout_enabled }}> 포장 주문 받기</label>
+  <label class="field">가게 소개<input type="text" name="store_intro" maxlength="200" value="{{ store.store_intro or '' }}"></label>
+  <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+</form>
+<div class="card stack mt-12">
+  <h2 class="section-title flush">계정과 보안</h2>
+  <ul class="plain-list">
+    <li>비밀번호는 원문 없이 해시(PBKDF2, 20만 회)로만 저장돼요.</li>
+    <li>로그인은 서명된 쿠키로 유지되고, 화면의 모든 저장 버튼은 위조 방지 토큰(CSRF)을 확인해요.</li>
+    <li>손님 전화번호는 가게마다 다른 값(salt)과 섞은 해시로만 남고, 화면에는 뒤 4자리만 보여요.</li>
+    <li>이 가게의 기록은 이 가게 DB 한 곳에만 있고, 다른 가게 화면과 연결된 링크가 없어요.</li>
+  </ul>
+</div>
+{% endblock %}

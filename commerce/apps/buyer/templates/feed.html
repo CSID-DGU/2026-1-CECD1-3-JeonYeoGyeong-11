@@ -1,21 +1,41 @@
 {% extends "layout.html" %}
+{% macro tile_media(p) -%}
+  {%- set m = p.media[0] if p.media else none -%}
+  {%- if m and m.type == 'video' -%}
+  <video src="{{ m.url }}" muted autoplay loop playsinline preload="metadata"></video>
+  {%- elif m -%}
+  <img src="{{ m.url }}" alt="" loading="lazy">
+  {%- else -%}
+  <div class="tile-text">{{ p.title }}</div>
+  {%- endif -%}
+{%- endmacro %}
 {% block content %}
-<div class="narrow-inner stack-lg">
-  <div class="page-head">
-    <h1 class="page-title">매장 소식</h1>
-    <p>판매자가 올린 새 소식과 숏폼 소개입니다.</p>
-  </div>
-  {% for post in posts %}
-  <article class="card stack">
-    <div class="row">
-      <span class="badge {{ 'brand' if post.kind == 'short_video' else 'muted' }}">{{ '숏폼' if post.kind == 'short_video' else '소식' }}</span>
-      <span class="muted-note">{{ post.created_at[:10] }}</span>
-    </div>
-    <h2 class="section-title flush">{{ post.title }}</h2>
-    {% if post.body %}<p class="body-text">{{ post.body }}</p>{% endif %}
-  </article>
-  {% else %}
-  <div class="card empty">아직 올라온 소식이 없습니다.</div>
+<div class="page-head">
+  <h1 class="page-title">소식</h1>
+  <p>{% if customer %}{{ customer.display_name }}님이 산 상품·좋아요·AI 추천을 바탕으로 고른 순서예요.{% else %}지금 반응이 좋은 게시물부터 보여드려요. 로그인하면 내 취향 순으로 바뀝니다.{% endif %}</p>
+</div>
+
+{% if top_tags %}
+<div class="chip-row" aria-label="해시태그">
+  <a class="chip {{ 'active' if not tag else '' }}" href="/buyer/{{ seller_id }}/feed">전체</a>
+  {% for t in top_tags %}
+  <a class="chip {{ 'active' if tag == t else '' }}" href="/buyer/{{ seller_id }}/feed?tag={{ t | urlencode }}">#{{ t }}</a>
   {% endfor %}
 </div>
+{% endif %}
+
+{% if posts %}
+<div class="explore">
+  {% for p in posts %}
+  <a class="tile {{ 'reel' if p.kind == 'short_video' else '' }}" id="p-{{ p.post_id }}" href="/buyer/{{ seller_id }}/posts/{{ p.post_id }}">
+    {{ tile_media(p) }}
+    {% if p.kind == 'short_video' %}<span class="tile-kind" aria-label="릴스">▶</span>{% elif p.media | length > 1 %}<span class="tile-kind" aria-label="여러 장">❐</span>{% endif %}
+    <span class="tile-reason">{{ p.reason }}</span>
+    <span class="tile-stats"><span>♥ {{ p.likes }}</span><span>💬 {{ p.comments }}</span></span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty">아직 올라온 소식이 없습니다.</div>
+{% endif %}
 {% endblock %}

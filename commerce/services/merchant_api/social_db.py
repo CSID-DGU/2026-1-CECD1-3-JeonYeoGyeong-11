@@ -11,6 +11,8 @@ from __future__ import annotations
 import sqlite3
 from typing import Any, Optional
 
+from commerce.services.merchant_api.migrate import add_columns
+
 
 def ensure_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(
@@ -66,8 +68,18 @@ def ensure_schema(conn: sqlite3.Connection) -> None:
             price_minor INTEGER NOT NULL,
             PRIMARY KEY (seller_id, item_id_local, price_date)
         );
+
+        -- Store-wide settings the seller controls (group-buy pricing for buyer proposals).
+        CREATE TABLE IF NOT EXISTS store_settings (
+            seller_id TEXT PRIMARY KEY,
+            group_discount_pct INTEGER NOT NULL DEFAULT 10,
+            group_min_target INTEGER NOT NULL DEFAULT 3,
+            store_intro TEXT
+        );
         """
     )
+    # Group buys are proposed by buyers; the seller only closes bad proposals.
+    add_columns(conn, "group_buys", {"proposer_customer_id": "TEXT", "message": "TEXT", "closed_reason": "TEXT"})
 
 
 # --- messages (M25) ---------------------------------------------------------
@@ -134,11 +146,42 @@ def list_posts(conn: sqlite3.Connection, seller_id: str) -> list[dict[str, Any]]
 # --- group buys (M29) --------------------------------------------------------
 
 def insert_group_buy(conn: sqlite3.Connection, seller_id: str, group_buy_id: str, item_id_local: str,
-                      target_quantity: int, unit_price_minor: int, deadline_at: str, created_at: str) -> None:
+                      target_quantity: int, unit_price_minor: int, deadline_at: str, created_at: str,
+                      proposer_customer_id: Optional[str] = None, message: Optional[str] = None) -> None:
     conn.execute(
-        "INSERT INTO group_buys (seller_id, group_buy_id, item_id_local, target_quantity, "
-        "unit_price_minor, deadline_at, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'open', ?)",
-        (seller_id, group_buy_id, item_id_local, target_quantity, unit_price_minor, deadline_at, created_at),
+        "INSERT INTO group_buys (seller_id, group_buy_id, item_id_local, target_quantity, unit_price_minor, "
+        "deadline_at, status, created_at, proposer_customer_id, message) VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?)",
+        (seller_id, group_buy_id, item_id_local, target_quantity, unit_price_minor, deadline_at, created_at,
+         proposer_customer_id, message),
+    )
+
+
+def close_group_buy(conn: sqlite3.Connection, seller_id: str, group_buy_id: str, reason: str) -> bool:
+    """An open group buy ends as failed with a reason; False if it was not open."""
+    cur = conn.execute(
+        "UPDATE group_buys SET status = 'failed', closed_reason = ? "
+        "WHERE seller_id = ? AND group_buy_id = ? AND status = 'open'",
+        (reason, seller_id, group_buy_id),
+    )
+    return cur.rowcount == 1
+
+
+def get_store_settings(conn: sqlite3.Connection, seller_id: str) -> dict[str, Any]:
+    row = conn.execute("SELECT * FROM store_settings WHERE seller_id = ?", (seller_id,)).fetchone()
+    if row:
+        return dict(row)
+    return {"seller_id": seller_id, "group_discount_pct": 10, "group_min_target": 3, "store_intro": None}
+
+
+def save_store_settings(conn: sqlite3.Connection, seller_id: str, group_discount_pct: int, group_min_target: int,
+                        store_intro: Optional[str]) -> None:
+    conn.execute(
+        """
+        INSERT INTO store_settings (seller_id, group_discount_pct, group_min_target, store_intro) VALUES (?, ?, ?, ?)
+        ON CONFLICT(seller_id) DO UPDATE SET group_discount_pct = excluded.group_discount_pct,
+            group_min_target = excluded.group_min_target, store_intro = excluded.store_intro
+        """,
+        (seller_id, group_discount_pct, group_min_target, store_intro),
     )
 
 

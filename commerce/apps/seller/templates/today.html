@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% from "_chart.html" import bars %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">오늘 우리 가게</h1>
+  <p>{{ today.day }} · 지금 테이블 {{ floor.busy }}/{{ floor.table_count }} 사용 중{% if floor.counter %} · 카운터 주문 {{ floor.counter | length }}건{% endif %}{% if kitchen %} · 주방 대기 {{ kitchen }}건{% endif %}</p>
+</div>
+
+<div class="grid cols-4 kpis">
+  <div class="card kpi"><span class="kpi-label">오늘 매출</span><span class="kpi-value">{{ "{:,}".format(today.revenue) }}원</span>
+    <span class="kpi-sub">{% if yesterday.revenue %}어제 {{ "{:,}".format(yesterday.revenue) }}원{% else %}어제 기록 없음{% endif %}</span></div>
+  <div class="card kpi"><span class="kpi-label">결제 · 손님</span><span class="kpi-value">{{ today.count }}건 · {{ today.guests }}명</span>
+    <span class="kpi-sub">객단가 {{ "{:,}".format(today.per_guest) }}원 · 포장 {{ today.takeout }}건</span></div>
+  <div class="card kpi"><span class="kpi-label">회원 결제</span><span class="kpi-value">{{ today.member_share }}%</span>
+    <span class="kpi-sub">적립 회원 {{ members }}명 · 단골(3회+) {{ regulars }}명</span></div>
+  <div class="card kpi"><span class="kpi-label">최근 7일</span><span class="kpi-value">{{ "{:,}".format(stats.revenue_7d) }}원</span>
+    <span class="kpi-sub">{% if stats.change_7d is not none %}지난 7일보다 {{ ('▲ ' ~ stats.change_7d ~ '%') if stats.change_7d >= 0 else ('▼ ' ~ (-stats.change_7d) ~ '%') }}{% else %}비교할 기록 없음{% endif %}</span></div>
+</div>
+
+<div class="grid cols-2 mt-12">
+  <figure class="card chart-card">
+    <figcaption class="row between"><span class="list-title">오늘 시간대별 매출</span><a class="link" href="/seller/{{ seller_id }}/sales">결제 내역 →</a></figcaption>
+    {{ bars(hours, '오늘 시간대별 매출', highlight_last=False) }}
+  </figure>
+  <figure class="card chart-card">
+    <figcaption class="row between"><span class="list-title">일별 매출 (최근 14일)</span><span class="muted-note">{{ stats.today }}</span></figcaption>
+    {{ bars(chart, '최근 14일 일별 매출') }}
+  </figure>
+</div>
+
+<div class="grid cols-2 mt-12">
+  <div class="card stack">
+    <span class="list-title">최근 30일 많이 나간 메뉴</span>
+    {% for t in stats.top_items %}
+    <div class="rank-row"><span class="rank-no">{{ loop.index }}</span>
+      <div class="grow"><p class="list-title">{{ t.title }}</p><div class="rank-bar" aria-hidden="true"><span style="width: {{ (100 * t.revenue / stats.top_peak) | round(1) if stats.top_peak else 0 }}%"></span></div></div>
+      <span class="num">{{ "{:,}".format(t.revenue) }}원<br><span class="muted-note">{{ t.quantity }}개</span></span></div>
+    {% else %}<p class="muted-note">아직 결제가 없어요. POS에서 첫 주문을 받아 보세요.</p>{% endfor %}
+    {% if low_stock %}<div class="notice warn"><span class="notice-text">재료 확인: {% for title, n in low_stock %}{{ title }} {{ '품절' if n == 0 else n ~ '개' }}{{ ', ' if not loop.last }}{% endfor %}</span></div>{% endif %}
+  </div>
+  <div class="card stack ai-summary">
+    <div class="row between"><span class="list-title">✨ 우리 가게 AI</span>
+      <span class="badge {{ 'solid' if model_ok else 'muted' }}">{{ '작동 중' if model_ok else '준비 중' }}</span></div>
+    {% if model_ok %}
+    <p class="body-text">여러 식당이 손님 기록은 각자 가게에 두고 함께 학습한 공통 모델을, 우리 가게 기록으로 돌리고 있어요. POS에서 적립 손님을 확인하면 그 손님에게 맞춘 메뉴를 바로 추천해요.</p>
+    <p class="muted-note">모델 <span class="mono">{{ model_version }}</span></p>
+    {% else %}
+    <p class="body-text">공통 모델이 아직 이 가게 PC에 없어서, 지금은 많이 팔린 메뉴 순서로 추천해요.</p>
+    {% endif %}
+    <div class="row">
+      <a class="btn secondary sm" href="/seller/{{ seller_id }}/guests">손님 인사이트 보기</a>
+      <a class="btn ghost sm" href="/seller/{{ seller_id }}/fl">연합학습 현황</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

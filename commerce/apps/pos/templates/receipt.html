@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="pos-receipt-wrap">
+  <article class="receipt" aria-label="영수증">
+    <header>
+      <h1>{{ store_name }}</h1>
+      <p>{{ '결제 취소' if ticket.status == 'refunded' else ('주문 취소' if ticket.status == 'void' else '영수증') }}</p>
+    </header>
+    <dl class="rc-meta">
+      <dt>영수증 번호</dt><dd class="mono">{{ ticket.receipt_no or '-' }}</dd>
+      <dt>{{ ticket.label }}</dt><dd>{{ ticket.guests }}명</dd>
+      <dt>결제 시각</dt><dd>{{ (ticket.paid_at or ticket.opened_at) | kst }}</dd>
+    </dl>
+    <table class="rc-lines">
+      {% for l in ticket.lines if not l.voided_at %}
+      <tr><td>{{ l.title }}{% if l.memo %}<br><small>{{ l.memo }}</small>{% endif %}</td><td class="num">{{ l.quantity }}</td><td class="num">{{ "{:,}".format(l.total) }}</td></tr>
+      {% endfor %}
+    </table>
+    <dl class="rc-sum">
+      <dt>합계</dt><dd>{{ "{:,}".format(ticket.subtotal) }}</dd>
+      {% if ticket.discount_minor %}<dt>할인</dt><dd>−{{ "{:,}".format(ticket.discount_minor) }}</dd>{% endif %}
+      <dt class="big">받을 금액</dt><dd class="big">{{ "{:,}".format(ticket.total) }}원</dd>
+      {% for p in ticket.payments %}
+      <dt>{{ p.method_label }}{% if p.approval_no %} <small class="mono">승인 {{ p.approval_no }}</small>{% endif %}</dt><dd>{{ "{:,}".format(p.amount) }}{% if p.refunded_at %} (취소){% endif %}</dd>
+      {% if p.change_due %}<dt><small>받은 돈 {{ "{:,}".format(p.received) }} · 거스름</small></dt><dd>{{ "{:,}".format(p.change_due) }}</dd>{% endif %}
+      {% endfor %}
+      {% if ticket.member %}<dt>회원 {{ ticket.member.label }}</dt><dd>+{{ "{:,}".format(ticket.points_earned) }}P (잔여 {{ "{:,}".format(ticket.member.points) }}P)</dd>{% endif %}
+    </dl>
+    <footer>오늘도 맛있게 드셨나요? 🥒</footer>
+  </article>
+  <div class="receipt-side">
+    {% if ticket.status == 'paid' %}
+    <div class="notice">결제가 끝났어요. 이 주문은 이 가게 PC의 추천 모델 학습 기록으로 들어갔어요(메뉴와 시각만, 손님 번호·결제 정보는 아님).</div>
+    {% elif ticket.status == 'refunded' %}
+    <div class="notice warn">결제를 취소했어요. 적립 포인트는 되돌렸고, 학습 기록은 계약상 취소가 없어 그대로 남아 있어요.</div>
+    {% endif %}
+    <a class="btn primary pos-big block" href="/pos/{{ seller_id }}/">테이블로 돌아가기</a>
+    {% if ticket.status == 'paid' %}
+    <button type="button" class="btn ghost block" id="refund">결제 취소(환불)</button>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var b = document.getElementById('refund'); if (!b) return;
+  b.onclick = function () {
+    if (!confirm('이 결제를 취소할까요? 포인트도 되돌려요.')) return;
+    fetch('/pos/{{ seller_id }}/api/tickets/{{ ticket.ticket_id }}/refund', {method: 'POST', credentials: 'same-origin',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': {{ (csrf_token or '') | tojson }}}, body: '{}'})
+      .then(function (r) { return r.json(); }).then(function (j) { if (j.error) posToast(j.error, true); else location.reload(); });
+  };
+})();
+</script>
+{% endblock %}

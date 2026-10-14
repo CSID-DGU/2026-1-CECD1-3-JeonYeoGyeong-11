@@ -1,44 +1,296 @@
 {% extends "layout.html" %}
 {% block content %}
+{%- set f_kind = form.get('kind') or 'article' %}
+{%- set f_items = form.get('item_ids') or [] %}
+{%- set store = staff.display_name if staff else seller_id %}
 <div class="page-head">
-  <h1 class="page-title">소식 관리</h1>
-  <p>올린 소식은 구매자 화면의 '소식' 탭에 최신순으로 보입니다.</p>
+  <h1 class="page-title">소식 스튜디오</h1>
+  <p>사진·영상과 상품을 올리면 구매자 '소식' 탭에 고객마다 다른 순서로 보여요(산 상품·좋아요·AI 추천 기반).</p>
 </div>
 
-<div class="card">
-  <h2 class="section-title">새 소식 올리기</h2>
-  <form class="form" method="post" action="/seller/{{ seller_id }}/feed"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
-    <div class="form-row">
-      <label class="field">종류
-        <select name="kind">
-          <option value="article">글</option>
-          <option value="short_video">숏폼 영상 소개</option>
-        </select>
-      </label>
-      <label class="field">제목
-        <input type="text" name="title" required>
-      </label>
+<div class="studio">
+  <form class="card composer" method="post" action="/seller/{{ seller_id }}/feed" enctype="multipart/form-data" id="post-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <div class="composer-head">
+      <h2 class="section-title flush">새로 만들기</h2>
+      <div class="segmented" role="radiogroup" aria-label="종류">
+        <label><input type="radio" name="kind" value="article" id="kind-article" {{ 'checked' if f_kind != 'short_video' }}><span>📷 게시물</span></label>
+        <label><input type="radio" name="kind" value="short_video" id="kind-reel" {{ 'checked' if f_kind == 'short_video' }}><span>🎬 릴스</span></label>
+      </div>
     </div>
-    <label class="field">내용
-      <textarea name="body" rows="3"></textarea>
+
+    {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+    <p class="form-error" id="client-error" role="alert" hidden></p>
+
+    <div class="stage-wrap">
+      <div class="stage" id="stage" data-kind="{{ f_kind }}">
+        <label class="stage-empty" for="files" id="stage-empty">
+          <span class="stage-icon" aria-hidden="true">＋</span>
+          <strong id="empty-title">사진이나 영상을 끌어다 놓거나 눌러서 고르세요</strong>
+          <span class="field-hint" id="empty-hint">사진·영상 최대 {{ max_files }}개 · 개당 30MB</span>
+          <span class="field-hint">파일 없이 올리면 첫 번째로 태그한 상품으로 그래픽을 만들어 붙여요.</span>
+        </label>
+        <div class="stage-view" id="stage-view" hidden>
+          <div class="stage-media" id="stage-media"></div>
+          <button class="stage-nav prev" type="button" id="prev" aria-label="이전">‹</button>
+          <button class="stage-nav next" type="button" id="next" aria-label="다음">›</button>
+          <span class="stage-count" id="stage-count"></span>
+        </div>
+      </div>
+      <div class="strip" id="strip" aria-label="올릴 파일"></div>
+      <input id="files" class="sr-only" type="file" name="files" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/quicktime" multiple>
+    </div>
+
+    <label class="field" for="caption"><span>문구 <span class="field-hint">#해시태그는 검색과 추천에 쓰여요</span></span>
+      <textarea name="caption" id="caption" rows="4" maxlength="2200" placeholder="오늘 들어온 감귤, 당도가 정말 좋아요! #감귤 #제철">{{ form.get('caption') or '' }}</textarea>
     </label>
-    <p class="muted-note">숏폼은 영상 업로드 대신 소개 글로 대체합니다 (별도 미디어 저장소 미구현).</p>
-    <div class="form-actions"><button class="btn primary" type="submit">올리기</button></div>
+    <div class="caption-meta"><span id="tags" class="tag-line"></span><span class="field-hint"><span id="count">0</span>/2200</span></div>
+
+    <fieldset class="tag-picker" id="tag-picker">
+      <legend class="row between"><span class="list-title">상품 태그</span><span class="field-hint"><span id="tag-count">0</span>/5개</span></legend>
+      <input type="search" id="tag-search" placeholder="상품 이름으로 찾기" aria-label="태그할 상품 찾기">
+      <div class="picks" id="picks">
+        {% for item in catalog %}
+        {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+        <label class="pick" data-name="{{ item.title_text }}"><input type="checkbox" name="item_ids" value="{{ item.item_id_local }}" data-title="{{ item.title_text }}" data-price="{{ item.display_price_minor }}" {{ 'checked' if item.item_id_local in f_items }}>
+          <span>{{ emoji or '🏷️' }} {{ item.title_text }}</span></label>
+        {% endfor %}
+      </div>
+    </fieldset>
+
+    <div class="upload-bar" id="upload-bar" hidden><i id="upload-fill"></i><span id="upload-text">올리는 중…</span></div>
+    <div class="form-actions"><button class="btn primary" type="submit" id="share">공유하기</button></div>
   </form>
+
+  <aside class="phone" aria-label="구매자 화면 미리보기">
+    <p class="phone-label">구매자에게 이렇게 보여요</p>
+    <div class="phone-screen">
+      <div class="ph-head"><span class="ph-avatar" aria-hidden="true">{{ store[:1] }}</span><b>{{ store }}</b><span class="ph-kind" id="ph-kind">게시물</span></div>
+      <div class="ph-media" id="ph-media"><span>미리보기</span></div>
+      <div class="ph-actions" aria-hidden="true"><span>♡</span><span>💬</span><span>➤</span><span class="ph-dots" id="ph-dots"></span></div>
+      <p class="ph-likes">좋아요 0개</p>
+      <p class="ph-caption"><b>{{ store }}</b> <span id="ph-caption">문구가 여기에 보여요</span></p>
+      <div class="ph-tags" id="ph-tags"></div>
+    </div>
+  </aside>
 </div>
 
-<div class="card-list">
-  {% for post in posts %}
-  <article class="card stack">
-    <div class="row">
-      <span class="badge {{ 'brand' if post.kind == 'short_video' else 'muted' }}">{{ '숏폼' if post.kind == 'short_video' else '소식' }}</span>
-      <span class="muted-note">{{ post.created_at[:10] }}</span>
+<section class="section profile">
+  {%- set reels = posts | selectattr('kind', 'equalto', 'short_video') | list %}
+  <div class="profile-head">
+    <span class="profile-avatar" aria-hidden="true">{{ store[:1] }}</span>
+    <div class="profile-stats">
+      <div><strong>{{ posts | length - reels | length }}</strong><span>게시물</span></div>
+      <div><strong>{{ reels | length }}</strong><span>릴스</span></div>
+      <div><strong>{{ "{:,}".format(posts | sum(attribute='views')) }}</strong><span>조회</span></div>
+      <div><strong>{{ "{:,}".format(posts | sum(attribute='likes')) }}</strong><span>좋아요</span></div>
     </div>
-    <h2 class="section-title flush">{{ post.title }}</h2>
-    {% if post.body %}<p class="body-text">{{ post.body }}</p>{% endif %}
-  </article>
+  </div>
+  <div class="profile-tabs" role="tablist">
+    <button type="button" class="active" data-filter="all" role="tab" aria-selected="true">▦ 전체</button>
+    <button type="button" data-filter="article" role="tab" aria-selected="false">📷 게시물</button>
+    <button type="button" data-filter="short_video" role="tab" aria-selected="false">🎬 릴스</button>
+  </div>
+  {% if posts %}
+  <div class="pgrid" id="pgrid">
+    {% for p in posts %}
+    {% set m = p.media[0] if p.media else none %}
+    <a class="ptile" data-kind="{{ p.kind }}" href="/seller/{{ seller_id }}/posts/{{ p.post_id }}" title="{{ p.title }}">
+      {% if m and m.type == 'video' %}<video src="{{ m.url }}" muted loop playsinline preload="metadata"></video>
+      {% elif m %}<img src="{{ m.url }}" alt="{{ p.title }}" loading="lazy">{% else %}<span class="tile-text">{{ p.title }}</span>{% endif %}
+      {% if p.kind == 'short_video' %}<span class="tile-kind" aria-label="릴스">▶</span>{% elif p.media | length > 1 %}<span class="tile-kind" aria-label="여러 장">❐</span>{% endif %}
+      <span class="tile-stats"><span>👁 {{ "{:,}".format(p.views) }}</span><span>♥ {{ p.likes }}</span><span>💬 {{ p.comments }}</span><span>🛒 {{ p.orders_after }}</span></span>
+    </a>
+    {% endfor %}
+  </div>
+  <details class="insights">
+    <summary>게시물별 성과 표 보기</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>게시물</th><th class="num">조회</th><th class="num">좋아요</th><th class="num">댓글</th><th class="num">반응률</th><th class="num">게시 후 주문</th></tr></thead>
+        <tbody>
+        {% for p in posts %}
+        <tr>
+          <td><a class="link-plain" href="/seller/{{ seller_id }}/posts/{{ p.post_id }}"><span class="list-title">{{ p.title }}</span><br><span class="list-sub">{{ p.kind_label }} · {{ p.created_at[:10] }}{% if p['items'] %} · {{ p['items'] | map(attribute='title_text') | join(', ') }}{% endif %}</span></a></td>
+          <td class="num">{{ p.views }}</td><td class="num">{{ p.likes }}</td><td class="num">{{ p.comments }}</td>
+          <td class="num">{{ '%.1f%%' % p.engagement_rate if p.engagement_rate is not none else '-' }}</td>
+          <td class="num">{{ p.orders_after }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
   {% else %}
-  <div class="card empty">아직 올린 소식이 없습니다.</div>
-  {% endfor %}
-</div>
+  <div class="card empty">아직 올린 게시물이 없어요. 위에서 첫 게시물을 만들어 보세요.</div>
+  {% endif %}
+</section>
+
+<script>
+(function () {
+  var MAX_FILES = {{ max_files }}, MAX_BYTES = 30 * 1024 * 1024, MAX_TAGS = 5;
+  var form = document.getElementById('post-form'), input = document.getElementById('files');
+  var stage = document.getElementById('stage'), empty = document.getElementById('stage-empty'), view = document.getElementById('stage-view');
+  var stageMedia = document.getElementById('stage-media'), strip = document.getElementById('strip'), counter = document.getElementById('stage-count');
+  var errorBox = document.getElementById('client-error');
+  var phMedia = document.getElementById('ph-media'), phDots = document.getElementById('ph-dots');
+  var files = [], current = 0;
+
+  function kind() { return document.getElementById('kind-reel').checked ? 'short_video' : 'article'; }
+  function say(msg) { errorBox.textContent = msg || ''; errorBox.hidden = !msg; }
+  function isVideo(f) { return f.type.indexOf('video') === 0; }
+  function el(f) {
+    var url = f._url || (f._url = URL.createObjectURL(f)), node;
+    if (isVideo(f)) { node = document.createElement('video'); node.muted = true; node.loop = true; node.autoplay = true; node.playsInline = true; }
+    else { node = document.createElement('img'); node.alt = f.name; }
+    node.src = url; return node;
+  }
+
+  function addFiles(list) {
+    say('');
+    var incoming = Array.prototype.slice.call(list);
+    for (var i = 0; i < incoming.length; i++) {
+      var f = incoming[i];
+      if (!/^(image\/(jpeg|png|gif|webp)|video\/(mp4|webm|quicktime))$/.test(f.type)) { say('“' + f.name + '”은 올릴 수 없는 형식이에요. 사진(JPG·PNG·GIF·WebP)이나 영상(MP4·WebM·MOV)만 돼요.'); continue; }
+      if (f.size > MAX_BYTES) { say('“' + f.name + '”이 30MB를 넘어요.'); continue; }
+      if (kind() === 'short_video') {
+        if (!isVideo(f)) { say('릴스에는 세로 영상 1개를 올려요. 사진은 게시물로 올려 주세요.'); continue; }
+        files = [f];  // a reel is one video: the new one replaces the old
+        continue;
+      }
+      if (files.length >= MAX_FILES) { say('한 게시물에 ' + MAX_FILES + '개까지 올릴 수 있어요.'); break; }
+      files.push(f);
+    }
+    current = Math.max(0, Math.min(current, files.length - 1));
+    render();
+  }
+
+  function render() {
+    var reel = kind() === 'short_video';
+    stage.dataset.kind = reel ? 'short_video' : 'article';
+    document.getElementById('empty-title').textContent = reel ? '세로 영상 1개를 끌어다 놓거나 눌러서 고르세요' : '사진이나 영상을 끌어다 놓거나 눌러서 고르세요';
+    document.getElementById('empty-hint').textContent = reel ? 'MP4·WebM·MOV · 30MB까지 · 9:16 세로 영상 권장' : '사진·영상 최대 ' + MAX_FILES + '개 · 개당 30MB';
+    document.getElementById('ph-kind').textContent = reel ? '릴스' : '게시물';
+    empty.hidden = files.length > 0; view.hidden = files.length === 0;
+    stageMedia.innerHTML = ''; phMedia.innerHTML = ''; strip.innerHTML = '';
+    phMedia.classList.toggle('reel', reel);
+    if (files.length) {
+      stageMedia.appendChild(el(files[current]));
+      phMedia.appendChild(el(files[current]));
+      counter.textContent = (current + 1) + ' / ' + files.length;
+      document.getElementById('prev').hidden = current === 0;
+      document.getElementById('next').hidden = current >= files.length - 1;
+    } else {
+      var t = document.createElement('span'); t.textContent = reel ? '🎬 릴스 미리보기' : '📷 미리보기'; phMedia.appendChild(t);
+    }
+    phDots.textContent = files.length > 1 ? files.map(function (_, i) { return i === current ? '●' : '○'; }).join(' ') : '';
+    files.forEach(function (f, i) {
+      var cell = document.createElement('div'); cell.className = 'strip-cell' + (i === current ? ' on' : '');
+      var pick = document.createElement('button'); pick.type = 'button'; pick.className = 'strip-pick'; pick.setAttribute('aria-label', (i + 1) + '번째 파일 보기');
+      pick.appendChild(el(f)); pick.addEventListener('click', function () { current = i; render(); });
+      var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'strip-rm'; rm.textContent = '×'; rm.setAttribute('aria-label', f.name + ' 빼기');
+      rm.addEventListener('click', function () { files.splice(i, 1); current = Math.max(0, Math.min(current, files.length - 1)); render(); });
+      cell.appendChild(pick); cell.appendChild(rm);
+      if (isVideo(f)) { var b = document.createElement('span'); b.className = 'strip-badge'; b.textContent = '▶'; cell.appendChild(b); }
+      strip.appendChild(cell);
+    });
+    if (files.length && !reel && files.length < MAX_FILES) {
+      var add = document.createElement('label'); add.className = 'strip-add'; add.htmlFor = 'files'; add.textContent = '＋'; add.setAttribute('aria-label', '파일 더 넣기');
+      strip.appendChild(add);
+    }
+  }
+
+  input.addEventListener('change', function () { addFiles(input.files); input.value = ''; });
+  ['dragenter', 'dragover'].forEach(function (t) { stage.addEventListener(t, function (e) { e.preventDefault(); stage.classList.add('drag'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { stage.addEventListener(t, function (e) { e.preventDefault(); stage.classList.remove('drag'); }); });
+  stage.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files); });
+  document.getElementById('prev').addEventListener('click', function () { current = Math.max(0, current - 1); render(); });
+  document.getElementById('next').addEventListener('click', function () { current = Math.min(files.length - 1, current + 1); render(); });
+  document.querySelectorAll('input[name=kind]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      if (kind() === 'short_video') {
+        var vid = files.filter(isVideo)[0];
+        if (files.length && (!vid || files.length > 1)) say(vid ? '릴스는 영상 1개만 올려요. 첫 번째 영상만 남겼어요.' : '릴스에는 영상이 필요해요. 고른 사진은 뺐어요.');
+        files = vid ? [vid] : [];
+      } else { say(''); }
+      current = 0; render();
+    });
+  });
+
+  // caption + hashtags
+  var caption = document.getElementById('caption'), count = document.getElementById('count'), tagLine = document.getElementById('tags');
+  var phCaption = document.getElementById('ph-caption');
+  function refreshCaption() {
+    var text = caption.value; count.textContent = text.length;
+    var found = text.match(/#[0-9A-Za-z_가-힣]{1,30}/g) || [];
+    tagLine.textContent = found.length ? found.slice(0, 15).join(' ') : '';
+    phCaption.innerHTML = '';
+    if (!text.trim()) { phCaption.textContent = '문구가 여기에 보여요'; return; }
+    text.slice(0, 220).split(/(#[0-9A-Za-z_가-힣]{1,30})/).forEach(function (part) {
+      var node = document.createElement('span');
+      if (part.charAt(0) === '#') node.className = 'ph-hash';
+      node.textContent = part; phCaption.appendChild(node);
+    });
+    if (text.length > 220) phCaption.appendChild(document.createTextNode('… 더 보기'));
+  }
+  caption.addEventListener('input', refreshCaption);
+
+  // product tags
+  var picks = Array.prototype.slice.call(document.querySelectorAll('#picks input')), phTags = document.getElementById('ph-tags');
+  function refreshTags(changed) {
+    var on = picks.filter(function (p) { return p.checked; });
+    if (on.length > MAX_TAGS && changed) { changed.checked = false; say('상품 태그는 5개까지예요.'); on = picks.filter(function (p) { return p.checked; }); }
+    document.getElementById('tag-count').textContent = on.length;
+    phTags.innerHTML = '';
+    on.forEach(function (p) {
+      var chip = document.createElement('span'); chip.className = 'ph-tag';
+      chip.textContent = '🛍 ' + p.dataset.title + ' · ' + Number(p.dataset.price).toLocaleString('ko-KR') + '원';
+      phTags.appendChild(chip);
+    });
+  }
+  picks.forEach(function (p) { p.addEventListener('change', function () { refreshTags(p); }); });
+  document.getElementById('tag-search').addEventListener('input', function (e) {
+    var q = e.target.value.trim();
+    document.querySelectorAll('#picks .pick').forEach(function (l) { l.hidden = q && l.dataset.name.indexOf(q) < 0 && !l.querySelector('input').checked; });
+  });
+
+  // submit with progress; the server's answer replaces the page (redirect to the studio, or the form with its error)
+  form.addEventListener('submit', function (e) {
+    e.preventDefault(); say('');
+    if (!caption.value.trim()) { say('문구를 입력해 주세요.'); caption.focus(); return; }
+    var data = new FormData(form); data.delete('files');
+    files.forEach(function (f) { data.append('files', f, f.name); });
+    var bar = document.getElementById('upload-bar'), fill = document.getElementById('upload-fill'), label = document.getElementById('upload-text');
+    var button = document.getElementById('share'); button.disabled = true; bar.hidden = false;
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action);
+    xhr.upload.addEventListener('progress', function (ev) {
+      if (!ev.lengthComputable) return;
+      var pct = Math.round(100 * ev.loaded / ev.total);
+      fill.style.width = pct + '%'; label.textContent = pct < 100 ? '올리는 중… ' + pct + '%' : '공유하는 중…';
+    });
+    xhr.addEventListener('load', function () {
+      if (xhr.status >= 200 && xhr.status < 300 && /\/feed$/.test(xhr.responseURL.split('?')[0])) { location.href = xhr.responseURL.split('?')[0] + '?posted=1'; return; }
+      document.open(); document.write(xhr.responseText); document.close();
+    });
+    xhr.addEventListener('error', function () { button.disabled = false; bar.hidden = true; say('올리지 못했어요. 연결을 확인하고 다시 눌러 주세요.'); });
+    xhr.send(data);
+  });
+
+  // profile grid tabs; reels play on hover
+  document.querySelectorAll('.profile-tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('.profile-tabs button').forEach(function (o) { o.classList.toggle('active', o === b); o.setAttribute('aria-selected', o === b); });
+      document.querySelectorAll('.ptile').forEach(function (t) { t.hidden = b.dataset.filter !== 'all' && t.dataset.kind !== b.dataset.filter; });
+    });
+  });
+  document.querySelectorAll('.ptile video').forEach(function (v) {
+    v.parentNode.addEventListener('mouseenter', function () { v.play().catch(function () {}); });
+    v.parentNode.addEventListener('mouseleave', function () { v.pause(); });
+  });
+
+  render(); refreshCaption(); refreshTags();
+  if (/[?&]posted=1/.test(location.search)) { var n = document.createElement('div'); n.className = 'notice'; n.textContent = '공유했어요. 구매자 소식 탭에 바로 보여요.'; var s = document.querySelector('.studio'); s.parentNode.insertBefore(n, s); }
+})();
+</script>
 {% endblock %}

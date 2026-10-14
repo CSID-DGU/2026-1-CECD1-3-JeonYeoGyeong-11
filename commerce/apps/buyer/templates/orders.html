@@ -5,18 +5,29 @@
     <h1 class="page-title">주문내역</h1>
     <p>{{ customer.display_name }}님의 주문입니다.</p>
   </div>
+  {% if request.query_params.get('ok') == 'cancelled' %}<div class="notice">주문을 취소했어요.</div>{% endif %}
+  {% if request.query_params.get('e') %}<div class="notice warn">판매자가 이미 수락한 주문은 취소할 수 없어요. 쪽지로 문의해 주세요.</div>{% endif %}
   <div class="card flush">
     <div class="list">
       {% for order in orders %}
       <div class="list-item">
-        <div class="thumb tone-{{ loop.index0 % 4 }}" aria-hidden="true">{{ titles.get(order['items'][0].item_id_local, order['items'][0].item_id_local)[:1] if order['items'] else '' }}</div>
-        <div class="grow">
+        {%- set first = order['items'][0].item_id_local if order['items'] else '' %}
+        {%- set pic = photos.get(first, [none])[0] %}
+        <a class="thumb tone-{{ loop.index0 % 4 }}{{ ' photo' if pic }}" href="/buyer/{{ seller_id }}/orders/{{ order.order_id }}" aria-hidden="true">{% if pic %}<img src="/media/{{ seller_id }}/{{ pic }}" alt="">{% else %}{{ titles.get(first, first)[:1] }}{% endif %}</a>
+        <a class="grow" href="/buyer/{{ seller_id }}/orders/{{ order.order_id }}">
           <p class="list-title">{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</p>
-          <p class="list-sub">{{ order.created_at[:10] }} · 주문번호 {{ order.order_id[:8] }}</p>
-        </div>
+          <p class="list-sub">{{ order.created_at[:10] }} · 주문번호 {{ order.order_id[:8] }}{% set f = fulfillment.get(order.order_id) %}{% if f %} · {{ methods[f.method] }}{% endif %} · 상세 보기 →</p>
+        </a>
         <div class="stack align-end">
           <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ status_labels[order.status] }}</span>
           <span class="price-now">{{ "{:,}".format(order.total_amount) }}원</span>
+          {% if order.status == 'requested' %}
+          <form method="post" action="/buyer/{{ seller_id }}/orders/{{ order.order_id }}/cancel" onsubmit="return confirm('주문을 취소할까요?');"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+            <button class="btn ghost sm" type="submit">주문 취소</button>
+          </form>
+          {% elif order.status == 'completed' %}
+          <a class="btn ghost sm" href="/buyer/{{ seller_id }}/items/{{ order['items'][0].item_id_local }}#reviews">리뷰 쓰기</a>
+          {% endif %}
         </div>
       </div>
       {% else %}

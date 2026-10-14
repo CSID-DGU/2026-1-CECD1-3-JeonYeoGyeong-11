@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+{% from "_order_actions.html" import order_actions %}
+{% block content %}
+<a class="link" href="/seller/{{ seller_id }}/orders">← 주문 관리</a>
+<div class="page-head mt-12">
+  <div class="row">
+    <h1 class="page-title">주문 <span class="mono">{{ order.order_id[:8] }}</span></h1>
+    <span class="badge {{ {'requested': 'warn', 'accepted': 'brand', 'completed': 'solid', 'cancelled': 'muted'}[order.status] }}">{{ status_label }}</span>
+    {% if fulfillment %}<span class="badge {{ 'brand' if fulfillment.method == 'delivery' else 'muted' }}">{{ method_label }}</span>{% endif %}
+  </div>
+  <p>{{ customer_name }} ({{ order.customer_id_local }}) · 이전 완료 주문 {{ past_orders }}건{% if past_orders > 1 %} · 단골 고객{% endif %}</p>
+</div>
+
+{% if tracking_state == 'saved' %}<div class="notice" id="ship">송장을 저장하고 구매자에게 "택배가 출발했어요" 알림을 보냈어요. 이제 전달이 끝나면 완료 처리하세요.</div>
+{% elif tracking_state == 'bad' %}<div class="notice warn" id="ship">{{ '택배사를 다시 골라 주세요.' if tracking_field == 'courier' else '송장번호는 숫자·영문·하이픈 6~30자로 입력해 주세요. 띄어쓰기는 지워져요.' }}</div>
+{% elif ready_sent %}<div class="notice" id="ship">구매자에게 "픽업 준비가 끝났어요" 알림을 보냈어요. 받아 가면 픽업 완료를 누르세요.</div>{% endif %}
+
+<div class="grid cols-2">
+  <div class="stack-lg">
+    <ol class="timeline" aria-label="주문 진행 단계">
+      {% for step in timeline %}
+      <li class="{{ 'done' if step.done }} {{ 'current' if step.current }} {{ 'cancel' if step.status == 'cancelled' }}">
+        <span class="dot" aria-hidden="true"></span><span class="t-label">{{ step.label }}</span>
+        <span class="t-time">{{ step.at[5:16] | replace('T', ' ') if step.at else '' }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="card flush">
+      <div class="list">
+        {% for l in lines %}
+        <div class="list-item"><div class="grow"><p class="list-title">{{ l.title }}</p><p class="list-sub">{{ "{:,}".format(l.unit_price_minor) }}원 × {{ l.quantity }}</p></div>
+          <span class="price-now">{{ "{:,}".format(l.line_total) }}원</span></div>
+        {% endfor %}
+        {% if fee %}<div class="list-item"><span class="grow muted-note">택배비</span><span>{{ "{:,}".format(fee) }}원</span></div>{% endif %}
+        <div class="list-item"><span class="grow list-title">합계</span><span class="price-now lg">{{ "{:,}".format(total) }}원</span></div>
+      </div>
+    </div>
+    <div class="card stack">
+      <h2 class="section-title flush">받는 사람</h2>
+      {% if fulfillment and fulfillment.method == 'delivery' %}
+      <dl class="kv">
+        <dt>받는 분</dt><dd>{{ fulfillment.recipient }}</dd>
+        <dt>연락처</dt><dd>{{ fulfillment.phone }}</dd>
+        <dt>주소</dt><dd>{{ fulfillment.address }}</dd>
+        {% if fulfillment.memo %}<dt>요청사항</dt><dd>{{ fulfillment.memo }}</dd>{% endif %}
+      </dl>
+      {% elif fulfillment %}
+      <dl class="kv">
+        <dt>픽업 시간</dt><dd>{{ fulfillment.pickup_slot }}</dd>
+        <dt>픽업 장소</dt><dd>{{ terms.pickup_address }}</dd>
+        {% if fulfillment.phone %}<dt>연락처</dt><dd>{{ fulfillment.phone }}</dd>{% endif %}
+        {% if fulfillment.memo %}<dt>요청사항</dt><dd>{{ fulfillment.memo }}</dd>{% endif %}
+      </dl>
+      {% else %}
+      <p class="muted-note">수령 정보 없이 들어온 주문이에요(JSON API·데모 데이터·공동구매). 매장 픽업으로 처리하고, 필요하면 쪽지로 확인하세요.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card stack-lg process">
+    <h2 class="section-title flush">처리</h2>
+    {{ order_actions(seller_id, order, fulfillment, couriers, csrf_token, 'detail') }}
+    <div class="row">
+      <a class="btn ghost sm" href="/seller/{{ seller_id }}/messages/{{ order.customer_id_local }}">✉️ 고객에게 쪽지</a>
+    </div>
+    {% if order.status == 'completed' %}
+    <p class="muted-note">추천 모델 전달: <strong>{{ {'delivered': '반영됨', 'quarantined': '내용이 달라 보류됨'}.get(delivery_status, '전달 대기') }}</strong></p>
+    {% elif order.status != 'cancelled' %}
+    <p class="muted-note">완료 처리하면 이 구매가 이 매장의 추천 모델 기록으로 전달돼요. 상품과 시각만 가고, 고객 연락처·주소는 보내지 않아요.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

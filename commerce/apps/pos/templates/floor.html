@@ -1,0 +1,94 @@
+{% extends "layout.html" %}
+{% from "_plan.html" import fixture_icon %}
+{% block content %}
+{%- set cfg = floor.settings -%}
+<section class="pos-strip" aria-label="지금 매장">
+  <div><span>사용 중 테이블</span><strong>{{ floor.busy }} / {{ floor.table_count }}</strong></div>
+  <div><span>진행 중 금액</span><strong>{{ "{:,}".format(floor.open_total) }}원</strong></div>
+  <div><span>오늘 매출</span><strong>{{ "{:,}".format(today.revenue) }}원</strong></div>
+  <div><span>오늘 결제</span><strong>{{ today.count }}건 · {{ today.guests }}명</strong></div>
+  <a class="{{ 'hot' if kitchen }}" href="/pos/{{ seller_id }}/kitchen"><span>주방 대기</span><strong>{{ kitchen }}건</strong></a>
+</section>
+
+<div class="pos-floor">
+  <section class="pos-tables" aria-label="테이블 배치도">
+    <div class="pos-section-head">
+      {% if floor.zones | length > 1 %}
+      <div class="zone-tabs" role="tablist" id="zone-tabs">
+        {% for z in floor.zones %}<button type="button" role="tab" data-zone="{{ loop.index0 }}" class="{{ 'active' if loop.first }}">{{ z.name }} <small>{{ z.busy }}/{{ z.tables }}</small></button>{% endfor %}
+      </div>
+      {% else %}<h1>{{ floor.zones[0].name }}</h1>{% endif %}
+      <span class="pos-legend"><i class="dot free"></i>빈 테이블 <i class="dot busy"></i>식사 중 <i class="dot wait"></i>조리 대기{% if cfg.time_limit %} <i class="dot over"></i>{{ cfg.time_limit }}분 넘음{% endif %}</span>
+      <a class="btn-link plan-edit" href="/seller/{{ seller_id }}/floor">배치 바꾸기</a>
+    </div>
+    {% for z in floor.zones %}
+    <div class="floorplan" data-zone-panel="{{ loop.index0 }}" {{ 'hidden' if not loop.first }} style="--cols: {{ floor.cols }}; --rows: {{ floor.rows }}" aria-label="{{ z.name }}">
+      {% for i in z.spots %}
+      {%- set pos_style = "--x: %d; --y: %d; --w: %d; --h: %d" % (i.x, i.y, i.w, i.h) -%}
+      {% if i.kind == 'table' %}
+      {% set v = i.ticket %}
+      <a class="fp-item fp-table shape-{{ i.shape }}{{ ' busy' if v }}{{ ' wait' if v and v.waiting }}{{ ' over' if v and v.overtime }}{{ ' tiny' if i.w * i.h <= 2 }}"
+         style="{{ pos_style }}" href="/pos/{{ seller_id }}/tables/{{ i.no }}"
+         title="{{ i.label }} · {{ i.seats }}석{% if v %} · {% for l in v.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% endfor %}{% endif %}">
+        <span class="tt-no">{{ i.name }}</span>
+        {% if v %}
+        <span class="tt-amount">{{ "{:,}".format(v.total) }}</span>
+        <span class="tt-meta">{{ v.guests }}/{{ i.seats }}명 · {{ v.minutes }}분{% if v.member %} ⭐{% endif %}</span>
+        {% if v.waiting %}<span class="tt-badge">조리 {{ v.waiting }}</span>{% elif v.unsent %}<span class="tt-badge new">미전송 {{ v.unsent }}</span>{% endif %}
+        {% else %}
+        <span class="tt-free">{{ i.seats }}석</span>
+        {% endif %}
+      </a>
+      {% else %}
+      <div class="fp-item fp-fixture fx-{{ i.shape }}" style="{{ pos_style }}" aria-hidden="true"><span>{{ fixture_icon(i.shape) }} {{ i.name }}</span></div>
+      {% endif %}
+      {% endfor %}
+      {% if not z.tables %}<p class="fp-empty">이 구역에는 아직 테이블이 없어요.</p>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <aside class="pos-side" aria-label="카운터 주문">
+    <div class="pos-section-head"><h1>카운터 주문</h1><span class="muted-note">{{ cfg.service_mode_label }}</span></div>
+    <div class="counter-buttons">
+      {% if cfg.service_mode == 'prepay' %}<a class="btn primary block pos-big" href="/pos/{{ seller_id }}/takeout?kind=dine_in">＋ 매장 주문</a>{% endif %}
+      {% if cfg.takeout_enabled %}<a class="btn {{ 'secondary' if cfg.service_mode == 'prepay' else 'primary' }} block pos-big" href="/pos/{{ seller_id }}/takeout">＋ 포장 주문</a>{% endif %}
+    </div>
+    <div class="takeout-list">
+      {% for v in floor.counter %}
+      <a class="takeout-item" href="/pos/{{ seller_id }}/tickets/{{ v.ticket_id }}">
+        <span class="row between"><b>{{ v.label }}</b><span>{{ v.minutes }}분 전</span></span>
+        <span class="tt-lines">{% for l in v.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% else %}메뉴 고르는 중{% endfor %}</span>
+        <span class="row between"><span class="muted-note">{{ '결제 대기' if v.lines else '' }}</span><b>{{ "{:,}".format(v.total) }}원</b></span>
+      </a>
+      {% else %}
+      <p class="muted-note">진행 중인 카운터 주문이 없어요.</p>
+      {% endfor %}
+    </div>
+    <div class="pos-tip">
+      <b>사용법</b>
+      {% if cfg.service_mode == 'prepay' %}
+      <span>카운터에서 메뉴를 담고 <b>결제</b>하면 주문이 주방으로 들어가고 호출 번호가 붙어요. 테이블로 갖다드리는 매장이면 테이블을 눌러 받아도 돼요.</span>
+      {% else %}
+      <span>테이블을 누르면 주문 화면이 열려요. 메뉴를 담고 <b>주방 전송</b>, 식사가 끝나면 <b>결제</b>. 적립 번호를 넣으면 그 손님에게 맞춘 추천 메뉴가 떠요.</span>
+      {% endif %}
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var tabs = document.querySelectorAll('#zone-tabs [data-zone]'), KEY = 'pos-zone-{{ seller_id }}';
+  function show(k) {
+    tabs.forEach(function (b) { b.classList.toggle('active', b.dataset.zone === String(k)); b.setAttribute('aria-selected', b.dataset.zone === String(k)); });
+    document.querySelectorAll('[data-zone-panel]').forEach(function (p) { p.hidden = p.dataset.zonePanel !== String(k); });
+    try { sessionStorage.setItem(KEY, k); } catch (e) {}
+  }
+  tabs.forEach(function (b) { b.onclick = function () { show(b.dataset.zone); }; });
+  var saved = null; try { saved = sessionStorage.getItem(KEY); } catch (e) {}
+  if (saved && document.querySelector('[data-zone-panel="' + saved + '"]')) show(saved);
+  setTimeout(function () { location.reload(); }, 30000);
+})();
+</script>
+{% endblock %}

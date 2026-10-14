@@ -23,6 +23,57 @@
 </div>
 
 <section class="section">
+  <h2 class="section-title">매출</h2>
+  <div class="grid cols-4 kpis">
+    <div class="card kpi"><span class="kpi-label">오늘</span><span class="kpi-value">{{ "{:,}".format(sales.revenue_today) }}원</span><span class="kpi-sub">완료 {{ sales.orders_today }}건</span></div>
+    <div class="card kpi"><span class="kpi-label">최근 7일</span><span class="kpi-value">{{ "{:,}".format(sales.revenue_7d) }}원</span>
+      <span class="kpi-sub">{% if sales.change_7d is not none %}지난 7일보다 {{ ('▲ ' ~ sales.change_7d ~ '%') if sales.change_7d >= 0 else ('▼ ' ~ (-sales.change_7d) ~ '%') }}{% else %}비교할 기록 없음{% endif %}</span></div>
+    <div class="card kpi"><span class="kpi-label">최근 30일</span><span class="kpi-value">{{ "{:,}".format(sales.revenue_30d) }}원</span><span class="kpi-sub">주문 {{ sales.orders_30d }}건 · 객단가 {{ "{:,}".format(sales.aov_30d) }}원</span></div>
+    <div class="card kpi"><span class="kpi-label">재구매 고객</span><span class="kpi-value">{{ sales.repeat_share }}%</span><span class="kpi-sub">구매 고객 {{ sales.buyers }}명 중 {{ sales.repeat_buyers }}명</span></div>
+  </div>
+  <div class="grid cols-2 mt-12">
+    <figure class="card chart-card">
+      <figcaption class="row between"><span class="list-title">일별 매출 (최근 {{ sales.series | length }}일, 완료 기준)</span><span class="muted-note">{{ sales.today }}</span></figcaption>
+      <svg class="bar-chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" role="img" aria-label="일별 매출 막대 차트, 아래 표와 같은 값">
+        {% for g in chart.grid %}
+        <line class="grid-line" x1="{{ chart.plot_left }}" x2="{{ chart.plot_right }}" y1="{{ g.y }}" y2="{{ g.y }}"></line>
+        <text class="axis-label" x="{{ chart.plot_right }}" y="{{ g.y - 4 }}" text-anchor="end">{{ "{:,}".format(g.value) }}원</text>
+        {% endfor %}
+        <line class="baseline" x1="{{ chart.plot_left }}" x2="{{ chart.plot_right }}" y1="{{ chart.base_y }}" y2="{{ chart.base_y }}"></line>
+        {% for b in chart.bars %}
+        <g class="bar-col" tabindex="0">
+          <title>{{ b.label }} · {{ "{:,}".format(b.revenue) }}원 · 주문 {{ b.orders }}건</title>
+          <rect class="hit" x="{{ b.hit_x }}" y="0" width="{{ b.hit_w }}" height="{{ chart.base_y }}"></rect>
+          {% if b.d %}<path class="bar{{ ' today' if loop.last }}" d="{{ b.d }}"></path>{% endif %}
+          {% if b.show_label %}<text class="axis-label" x="{{ b.cx }}" y="{{ chart.label_y }}" text-anchor="middle">{{ b.label }}</text>{% endif %}
+        </g>
+        {% endfor %}
+      </svg>
+      <details class="mt-8"><summary class="muted-note">표로 보기</summary>
+        <table class="mini-table"><thead><tr><th>날짜</th><th class="num">매출</th><th class="num">주문</th></tr></thead>
+          <tbody>{% for b in sales.series %}<tr><td>{{ b.date }}</td><td class="num">{{ "{:,}".format(b.revenue) }}원</td><td class="num">{{ b.orders }}</td></tr>{% endfor %}</tbody></table>
+      </details>
+    </figure>
+    <div class="card stack">
+      <span class="list-title">최근 30일 많이 팔린 상품</span>
+      {% for t in sales.top_items %}
+      <div class="rank-row">
+        <span class="rank-no">{{ loop.index }}</span>
+        <div class="grow"><p class="list-title">{{ t.title }}</p>
+          <div class="rank-bar" aria-hidden="true"><span style="width: {{ (100 * t.revenue / sales.top_peak) | round(1) if sales.top_peak else 0 }}%"></span></div></div>
+        <span class="num">{{ "{:,}".format(t.revenue) }}원<br><span class="muted-note">{{ t.quantity }}개</span></span>
+      </div>
+      {% else %}
+      <p class="muted-note">최근 30일 완료 주문이 없어요.</p>
+      {% endfor %}
+      {% if low_stock %}
+      <div class="notice warn"><span class="notice-text">재고가 얼마 남지 않은 상품: {% for item, n in low_stock %}<a class="link" href="/seller/{{ seller_id }}/products/{{ item }}">{{ titles.get(item, item) }} {{ '품절' if n == 0 else n ~ '개' }}</a>{{ ', ' if not loop.last }}{% endfor %}</span></div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
   <h2 class="section-title">추천 모델 연결</h2>
   <div class="grid cols-2">
     <div class="card stack">
@@ -39,9 +90,16 @@
       {% if not model_connected %}
       <p class="muted-note">추천 모델(B)이 아직 이 서버에 연결되지 않아, 매장 인기순으로 추천하고 있습니다.</p>
       {% elif model_fallback %}
-      <p class="muted-note">추천 모델은 연결됐지만 아직 답할 수 없어 인기순으로 대신 보여줍니다 (사유: <span class="mono">{{ model_fallback }}</span>).</p>
+      <p class="muted-note">추천 모델은 연결됐지만 아직 답할 수 없어 인기순으로 대신 보여줍니다 (사유: {{ fallback_label or model_fallback }}).</p>
       {% else %}
-      <p class="muted-note">모델 버전 <span class="mono">{{ model_version }}</span></p>
+      <p class="muted-note">지금 추천에 쓰는 모델 <span class="mono">{{ model_version }}</span></p>
+      {% endif %}
+      {% if model_connected %}
+      <ul class="plain-list muted-note">
+        <li>문장 인코더: {{ '설치됨' if installed.encoder else '없음 (설치 전에는 인기순으로만 추천)' }}</li>
+        <li>텍스트+관계 모델: {% if installed.variants.text_relation %}<span class="mono">{{ installed.variants.text_relation }}</span>{% else %}미설치{% endif %}</li>
+        <li>텍스트 모델: {% if installed.variants.text_only %}<span class="mono">{{ installed.variants.text_only }}</span>{% else %}미설치{% endif %}</li>
+      </ul>
       {% endif %}
     </div>
     <div class="card stack">

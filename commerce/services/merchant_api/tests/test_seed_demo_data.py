@@ -69,6 +69,24 @@ class SeedDemoDataTest(unittest.TestCase):
             seed_demo_data.main([])
         self.assertFalse((root / "orders.sqlite").exists())
 
+    def test_store_seed_is_its_own_shop_and_idempotent(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            seed_demo_data.seed_store(self.conn, "merchant-2", "seafood", customers=8)
+            first = self._counts()
+            seed_demo_data.seed_store(self.conn, "merchant-2", "seafood", customers=8)
+        self.assertEqual(self._counts(), first)
+        items = {r[0] for r in self.conn.execute("SELECT item_id_local FROM catalog_items WHERE seller_id = 'merchant-2'")}
+        self.assertEqual(items, set(seed_demo_data.STORES["seafood"][2]))
+        name = self.conn.execute("SELECT display_name FROM seller_accounts WHERE seller_id = 'merchant-2'").fetchone()[0]
+        self.assertEqual(name, "제주 바다 수산")
+        self.assertGreater(first["orders"], 20)
+
+    def test_store_mapping_follows_the_launcher_and_shares_some_items(self):
+        self.assertIsNone(seed_demo_data.store_for(1))
+        self.assertEqual([seed_demo_data.store_for(i) for i in (2, 3, 4, 5)], ["seafood", "bakery", "produce", "seafood"])
+        catalogs = [set(seed_demo_data.STORES[s][2]) for s in seed_demo_data.STORE_ORDER]
+        self.assertTrue(catalogs[0] & catalogs[2], "a staple sold by more than one store")
+
     def _bulk(self, customers=10):
         with contextlib.redirect_stdout(io.StringIO()):
             seed_demo_data.seed(self.conn, SELLER)

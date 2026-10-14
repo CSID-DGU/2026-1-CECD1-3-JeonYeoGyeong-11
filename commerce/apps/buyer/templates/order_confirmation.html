@@ -10,8 +10,15 @@
   <div class="card stack">
     <div class="row between"><span class="muted-note">주문번호</span><strong>{{ order.order_id[:8] }}</strong></div>
     <div class="row between"><span class="muted-note">상품</span><span>{% for item in order['items'] %}{{ titles.get(item.item_id_local, item.item_id_local) }} × {{ item.quantity }}{{ ", " if not loop.last }}{% endfor %}</span></div>
+    {% if fulfillment %}
+    <div class="row between"><span class="muted-note">받는 방법</span><span>{{ method_label }}{% if fulfillment.method == 'pickup' %} · {{ fulfillment.pickup_slot }}{% endif %}</span></div>
+    {% if fulfillment.method == 'pickup' %}<div class="row between"><span class="muted-note">픽업 장소</span><span>{{ terms.pickup_address }}</span></div>
+    {% else %}<div class="row between"><span class="muted-note">배송지</span><span>{{ fulfillment.recipient }} · {{ fulfillment.address }}</span></div>{% endif %}
+    {% if fulfillment.memo %}<div class="row between"><span class="muted-note">요청사항</span><span>{{ fulfillment.memo }}</span></div>{% endif %}
+    {% endif %}
     <hr class="divider">
-    <div class="row between"><span class="list-title">결제 예정 금액</span><span class="price-now lg">{{ "{:,}".format(order.total_amount) }}원</span></div>
+    {% if fee %}<div class="row between"><span class="muted-note">택배비</span><span>{{ "{:,}".format(fee) }}원</span></div>{% endif %}
+    <div class="row between"><span class="list-title">결제 예정 금액</span><span class="price-now lg">{{ "{:,}".format(total) }}원</span></div>
   </div>
 
   <section class="section">
@@ -27,17 +34,17 @@
       </div>
       <div class="step">
         <div class="step-title">매장 로컬 학습</div>
-        <div class="step-desc">매장 데이터로 추천 모델이 갱신됩니다. (모델 연동 준비 중)</div>
+        <div class="step-desc">판매자가 전달을 마치면 이 구매가 매장 안의 추천 모델 기록에 들어갑니다.{% if model_connected %} 이 매장에는 추천 모델이 설치되어 있어요.{% else %} (이 매장에는 아직 모델이 설치되지 않음){% endif %}</div>
       </div>
       <div class="step">
         <div class="step-title">공유 모델 반영</div>
-        <div class="step-desc">여러 매장의 학습 결과가 모여 공유 모델에 반영됩니다. (연동 준비 중)</div>
+        <div class="step-desc">연합학습 라운드에서는 구매 기록이 아니라 학습된 가중치만 모여 공유 모델이 갱신됩니다.</div>
       </div>
     </div>
   </section>
 
   <div class="form-actions">
-    <a class="btn secondary" href="/buyer/{{ seller_id }}/orders">주문내역 보기</a>
+    <a class="btn secondary" href="/buyer/{{ seller_id }}/orders/{{ order.order_id }}">주문 상세 보기</a>
     <a class="btn ghost" href="/buyer/{{ seller_id }}/">계속 둘러보기</a>
   </div>
 </div>

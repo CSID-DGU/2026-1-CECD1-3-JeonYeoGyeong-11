@@ -82,12 +82,14 @@ def _normalize_items(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def place_order(
     conn: sqlite3.Connection, *, seller_id: str, customer_id_local: str, idempotency_key: str,
-    items: list[dict[str, Any]], currency: str,
+    items: list[dict[str, Any]], currency: str, order_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """Create a requested order, or return the original on an identical retry.
 
     interfaces.md §2: same key + same normalized input -> return original order.
     Same key + different input -> DUPLICATE_IDEMPOTENCY_KEY.
+    `order_id` is for generators that must give the same IDs on every machine
+    (platform_dataset); screens and the JSON API leave it to a random ID.
     """
     normalized_items = _normalize_items(items)
     request_hash = _request_hash(customer_id_local, normalized_items, currency)
@@ -101,7 +103,7 @@ def place_order(
     now = _now_iso()
     order = {
         "seller_id": seller_id,
-        "order_id": _new_order_id(),
+        "order_id": order_id or _new_order_id(),
         "customer_id_local": customer_id_local,
         "idempotency_key": idempotency_key,
         "request_hash": request_hash,

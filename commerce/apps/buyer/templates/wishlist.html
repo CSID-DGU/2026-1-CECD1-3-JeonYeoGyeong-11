@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">찜한 상품</h1>
+  <p>찜한 상품은 소식 탭 추천에도 반영돼요.</p>
+</div>
+{% if items %}
+<div class="product-grid">
+  {% for item in items %}
+  {%- set emoji = product_emoji(item.category_path, item.title_text) %}
+  <div class="product-card">
+    <a href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}"><div class="thumb tone-{{ loop.index0 % 4 }}{{ ' emoji' if emoji }}">{{ emoji or item.title_text[:1] }}</div></a>
+    <div class="product-info">
+      <a class="product-title" href="/buyer/{{ seller_id }}/items/{{ item.item_id_local }}">{{ item.title_text }}</a>
+      <div class="price-row"><span class="price-now">{{ "{:,}".format(item.display_price_minor) }}원</span>
+        {%- set r = ratings.get(item.item_id_local) %}{% if r %}<span class="rating">★ {{ r[0] }}</span>{% endif %}</div>
+      <form method="post" action="/buyer/{{ seller_id }}/wishlist/{{ item.item_id_local }}"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+        <input type="hidden" name="back" value="wishlist"><button class="btn ghost sm" type="submit">찜 해제</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card empty">아직 찜한 상품이 없어요. 상품 화면의 ♡를 눌러 보세요.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block content %}
+<a class="link" href="/seller/{{ seller_id }}/guests">← 손님</a>
+<div class="page-head mt-12">
+  <h1 class="page-title mono">{{ member.label }}</h1>
+  <p>방문 {{ member.visits }}회 · 첫 방문 {{ member.joined_at | kst('%Y-%m-%d') }} · 최근 {{ member.last_visit_at | kst('%Y-%m-%d') or '-' }} · 포인트 {{ "{:,}".format(member.points) }}P</p>
+</div>
+
+<div class="grid cols-2">
+  <div class="card stack ai-panel">
+    <div class="row between"><h2 class="section-title flush">✨ 다음에 주문할 것 같은 메뉴</h2>
+      <span class="badge {{ 'solid' if not rec_label else 'muted' }}">{{ 'AI 예측' if not rec_label else rec_label }}</span></div>
+    <ol class="rec-list">
+      {% for i in rec %}<li><span class="grow">{{ i.title_text }}</span><span class="muted-note">{{ "{:,}".format(i.display_price_minor) }}원</span></li>
+      {% else %}<li class="muted-note">아직 추천할 수 없어요.</li>{% endfor %}
+    </ol>
+    <p class="muted-note">이 손님이 다시 오면 POS 주문 화면 오른쪽에 같은 추천이 떠요.{% if not rec_label and rec_model %} 모델 <span class="mono">{{ rec_model }}</span>{% endif %}</p>
+  </div>
+  <div class="card stack">
+    <h2 class="section-title flush">자주 먹는 메뉴</h2>
+    {% for title, n in favourites %}<div class="pair-row"><span class="grow">{{ title }}</span><span class="muted-note">{{ n }}개</span></div>
+    {% else %}<p class="muted-note">아직 기록이 없어요.</p>{% endfor %}
+  </div>
+</div>
+
+<section class="section">
+  <h2 class="section-title">방문 기록</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>날짜</th><th>자리</th><th>메뉴</th><th class="num">금액</th><th class="num">적립</th></tr></thead>
+      <tbody>
+      {% for t in history %}
+      <tr class="{{ 'refunded' if t.status == 'refunded' }}"><td class="mono">{{ t.paid_at | kst('%m-%d %H:%M') }}</td><td>{{ t.label }} · {{ t.guests }}명</td>
+        <td>{% for l in t.lines if not l.voided_at %}{{ l.title }}{{ '×' ~ l.quantity if l.quantity > 1 }}{{ ', ' if not loop.last }}{% endfor %}</td>
+        <td class="num"><a class="link" href="/pos/{{ seller_id }}/receipts/{{ t.ticket_id }}">{{ "{:,}".format(t.total) }}원</a></td>
+        <td class="num">+{{ t.points_earned }}P</td></tr>
+      {% else %}<tr><td colspan="5"><div class="empty">기록이 없어요.</div></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

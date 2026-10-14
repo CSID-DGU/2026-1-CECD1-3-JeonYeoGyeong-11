@@ -356,13 +356,135 @@ def seed_bulk(conn, seller_id: str, customers: int = 40, days: int = 60) -> None
           % (len(_BULK_PRODUCTS), customers, created, days))
 
 
+# --- other stores: one demo seller per business type ----------------------------
+#
+# merchant-1 keeps the base + bulk seed above. The other launcher sellers
+# (run_local.py: merchant-i, commerce/deploy/var/merchant_i) each get their own
+# store: its own name, a catalog of its business type, its own customers (seller
+# local, architecture.md §6) and their history. A few staples (milk, eggs, rice)
+# are sold by several stores, so FL rounds see the same item in different shops.
+
+_ALL_PRODUCTS = {item: (title, price, path) for item, title, price, path in _PRODUCTS + _BULK_PRODUCTS}
+
+STORES = {
+    "seafood": ("제주 바다 수산", "234-56-78901",
+                ["sku-fish", "bulk-mackerel", "bulk-squid", "bulk-abalone", "bulk-seaweed", "bulk-shrimp",
+                 "bulk-rice", "sku-egg"]),
+    "bakery": ("한라 베이커리 & 커피", "345-67-89012",
+               ["sku-bread", "bulk-bagel", "bulk-croissant", "bulk-granola", "sku-coffee", "bulk-bean-1",
+                "bulk-bean-2", "bulk-coldbrew", "bulk-tea", "sku-milk", "bulk-yogurt", "bulk-cheese"]),
+    "produce": ("오이네 청과·정육", "456-78-90123",
+                ["sku-orange", "bulk-hallabong", "bulk-apple", "bulk-strawberry", "bulk-tomato", "bulk-lettuce",
+                 "bulk-cucumber", "bulk-potato", "bulk-pork", "bulk-beef", "bulk-chicken", "sku-egg", "bulk-rice"]),
+}
+STORE_ORDER = ("seafood", "bakery", "produce")  # merchant-2, -3, -4, then repeating
+
+
+def store_for(merchant_index: int) -> str | None:
+    """The store profile run_local's merchant-i gets; None for merchant-1 (base + bulk seed)."""
+    return None if merchant_index == 1 else STORE_ORDER[(merchant_index - 2) % len(STORE_ORDER)]
+
+
+def seed_store(conn, seller_id: str, store: str, customers: int = 30, days: int = 60) -> None:
+    """One store's seller account, catalog, customers with favourites, and `days` of orders. Idempotent."""
+    name, reg_no, items = STORES[store]
+    rng = random.Random("store-" + store)
+    orders_db.ensure_schema(conn)
+    accounts_db.ensure_schema(conn)
+    social_db.ensure_schema(conn)  # same file layout as a base-seeded seller
+    if accounts_db.fetch_seller_account(conn, seller_id, _SELLER_ACCOUNT["username"]) is None:
+        accounts_service.signup_seller(
+            conn, seller_id=seller_id, username=_SELLER_ACCOUNT["username"], display_name=name,
+            password=_SELLER_ACCOUNT["password"], business_reg_no=reg_no, business_open_date="20200301",
+            business_rep_name="데모")
+    for item in items:
+        title, price, path = _ALL_PRODUCTS[item]
+        if orders_service.get_catalog_item_for_display(conn, seller_id=seller_id, item_id_local=item) is None:
+            orders_service.register_catalog_item(conn, seller_id=seller_id, item_id_local=item, title_text=title,
+                                                 category_path=path, display_price_minor=price)
+    created = 0
+    for n in range(customers):
+        customer_id = "cust-%03d" % (n + 1)
+        display_name = rng.choice(_FAMILY) + rng.choice(_GIVEN)
+        if accounts_db.fetch_customer(conn, seller_id, customer_id) is None:
+            accounts_service.signup_customer(conn, seller_id=seller_id, customer_id_local=customer_id,
+                                             display_name=display_name, password=_DEMO_PASSWORD)
+        favourites = rng.sample(items, k=3)
+        weights = [6 if item in favourites else 1 for item in items]
+        visit_days = sorted(rng.sample(range(1, days + 1), k=rng.randint(3, 9)), reverse=True)
+        for visit, days_ago in enumerate(visit_days):
+            basket: dict[str, int] = {}
+            for item in rng.choices(items, weights=weights, k=rng.randint(1, 3)):
+                basket[item] = basket.get(item, 0) + 1
+            stage = rng.choices(["completed", "accepted", "requested"], weights=[17, 2, 1])[0]
+            if days_ago > 3:
+                stage = "completed"
+            order = orders_service.place_order(
+                conn, seller_id=seller_id, customer_id_local=customer_id,
+                idempotency_key="store-%s-%s-%d" % (store, customer_id, visit),
+                items=[{"item_id_local": i, "quantity": q, "unit_price_minor": _ALL_PRODUCTS[i][1]}
+                       for i, q in sorted(basket.items())],
+                currency="KRW",
+            )
+            if order["status"] != "requested" or order["status_version"] != 1:
+                continue
+            created += 1
+            if stage in ("accepted", "completed"):
+                orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"],
+                                                action="accept", expected_status_version=1)
+            if stage == "completed":
+                orders_service.transition_order(conn, seller_id=seller_id, order_id=order["order_id"],
+                                                action="complete", expected_status_version=2)
+            _backdate_order(conn, seller_id, order["order_id"], days_ago, days_ago if stage == "completed" else None)
+            if stage == "completed":
+                _backdate_event(conn, seller_id, order["order_id"], _days_ago(days_ago))
+    print("store %s (%s): %d products, %d customers, %d new orders" % (store, name, len(items), customers, created))
+
+
+def _seed_one(seller_id: str, db_path: Path, feature_db: Path, bulk: int, store: str | None) -> None:
+    # orders.sqlite and features.sqlite are one seller's pair (interfaces.md §2 '재시작과 초기화'):
+    # a fresh orders DB next to an old feature ledger would hand B a second copy
+    # of every order and conflicting catalog bodies.
+    if not db_path.exists() and feature_db.exists():
+        print("%s exists without %s. Delete the seller's features.sqlite* (and models/personal/) together with "
+              "orders.sqlite*, or keep both -- see DEMO.md step 2." % (feature_db, db_path.name), file=sys.stderr)
+        raise SystemExit(1)
+    print("seeding %s into %s" % (seller_id, db_path))
+    conn = orders_db.connect(db_path)
+    try:
+        with conn:
+            if store:
+                seed_store(conn, seller_id, store)
+            else:
+                seed(conn, seller_id)
+                if bulk:
+                    seed_bulk(conn, seller_id, customers=bulk)
+    except AccountError as exc:
+        print("seed aborted: %s" % exc, file=sys.stderr)
+        raise SystemExit(1)
+    finally:
+        conn.close()
+    print("done: %s" % db_path)
+
+
 def main(argv: list[str] | None = None) -> None:
-    # Same environment as the app (main.settings_from_env), so the seed always
-    # lands in the DB and under the seller_id the app will actually serve.
     parser = argparse.ArgumentParser(description="Fill a seller's orders.sqlite with synthetic demo activity.")
     parser.add_argument("--bulk", type=int, metavar="N", default=0,
-                        help="also add the larger catalog and N patterned customers with %d days of orders" % 60)
+                        help="also add the larger catalog and N patterned customers with 60 days of orders")
+    parser.add_argument("--store", choices=sorted(STORES),
+                        help="seed this seller as one business-type store instead of the base demo")
+    parser.add_argument("--all", type=int, metavar="N", default=0,
+                        help="seed run_local.py's merchant-1..N under commerce/deploy/var (merchant-1: base + --bulk)")
     args = parser.parse_args(argv)
+    if args.all:
+        var = Path(__file__).resolve().parents[2] / "deploy" / "var"
+        for i in range(1, args.all + 1):
+            base = var / ("merchant_%d" % i)
+            _seed_one("merchant-%d" % i, base / "orders.sqlite", base / "features.sqlite",
+                      args.bulk if i == 1 else 0, store_for(i))
+        return
+    # Same environment as the app (main.settings_from_env), so the seed always
+    # lands in the DB and under the seller_id the app will actually serve.
     seller_id = os.environ.get("MERCHANT_ID")
     if not seller_id:
         print("Set MERCHANT_ID (e.g. merchant-1, as run_local.py does) before running this.", file=sys.stderr)
@@ -373,28 +495,8 @@ def main(argv: list[str] | None = None) -> None:
         print("Set MERCHANT_DB_PATH, or FEATURE_DB_PATH (orders.sqlite goes next to it), before running this.",
               file=sys.stderr)
         raise SystemExit(1)
-    # orders.sqlite and features.sqlite are one seller's pair (interfaces.md §2 '재시작과 초기화'):
-    # a fresh orders DB next to an old feature ledger would hand B a second copy
-    # of every order and conflicting catalog bodies.
     feature_db = Path(os.environ.get("FEATURE_DB_PATH") or db_path.parent / "features.sqlite")
-    if not db_path.exists() and feature_db.exists():
-        print("%s exists without %s. Delete the seller's features.sqlite* (and models/personal/) together with "
-              "orders.sqlite*, or keep both -- see DEMO.md step 2." % (feature_db, db_path.name), file=sys.stderr)
-        raise SystemExit(1)
-    print("seeding %s into %s" % (seller_id, db_path))
-    conn = orders_db.connect(db_path)
-    try:
-        with conn:
-            seed(conn, seller_id)
-            if args.bulk:
-                seed_bulk(conn, seller_id, customers=args.bulk)
-    except AccountError as exc:
-        print("seed aborted: %s" % exc, file=sys.stderr)
-        raise SystemExit(1)
-    finally:
-        conn.close()
-    print("done: %s" % db_path)
-
+    _seed_one(seller_id, db_path, feature_db, args.bulk, args.store)
 
 if __name__ == "__main__":
     main()

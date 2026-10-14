@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="narrow-inner stack-lg">
+  <div class="page-head">
+    <h1 class="page-title">{{ customer.display_name }}님</h1>
+    <p>이 가게에서 쓰는 내 정보예요. 다른 가게와는 따로 저장돼요.</p>
+  </div>
+
+  <div class="stat-row card">
+    <a href="/buyer/{{ seller_id }}/orders"><strong>{{ counts.requested + counts.accepted }}</strong><span>진행 중 주문</span></a>
+    <a href="/buyer/{{ seller_id }}/orders"><strong>{{ counts.completed }}</strong><span>받은 주문</span></a>
+    <a href="/buyer/{{ seller_id }}/wishlist"><strong>{{ wishes }}</strong><span>찜</span></a>
+    <a href="/buyer/{{ seller_id }}/store"><strong>{{ '✓' if following else '-' }}</strong><span>단골</span></a>
+  </div>
+
+  {% if saved %}<div class="notice">저장했어요. 다음 주문부터 자동으로 채워져요.</div>{% endif %}
+  {% if error %}<div class="notice warn">{{ {'phone': '연락처를 010-1234-5678 형식으로 입력해 주세요.', 'recipient': '받는 분 이름을 입력해 주세요.', 'address': '주소를 입력해 주세요.'}.get(error, '입력 값을 확인해 주세요.') }}</div>{% endif %}
+  <form class="card form" method="post" action="/buyer/{{ seller_id }}/me"><input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+    <h2 class="section-title flush">기본 배송 정보</h2>
+    <div class="segmented" role="radiogroup">
+      <label><input type="radio" name="method" value="pickup" {{ 'checked' if profile.method != 'delivery' }}><span>🏪 매장 픽업</span></label>
+      <label><input type="radio" name="method" value="delivery" {{ 'checked' if profile.method == 'delivery' }}><span>📦 택배</span></label>
+    </div>
+    <label class="field">받는 분<input type="text" name="recipient" maxlength="40" value="{{ profile.recipient or '' }}"></label>
+    <label class="field">연락처<input type="tel" name="phone" maxlength="20" placeholder="010-1234-5678" value="{{ profile.phone or '' }}"></label>
+    <label class="field">주소<input type="text" name="address" maxlength="200" value="{{ profile.address or '' }}"></label>
+    <p class="muted-note">이 정보는 이 가게의 주문 처리에만 쓰여요. 추천 모델 학습에는 구매한 상품과 시각만 쓰이고, 이름·연락처·주소는 쓰이지 않아요.</p>
+    <div class="form-actions"><button class="btn primary" type="submit">저장</button></div>
+  </form>
+
+  <div class="card flush">
+    <div class="list">
+      <a class="list-item" href="/buyer/{{ seller_id }}/notifications"><span class="grow list-title">🔔 알림</span><span>→</span></a>
+      <a class="list-item" href="/buyer/{{ seller_id }}/group-buys"><span class="grow list-title">👥 공동구매</span><span>→</span></a>
+      <a class="list-item" href="/buyer/{{ seller_id }}/messages"><span class="grow list-title">✉️ 판매자와 쪽지</span><span>→</span></a>
+      <a class="list-item" href="/buyer/{{ seller_id }}/logout"><span class="grow list-title">로그아웃</span><span>→</span></a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,5 +1,30 @@
 # 판매자 서비스 · A
 
+## 식당 POS 버전 (2026-10-13~, 지금 제품)
+
+서비스를 쓰는 사람은 **식당 사장님과 직원**이다. 구매자는 이 사이트에 들어오지 않는다. 손님 주문은 매장 POS에서 받고, 결제가 끝난 주문만 이 가게 PC의 추천 모델(B) 학습 기록이 된다. 가게끼리 서로 링크되지 않고, 중앙에서 모든 가게를 보는 화면도 없다. 이전 온라인 통합 플랫폼 버전(구매자 쇼핑몰·소식·공동구매·택배·마스터 계정)은 태그 `legacy-platform-20261013`과 브랜치 `commerce/a/legacy-platform`에 있다.
+
+- `pos_db.py`/`pos_service.py`/`routes_pos.py`(`/pos/{seller_id}/...`): 실제 POS와 같은 흐름이다.
+  - 테이블 현황판 → 테이블 주문서(같은 메뉴는 주방 전송 전까지 합침, 전송 후 빼면 "취소"로 남김, 요청사항) → 주방 전송 → 주방 화면(나감 처리).
+  - 결제: 카드·현금(거스름돈)·간편결제·계좌이체·포인트, 나눠 내기, 할인, 테이블 이동, 주문 취소, 영수증(일련번호), 결제 취소(환불), 일일 마감.
+  - 회원 적립: 전화번호는 저장하지 않는다. 가게별 salt를 섞은 해시와 뒤 4자리만 남는다. 회원 ID(= B가 보는 customer_id_local)는 해시에서 만든다. 적립하지 않은 손님은 결제마다 다른 `guest-…` 고객이다.
+  - 결제가 끝나는 순간 그 주문서가 A 주문 1건이 되고, 바로 수락·완료되어 기존 outbox로 B에 간다(interfaces.md §2). 결제 수단·전화번호·영수증은 B에 가지 않는다(`tests/test_pos.py`). 환불해도 purchase_event는 철회 계약이 없어 남는다(화면에 그렇게 적음).
+  - 가게마다 자기 매장에 맞게 정한다. 배치도(`pos_layout.py`, 사장님 화면 "테이블 배치")는 구역(홀·방·룸·테라스·2층), 테이블(직원이 부르는 이름 "3"·"A2"·"룸1"·"바4", 좌석 수, 모양), 시설(주방·카운터·입구·창 ...)을 24×14칸에 끌어 놓고, 번호를 다시 매길 수 있다. POS 첫 화면이 같은 배치로 그려진다.
+    - 주문서의 `table_no`는 테이블의 바뀌지 않는 번호다. 이름·위치·구역을 바꿔도 진행 중 주문은 따라가고, 결제된 영수증은 그때 이름을 유지한다. 결제 전 주문이 있는 테이블은 지울 수 없고, 지운 테이블은 비활성으로만 남는다. 겹침·이름 중복·도면 밖은 저장 전에 거절한다.
+    - 설정은 결제 방식(후불: 테이블 주문→주방 전송→식사 후 계산 / 선불: 카운터에서 결제하면 주방으로, 호출 번호), 포장 받기, 테이블 이용 시간(넘으면 빨갛게), 적립률, 영업시간이다. 테이블 없는 카운터 주문은 그날의 호출 번호("포장 12", "매장 7")를 받는다.
+  - 주문서 오른쪽에는 두 가지가 따로 나온다. "AI 추천"은 B `predict_local`(품절·이미 담은 메뉴 제외)이고, "이 손님 단골 메뉴"는 주문 기록에서 센 값이다.
+- `routes_owner.py`(사장님 화면 `/seller/{seller_id}/...`):
+  - 오늘(매출·결제·회원 비율·시간대별/14일 차트·인기 메뉴·AI 상태), 매출(날짜별 결제 내역·수단별·영수증 링크)
+  - 메뉴(분류별, 등록·품절·수정, 설명이 AI 입력임을 안내), 손님(적립 회원, 단골 상세와 B 예측, 같이 주문되는 메뉴는 주문 기록에서 센 값, 새 메뉴를 알릴 손님)
+  - 연합학습(이 PC에만 있는 것과 밖으로 나가는 공유 층·크기, 받은 모델 버전, 맞춤 학습 버튼), 테이블 배치(편집기), 설정(결제 방식·포장·이용 시간·적립률·영업시간·소개, 계정 보안 설명)
+- `restaurant_dataset.py`: 식당 6곳(한식·흑돼지·분식·카페브런치·중식, 그리고 학습 불참·메뉴 비중복의 샐러드 신규 가게)의 메뉴(설명 포함), 회원 리듬·단골 메뉴·같이 시키는 메뉴·늦게 추가된 신메뉴, 90일(신규 30일) POS 결제를 `pos_service` 경로로 만든다. 가게마다 배치도와 방식이 다르다(`PLANS`, `STYLE`: 한식 홀+방 후불, 흑돼지 홀+테라스 후불 120분, 분식·카페(1층·2층)·샐러드 선불, 중식 홀+룸 후불). 손님 수에 맞는 빈 테이블에 앉힌다.
+  - 끝 시각을 고정해 PC마다 같은 데이터가 나오고(`--now today`는 지금 시각까지), 다시 돌려도 늘지 않는다. `--export`는 매장별 SellerInput JSON이다.
+  - 실행: `python -m commerce.services.merchant_api.restaurant_dataset --stores 6 [--now today] [--export DIR]`.
+- 이전 버전 화면: 구매자 화면(`/buyer/...`)은 C의 리허설(`fl_demo --rehearse` R2~R5)이 아직 쓰므로 코드를 남겼다. `LEGACY_BUYER_SCREENS=0`이면 404가 된다(`serve_demo` 기본). 4칸 모델 비교(`/compare`)는 사장님 메뉴에 없고, `LAB_SCREENS=1`일 때만 메뉴에 보인다.
+- `tests/test_pos.py`: POS 서비스·API(CSRF)·로그인 후 되돌아가기·추천 칸·사장님 화면·이전 화면 차단·식당 데이터셋 재현성.
+
+## 모듈 (이전 버전부터 이어지는 것 포함)
+
 - `main.py`: FastAPI lifespan·health·주문/카탈로그 JSON 라우트(`/sellers/...`) + 구매자·판매자 화면 HTML 라우트(`/buyer/{seller_id}/...`, `/seller/{seller_id}/...`, `commerce/apps/buyer|seller/templates` 렌더). 화면은 로그인과 폼별 CSRF 토큰을 확인하고, 주문 가격은 폼이 아니라 서버의 카탈로그 가격으로 정한다. JSON `/sellers/...` 라우트는 아직 호출자 인증이 없다(OQ13·OQ15 대기, 아래 참고).
 - `context.py`: 판매자별 B runtime 하나를 만들고 같은 객체·작업 실행기를 C client에 주입한다. `merchant_db_path`(orders.sqlite 위치)도 여기서 들고 있다.
 - `jobs.py`: FL/개인화가 함께 쓰는 단일 background 실행기. 중복 제출은 JobBusyError, 완료/실패 후 다시 제출할 수 있다.
@@ -19,6 +44,20 @@
 - `seed_demo_data.py`: 데모용 시드 스크립트 — 판매자 계정 1개, 상품 6종, 고객 8명, 지난 30일에 걸쳐 분산된 주문 20여 건, DM 5건, 피드 4건, 공동구매 2건(진행중 1·성사 1), 상품 3종의 14일치 시세를 채운다. 실행: 앱과 같은 환경변수로 `MERCHANT_ID=merchant-1 FEATURE_DB_PATH=commerce/deploy/var/merchant_1/features.sqlite python -m commerce.services.merchant_api.seed_demo_data` (`MERCHANT_DB_PATH`가 있으면 그 경로, 없으면 `FEATURE_DB_PATH` 옆 `orders.sqlite` — 앱과 같은 `context.merchant_db_path_from_env` 규칙. `MERCHANT_ID`가 없으면 만들지 않고 멈춘다). 재실행해도 중복 생성하지 않는다(계정·주문 idempotency_key로 존재 확인). `tests/test_seed_demo_data.py`가 멱등성·중복 키 없음을 검사한다. `--bulk N`을 붙이면 상품 28종과 **취향이 있는** 고객 N명(아침 장보기·수산물·커피·과일채소·고기 집밥 다섯 패턴, 단골 재구매와 약간의 탐색), 60일치 주문을 더 만든다(`seed_bulk`). 기본 seed가 쓰는 내용은 바뀌지 않고 키가 모두 `bulk-`로 시작해서 이미 seed한 DB 위에 다시 돌려도 된다. 완료 주문의 purchase_event 시각도 과거 완료 시각으로 맞춘다(아직 B에 전달되지 않은 행만).
 - `simulate_activity.py`: 실행 중인 앱에 대한 실시간 데모 트래픽. seed 고객이 로그인 → 홈의 추천을 보고(기본 60%는 추천 상품) 바로 주문하거나 장바구니로 주문하고, 판매자가 수락·완료해 구매 이벤트가 B로 간다. 브라우저와 같은 폼·CSRF로 HTTP만 쓴다. 실행: `python -m commerce.services.merchant_api.simulate_activity --base http://127.0.0.1:8101 --seller merchant-1 --interval 3` (Ctrl+C로 중지). `tests/test_simulate_activity.py`.
 
+- SNS(소식) — `sns_db.py`/`sns_service.py`/`routes_sns.py`/`feed_ranking.py`/`media.py`: 판매자 "게시물 스튜디오"(`/seller/{seller_id}/feed`: 게시물·릴스, 사진/영상 업로드 최대 10개, 캡션·해시태그, 상품 태그 최대 5개, 수정·삭제, 댓글 답글, 게시물별 조회·좋아요·댓글·참여율·게시 후 태그 상품 주문 수)과 구매자 "탐색" 그리드(`/buyer/{seller_id}/feed`, `?tag=`), 게시물 화면(좋아요·댓글·태그 상품 담기·비슷한 게시물). 순서는 `feed_ranking.rank`가 정한다: 로그인 고객은 0.45 관련도(구매 이력 반감기 30일·장바구니·찜·좋아요한 게시물의 상품/해시태그·B 추천 순위) + 0.25 반응(좋아요+2×댓글+0.05×조회, log) + 0.20 최신성(10일 감쇠) + 0.10 최근 3일 좋아요 비율, 비회원은 반응·최신성·추세만. 최근 본 게시물·이미 좋아요한 게시물은 내리고, 같은 상품·카테고리가 연달아 나오지 않게 다시 섞는다. 타일에 이유("내가 산 상품", "AI 추천 상품"/모델이 아니면 "많이 찾는 상품" 등)를 붙인다. 업로드 형식은 파일 이름이 아니라 앞부분 바이트로 판정하고(JPG·PNG·GIF·WebP·MP4·WebM·MOV, SVG·HTML 거부), 파일은 orders.sqlite 옆 `media/`에 저장해 `/media/{seller_id}/{name}`으로만 낸다. **실제 영상이 없을 때**: 업로드 없이 올린 게시물에는 상품·캡션으로 만든 SVG 그래픽(릴스는 9초 반복 애니메이션)을 자동으로 붙인다 — 데모용 대체이고 "데모 영상 대체 그래픽"이라고 표시한다. 실제 사진·영상을 올리면 그것을 쓴다.
+- 공동구매(구매자 제안) — `routes_group.py`, `social_service.propose_group_buy`: 공동구매는 **구매자가 제안**하고 본인 수량으로 먼저 참여한다(상품당 진행 중 1건, 기간 1~14일). 판매자는 할인율(0~50%)·최소 목표 수량(2~100)·매장 소개만 정하고(`store_settings`), 부적절한 제안을 마감(`closed_by_seller`)할 수 있다. 목표 도달 즉시 참여자별 주문이 생기는 흐름은 그대로다.
+- 쇼핑 부가 기능 — `shop_db.py`/`shop_service.py`/`routes_shop.py`: 상품 검색·카테고리 필터, 리뷰(완료 주문이 있는 고객만, 고객·상품당 1개, 판매자 답글), 찜, 구매자의 접수 상태 주문 취소, 판매자 상품 수정(제목·가격·카테고리·설명·판매 상태 → 다음 source_seq로 B에 다시 전달).
+- 챗봇 — `chatbot.py`/`routes_chat.py`(`/buyer/{seller_id}/chat`): `CHATBOT_MODE=auto`(기본)는 `anthropic` 패키지와 `ANTHROPIC_API_KEY`(또는 `ANTHROPIC_AUTH_TOKEN`)가 있으면 Claude(`CHATBOT_MODEL`, 기본 `claude-opus-5-5`)가 매장 도구(상품 검색·상세, 카테고리, 모집 중 공동구매, 매장 안내, 장바구니 담기)를 불러 답하고, 없거나 호출이 실패하면 규칙 기반 답변으로 대신한다(`llm`/`rules`/`rules-fallback` 표시). `rules`/`llm`으로 고정할 수 있다. **데이터 경계**: 기본값에서는 고객의 주문 내역·개인 추천을 외부 LLM에 보내지 않는다. `CHATBOT_ALLOW_CUSTOMER_DATA=1`일 때만 그 두 도구를 연다(팀 결정 필요). 결제·주문 확정은 하지 않고, 대화는 로그인 고객만 저장한다(`chat_messages`). 로그인 고객의 질문은 CSRF 토큰을 확인한다.
+- `migrate.py`: 기존 orders.sqlite에 없는 열만 `ALTER TABLE ADD COLUMN`으로 더한다(새 기능 때문에 DB를 지우지 않아도 되게).
+- `platform_dataset.py`: 여러 매장의 합성 플랫폼 데이터셋 — 매장 6곳(농장·수산·베이커리·청과·정육, 그리고 이력이 짧고 다른 매장과 상품이 겹치지 않는 반찬가게), 상품 설명, 매장당 40~85명 고객의 90일(반찬가게 30일) 주문·리뷰·찜·장바구니·게시물/릴스·조회·좋아요·댓글·구매자 제안 공동구매·쪽지·시세를 A의 코드 경로로 만든다. 고정 시드·고정 끝 시각(`DEFAULT_NOW`, `--now`)·주문 키에서 만든 주문 ID라 다시 돌려도 늘지 않고 PC마다 같은 export가 나온다. 가게당 상품은 약 40개(반찬가게 20개)이고, 고객마다 좋아하는 분류가 있다. `--export DIR`은 매장별로 B `scenario.SellerInput` 모양(JSON: catalog_item.v1, 완료 순 purchase_event.v1, customers)과 `summary.json`을 쓴다. 실행: `python -m commerce.services.merchant_api.platform_dataset --stores 6 [--export DIR]`(런처의 `commerce/deploy/var/merchant_i`). `tests/test_platform_dataset.py`.
+- 직거래 주문 — `fulfillment.py`·`routes_store.py`: 주문마다 받는 방법(매장 픽업 시간 / 택배 받는 분·연락처·주소, 택배비·무료배송 기준), 요청사항, 송장번호를 `order_fulfillment`에 둔다. 마지막 입력은 고객 프로필로 남아 다음 주문에 미리 채운다. 재고는 상품별 선택값이다(`item_stock`, 비우면 관리 안 함): 화면 주문이 수량을 잡고(`order_stock_holds`), 취소하면 한 번만 돌려준다. 판매자가 수락한 시각은 `order_status_log`에 남겨 주문 진행 단계로 보여 준다. 수령 정보 없이 들어온 주문(JSON API·시뮬레이터·C 리허설)은 매장 픽업으로 본다. **경계**: 이 정보는 orders.sqlite에만 있고 B로 가지 않는다(purchase_event.v1은 상품·시각만, `tests/test_fulfillment.py`가 확인).
+- 알림·단골 — `notifications.py`: 주문 수락·완료·취소, 송장 등록, 공동구매 성사, 리뷰·댓글 답글, 판매자 쪽지, 단골 가게의 새 게시물을 고객 알림으로 남긴다(같은 일은 `dedupe_key`로 한 번만). 구매자 머리글의 종 아이콘이 읽지 않은 수를 보여 준다. 가게 화면(`/buyer/{seller_id}/store`)에서 단골을 맺는다.
+- 판매자 매출 — `sales.py`: 완료 주문 기준(한국 시간) 오늘·7일(전주 대비)·30일 매출, 객단가, 재구매 고객 비율, 30일 인기 상품, 14일 막대 차트. 개요 화면에 보인다.
+- 추천 모델 상태 — `model_status.py`: 개요가 "모델 준비 중"으로 잘못 보이지 않게, 구매 이력이 있는 고객으로 B에 묻고 `MODEL_DIR`에 설치된 인코더·variant별 base 버전을 보여 준다(읽기만 함).
+- 상품 사진: 판매자가 상품마다 사진을 6장까지 올린다(`shop_db.product_photos`, 업로드 검사는 `media.py`와 같고 사진만 허용). 없으면 지금처럼 아이콘을 쓴다. 리뷰·댓글 작성자는 이름을 가려 보여 준다(`presentation.mask_name`).
+- `serve_demo.py`: 화면 시연용으로 판매자 앱만 `run_local`과 같은 배치(포트 8100+i, `commerce/deploy/var/merchant_i`)로 띄우고 기동을 최대 180초 기다린다. 학습된 모델이 있으면 torch·인코더 로딩으로 `run_local`의 20초를 넘길 수 있어서 둔 임시 도구다.
+- `personalization.py`: variant마다 따로 실행한다. base가 없는 variant는 B가 `NOT_FOUND`를 내므로 그 칸만 "모델 없음"이 되고, 다른 variant는 그대로 개인화된다(#49 B 리뷰).
+- `tests/test_sns.py`(순위·미디어·게시물·이전 DB 이전), `tests/test_fulfillment.py`(픽업/택배·택배비·주소 검사·재고·주문 상세 권한·알림·단골·사진·매출), `tests/test_platform_screens.py`(스튜디오·탐색·좋아요 CSRF·공동구매 제안/성사/마감·리뷰 자격·찜·취소·상품 수정→B·챗봇).
 시연 순서(데이터 만들기·서버 켜기·발표 흐름·B 연결 확인)는 [DEMO.md](DEMO.md)에 있다.
 
 작업 순서는 [A 카드](../../../docs/team/tasks/A.md)를 따른다. 경계: event/outbox는 B ingest가 정상 반환한 뒤에만 전달 완료로 표시한다. 현재 B stub은 항상 미구현 예외를 내므로 delivered로 처리하면 안 된다.
@@ -30,7 +69,7 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 
 `gate docs`가 첫 줄을 이 서비스 디렉터리의 코드 전체와 대조한다. 코드에서 새 값을 읽으면 같은 PR에서 이 줄을 고친다.
 
-- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`
+- 현재 코드가 읽는 값: `MERCHANT_ID`, `FEATURE_DB_PATH`, `MODEL_DIR`, `MERCHANT_DB_PATH`, `FL_ENABLED`, `FL_MODE`, `FL_MODEL_VARIANT`, `NTS_SERVICE_KEY`, `MERCHANT_SECRET`, `CHATBOT_MODE`, `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `DEMO_MASTER`, `LEGACY_BUYER_SCREENS`, `LAB_SCREENS`
 - 구현 시 추가: `COORDINATOR_URL`, `FL_CLIENT_TOKEN`
 
 `MERCHANT_SECRET`은 선택값이다. 지금은 세션 쿠키·CSRF 서명 키를 만드는 데만 쓰며, 판매자마다 다른 충분히 긴 임의 문자열을 넣는다. 비워두면 재시작할 때마다 모든 사용자가 로그아웃된다. 저장소나 로그에 남기지 않는다.
@@ -38,3 +77,9 @@ A는 주문 DB, B는 특징 DB·모델만 수정한다. 웹 worker는 판매자�
 `NTS_SERVICE_KEY`는 선택값이다. 비워두면 판매자 가입이 사업자등록번호 형식만 확인하는 mock 인증으로 통과한다. 실제 국세청 진위확인을 받으려면 [공공데이터포털](https://www.data.go.kr)에서 "사업자등록정보 진위확인 및 상태조회 서비스"를 신청해 발급받은 serviceKey를 이 값에 넣는다.
 
 `MERCHANT_DB_PATH`는 아직 `run_local.py`(C 소유)가 넘기지 않으므로 `os.environ.get`과 `FEATURE_DB_PATH` 옆 기본 경로로 읽는다. 필수값으로 바꾸는 것은 C의 런처 PR이 먼저 병합된 뒤다([작업 규칙](../../../docs/team/working-agreement.md) §3).
+
+`CHATBOT_MODE`(`auto`·`llm`·`rules`), `CHATBOT_MODEL`, `CHATBOT_ALLOW_CUSTOMER_DATA`(`1`이면 주문 내역·개인 추천 도구를 LLM에 연다, 기본 꺼짐)는 선택값이다. `ANTHROPIC_API_KEY` 또는 `ANTHROPIC_AUTH_TOKEN`이 없으면 챗봇은 규칙 기반으로만 답한다. 키는 저장소·로그에 남기지 않는다. `anthropic` 패키지는 챗봇이 LLM을 쓸 때만 import한다(설치하지 않아도 앱은 뜬다).
+
+`DEMO_MASTER=1`은 시연용이다. 로그인 화면에 마스터 계정(`master` / `master-1234`, `platform_dataset`이 가게마다 만든다) 원클릭 로그인 버튼을 보인다. `serve_demo`가 기본으로 켠다. 실제 운영에서는 켜지 않는다.
+
+`LEGACY_BUYER_SCREENS`(기본 `1`)를 `0`으로 두면 이전 버전의 구매자 화면이 꺼진다. 식당 POS 시연(`serve_demo`)은 `0`으로 켠다. `LAB_SCREENS=1`이면 사장님 메뉴에 4칸 모델 비교(팀·질의응답용)가 보인다.

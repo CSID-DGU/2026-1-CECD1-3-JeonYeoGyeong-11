@@ -8,36 +8,43 @@
 {%- elif name == 'group' -%}<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15.5 14.7c2.3-.3 4.3 1 5 3.8"/>
 {%- elif name == 'prices' -%}<path d="M4 19.5h16"/><path d="M6 15l4-4.5 3 3 5-6"/>
 {%- elif name == 'compare' -%}<path d="M7 20V11M12 20V5M17 20v-6"/>
+{%- elif name == 'today' -%}<circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/>
+{%- elif name == 'pos' -%}<rect x="4" y="4" width="16" height="11" rx="2"/><path d="M8 19h8M12 15v4M7.5 8h4"/>
+{%- elif name == 'sales' -%}<path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8z"/><path d="M9 8.5h6M9 12.5h6"/>
+{%- elif name == 'menu' -%}<path d="M7 3v8a2 2 0 0 0 2 2v8M11 3v8M15 3c-1.5 2-1.5 6 0 8v10"/>
+{%- elif name == 'guests' -%}<circle cx="9" cy="9" r="3"/><circle cx="16.5" cy="10" r="2.5"/><path d="M3.5 19c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5M15.5 14.7c2.3-.3 4.3 1 5 3.8"/>
+{%- elif name == 'fl' -%}<circle cx="12" cy="5.5" r="2"/><circle cx="5" cy="17.5" r="2"/><circle cx="19" cy="17.5" r="2"/><path d="M12 7.5v4M12 11.5l-5.5 4.5M12 11.5l5.5 4.5"/>
+{%- elif name == 'floor' -%}<rect x="3.5" y="3.5" width="17" height="17" rx="2"/><rect x="6.5" y="6.5" width="4" height="3" rx="1"/><rect x="13.5" y="6.5" width="4" height="3" rx="1"/><circle cx="8.5" cy="15.5" r="2"/><path d="M13.5 14h4v3h-4z"/>
+{%- elif name == 'settings' -%}<circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M6 18l1.8-1.8M16.2 7.8 18 6"/>
 {%- endif -%}
 </svg>
 {%- endmacro -%}
 {%- set nav = [
-  ('overview', '/overview', '개요'), ('products', '/products', '상품 관리'), ('orders', '/orders', '주문 관리'),
-  ('messages', '/messages', '쪽지'), ('feed', '/feed', '소식'), ('group_buys', '/group-buys', '공동구매'),
-  ('prices', '/prices', '시세 입력'), ('compare', '/compare', '모델 비교'),
-] -%}
-{%- set icons = {'overview': 'overview', 'products': 'products', 'orders': 'orders', 'messages': 'message',
-                 'feed': 'feed', 'group_buys': 'group', 'prices': 'prices', 'compare': 'compare'} -%}
+  ('today', '/today', '오늘'), ('pos', 'POS', 'POS 열기'), ('sales', '/sales', '매출'), ('menu', '/menu', '메뉴'),
+  ('guests', '/guests', '손님'), ('floor', '/floor', '테이블 배치'), ('fl', '/fl', '연합학습'), ('settings', '/settings', '설정'),
+] + ([('compare', '/compare', '모델 실험실')] if lab_screens else []) -%}
+{%- set icons = {'today': 'today', 'pos': 'pos', 'sales': 'sales', 'menu': 'menu', 'guests': 'guests', 'fl': 'fl', 'floor': 'floor',
+                 'settings': 'settings', 'compare': 'compare'} -%}
 <!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{{ title or (brand_name ~ " 판매자센터") }}</title>
+  <title>{{ title or (store_name ~ " · " ~ brand_name) }}</title>
   <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="demo-bar">
-    <span>데모 화면</span>
-    <a href="/buyer/{{ seller_id }}/">구매자</a>
-    <a class="active" href="/seller/{{ seller_id }}/overview">판매자</a>
+    <span>{{ store_name }}</span>
+    <a href="/pos/{{ seller_id }}/">POS 화면</a>
+    <a class="active" href="/seller/{{ seller_id }}/today">사장님 화면</a>
   </div>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="/seller/{{ seller_id }}/overview"><img src="/static/logo.svg" alt="">{{ brand_name }}</a>
-      <span class="brand-chip">판매자센터</span>
+      <a class="brand" href="/seller/{{ seller_id }}/today"><img src="/static/logo.svg" alt="">{{ brand_name }}</a>
+      <span class="brand-chip">사장님</span>
       <div class="session">
         {% if staff %}
           <span class="avatar" aria-hidden="true">{{ staff.display_name[:1] }}</span>
@@ -53,9 +60,10 @@
   {% if staff %}
   <div class="shell">
     <nav class="sidenav" aria-label="판매자 메뉴">
-      <div class="sidenav-label">매장 운영</div>
-      {% for key, path, label in nav %}
-      <a href="/seller/{{ seller_id }}{{ path }}" class="{{ 'active' if active_tab == key else '' }}">{{ icon(icons[key]) }}{{ label }}</a>
+      <a href="/pos/{{ seller_id }}/" class="sidenav-pos">{{ icon('pos') }}<span>POS 열기<small>테이블 주문·결제</small></span></a>
+      <div class="sidenav-label">우리 가게</div>
+      {% for key, path, label in nav if key != 'pos' %}
+      <a href="/seller/{{ seller_id }}{{ path }}" class="{{ 'active' if active_tab == key else '' }}"{{ ' aria-current="page"' if active_tab == key }}>{{ icon(icons[key]) }}{{ label }}</a>
       {% endfor %}
     </nav>
     <main class="page">
@@ -67,5 +75,6 @@
     {{ self.content() }}
   </main>
   {% endif %}
+  {% block scripts %}{% endblock %}
 </body>
 </html>
